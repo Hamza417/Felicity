@@ -1,12 +1,17 @@
 package app.simple.felicity.repository.repositories
 
+import android.content.Context
 import android.util.Log
+import app.simple.felicity.repository.database.dao.ArtistInfoCacheDao
+import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.models.MusicBrainzArtistDetail
 import app.simple.felicity.repository.models.MusicBrainzArtistInfo
 import app.simple.felicity.repository.models.MusicBrainzArtistSearchResponse
 import app.simple.felicity.repository.models.WikidataEntityResponse
 import app.simple.felicity.repository.models.WikipediaPageSummary
+import app.simple.felicity.repository.repositories.MusicBrainzRepository.Companion.CACHE_TTL_MS
 import com.google.gson.Gson
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -30,7 +35,9 @@ import javax.inject.Singleton
  * @author Hamza417
  */
 @Singleton
-class MusicBrainzRepository @Inject constructor() {
+class MusicBrainzRepository @Inject constructor(
+        @param:ApplicationContext private val context: Context
+) {
 
     private val client: OkHttpClient by lazy {
         OkHttpClient.Builder()
@@ -42,67 +49,89 @@ class MusicBrainzRepository @Inject constructor() {
     private val gson: Gson by lazy { Gson() }
 
     /**
-     * Builds a complete [MusicBrainzArtistInfo] for the given artist name.
+     * Returns a complete [MusicBrainzArtistInfo] for the given artist name.
      *
-     * The lookup goes through three APIs in order:
-     * 1. MusicBrainz search — find the best-matching MBID.
-     * 2. MusicBrainz artist detail — type, country, lifespan, tags, URL relations.
-     * 3. Wikipedia/Wikidata — fetch the biography text via the artist's linked page.
+     * Cache-first strategy:
+     * 1. If the local Room cache has a fresh row (younger than [CACHE_TTL_MS]), return it instantly.
+     * 2. Otherwise, hit the MusicBrainz + Wikipedia APIs, save the result, and return it.
      *
      * Returns null when MusicBrainz has no record for this artist name.
-     *
-     * @param artistName The display name of the artist.
      */
     suspend fun fetchArtistInfo(artistName: String): MusicBrainzArtistInfo? {
         return withContext(Dispatchers.IO) {
             if (artistName.isBlank()) return@withContext null
 
-            val mbid = searchArtistMbid(artistName) ?: run {
-                Log.d(TAG, "No MBID found for artist: $artistName")
-                return@withContext null
-            }
-            Log.d(TAG, "Resolved MBID $mbid for artist: $artistName")
+            val dao = dao()
 
-            val detail = fetchArtistDetail(mbid) ?: run {
-                Log.d(TAG, "Could not fetch detail for MBID: $mbid")
-                return@withContext null
+            val cached = dao?.getByArtistName(artistName)
+            if (cached != null && !isCacheStale(cached.fetchedAt)) {
+                Log.d(TAG, "Cache hit for artist: $artistName (age ${System.currentTimeMillis() - cached.fetchedAt} ms)")
+                return@withContext cached
             }
 
-            // Resolve the Wikipedia URL — try a direct link first, then Wikidata.
-            val wikipediaUrl = resolveWikipediaUrl(detail.relations)
-            Log.d(TAG, "Wikipedia URL for $artistName: $wikipediaUrl")
-
-            // Pull bio text from Wikipedia's page-summary endpoint if we have a URL.
-            val bio = wikipediaUrl?.let { fetchWikipediaBio(it) }
-
-            // Keep only the top 8 tags by vote count so the UI doesn't become a wall of text.
-            val topTags = detail.tags
-                ?.filter { !it.name.isNullOrBlank() }
-                ?.sortedByDescending { it.count }
-                ?.take(8)
-                ?.mapNotNull { it.name }
-                ?: emptyList()
-
-            MusicBrainzArtistInfo(
-                    name = detail.name ?: artistName,
-                    disambiguation = detail.disambiguation?.takeIf { it.isNotBlank() },
-                    type = detail.type?.takeIf { it.isNotBlank() },
-                    country = detail.country?.takeIf { it.isNotBlank() },
-                    beginYear = detail.lifeSpan?.begin?.take(4)?.takeIf { it.isNotBlank() },
-                    endYear = detail.lifeSpan?.end?.take(4)?.takeIf { it.isNotBlank() },
-                    ended = detail.lifeSpan?.ended ?: false,
-                    tags = topTags,
-                    bio = bio,
-                    wikipediaUrl = wikipediaUrl
-            )
+            val fetched = fetchFromNetwork(artistName)
+            if (fetched != null) {
+                dao?.upsert(fetched)
+                Log.d(TAG, "Cached MusicBrainz info for: $artistName")
+            }
+            fetched
         }
     }
 
+    private fun isCacheStale(fetchedAt: Long) =
+        System.currentTimeMillis() - fetchedAt > CACHE_TTL_MS
+
+    private fun dao(): ArtistInfoCacheDao? = try {
+        AudioDatabase.getInstance(context).artistInfoCacheDao()
+    } catch (e: Exception) {
+        Log.w(TAG, "Could not access ArtistInfoCacheDao", e)
+        null
+    }
+
     /**
-     * Searches the MusicBrainz artist index by name and returns the MBID of the
-     * best match. MusicBrainz returns results ranked by a confidence score, so the
-     * first entry is almost always the right one.
+     * Does the actual three-step network fetch:
+     * MusicBrainz search → artist detail with tags → Wikipedia bio.
      */
+    private fun fetchFromNetwork(artistName: String): MusicBrainzArtistInfo? {
+        val mbid = searchArtistMbid(artistName) ?: run {
+            Log.d(TAG, "No MBID found for artist: $artistName")
+            return null
+        }
+        Log.d(TAG, "Resolved MBID $mbid for artist: $artistName")
+
+        val detail = fetchArtistDetail(mbid) ?: run {
+            Log.d(TAG, "Could not fetch detail for MBID: $mbid")
+            return null
+        }
+
+        val wikipediaUrl = resolveWikipediaUrl(detail.relations)
+        Log.d(TAG, "Wikipedia URL for $artistName: $wikipediaUrl")
+
+        val bio = wikipediaUrl?.let { fetchWikipediaBio(it) }
+
+        val topTags = detail.tags
+            ?.filter { !it.name.isNullOrBlank() }
+            ?.sortedByDescending { it.count }
+            ?.take(8)
+            ?.mapNotNull { it.name }
+            ?: emptyList()
+
+        return MusicBrainzArtistInfo(
+                artistName = artistName,
+                mbid = mbid,
+                disambiguation = detail.disambiguation?.takeIf { it.isNotBlank() },
+                type = detail.type?.takeIf { it.isNotBlank() },
+                country = detail.country?.takeIf { it.isNotBlank() },
+                beginYear = detail.lifeSpan?.begin?.take(4)?.takeIf { it.isNotBlank() },
+                endYear = detail.lifeSpan?.end?.take(4)?.takeIf { it.isNotBlank() },
+                ended = detail.lifeSpan?.ended ?: false,
+                tags = topTags.joinToString(TAG_SEPARATOR),
+                bio = bio,
+                wikipediaUrl = wikipediaUrl,
+                fetchedAt = System.currentTimeMillis()
+        )
+    }
+
     private fun searchArtistMbid(artistName: String): String? {
         return try {
             val url = "https://musicbrainz.org/ws/2/artist/".toHttpUrlOrNull()
@@ -114,9 +143,7 @@ class MusicBrainzRepository @Inject constructor() {
 
             get(url.toString())?.let { body ->
                 gson.fromJson(body, MusicBrainzArtistSearchResponse::class.java)
-                    .artists
-                    ?.firstOrNull()
-                    ?.id
+                    .artists?.firstOrNull()?.id
             }
         } catch (e: Exception) {
             Log.w(TAG, "Artist MBID search failed for: $artistName", e)
@@ -124,10 +151,6 @@ class MusicBrainzRepository @Inject constructor() {
         }
     }
 
-    /**
-     * Fetches the full artist record from MusicBrainz, asking for tags and URL relations
-     * in the same request so we only need one round-trip for all the metadata we want.
-     */
     private fun fetchArtistDetail(mbid: String): MusicBrainzArtistDetail? {
         return try {
             val url = "https://musicbrainz.org/ws/2/artist/$mbid".toHttpUrlOrNull()
@@ -145,29 +168,14 @@ class MusicBrainzRepository @Inject constructor() {
         }
     }
 
-    /**
-     * Looks at the artist's URL relations to find a path to Wikipedia.
-     * First checks for a direct "wikipedia" link; falls back to resolving
-     * a "wikidata" link through the Wikidata API when no direct link exists.
-     */
     private fun resolveWikipediaUrl(relations: List<app.simple.felicity.repository.models.MusicBrainzUrlRelation>?): String? {
         if (relations == null) return null
-
-        val direct = relations
-            .firstOrNull { it.type?.lowercase() == "wikipedia" }
-            ?.url?.resource
+        val direct = relations.firstOrNull { it.type?.lowercase() == "wikipedia" }?.url?.resource
         if (direct != null) return direct
-
-        val wikidataUrl = relations
-            .firstOrNull { it.type?.lowercase() == "wikidata" }
-            ?.url?.resource
+        val wikidataUrl = relations.firstOrNull { it.type?.lowercase() == "wikidata" }?.url?.resource
         return wikidataUrl?.let { resolveWikidataToWikipedia(it) }
     }
 
-    /**
-     * Calls the Wikidata API with an entity URL (e.g. https://www.wikidata.org/wiki/Q16767221)
-     * and returns the corresponding English Wikipedia page URL by reading the enwiki sitelink.
-     */
     private fun resolveWikidataToWikipedia(wikidataUrl: String): String? {
         return try {
             val entityId = wikidataUrl.trimEnd('/').substringAfterLast('/')
@@ -184,11 +192,7 @@ class MusicBrainzRepository @Inject constructor() {
 
             get(url.toString())?.let { body ->
                 val parsed = gson.fromJson(body, WikidataEntityResponse::class.java)
-                val title = parsed.entities
-                    ?.get(entityId)
-                    ?.sitelinks
-                    ?.get("enwiki")
-                    ?.title
+                val title = parsed.entities?.get(entityId)?.sitelinks?.get("enwiki")?.title
                 title?.let { "https://en.wikipedia.org/wiki/${it.replace(' ', '_')}" }
             }
         } catch (e: Exception) {
@@ -197,24 +201,13 @@ class MusicBrainzRepository @Inject constructor() {
         }
     }
 
-    /**
-     * Calls the Wikipedia REST API page-summary endpoint and returns the introductory
-     * paragraph (the `extract` field) as the artist's bio text.
-     *
-     * The extract is already plain text — no HTML stripping needed.
-     */
     private fun fetchWikipediaBio(wikipediaUrl: String): String? {
         return try {
             val pageTitle = wikipediaUrl.trimEnd('/').substringAfterLast('/')
             if (pageTitle.isBlank()) return null
-
             val host = wikipediaUrl.toHttpUrlOrNull()?.host ?: "en.wikipedia.org"
-            val summaryUrl = "https://$host/api/rest_v1/page/summary/$pageTitle"
-
-            get(summaryUrl)?.let { body ->
-                gson.fromJson(body, WikipediaPageSummary::class.java)
-                    .extract
-                    ?.takeIf { it.isNotBlank() }
+            get("https://$host/api/rest_v1/page/summary/$pageTitle")?.let { body ->
+                gson.fromJson(body, WikipediaPageSummary::class.java).extract?.takeIf { it.isNotBlank() }
             }
         } catch (e: Exception) {
             Log.w(TAG, "Wikipedia bio fetch failed for: $wikipediaUrl", e)
@@ -222,27 +215,13 @@ class MusicBrainzRepository @Inject constructor() {
         }
     }
 
-    /**
-     * A thin wrapper around OkHttp that attaches the required MusicBrainz User-Agent
-     * to every outgoing request and returns the response body as a string.
-     *
-     * MusicBrainz aggressively rate-limits clients that don't send a proper User-Agent,
-     * so this must never be skipped.
-     *
-     * @param url The full URL to fetch.
-     * @return Response body string, or null on any HTTP or I/O error.
-     */
     private fun get(url: String): String? {
         return try {
-            val request = Request.Builder()
-                .url(url)
-                .header("User-Agent", USER_AGENT)
-                .build()
-
+            val request = Request.Builder().url(url).header("User-Agent", USER_AGENT).build()
             client.newCall(request).execute().use { response ->
-                if (response.isSuccessful) response.body.string() else {
-                    Log.w(TAG, "HTTP ${response.code} for URL: $url")
-                    null
+                if (response.isSuccessful) response.body.string()
+                else {
+                    Log.w(TAG, "HTTP ${response.code} for URL: $url"); null
                 }
             }
         } catch (e: Exception) {
@@ -260,6 +239,11 @@ class MusicBrainzRepository @Inject constructor() {
          * See: https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting
          */
         private const val USER_AGENT = "Felicity/1.0 (https://github.com/Hamza417/Felicity)"
+
+        /** Cache entries older than 30 days are considered stale and will be re-fetched. */
+        private const val CACHE_TTL_MS = 30L * 24 * 60 * 60 * 1000
+
+        /** Separator used when joining/splitting the tags list in the database column. */
+        private const val TAG_SEPARATOR = "|"
     }
 }
-

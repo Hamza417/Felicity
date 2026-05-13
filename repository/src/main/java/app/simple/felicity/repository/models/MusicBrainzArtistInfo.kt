@@ -1,36 +1,64 @@
 package app.simple.felicity.repository.models
 
+import androidx.room.ColumnInfo
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
 /**
- * A clean summary of what MusicBrainz knows about an artist.
+ * Cached version of the MusicBrainz artist profile stored in Room so we don't
+ * have to hit the network every time the user opens an artist page.
  *
- * Rather than handing raw JSON all the way up to the UI, this class holds only
- * the fields we actually want to display so every layer above the repository
- * stays blissfully ignorant of the API shape.
+ * The [artistName] is the primary key because it's what we search by — MBIDs are
+ * resolved during the fetch and stored alongside so future lookups that have an
+ * MBID can skip the search step entirely.
  *
- * @param name          The artist's name as stored in MusicBrainz.
- * @param disambiguation A short one-liner that tells artists with the same name
- *                       apart (e.g. "Norwegian DJ and music producer").
- * @param type          Whether this is a Person, Group, Orchestra, etc.
- * @param country       ISO 3166-1 alpha-2 country code where the artist is from.
- * @param beginYear     The year the artist started (born or formed).
- * @param endYear       The year the artist ended (died or disbanded), if applicable.
- * @param ended         True when the artist is no longer active.
- * @param tags          Genre and style tags voted on by the MusicBrainz community,
- *                      ordered by vote count so the most agreed-upon tags come first.
- * @param bio           A short biography pulled from the artist's linked Wikipedia page.
- *                      Null when no Wikipedia page is linked.
- * @param wikipediaUrl  The full URL to the artist's Wikipedia page, if one is linked.
+ * [fetchedAt] is a Unix timestamp (milliseconds) we use to decide when the cache
+ * is stale and should be refreshed.
+ *
+ * Tags are stored as a single pipe-separated string (e.g. "electronic|pop|edm")
+ * to avoid needing a separate join table for such a small list.
+ *
+ * @author Hamza417
  */
+@Entity(tableName = "artist_info_cache")
 data class MusicBrainzArtistInfo(
-        val name: String,
+        @PrimaryKey
+        @ColumnInfo(name = "artist_name")
+        val artistName: String,
+
+        @ColumnInfo(name = "mbid")
+        val mbid: String?,
+
+        @ColumnInfo(name = "disambiguation")
         val disambiguation: String?,
+
+        @ColumnInfo(name = "type")
         val type: String?,
+
+        @ColumnInfo(name = "country")
         val country: String?,
+
+        @ColumnInfo(name = "begin_year")
         val beginYear: String?,
+
+        @ColumnInfo(name = "end_year")
         val endYear: String?,
+
+        @ColumnInfo(name = "ended")
         val ended: Boolean,
-        val tags: List<String>,
+
+        /** Pipe-separated list of genre/style tags, e.g. "electronic|pop|edm". */
+        @ColumnInfo(name = "tags")
+        val tags: String,
+
+        @ColumnInfo(name = "bio")
         val bio: String?,
-        val wikipediaUrl: String?
+
+        @ColumnInfo(name = "wikipedia_url")
+        val wikipediaUrl: String?,
+
+        /** When this row was written, in System.currentTimeMillis() format. */
+        @ColumnInfo(name = "fetched_at")
+        val fetchedAt: Long
 )
 

@@ -68,12 +68,22 @@ abstract class BasePageFragment : MediaFragment() {
     protected abstract val pageType: PageAdapter.PageType
 
     /**
-     * Invoked when the user taps the overflow menu button in the page header.
+     * Called when the user taps the overflow menu button in the page header.
      * Each subclass shows its own popup with the appropriate action items.
      *
      * @param view The anchor [android.view.View] for the popup.
      */
     protected abstract fun onMenuClicked(view: View)
+
+    /**
+     * Called exactly once, right after [pageAdapter] is first created and attached to the
+     * RecyclerView. Subclasses can override this to push additional data into the adapter
+     * that wasn't available when the adapter was constructed — for example, a remotely
+     * fetched artist info block that may have arrived before the adapter existed.
+     *
+     * The default implementation does nothing.
+     */
+    protected open fun onPageAdapterCreated() = Unit
 
     /**
      * Called when a page sort preference changes. Each subclass delegates to its
@@ -134,6 +144,7 @@ abstract class BasePageFragment : MediaFragment() {
             pageAdapter = PageAdapter(data, pageType)
             pageRecyclerView.adapter = pageAdapter
             setupAdapterCallbacks()
+            onPageAdapterCreated()
         } else {
             pageAdapter?.updateData(data)
             if (pageRecyclerView.adapter == null) {

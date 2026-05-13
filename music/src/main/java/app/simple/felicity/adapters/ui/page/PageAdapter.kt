@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import androidx.core.view.doOnLayout
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
@@ -778,11 +779,14 @@ class PageAdapter(
                     yearsBadge.visibility = View.GONE
                 }
 
-                // Genre/style tags — inflate a HighlightTextView pill for each tag
-                if (info.tags.isNotEmpty()) {
+                // Genre/style tags — stored as a pipe-separated string in the entity
+                val tagList = if (info.tags.isBlank()) emptyList()
+                else info.tags.split("|").filter { it.isNotBlank() }
+
+                if (tagList.isNotEmpty()) {
                     tagsContainer.removeAllViews()
                     val inflater = LayoutInflater.from(context)
-                    info.tags.forEach { tag ->
+                    tagList.forEach { tag ->
                         val pill = inflater.inflate(
                                 R.layout.item_tag_pill, tagsContainer, false
                         ) as app.simple.felicity.decorations.highlight.HighlightTextView
@@ -794,24 +798,31 @@ class PageAdapter(
                     tagsScroll.visibility = View.GONE
                 }
 
-                // Bio text — show "Read more / Read less" toggle when the text is long enough
+                // Bio text — show the toggle once the view has been laid out, and we can
+                // tell whether the text was actually truncated by the maxLines limit.
                 if (!info.bio.isNullOrBlank()) {
                     bio.text = info.bio
                     bio.visibility = View.VISIBLE
-                    bio.post {
-                        // After layout, check whether the text was actually truncated
-                        val truncated = (bio.layout?.lineCount ?: 0) > 4
-                        bioToggle.visibility = if (truncated || bioExpanded) View.VISIBLE else View.GONE
+
+                    // Always reset to collapsed state on bind so recycled holders are consistent.
+                    bioExpanded = false
+                    bio.maxLines = 4
+                    bioToggle.setText(R.string.read_more)
+
+                    // Show speculatively; doOnLayout hides it again if the text fits in 4 lines.
+                    bioToggle.visibility = View.VISIBLE
+
+                    bio.doOnLayout {
+                        // lineCount is the real rendered count; maxLines is what's visible.
+                        // If they're equal or the real count is smaller, no toggle is needed.
+                        val needsToggle = (bio.layout?.lineCount ?: 0) > bio.maxLines
+                        bioToggle.visibility = if (needsToggle) View.VISIBLE else View.GONE
                     }
+
                     bioToggle.setOnClickListener {
                         bioExpanded = !bioExpanded
-                        if (bioExpanded) {
-                            bio.maxLines = Int.MAX_VALUE
-                            bioToggle.setText(R.string.read_less)
-                        } else {
-                            bio.maxLines = 4
-                            bioToggle.setText(R.string.read_more)
-                        }
+                        bio.maxLines = if (bioExpanded) Int.MAX_VALUE else 4
+                        bioToggle.setText(if (bioExpanded) R.string.read_less else R.string.read_more)
                     }
                 } else {
                     bio.visibility = View.GONE

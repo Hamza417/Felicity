@@ -68,13 +68,22 @@ class ArtistPage : BasePageFragment() {
 
     /**
      * Sets up the RecyclerView and begins collecting [PageData] from [ArtistViewerViewModel].
-     * Also observes the MusicBrainz artist info stream and feeds it to the adapter as soon
-     * as the network fetch completes — the list updates itself without a full rebind.
      */
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         collectPageData { artistViewerViewModel.data }
+    }
 
+    /**
+     * Called once the adapter is ready. We start observing [ArtistViewerViewModel.artistInfo]
+     * from here — not from [onViewCreated] — so we're guaranteed the adapter exists when
+     * the first (possibly instant, cached) value arrives.
+     *
+     * Since [artistInfo] is a [kotlinx.coroutines.flow.StateFlow], it replays its most recent
+     * value to every new collector, so a cache hit that resolved before this method was called
+     * will still be delivered correctly.
+     */
+    override fun onPageAdapterCreated() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 artistViewerViewModel.artistInfo.collect { info ->
