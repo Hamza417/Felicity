@@ -1,53 +1,51 @@
-### DSP
-
-- Added **Replay Gain** support for all four gain modes.
-
 ### Library
 
-- Added option to manually scan the library.
-- Added option to re-index the whole library.
-- Added toggle to run the scanner on every app resume.
+- Added artist separator to split artist having **;** in artists fields. #62
+- Split artists with **&** only when it is surrounded by spaces. #62
+- Match single artist exclusively to avoid matching artists containing the artist name. #62
+- Split **Album Artists** with artist separator.
 
 ### User Interface
 
-- Revamped the whole **Tiled Home** design.
-- Added porper home panel descriptions in the popup.
-- Added **Playback Info** dialog for per song playback information. #44
-- Added **Replay** count in the **Playback Info** database and dialog.
-- Updated **Shuffle** dialog UI.
-    - Added **No Reshuffle** toggle.
-- Added **Global Shuffle** toggle and button.
-- Added **Shuffle** button in **player screens**.
-- Added **Favorite** button in the notifications.
-- Added **Replay Gain** knob in the **Equalizer** screen.
-- Added **Replay Gain** info in the **Audio Information** dialog.
-- Added the fields to edit **Replay Gain** values in the **Metadata Editor** panel.
-- Added **Global List Style** dialog in all panels to centralize the list styles.
-- Added **Most Skipped** panel to view the most skipped songs in the library.
+- Update **Purchase** panel interface for play builds.
+- Added **Lock** to move **Speed** and **Pitch** knob simultaneously. #53
+- Added **Composers** panel.
+- Added **Composers Page** showing albums and songs of the composer.
+- Implemented functions for all menus for all page panels.
 
 ### Bug Fixes
 
-- Fixed **Skip** and **Play** count not recording properly. #44
-- Fixed **Media Playback Manager** not notifying the media states properly across panels.
-- Fix a crash caused by no song data in **Songs Menu**.
-- Fixed a crash caused by a memory leak in **Tag/Metadata Processor** in the app.
-- Fixed the cursor drawable color for all input fields in the app.
-- Fixed song info not updating in player screens when its metadata is changed.
-- Fixed media state icons are not visible in grid mode.
-- Fixed inconsistent notification behavior in the app.
-- Fixed scanner jobs not cancelling itself properly.
-- Fixed various nav bar padding issues in the app.
-- Fixed invalid white color in line lrc view.
-- Dedicated adapter for selections to prevent it from inheriting the **Songs** list styles.
+- Fixed proguard removing TagLib classes leading to missing metadata for whole library. #57
+- Fixed invalid theme states on cold app launches.
+- Fixed an OOM in restoring media states. #48
+- Fixed song state ballooning on each playback state restore on cold app launches. #48
+- Fixed wrong **Playing Queue** time updates.
+- Fixed app showing raw bitrates and without any formatting.
+- Fixed PCM pipeline info inconsistencies.
+- Fixed non-terminating recursion while initializing the preferences leading to a frozen/blank app
+  launch.
+- Fixed first song of the queue is not added to the **Recently Played** list. #58
+- Fixed artist song count in the **Artists** panel and **Search** panel. #62
+- Fixed **Album Page** showing **Artists** instead of **Album Artists**. #62
+- Fixed app header stays offscreen when list count has changed while header is in partially/hidden
+  state.
 
 ### Improvements
 
-- Improved **Metadata Editor** interface.
-- Removed the drag icon from the **Playing Queue** to reduce one object overhead.
-- Improved the icon rendering in the **Media Aware** layouts for better icon rendering.
+- Improved **Knob** highlight color to be distinguishable from the background.
+- Multiple songs to playlist dialog should only parcel hashes to avoid potential OOMs.
+
+### Changes
+
+- Changed **Most Played** parameter to include songs played at least two times. #58
 
 ### Removed
 
-- Removed shuffle algorithms to be replaced with smart bucketed algorithm.
-- Removed all menus from all panels.
-- Removed **Sort Order** chips from all panels.
+- PCM info dialog for Hi-Res mode.
+    - Since audio processors are not supported by ExoPlayer yet, the dialog will always show random
+      info on Hi-Res mode.
+
+### Development
+
+- 32-bit support dropped for store builds.
+    - 32-bit users can still get 32-bit builds from the GitHub releases page.
