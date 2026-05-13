@@ -2,12 +2,16 @@ package app.simple.felicity.repository.repositories
 
 import android.content.Context
 import android.util.Log
+import app.simple.felicity.repository.database.dao.AlbumInfoCacheDao
 import app.simple.felicity.repository.database.dao.ArtistInfoCacheDao
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.factories.TaggedSocketFactory
+import app.simple.felicity.repository.models.MusicBrainzAlbumInfo
 import app.simple.felicity.repository.models.MusicBrainzArtistDetail
 import app.simple.felicity.repository.models.MusicBrainzArtistInfo
 import app.simple.felicity.repository.models.MusicBrainzArtistSearchResponse
+import app.simple.felicity.repository.models.MusicBrainzReleaseDetail
+import app.simple.felicity.repository.models.MusicBrainzReleaseSearchResponse
 import app.simple.felicity.repository.models.WikidataEntityResponse
 import app.simple.felicity.repository.models.WikipediaPageSummary
 import app.simple.felicity.repository.repositories.MusicBrainzRepository.Companion.CACHE_TTL_MS
@@ -92,6 +96,129 @@ class MusicBrainzRepository @Inject constructor(
     } catch (e: Exception) {
         Log.w(TAG, "Could not access ArtistInfoCacheDao", e)
         null
+    }
+
+    private fun albumDao(): AlbumInfoCacheDao? = try {
+        AudioDatabase.getInstance(context).albumInfoCacheDao()
+    } catch (e: Exception) {
+        Log.w(TAG, "Could not access AlbumInfoCacheDao", e)
+        null
+    }
+
+    /**
+     * Returns a complete [MusicBrainzAlbumInfo] for the given album and artist name.
+     *
+     * Uses the same cache-first strategy as [fetchArtistInfo]: if a fresh cached row
+     * exists it is returned immediately, otherwise the MusicBrainz and Wikipedia APIs
+     * are queried and the result is saved locally.
+     *
+     * Returns null when MusicBrainz has no matching release.
+     */
+    suspend fun fetchAlbumInfo(albumName: String, artistName: String): MusicBrainzAlbumInfo? {
+        return withContext(Dispatchers.IO) {
+            if (albumName.isBlank()) return@withContext null
+
+            val key = "$albumName${KEY_SEPARATOR}$artistName"
+            val dao = albumDao()
+
+            val cached = dao?.getByAlbumKey(key)
+            if (cached != null && !isCacheStale(cached.fetchedAt)) {
+                Log.d(TAG, "Cache hit for album: $albumName by $artistName")
+                return@withContext cached
+            }
+
+            val fetched = fetchAlbumFromNetwork(albumName, artistName, key)
+            if (fetched != null) {
+                dao?.upsert(fetched)
+                Log.d(TAG, "Cached MusicBrainz info for album: $albumName")
+            }
+            fetched
+        }
+    }
+
+    private fun fetchAlbumFromNetwork(albumName: String, artistName: String, key: String): MusicBrainzAlbumInfo? {
+        val mbid = searchReleaseMbid(albumName, artistName) ?: run {
+            Log.d(TAG, "No MBID found for album: $albumName by $artistName")
+            return null
+        }
+        Log.d(TAG, "Resolved release MBID $mbid for album: $albumName")
+
+        val detail = fetchReleaseDetail(mbid) ?: run {
+            Log.d(TAG, "Could not fetch release detail for MBID: $mbid")
+            return null
+        }
+
+        val wikipediaUrl = resolveWikipediaUrl(detail.relations)
+        Log.d(TAG, "Wikipedia URL for album $albumName: $wikipediaUrl")
+
+        val bio = wikipediaUrl?.let { fetchWikipediaBio(it) }
+
+        val topTags = detail.tags
+            ?.filter { !it.name.isNullOrBlank() }
+            ?.sortedByDescending { it.count }
+            ?.take(8)
+            ?.mapNotNull { it.name }
+            ?: emptyList()
+
+        val labels = detail.labelInfo
+            ?.mapNotNull { it.label?.name?.takeIf { n -> n.isNotBlank() } }
+            ?.distinct()
+            ?.take(4)
+            ?: emptyList()
+
+        return MusicBrainzAlbumInfo(
+                albumKey = key,
+                mbid = mbid,
+                disambiguation = detail.disambiguation?.takeIf { it.isNotBlank() },
+                releaseDate = detail.date?.takeIf { it.isNotBlank() },
+                country = detail.country?.takeIf { it.isNotBlank() },
+                status = detail.status?.takeIf { it.isNotBlank() },
+                tags = topTags.joinToString(TAG_SEPARATOR),
+                labels = labels.joinToString(TAG_SEPARATOR),
+                bio = bio,
+                wikipediaUrl = wikipediaUrl,
+                fetchedAt = System.currentTimeMillis()
+        )
+    }
+
+    private fun searchReleaseMbid(albumName: String, artistName: String): String? {
+        return try {
+            val query = buildString {
+                append("release:\"$albumName\"")
+                if (artistName.isNotBlank()) append(" AND artist:\"$artistName\"")
+            }
+            val url = "https://musicbrainz.org/ws/2/release/".toHttpUrlOrNull()
+                ?.newBuilder()
+                ?.addQueryParameter("query", query)
+                ?.addQueryParameter("limit", "1")
+                ?.addQueryParameter("fmt", "json")
+                ?.build() ?: return null
+
+            get(url.toString())?.let { body ->
+                gson.fromJson(body, MusicBrainzReleaseSearchResponse::class.java)
+                    .releases?.firstOrNull()?.id
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Release MBID search failed for: $albumName", e)
+            null
+        }
+    }
+
+    private fun fetchReleaseDetail(mbid: String): MusicBrainzReleaseDetail? {
+        return try {
+            val url = "https://musicbrainz.org/ws/2/release/$mbid".toHttpUrlOrNull()
+                ?.newBuilder()
+                ?.addQueryParameter("inc", "tags+url-rels+label-rels+labels")
+                ?.addQueryParameter("fmt", "json")
+                ?.build() ?: return null
+
+            get(url.toString())?.let { body ->
+                gson.fromJson(body, MusicBrainzReleaseDetail::class.java)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Release detail fetch failed for MBID: $mbid", e)
+            null
+        }
     }
 
     /**
@@ -251,5 +378,8 @@ class MusicBrainzRepository @Inject constructor(
 
         /** Separator used when joining/splitting the tags list in the database column. */
         private const val TAG_SEPARATOR = "|"
+
+        /** Separator used to build the composite album cache key from album name and artist name. */
+        private const val KEY_SEPARATOR = "|"
     }
 }
