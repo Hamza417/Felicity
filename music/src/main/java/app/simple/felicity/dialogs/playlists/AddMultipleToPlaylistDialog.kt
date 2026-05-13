@@ -16,10 +16,8 @@ import app.simple.felicity.dialogs.playlists.AddMultipleToPlaylistDialog.Compani
 import app.simple.felicity.dialogs.playlists.AddMultipleToPlaylistDialog.Companion.showAddMultipleToPlaylistDialog
 import app.simple.felicity.dialogs.playlists.CreatePlaylistDialog.Companion.showCreatePlaylistDialog
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
-import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.managers.SelectionManager
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.utils.ParcelUtils.parcelableArrayList
 import app.simple.felicity.viewmodels.dialogs.AddMultipleToPlaylistViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.lifecycle.withCreationCallback
@@ -32,6 +30,11 @@ import kotlinx.coroutines.launch
  * list of playlists without any pre-checked state (since we're doing a bulk add, not
  * editing existing membership). The user checks all the playlists they want, taps Save,
  * and every selected song gets appended to each checked playlist in one go.
+ *
+ * Only the audio hashes are stored in the bundle — not the full [Audio] objects — so
+ * this is safe to use with libraries of any size without risking a Binder transaction
+ * overflow. The ViewModel receives the hashes directly and writes them straight to the
+ * playlist cross-ref table.
  *
  * On a successful save the [SelectionManager] selection is also cleared automatically,
  * since the user is done with their batch operation.
@@ -50,15 +53,14 @@ class AddMultipleToPlaylistDialog : ScopedBottomSheetFragment() {
     /** Whether the adapter has been created from the first ViewModel state emission. */
     private var adapterInitialized = false
 
-    private val audios: ArrayList<Audio> by lazy {
-        requireArguments().parcelableArrayList<Audio>(BundleConstants.SONGS)
-            ?: error("AddMultipleToPlaylistDialog requires a songs argument")
+    private val audioHashes: LongArray by lazy {
+        requireArguments().getLongArray(KEY_HASHES) ?: LongArray(0)
     }
 
     private val viewModel: AddMultipleToPlaylistViewModel by viewModels(
             extrasProducer = {
                 defaultViewModelCreationExtras.withCreationCallback<AddMultipleToPlaylistViewModel.Factory> {
-                    it.create(audios = audios)
+                    it.create(audioHashes = audioHashes)
                 }
             }
     )
@@ -137,11 +139,14 @@ class AddMultipleToPlaylistDialog : ScopedBottomSheetFragment() {
 
     companion object {
         private const val TAG = "AddMultipleToPlaylistDialog"
+        private const val KEY_HASHES = "audio_hashes"
 
         fun newInstance(audios: List<Audio>): AddMultipleToPlaylistDialog {
             return AddMultipleToPlaylistDialog().apply {
                 arguments = Bundle().apply {
-                    putParcelableArrayList(BundleConstants.SONGS, ArrayList(audios))
+                    // Store only the hashes — each one is a Long (8 bytes), so even
+                    // 10,000 songs is only ~80 KB, well within Binder's 1 MB limit.
+                    putLongArray(KEY_HASHES, audios.map { it.hash }.toLongArray())
                 }
             }
         }
@@ -159,4 +164,3 @@ class AddMultipleToPlaylistDialog : ScopedBottomSheetFragment() {
         }
     }
 }
-

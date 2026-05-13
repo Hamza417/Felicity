@@ -2,7 +2,6 @@ package app.simple.felicity.viewmodels.dialogs
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Playlist
 import app.simple.felicity.repository.repositories.PlaylistRepository
 import dagger.assisted.Assisted
@@ -19,21 +18,18 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel for the AddMultipleToPlaylistDialog.
+ * ViewModel for the [app.simple.felicity.dialogs.playlists.AddMultipleToPlaylistDialog].
  *
- * This is the big-brother version of [AddToPlaylistViewModel] — instead of managing
- * playlist membership for a single track, it handles a whole batch of selected songs at once.
- *
- * All playlists are shown without any pre-checked state, since determining which playlists
- * already contain every song in the selection would be complex and potentially confusing.
- * When the user taps "Save", all selected songs are appended to every checked playlist
- * using the efficient batch [PlaylistRepository.addSongs] operation.
+ * Works with audio hashes instead of full [app.simple.felicity.repository.models.Audio]
+ * objects to keep the memory footprint tiny regardless of how many songs the user selected.
+ * Since [PlaylistRepository.addSongs] only needs hashes, there's no reason to hold onto
+ * the full model objects here.
  *
  * @author Hamza417
  */
 @HiltViewModel(assistedFactory = AddMultipleToPlaylistViewModel.Factory::class)
 class AddMultipleToPlaylistViewModel @AssistedInject constructor(
-        @Assisted val audios: ArrayList<Audio>,
+        @Assisted val audioHashes: LongArray,
         private val playlistRepository: PlaylistRepository
 ) : ViewModel() {
 
@@ -59,8 +55,8 @@ class AddMultipleToPlaylistViewModel @AssistedInject constructor(
     private val _saveComplete = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
     /**
-     * Fires exactly once after [saveToPlaylists] has finished writing all changes.
-     * The dialog should dismiss itself in response to this event.
+     * Fires exactly once after [saveToPlaylists] finishes writing all changes.
+     * The dialog dismisses itself in response to this event.
      */
     val saveComplete: SharedFlow<Unit> = _saveComplete.asSharedFlow()
 
@@ -70,8 +66,7 @@ class AddMultipleToPlaylistViewModel @AssistedInject constructor(
 
     /**
      * Subscribes to all playlists and maps each emission into a [State].
-     * The stream stays alive for the ViewModel's lifetime so any newly created playlist
-     * appears in the dialog list automatically without a manual reload.
+     * Any newly created playlist appears in the dialog list automatically without a reload.
      */
     private fun observePlaylists() {
         viewModelScope.launch {
@@ -84,32 +79,28 @@ class AddMultipleToPlaylistViewModel @AssistedInject constructor(
     }
 
     /**
-     * Appends all of the songs from [audios] to each playlist in [checkedPlaylistIds].
-     * This runs on the IO dispatcher and fires [saveComplete] when done, signaling the
-     * dialog to close and the selection to be cleared.
+     * Appends all songs (by their hashes) to each checked playlist.
+     * Runs on the IO dispatcher and fires [saveComplete] when done.
      *
-     * @param checkedPlaylistIds The set of playlist IDs the user has checked in the dialog.
+     * @param checkedPlaylistIds The set of playlist IDs the user confirmed in the dialog.
      */
     fun saveToPlaylists(checkedPlaylistIds: Set<Long>) {
         viewModelScope.launch(Dispatchers.IO) {
-            val audioHashes = audios.map { it.hash }
+            val hashes = audioHashes.toList()
             checkedPlaylistIds.forEach { playlistId ->
-                playlistRepository.addSongs(playlistId, audioHashes)
+                playlistRepository.addSongs(playlistId, hashes)
             }
             _saveComplete.emit(Unit)
         }
     }
 
-    /** Factory required by Hilt's assisted-injection mechanism. */
     @AssistedFactory
     interface Factory {
         /**
-         * Creates an [AddMultipleToPlaylistViewModel] bound to the given batch of [audios].
+         * Creates an [AddMultipleToPlaylistViewModel] bound to the given [audioHashes].
          *
-         * @param audios The audio tracks whose playlist membership is being set.
-         * @return A new [AddMultipleToPlaylistViewModel] instance.
+         * @param audioHashes The XXHash64 fingerprints of the songs being batch-added.
          */
-        fun create(audios: ArrayList<Audio>): AddMultipleToPlaylistViewModel
+        fun create(audioHashes: LongArray): AddMultipleToPlaylistViewModel
     }
 }
-
