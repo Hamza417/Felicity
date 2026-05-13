@@ -125,6 +125,15 @@ object EqualizerPreferences {
     const val PLAYBACK_SPEED = "eq_playback_speed"
 
     /**
+     * Boolean flag that keeps pitch and speed knobs moving together.
+     * When true, changing either the pitch or speed will automatically adjust the other
+     * to match, simulating the natural "tape speed" relationship where faster playback
+     * also raises the pitch (formula: speed = 2^(semitones/12)).
+     * Default is false — both knobs are independent.
+     */
+    const val PITCH_SPEED_LOCKED = "eq_pitch_speed_locked"
+
+    /**
      * Manual replay gain offset stored as a float in [-15 .. +15] dB.
      * 0.0 dB = unity gain (no change, default). Use this to level-match tracks that
      * were mastered at different loudness targets, or to compensate for clipping on
@@ -444,13 +453,20 @@ object EqualizerPreferences {
     fun getReplayGainDb(): Float {
         return SharedPreferences.getSharedPreferences().getFloat(REPLAY_GAIN_DB, 0f)
     }
-
     fun setAutoReplayGainEnabled(enabled: Boolean) {
         SharedPreferences.getSharedPreferences().edit { putBoolean(AUTO_REPLAY_GAIN_ENABLED, enabled) }
     }
 
     fun isAutoReplayGainEnabled(): Boolean {
         return SharedPreferences.getSharedPreferences().getBoolean(AUTO_REPLAY_GAIN_ENABLED, true)
+    }
+
+    fun setPitchSpeedLocked(locked: Boolean) {
+        SharedPreferences.getSharedPreferences().edit { putBoolean(PITCH_SPEED_LOCKED, locked) }
+    }
+
+    fun isPitchSpeedLocked(): Boolean {
+        return SharedPreferences.getSharedPreferences().getBoolean(PITCH_SPEED_LOCKED, false)
     }
 
     fun setReplayGainMode(mode: String) {

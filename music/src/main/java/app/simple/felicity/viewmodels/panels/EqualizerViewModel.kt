@@ -101,7 +101,8 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
                     reverbDamp = EqualizerPreferences.getReverbDamp(),
                     pitch = EqualizerPreferences.getPitch(),
                     playbackSpeed = EqualizerPreferences.getPlaybackSpeed(),
-                    replayGainDb = EqualizerPreferences.getReplayGainDb()
+                    replayGainDb = EqualizerPreferences.getReplayGainDb(),
+                    pitchSpeedLocked = EqualizerPreferences.isPitchSpeedLocked()
             )
         }
     }
@@ -186,6 +187,7 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
      * @property pitch Pitch offset in semitones [-12 .. +12]. 0 = no shift.
      * @property playbackSpeed Playback speed multiplier in [0.5 .. 2.0]. 1.0 = normal.
      * @property replayGainDb Manual replay gain offset in dB [-15 .. +15]. 0.0 = unity.
+     * @property pitchSpeedLocked Whether the pitch and speed knobs are linked together.
      */
     data class EqualizerInitialState(
             val isEqEnabled: Boolean,
@@ -202,7 +204,8 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
             val reverbDamp: Float,
             val pitch: Float,
             val playbackSpeed: Float,
-            val replayGainDb: Float = 0f
+            val replayGainDb: Float = 0f,
+            val pitchSpeedLocked: Boolean = false
     ) {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
@@ -222,6 +225,7 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
                     && pitch == other.pitch
                     && playbackSpeed == other.playbackSpeed
                     && replayGainDb == other.replayGainDb
+                    && pitchSpeedLocked == other.pitchSpeedLocked
         }
 
         override fun hashCode(): Int {
@@ -240,6 +244,7 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
             result = 31 * result + pitch.hashCode()
             result = 31 * result + playbackSpeed.hashCode()
             result = 31 * result + replayGainDb.hashCode()
+            result = 31 * result + pitchSpeedLocked.hashCode()
             return result
         }
     }

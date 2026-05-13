@@ -477,4 +477,5 @@
     <string name="refresh_library_summary">Wipe the entire library and rebuild it from scratch. Your favorites, always skipped and all playback stats are preserved and restored after the scan.</string>
     <string name="scan_on_resume">Scan on App Resume</string>
     <string name="scan_on_resume_summary">Automatically scan the library for changes every time the app is resumed. May consume battery.</string>
+    <string name="lock">Lock</string>
 </resources>

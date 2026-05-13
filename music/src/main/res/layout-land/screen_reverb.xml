@@ -2,9 +2,20 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:gravity="center_vertical"
-    android:padding="@dimen/padding_25"
-    android:orientation="horizontal">
+    android:orientation="vertical">
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:padding="@dimen/padding_25"
+            android:orientation="horizontal">
 
     <LinearLayout
         android:layout_width="0dp"
@@ -130,5 +141,9 @@
             app:textColorStyle="heading" />
 
     </LinearLayout>
+
+        </LinearLayout>
+
+    </HorizontalScrollView>
 
 </LinearLayout>

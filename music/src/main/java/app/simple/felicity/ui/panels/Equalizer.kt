@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.math.ln
+import kotlin.math.log2
 import kotlin.math.pow
 
 /**
@@ -394,6 +395,15 @@ class Equalizer : MediaFragment() {
                 val semitones = knobValueToPitchSemitones(value)
                 EqualizerPreferences.setPitch(semitones)
                 Log.d(TAG, "Pitch updated: ${semitones} st → ×${"%.3f".format(pitchSemitonesToMultiplier(semitones))}")
+
+                // When locked, mirror pitch to speed using the natural tape-speed relationship:
+                // going up an octave doubles the speed, going down halves it.
+                if (EqualizerPreferences.isPitchSpeedLocked()) {
+                    val linkedSpeed = pitchSemitonesToMultiplier(semitones)
+                    EqualizerPreferences.setPlaybackSpeed(linkedSpeed)
+                    binding.speakerScreen.speedKnob.setKnobPosition(speedToKnobValue(linkedSpeed), animate = true)
+                    Log.d(TAG, "Pitch lock → speed synced to ${linkedSpeed}x")
+                }
             }
 
             override fun onLabel(value: Float): String {
@@ -424,6 +434,15 @@ class Equalizer : MediaFragment() {
                 val speed = knobValueToSpeed(value)
                 EqualizerPreferences.setPlaybackSpeed(speed)
                 Log.d(TAG, "Playback speed updated: ${speed}x")
+
+                // When locked, derive the matching pitch from the speed so they always
+                // stay in the tape-speed relationship (pitch = log2(speed) * 12 semitones).
+                if (EqualizerPreferences.isPitchSpeedLocked()) {
+                    val linkedSemitones = log2(speed.toDouble()).toFloat() * 12f
+                    EqualizerPreferences.setPitch(linkedSemitones)
+                    binding.speakerScreen.pitchKnob.setKnobPosition(pitchSemitonesToKnobValue(linkedSemitones), animate = true)
+                    Log.d(TAG, "Speed lock → pitch synced to $linkedSemitones st")
+                }
             }
 
             override fun onLabel(value: Float): String {
@@ -434,6 +453,20 @@ class Equalizer : MediaFragment() {
                 }
             }
         })
+
+        // Lock button — sits between the speed and pitch knobs. Tapping it toggles whether
+        // both knobs move together following the tape-speed relationship (faster = higher pitch).
+        val lockButton = binding.speakerScreen.lockPitchSpeedButton
+        lockButton.setImageResource(
+                if (state.pitchSpeedLocked) R.drawable.ic_locked_16dp else R.drawable.ic_unlocked_16dp
+        )
+
+        lockButton.setOnClickListener {
+            val nowLocked = !EqualizerPreferences.isPitchSpeedLocked()
+            EqualizerPreferences.setPitchSpeedLocked(nowLocked)
+            lockButton.setImageResource(if (nowLocked) R.drawable.ic_locked_16dp else R.drawable.ic_unlocked_16dp)
+            Log.d(TAG, "Pitch/speed lock toggled: $nowLocked")
+        }
 
         // Replay gain knob — offsets the overall loudness to level-match tracks.
         // Knob 0 = -15 dB (quieter), center = 0 dB (no change), 100 = +15 dB (louder).
