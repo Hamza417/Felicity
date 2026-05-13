@@ -4,6 +4,11 @@
 - Split artists with **&** only when it is surrounded by spaces. #62
 - Match single artist exclusively to avoid matching artists containing the artist name. #62
 - Split **Album Artists** with artist separator.
+- Added complete **MusicBrainz** integration with the app.
+    - Added **Artist** and **Album** info on the page panels.
+    - Added **Metadata Search** to search and fetch metadata from **MusicBrainz**.
+    - Added **Artist** image loader form **MusicBrainz**.
+    - Added toggle to enable/disable **MusicBrainz** integration.
 
 ### User Interface
 
@@ -11,6 +16,8 @@
 - Added **Lock** to move **Speed** and **Pitch** knob simultaneously. #53
 - Added **Composers** panel.
 - Added **Composers Page** showing albums and songs of the composer.
+- Added **Search Lyrics** button to search and embed lyrics in the **Metadata Editor**.
+- Added info about artists, albums etc. in all **Pages** panels.
 - Implemented functions for all menus for all page panels.
 
 ### Bug Fixes
