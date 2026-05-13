@@ -10,6 +10,8 @@ import app.simple.felicity.repository.models.MusicBrainzAlbumInfo
 import app.simple.felicity.repository.models.MusicBrainzArtistDetail
 import app.simple.felicity.repository.models.MusicBrainzArtistInfo
 import app.simple.felicity.repository.models.MusicBrainzArtistSearchResponse
+import app.simple.felicity.repository.models.MusicBrainzRecordingResult
+import app.simple.felicity.repository.models.MusicBrainzRecordingSearchResponse
 import app.simple.felicity.repository.models.MusicBrainzReleaseDetail
 import app.simple.felicity.repository.models.MusicBrainzReleaseSearchResponse
 import app.simple.felicity.repository.models.WikidataEntityResponse
@@ -59,7 +61,38 @@ class MusicBrainzRepository @Inject constructor(
     private val gson: Gson by lazy { Gson() }
 
     /**
-     * Returns a complete [MusicBrainzArtistInfo] for the given artist name.
+     * Searches MusicBrainz for recordings (individual track performances) that match the
+     * given title and artist. Returns up to 15 results ranked by relevance score.
+     *
+     * Unlike the artist/album fetch functions this one does not cache results — search
+     * results are cheap to re-fetch and the user expects fresh matches every time.
+     */
+    suspend fun searchRecordings(trackName: String, artistName: String): List<MusicBrainzRecordingResult> {
+        return withContext(Dispatchers.IO) {
+            if (trackName.isBlank()) return@withContext emptyList()
+            try {
+                val query = buildString {
+                    append("recording:\"$trackName\"")
+                    if (artistName.isNotBlank()) append(" AND artist:\"$artistName\"")
+                }
+                val url = "https://musicbrainz.org/ws/2/recording/".toHttpUrlOrNull()
+                    ?.newBuilder()
+                    ?.addQueryParameter("query", query)
+                    ?.addQueryParameter("limit", "15")
+                    ?.addQueryParameter("fmt", "json")
+                    ?.build() ?: return@withContext emptyList()
+
+                val body = get(url.toString()) ?: return@withContext emptyList()
+                gson.fromJson(body, MusicBrainzRecordingSearchResponse::class.java)
+                    .recordings ?: emptyList()
+            } catch (e: Exception) {
+                Log.w(TAG, "Recording search failed for: $trackName", e)
+                emptyList()
+            }
+        }
+    }
+
+    /**
      *
      * Cache-first strategy:
      * 1. If the local Room cache has a fresh row (younger than [CACHE_TTL_MS]), return it instantly.

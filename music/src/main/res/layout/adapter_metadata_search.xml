@@ -16,29 +16,11 @@
         android:textSize="@dimen/text_size_16"
         app:appFontStyle="bold"
         app:layout_constraintBottom_toTopOf="@+id/artist_name"
-        app:layout_constraintEnd_toStartOf="@+id/synced_badge"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_chainStyle="packed"
         app:textColorStyle="primary" />
-
-    <!-- Small badge that lights up when this result carries synced LRC lyrics -->
-    <app.simple.felicity.decorations.highlight.HighlightTextView
-        android:id="@+id/synced_badge"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:paddingVertical="@dimen/padding_5"
-        android:paddingHorizontal="@dimen/padding_8"
-        android:text="@string/synced"
-        android:textSize="@dimen/text_size_12"
-        android:visibility="gone"
-        app:appFontStyle="bold"
-        app:highlightMode="flat"
-        app:layout_constraintBottom_toBottomOf="@+id/track_name"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/track_name"
-        app:textColorStyle="accent" />
 
     <app.simple.felicity.decorations.typeface.TypeFaceTextView
         android:id="@+id/artist_name"
@@ -71,5 +53,3 @@
         app:textColorStyle="secondary" />
 
 </app.simple.felicity.decorations.ripple.DynamicRippleConstraintLayout>
-
-

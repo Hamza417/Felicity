@@ -705,16 +705,18 @@
         android:orientation="horizontal"
         android:padding="@dimen/padding_15">
 
-        <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
             android:id="@+id/search_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="@dimen/padding_10"
-            android:padding="@dimen/padding_15"
+            android:layout_width="@dimen/button_size"
+            android:layout_height="@dimen/button_size"
             android:text="@string/search_metadata"
-            android:textSize="@dimen/popup_text_size"
-            app:appFontStyle="bold"
-            app:textColorStyle="secondary" />
+            android:src="@drawable/ic_search"
+            app:buttonTintType="regular" />
+
+        <Space
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="match_parent" />
 
         <app.simple.felicity.decorations.ripple.DynamicRippleTextView
             android:id="@+id/save_button"
@@ -726,7 +728,6 @@
             android:textSize="@dimen/popup_text_size"
             app:appFontStyle="bold"
             app:textColorStyle="accent" />
-
 
     </app.simple.felicity.decorations.theme.ThemeLinearLayout>
 

@@ -7,14 +7,13 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
-import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.AdapterMetadataSearch
 import app.simple.felicity.databinding.FragmentMetadataSearchBinding
-import app.simple.felicity.databinding.HeaderGenericSearchBinding
+import app.simple.felicity.databinding.HeaderMetadataSearchBinding
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.constants.BundleConstants
@@ -43,7 +42,7 @@ import dagger.hilt.android.lifecycle.withCreationCallback
 class MetadataSearch : MediaFragment() {
 
     private lateinit var binding: FragmentMetadataSearchBinding
-    private lateinit var headerBinding: HeaderGenericSearchBinding
+    private lateinit var headerBinding: HeaderMetadataSearchBinding
 
     private var adapter: AdapterMetadataSearch? = null
 
@@ -67,7 +66,7 @@ class MetadataSearch : MediaFragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentMetadataSearchBinding.inflate(inflater, container, false)
-        headerBinding = HeaderGenericSearchBinding.inflate(inflater, container, false)
+        headerBinding = HeaderMetadataSearchBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -91,21 +90,38 @@ class MetadataSearch : MediaFragment() {
 
     private fun setupSearchBox() {
         isProgrammaticTextSet = true
-        headerBinding.editText.setText(viewModel.keyword)
-        headerBinding.editText.setSelection(headerBinding.editText.text?.length ?: 0)
+        headerBinding.titleEditText.setText(viewModel.titleKeyword)
+        headerBinding.titleEditText.setSelection(headerBinding.titleEditText.text?.length ?: 0)
+        headerBinding.artistEditText.setText(viewModel.artistKeyword)
+        headerBinding.artistEditText.setSelection(headerBinding.artistEditText.text?.length ?: 0)
         isProgrammaticTextSet = false
 
-        headerBinding.editText.addTextChangedListener(object : TextWatcher {
+        headerBinding.titleEditText.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
             override fun afterTextChanged(s: Editable?) {
-                if (!isProgrammaticTextSet) {
-                    viewModel.setUserKeyword(s?.toString() ?: "")
-                }
+                if (!isProgrammaticTextSet) viewModel.setUserTitle(s?.toString() ?: "")
             }
         })
 
-        headerBinding.editText.setOnEditorActionListener { _, actionId, _ ->
+        headerBinding.artistEditText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: Editable?) {
+                if (!isProgrammaticTextSet) viewModel.setUserArtist(s?.toString() ?: "")
+            }
+        })
+
+        headerBinding.titleEditText.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                viewModel.searchWithCurrentKeyword()
+                true
+            } else {
+                false
+            }
+        }
+
+        headerBinding.artistEditText.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
                 viewModel.searchWithCurrentKeyword()
                 true
@@ -128,7 +144,7 @@ class MetadataSearch : MediaFragment() {
                 headerBinding.count.text = getString(R.string.loading)
             } else {
                 if (viewModel.searchResults.value.isNullOrEmpty()) {
-                    headerBinding.count.text = getString(R.string.no_lyrics_found)
+                    headerBinding.count.text = getString(R.string.no_metadata_found)
                 }
             }
         }
@@ -155,18 +171,34 @@ class MetadataSearch : MediaFragment() {
 
     private fun ensureAdapterCreated() {
         if (adapter == null) {
-            adapter = AdapterMetadataSearch { response ->
+            adapter = AdapterMetadataSearch { recording ->
+                // Pull the credited artist names into one display string.
+                val artist = recording.artistCredit
+                    ?.mapNotNull { it.name?.takeIf { n -> n.isNotBlank() } }
+                    ?.joinToString(", ")
+                    .orEmpty()
+
+                // Use the first linked release for album and year info.
+                val firstRelease = recording.releases?.firstOrNull()
+                val album = firstRelease?.title?.takeIf { it.isNotBlank() }
+                val year = firstRelease?.date?.take(4)?.takeIf { it.isNotBlank() }
+
+                // Pick the highest-voted genre tag if the recording has any.
+                val genre = recording.tags
+                    ?.maxByOrNull { it.count }
+                    ?.name
+                    ?.takeIf { it.isNotBlank() }
+
                 val result = MetadataSearchResult(
-                        title = response.trackName,
-                        artist = response.artistName,
-                        album = response.albumName?.takeIf { it.isNotBlank() },
-                        plainLyrics = response.plainLyrics?.takeIf { it.isNotBlank() },
-                        syncedLyrics = response.syncedLyrics?.takeIf { it.isNotBlank() },
-                        isInstrumental = response.isInstrumental
+                        title = recording.title.orEmpty(),
+                        artist = artist,
+                        album = album,
+                        year = year,
+                        genre = genre
                 )
                 parentFragmentManager.setFragmentResult(
                         REQUEST_KEY_METADATA_RESULT,
-                        bundleOf(KEY_RESULT to result)
+                        Bundle().apply { putParcelable(KEY_RESULT, result) }
                 )
                 goBack()
             }

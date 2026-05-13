@@ -116,6 +116,54 @@ data class WikidataSitelink(
 )
 
 /**
+ * The top-level wrapper returned by the MusicBrainz recording-search endpoint.
+ * A "recording" in MusicBrainz terms is a unique version of a track — think of
+ * it as the actual audio performance, independent of which album it appeared on.
+ */
+data class MusicBrainzRecordingSearchResponse(
+        val recordings: List<MusicBrainzRecordingResult>?
+)
+
+/**
+ * A single recording entry from the MusicBrainz search results.
+ *
+ * [length] is in milliseconds. [artistCredit] lists every credited artist for the
+ * recording (most tracks have just one). [releases] tells us which albums this
+ * recording appeared on so we can suggest an album name and release year.
+ */
+data class MusicBrainzRecordingResult(
+        val id: String?,
+        val title: String?,
+        val length: Long?,
+        val score: Int = 0,
+        @SerializedName("artist-credit")
+        val artistCredit: List<MusicBrainzArtistCredit>?,
+        val releases: List<MusicBrainzRecordingRelease>?,
+        val tags: List<MusicBrainzTag>?
+)
+
+/**
+ * One artist credit entry on a recording. [name] is the display name as it appears
+ * on the release (which can differ from [artist].name for join phrases like "feat.").
+ */
+data class MusicBrainzArtistCredit(
+        val name: String?,
+        val artist: MusicBrainzArtist?
+)
+
+/**
+ * A brief summary of one release (album) that contains a recording.
+ * We use [date] and [title] to suggest a release year and album name
+ * when auto-filling the metadata editor.
+ */
+data class MusicBrainzRecordingRelease(
+        val id: String?,
+        val title: String?,
+        val date: String?,
+        val country: String?
+)
+
+/**
  * The top-level wrapper returned by the MusicBrainz release-search endpoint.
  * Contains a list of [MusicBrainzReleaseResult] objects ranked by relevance score.
  */

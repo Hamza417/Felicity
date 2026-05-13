@@ -2,7 +2,6 @@ package app.simple.felicity.adapters.ui.lists
 
 import android.text.format.DateUtils
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.AsyncDifferConfig
 import androidx.recyclerview.widget.AsyncListDiffer
@@ -11,30 +10,29 @@ import androidx.recyclerview.widget.ListUpdateCallback
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterMetadataSearchBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
-import app.simple.felicity.repository.models.LrcLibResponse
+import app.simple.felicity.repository.models.MusicBrainzRecordingResult
 
 /**
- * RecyclerView adapter for the metadata search results shown in
+ * RecyclerView adapter for the MusicBrainz recording search results shown in
  * [app.simple.felicity.ui.subpanels.MetadataSearch].
  *
- * Each item shows the track name, artist, album + duration, and a small badge
- * whenever the result also carries synced LRC lyrics. Tapping an item triggers
- * [onItemClick] so the search screen can package the result and deliver it back
- * to the metadata editor.
+ * Each item shows the track title, credited artist, and the album name paired with
+ * the track duration. Tapping an item triggers [onItemClick] so the search screen can
+ * package the result and deliver it back to the metadata editor via the Fragment Result API.
  *
- * @param onItemClick called with the tapped [LrcLibResponse] when the user picks a result.
+ * @param onItemClick called with the tapped [MusicBrainzRecordingResult] when the user picks a result.
  *
  * @author Hamza417
  */
 class AdapterMetadataSearch(
-        private val onItemClick: (LrcLibResponse) -> Unit
+        private val onItemClick: (MusicBrainzRecordingResult) -> Unit
 ) : RecyclerView.Adapter<AdapterMetadataSearch.MetadataViewHolder>() {
 
-    private val diffCallback = object : DiffUtil.ItemCallback<LrcLibResponse>() {
-        override fun areItemsTheSame(oldItem: LrcLibResponse, newItem: LrcLibResponse) =
+    private val diffCallback = object : DiffUtil.ItemCallback<MusicBrainzRecordingResult>() {
+        override fun areItemsTheSame(oldItem: MusicBrainzRecordingResult, newItem: MusicBrainzRecordingResult) =
             oldItem.id == newItem.id
 
-        override fun areContentsTheSame(oldItem: LrcLibResponse, newItem: LrcLibResponse) =
+        override fun areContentsTheSame(oldItem: MusicBrainzRecordingResult, newItem: MusicBrainzRecordingResult) =
             oldItem == newItem
     }
 
@@ -51,14 +49,18 @@ class AdapterMetadataSearch(
             AsyncDifferConfig.Builder(diffCallback).build()
     )
 
-    private val results: List<LrcLibResponse>
+    private val results: List<MusicBrainzRecordingResult>
         get() = differ.currentList
 
     init {
         setHasStableIds(true)
     }
 
-    override fun getItemId(position: Int): Long = results[position].id.toLong()
+    /**
+     * Uses the MusicBrainz MBID as the stable id so the RecyclerView can animate
+     * list changes smoothly without re-drawing items that didn't change.
+     */
+    override fun getItemId(position: Int): Long = results[position].id.hashCode().toLong()
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MetadataViewHolder {
         val binding = AdapterMetadataSearchBinding.inflate(
@@ -76,29 +78,35 @@ class AdapterMetadataSearch(
     /**
      * Replaces the current list with [newResults], using [AsyncListDiffer] for smooth updates.
      */
-    fun updateResults(newResults: List<LrcLibResponse>) {
+    fun updateResults(newResults: List<MusicBrainzRecordingResult>) {
         differ.submitList(newResults.toList())
     }
 
     inner class MetadataViewHolder(private val binding: AdapterMetadataSearchBinding) :
             VerticalListViewHolder(binding.root) {
 
-        fun bind(response: LrcLibResponse) {
-            binding.trackName.text = response.trackName
-            binding.artistName.text = response.artistName
+        fun bind(recording: MusicBrainzRecordingResult) {
+            binding.trackName.text = recording.title.orEmpty()
 
-            val album = response.albumName?.takeIf { it.isNotBlank() }
-            val duration = DateUtils.formatElapsedTime(response.duration.toLong())
-            binding.albumDuration.text = if (album != null) "$album · $duration" else duration
+            // Combine all credited artists into a single readable string.
+            binding.artistName.text = recording.artistCredit
+                ?.mapNotNull { it.name?.takeIf { n -> n.isNotBlank() } }
+                ?.joinToString(", ")
+                .orEmpty()
 
-            // Show the "synced" badge whenever this result includes LRC timestamps.
-            binding.syncedBadge.visibility =
-                if (!response.syncedLyrics.isNullOrBlank()) View.VISIBLE else View.GONE
+            // Pick the first release as the most representative album for this recording.
+            val album = recording.releases?.firstOrNull()?.title?.takeIf { it.isNotBlank() }
+
+            // Convert milliseconds to a human-friendly "m:ss" string if available.
+            val duration = recording.length?.let { ms ->
+                DateUtils.formatElapsedTime(ms / 1000)
+            }
+
+            binding.albumDuration.text = listOfNotNull(album, duration).joinToString(" · ")
 
             binding.container.setOnClickListener {
-                onItemClick(response)
+                onItemClick(recording)
             }
         }
     }
 }
-
