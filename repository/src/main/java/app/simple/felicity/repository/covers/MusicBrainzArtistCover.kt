@@ -3,6 +3,7 @@ package app.simple.felicity.repository.covers
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
+import app.simple.felicity.repository.factories.TaggedSocketFactory
 import app.simple.felicity.repository.models.MusicBrainzArtistDetail
 import app.simple.felicity.repository.models.MusicBrainzArtistSearchResponse
 import app.simple.felicity.repository.models.WikidataEntityResponse
@@ -43,11 +44,13 @@ internal object MusicBrainzArtistCover {
      * See: https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting
      */
     private const val USER_AGENT = "FelicityMusicPlayer/1.0 (https://github.com/Hamza417/Felicity)"
+    private const val NETWORK_TAG = 0x1002
 
     private val client: OkHttpClient by lazy {
         OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
+            .socketFactory(TaggedSocketFactory(NETWORK_TAG))
             .build()
     }
 

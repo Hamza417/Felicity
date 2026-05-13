@@ -8,6 +8,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.preferences.TrialPreferences
+import app.simple.felicity.repository.factories.TaggedSocketFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
@@ -54,7 +55,9 @@ class GumroadLicenceAuthenticatorViewModel(application: Application) : WrappedVi
     }
 
     private fun createHttpClient(): OkHttpClient {
-        return OkHttpClient()
+        return OkHttpClient.Builder()
+            .socketFactory(TaggedSocketFactory(GUMROAD_NETWORK_TAG))
+            .build()
     }
 
     private fun createRequest(licence: String): okhttp3.Request {
@@ -166,5 +169,9 @@ class GumroadLicenceAuthenticatorViewModel(application: Application) : WrappedVi
     private fun handleException(exception: Throwable) {
         postWarning(exception.message.toString())
         exception.printStackTrace()
+    }
+
+    companion object {
+        private const val GUMROAD_NETWORK_TAG = 0x1004
     }
 }

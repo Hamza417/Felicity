@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import app.simple.felicity.repository.database.dao.ArtistInfoCacheDao
 import app.simple.felicity.repository.database.instances.AudioDatabase
+import app.simple.felicity.repository.factories.TaggedSocketFactory
 import app.simple.felicity.repository.models.MusicBrainzArtistDetail
 import app.simple.felicity.repository.models.MusicBrainzArtistInfo
 import app.simple.felicity.repository.models.MusicBrainzArtistSearchResponse
@@ -34,15 +35,20 @@ import javax.inject.Singleton
  *
  * @author Hamza417
  */
+@Suppress("SpellCheckingInspection")
 @Singleton
 class MusicBrainzRepository @Inject constructor(
         @param:ApplicationContext private val context: Context
 ) {
 
+    // Define a unique tag for your MusicBrainz/Network requests
+    private val MUSIC_NETWORK_TAG = 0x1001
+
     private val client: OkHttpClient by lazy {
         OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
+            .socketFactory(TaggedSocketFactory(MUSIC_NETWORK_TAG))
             .build()
     }
 

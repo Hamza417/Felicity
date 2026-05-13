@@ -5,6 +5,7 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import android.util.Log
 import androidx.core.net.toUri
+import app.simple.felicity.repository.factories.TaggedSocketFactory
 import app.simple.felicity.repository.metadata.LyricsMetaHelper
 import app.simple.felicity.repository.models.LrcLibResponse
 import com.google.gson.Gson
@@ -42,6 +43,7 @@ class LrcRepository @Inject constructor(
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
+        .socketFactory(TaggedSocketFactory(NETWORK_TAG))
         .build()
 
     private val gson = Gson()
@@ -397,6 +399,7 @@ class LrcRepository @Inject constructor(
     companion object {
         private const val TAG = "LrcRepository"
         private const val USER_AGENT = "Felicity Music Player (https://github.com/Hamza417/Felicity)"
+        private const val NETWORK_TAG = 0x1003
 
         /**
          * Using "application/octet-stream" instead of "text/plain" when creating new sidecar

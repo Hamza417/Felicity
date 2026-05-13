@@ -17,9 +17,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.page.PageAdapter
@@ -85,10 +83,8 @@ class ArtistPage : BasePageFragment() {
      */
     override fun onPageAdapterCreated() {
         viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                artistViewerViewModel.artistInfo.collect { info ->
-                    pageAdapter?.setArtistInfo(info)
-                }
+            artistViewerViewModel.artistInfo.collect { info ->
+                pageAdapter?.setArtistInfo(info)
             }
         }
     }
