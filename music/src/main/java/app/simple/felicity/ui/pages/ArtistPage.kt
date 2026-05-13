@@ -73,6 +73,23 @@ class ArtistPage : BasePageFragment() {
     }
 
     /**
+     * Called once the adapter is ready. We start observing [ArtistViewerViewModel.artistInfo]
+     * from here — not from [onViewCreated] — so we're guaranteed the adapter exists when
+     * the first (possibly instant, cached) value arrives.
+     *
+     * Since [artistInfo] is a [kotlinx.coroutines.flow.StateFlow], it replays its most recent
+     * value to every new collector, so a cache hit that resolved before this method was called
+     * will still be delivered correctly.
+     */
+    override fun onPageAdapterCreated() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            artistViewerViewModel.artistInfo.collect { info ->
+                pageAdapter?.setArtistInfo(info)
+            }
+        }
+    }
+
+    /**
      * Delegates sort re-ordering to the [ArtistViewerViewModel] without a database round-trip.
      */
     override fun resortPageData() {

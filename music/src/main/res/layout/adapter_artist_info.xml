@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/container"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_marginBottom="@dimen/padding_10"
+    android:layout_height="wrap_content">
+
+    <!-- Section title -->
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/about_artist"
+        android:textSize="@dimen/text_size_22"
+        android:paddingVertical="@dimen/padding_10"
+        android:paddingHorizontal="@dimen/padding_20"
+        app:appFontStyle="bold"
+        app:textColorStyle="primary" />
+
+    <!-- Quick-glance metadata row: type, country, active years -->
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:scrollbars="none"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="@dimen/padding_15"
+        android:paddingBottom="@dimen/padding_5">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <app.simple.felicity.decorations.highlight.HighlightTextView
+                android:id="@+id/type_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="@dimen/text_size_14"
+                android:paddingVertical="@dimen/padding_5"
+                android:paddingHorizontal="@dimen/padding_10"
+                android:gravity="center_vertical"
+                android:drawableStart="@drawable/ic_artist_16dp"
+                android:drawablePadding="@dimen/padding_5"
+                android:layout_marginEnd="@dimen/padding_5"
+                android:visibility="gone"
+                app:appFontStyle="bold"
+                app:drawableTintStyle="secondary"
+                app:highlightMode="flat"
+                app:textColorStyle="secondary"
+                tools:text="Group"
+                tools:visibility="visible" />
+
+            <app.simple.felicity.decorations.highlight.HighlightTextView
+                android:id="@+id/country_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="@dimen/text_size_14"
+                android:paddingVertical="@dimen/padding_5"
+                android:paddingHorizontal="@dimen/padding_10"
+                android:gravity="center_vertical"
+                android:drawableStart="@drawable/ic_link_16dp"
+                android:drawablePadding="@dimen/padding_5"
+                android:layout_marginEnd="@dimen/padding_5"
+                android:visibility="gone"
+                app:appFontStyle="bold"
+                app:drawableTintStyle="secondary"
+                app:highlightMode="flat"
+                app:textColorStyle="secondary"
+                tools:text="NO"
+                tools:visibility="visible" />
+
+            <app.simple.felicity.decorations.highlight.HighlightTextView
+                android:id="@+id/years_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="@dimen/text_size_14"
+                android:paddingVertical="@dimen/padding_5"
+                android:paddingHorizontal="@dimen/padding_10"
+                android:gravity="center_vertical"
+                android:drawableStart="@drawable/ic_hourglass_16dp"
+                android:drawablePadding="@dimen/padding_5"
+                android:layout_marginEnd="@dimen/padding_5"
+                android:visibility="gone"
+                app:appFontStyle="bold"
+                app:drawableTintStyle="secondary"
+                app:highlightMode="flat"
+                app:textColorStyle="secondary"
+                tools:text="2011 – present"
+                tools:visibility="visible" />
+
+        </LinearLayout>
+
+    </HorizontalScrollView>
+
+    <!-- Genre / style tags -->
+    <HorizontalScrollView
+        android:id="@+id/tags_scroll"
+        android:layout_width="match_parent"
+        android:scrollbars="none"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="@dimen/padding_15"
+        android:paddingBottom="@dimen/padding_5"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/tags_container"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal" />
+
+    </HorizontalScrollView>
+
+    <!-- Bio text — collapsible after 4 lines -->
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/bio"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="@dimen/padding_20"
+        android:paddingTop="@dimen/padding_5"
+        android:paddingBottom="@dimen/padding_5"
+        android:textSize="@dimen/text_size_14"
+        android:maxLines="4"
+        android:ellipsize="end"
+        android:visibility="gone"
+        app:appFontStyle="regular"
+        app:textColorStyle="secondary"
+        tools:text="Linkin Park is a band."
+        tools:visibility="visible" />
+
+    <!-- "Read more" toggle — expands the bio to its full length -->
+    <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+        android:id="@+id/bio_toggle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="@dimen/padding_20"
+        android:paddingVertical="@dimen/padding_5"
+        android:text="@string/read_more"
+        android:textSize="@dimen/text_size_14"
+        android:visibility="gone"
+        app:appFontStyle="bold"
+        app:textColorStyle="accent" />
+
+    <app.simple.felicity.decorations.theme.ThemeDivider
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:layout_marginTop="@dimen/padding_5" />
+
+</LinearLayout>
+

@@ -3,10 +3,13 @@ package app.simple.felicity.viewmodels.viewer
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.models.MusicBrainzArtistInfo
 import app.simple.felicity.repository.models.PageData
 import app.simple.felicity.repository.repositories.AudioRepository
+import app.simple.felicity.repository.repositories.MusicBrainzRepository
 import app.simple.felicity.repository.sort.PageSort.sortedForArtistPage
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -23,17 +26,27 @@ import kotlinx.coroutines.launch
 @HiltViewModel(assistedFactory = ArtistViewerViewModel.Factory::class)
 class ArtistViewerViewModel @AssistedInject constructor(
         @Assisted private val artist: Artist,
-        private val audioRepository: AudioRepository
+        private val audioRepository: AudioRepository,
+        private val musicBrainzRepository: MusicBrainzRepository
 ) : ViewModel() {
 
     private val _data = MutableStateFlow<PageData?>(null)
     val data: StateFlow<PageData?> = _data.asStateFlow()
+
+    private val _artistInfo = MutableStateFlow<MusicBrainzArtistInfo?>(null)
+
+    /**
+     * Artist profile fetched from MusicBrainz — bio, genre tags, country, active years, etc.
+     * Emits null while the fetch is in progress or when no data is available.
+     */
+    val artistInfo: StateFlow<MusicBrainzArtistInfo?> = _artistInfo.asStateFlow()
 
     /** Raw unsorted songs fetched from the repository. Re-sorting does not require a DB trip. */
     private var rawSongs: List<Audio> = emptyList()
 
     init {
         loadArtistData()
+        loadArtistInfo()
     }
 
     private fun loadArtistData() {
@@ -69,6 +82,28 @@ class ArtistViewerViewModel @AssistedInject constructor(
         viewModelScope.launch(Dispatchers.Default) {
             _data.value = current.copy(songs = rawSongs.sortedForArtistPage())
             Log.d(TAG, "resort: re-sorted ${rawSongs.size} songs for artist page")
+        }
+    }
+
+    /**
+     * Kicks off a background fetch of the artist's MusicBrainz profile.
+     * The result lands in [artistInfo] once ready; until then it stays null.
+     * If the user has disabled MusicBrainz in Library preferences, no request is made.
+     */
+    private fun loadArtistInfo() {
+        if (!LibraryPreferences.isMusicBrainzEnabled()) {
+            Log.d(TAG, "MusicBrainz is disabled in preferences, skipping fetch for: ${artist.name}")
+            return
+        }
+        val name = artist.name ?: return
+        viewModelScope.launch {
+            val info = musicBrainzRepository.fetchArtistInfo(name)
+            _artistInfo.value = info
+            if (info != null) {
+                Log.d(TAG, "Loaded MusicBrainz info for: $name (type=${info.type}, country=${info.country})")
+            } else {
+                Log.d(TAG, "No MusicBrainz info available for: $name")
+            }
         }
     }
 

@@ -18,13 +18,17 @@ import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.metadata.MetadataWriter
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.models.MetadataSearchResult
+import app.simple.felicity.repository.repositories.LrcRepository
 import app.simple.felicity.utils.ParcelUtils.parcelable
 import app.simple.felicity.viewmodels.panels.MetadataEditorViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.lifecycle.withCreationCallback
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
+import javax.inject.Inject
 
 /**
  * Full-screen panel that allows the user to view and edit the embedded tag
@@ -36,8 +40,13 @@ import java.io.FileOutputStream
  * system image picker. The chosen image is copied to a temporary file and
  * passed to [app.simple.felicity.repository.metadata.MetadataWriter] for embedding.
  *
+ * A "Search" button opens [MetadataSearch] which queries LrcLib and returns a
+ * [MetadataSearchResult] via the Fragment Result API. All non-null fields in the
+ * result are applied to the editor automatically, and any synced lyrics are saved
+ * as a sidecar .lrc file alongside the audio file.
+ *
  * On save, [app.simple.felicity.viewmodels.panels.MetadataEditorViewModel] writes the changes to disk via
- * JAudioTagger, updates the Room database, and triggers a MediaStore rescan
+ * TagLib, updates the Room database, and triggers a MediaStore rescan
  * so the changes are reflected in the app immediately.
  *
  * @author Hamza417
@@ -46,6 +55,9 @@ import java.io.FileOutputStream
 class MetadataEditor : MediaFragment() {
 
     private lateinit var binding: FragmentMetadataEditorBinding
+
+    @Inject
+    lateinit var lrcRepository: LrcRepository
 
     private val audio: Audio by lazy {
         requireArguments().parcelable<Audio>(BundleConstants.AUDIO)!!
@@ -85,9 +97,79 @@ class MetadataEditor : MediaFragment() {
         populateFields()
         setupAlbumArtPicker()
         observeViewModel()
+        registerMetadataSearchResult()
+        registerLyricsSearchResult()
 
         binding.saveButton.setOnClickListener {
             saveMetadata()
+        }
+
+        binding.searchButton.setOnClickListener {
+            openFragment(MetadataSearch.newInstance(audio), MetadataSearch.TAG)
+        }
+
+        binding.searchLyrics.setOnClickListener {
+            openFragment(LyricsSearch.newInstanceForEditor(audio), LyricsSearch.TAG)
+        }
+    }
+
+    /**
+     * Registers a listener on [LyricsSearch.REQUEST_KEY_LYRICS_FOR_EDITOR] so that when
+     * the user picks a result in the lyrics search screen, the plain lyrics are pasted
+     * straight into the lyrics field. If the result also contains synced lyrics, they are
+     * saved as a sidecar `.lrc` file next to the audio file on a background thread.
+     */
+    private fun registerLyricsSearchResult() {
+        parentFragmentManager.setFragmentResultListener(
+                LyricsSearch.REQUEST_KEY_LYRICS_FOR_EDITOR,
+                viewLifecycleOwner
+        ) { _, bundle ->
+            val plain = bundle.getString(LyricsSearch.KEY_PLAIN_LYRICS)
+            val synced = bundle.getString(LyricsSearch.KEY_SYNCED_LYRICS)
+
+            if (!plain.isNullOrBlank()) {
+                // binding.lyricsInput.setText(plain)
+            }
+
+            if (!synced.isNullOrBlank()) {
+                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                    lrcRepository.saveLrcToFile(synced, audio.uri)
+                }
+
+                binding.lyricsInput.setText(synced)
+            }
+        }
+    }
+
+    /**
+     * Registers a one-time listener on [MetadataSearch.REQUEST_KEY_METADATA_RESULT] so that
+     * when the user picks a result in the search screen, we automatically fill in all the
+     * fields we received and navigate back here.
+     */
+    private fun registerMetadataSearchResult() {
+        parentFragmentManager.setFragmentResultListener(
+                MetadataSearch.REQUEST_KEY_METADATA_RESULT,
+                viewLifecycleOwner
+        ) { _, bundle ->
+            val result = bundle.parcelable<MetadataSearchResult>(MetadataSearch.KEY_RESULT)
+            if (result != null) {
+                applySearchResult(result)
+            }
+        }
+    }
+
+    /**
+     * Applies all available fields from [result] to the editor's input fields.
+     * Only non-null values overwrite the current text — fields absent from the
+     * result are left as they are so the user doesn't lose anything they typed.
+     */
+    private fun applySearchResult(result: MetadataSearchResult) {
+        with(binding) {
+            if (result.title.isNotBlank()) titleInput.setText(result.title)
+            if (result.artist.isNotBlank()) artistInput.setText(result.artist)
+            result.album?.takeIf { it.isNotBlank() }?.let { albumInput.setText(it) }
+            result.year?.takeIf { it.isNotBlank() }?.let { yearInput.setText(it) }
+            result.genre?.takeIf { it.isNotBlank() }?.let { genreInput.setText(it) }
         }
     }
 

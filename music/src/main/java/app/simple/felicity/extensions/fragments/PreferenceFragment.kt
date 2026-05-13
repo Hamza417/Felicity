@@ -880,6 +880,19 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val musicBrainz = Preference(
+                title = R.string.musicbrainz_enabled,
+                summary = R.string.musicbrainz_enabled_summary,
+                icon = R.drawable.ic_file_info,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    LibraryPreferences.setMusicBrainzEnabled((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    LibraryPreferences.isMusicBrainzEnabled()
+                }
+        )
+
         val albumArtHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.album_art)
 
         val mediaStoreArt = Preference(
@@ -1000,6 +1013,7 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(scannerOnResumeToggle)
         preferences.add(metadataHeader)
         preferences.add(albumArtistsInsteadOfArtists)
+        preferences.add(musicBrainz)
         preferences.add(albumArtHeader)
         preferences.add(mediaStoreArt)
         preferences.add(scannerHeader)

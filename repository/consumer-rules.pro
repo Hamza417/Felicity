@@ -9,3 +9,9 @@
 # usage during shrinking, so without this rule it renames or removes the class
 # and its constructor, causing a NoSuchMethodError at runtime in release builds.
 -keep class app.simple.felicity.repository.metadata.TagLibMetadata { *; }
+
+# Preserve Gson models used for network and database parsing
+-keep class app.simple.felicity.repository.models.** { *; }
+
+# Keep generic signatures so Gson knows what types are inside Lists/Collections
+-keepattributes Signature

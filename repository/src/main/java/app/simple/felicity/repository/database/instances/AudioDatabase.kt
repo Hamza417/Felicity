@@ -6,6 +6,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import app.simple.felicity.repository.database.dao.AlbumInfoCacheDao
+import app.simple.felicity.repository.database.dao.ArtistInfoCacheDao
 import app.simple.felicity.repository.database.dao.AudioDao
 import app.simple.felicity.repository.database.dao.PlaybackQueueDao
 import app.simple.felicity.repository.database.dao.PlaybackStateDao
@@ -13,6 +15,8 @@ import app.simple.felicity.repository.database.dao.PlaylistDao
 import app.simple.felicity.repository.database.dao.SongStatDao
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.AudioStat
+import app.simple.felicity.repository.models.MusicBrainzAlbumInfo
+import app.simple.felicity.repository.models.MusicBrainzArtistInfo
 import app.simple.felicity.repository.models.PlaybackQueueEntry
 import app.simple.felicity.repository.models.PlaybackState
 import app.simple.felicity.repository.models.Playlist
@@ -44,9 +48,11 @@ import app.simple.felicity.repository.models.PlaylistSongCrossRef
             PlaybackQueueEntry::class,
             AudioStat::class,
             Playlist::class,
-            PlaylistSongCrossRef::class
+            PlaylistSongCrossRef::class,
+            MusicBrainzArtistInfo::class,
+            MusicBrainzAlbumInfo::class
         ],
-        version = 15,
+        version = 17,
         exportSchema = true
 )
 abstract class AudioDatabase : RoomDatabase() {
@@ -56,6 +62,8 @@ abstract class AudioDatabase : RoomDatabase() {
     abstract fun playbackQueueDao(): PlaybackQueueDao
     abstract fun songStatDao(): SongStatDao
     abstract fun playlistDao(): PlaylistDao
+    abstract fun artistInfoCacheDao(): ArtistInfoCacheDao
+    abstract fun albumInfoCacheDao(): AlbumInfoCacheDao
 
     companion object {
         private const val DB_NAME = "audio.db"
@@ -116,6 +124,55 @@ abstract class AudioDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Creates the artist_info_cache table that stores MusicBrainz artist profiles
+         * locally so repeated page opens don't trigger unnecessary network calls.
+         */
+        private val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `artist_info_cache` (
+                        `artist_name` TEXT NOT NULL PRIMARY KEY,
+                        `mbid` TEXT,
+                        `disambiguation` TEXT,
+                        `type` TEXT,
+                        `country` TEXT,
+                        `begin_year` TEXT,
+                        `end_year` TEXT,
+                        `ended` INTEGER NOT NULL DEFAULT 0,
+                        `tags` TEXT NOT NULL DEFAULT '',
+                        `bio` TEXT,
+                        `wikipedia_url` TEXT,
+                        `fetched_at` INTEGER NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
+            }
+        }
+
+        /**
+         * Creates the album_info_cache table that stores MusicBrainz release profiles
+         * locally, keyed by a composite of album name and artist name.
+         */
+        private val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `album_info_cache` (
+                        `album_key` TEXT NOT NULL PRIMARY KEY,
+                        `mbid` TEXT,
+                        `disambiguation` TEXT,
+                        `release_date` TEXT,
+                        `country` TEXT,
+                        `status` TEXT,
+                        `tags` TEXT NOT NULL DEFAULT '',
+                        `labels` TEXT NOT NULL DEFAULT '',
+                        `bio` TEXT,
+                        `wikipedia_url` TEXT,
+                        `fetched_at` INTEGER NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
+            }
+        }
+
         fun getInstance(context: Context): AudioDatabase {
             return instance ?: synchronized(this) {
                 instance ?: buildDatabase(context.applicationContext).also {
@@ -128,7 +185,7 @@ abstract class AudioDatabase : RoomDatabase() {
 
         private fun buildDatabase(context: Context): AudioDatabase {
             return Room.databaseBuilder(context, AudioDatabase::class.java, DB_NAME)
-                .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
+                .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17)
                 .fallbackToDestructiveMigration(dropAllTables = true)
                 .build()
         }

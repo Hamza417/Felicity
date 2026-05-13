@@ -242,6 +242,7 @@
     <string name="delete_lyrics">Delete Lyrics</string>
     <string name="auto_download_lyrics">Auto Download Lyrics</string>
     <string name="searching_lyrics">Searching for lyrics…</string>
+    <string name="search_lyrics">Search Lyrics</string>
     <string name="downloading_lyrics">Downloading…</string>
     <string name="always_skip">Always Skip</string>
     <string name="never_skip">Never Skip</string>
@@ -249,6 +250,7 @@
     <string name="add_to_favorites">Add to Favorites</string>
     <string name="remove_from_favorites">Remove from Favorites</string>
     <string name="no_lyrics_found">No Lyrics Found</string>
+    <string name="no_metadata_found">No Metadata Found</string>
     <string name="lyrics_saved">Lyrics Saved</string>
     <string name="x_results">%1$d Results</string>
     <string name="delete_lyrics_too">Delete Lyrics Files Too</string>
@@ -305,6 +307,8 @@
     <string name="visualizer">Visualizer</string>
     <string name="metadata">Metadata</string>
     <string name="show_album_artists">Show Album Artists</string>
+    <string name="musicbrainz_enabled">Extra Info from MusicBrainz</string>
+    <string name="musicbrainz_enabled_summary">Fetch info from the MusicBrainz open database. Requires an internet connection. Disabling stops all MusicBrainz network requests.</string>
     <string name="show_album_artists_summary">Show album artists instead of artists in the artists field of the lists in the app.</string>
     <string name="copy">Copy</string>
     <string name="edit_metadata">Edit Metadata</string>
@@ -480,4 +484,16 @@
     <string name="scan_on_resume">Scan on App Resume</string>
     <string name="scan_on_resume_summary">Automatically scan the library for changes every time the app is resumed. May consume battery.</string>
     <string name="lock">Lock</string>
+    <string name="about_artist">About the Artist</string>
+    <string name="about_album">About the Album</string>
+    <string name="search_metadata">Search</string>
+    <string name="synced">Synced</string>
+    <string name="metadata_synced_lyrics_saved">Synced lyrics saved</string>
+    <string name="read_more">Read more</string>
+    <string name="read_less">Read less</string>
+    <string name="active_since">Active since %1$s</string>
+    <string name="active_years">%1$s – %2$s</string>
+    <string name="active_since_present">%1$s – present</string>
+    <string name="released_in">Released %1$s</string>
+    <string name="label_on">On %1$s</string>
 </resources>

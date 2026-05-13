@@ -2,6 +2,7 @@ package app.simple.felicity.adapters.ui.lists
 
 import android.text.format.DateUtils
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.AsyncDifferConfig
 import androidx.recyclerview.widget.AsyncListDiffer
@@ -111,6 +112,10 @@ class AdapterLrcSearch(
                 album != null -> "$album · $duration"
                 else -> duration
             }
+
+            // Show the badge whenever this result carries LRC timestamps.
+            binding.syncedBadge.visibility =
+                if (!response.syncedLyrics.isNullOrBlank()) View.VISIBLE else View.GONE
 
             binding.container.setOnClickListener {
                 onItemClick(response)

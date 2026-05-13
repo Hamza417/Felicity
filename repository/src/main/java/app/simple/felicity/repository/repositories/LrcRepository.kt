@@ -5,8 +5,10 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import android.util.Log
 import androidx.core.net.toUri
+import app.simple.felicity.repository.factories.TaggedSocketFactory
 import app.simple.felicity.repository.metadata.LyricsMetaHelper
 import app.simple.felicity.repository.models.LrcLibResponse
+import app.simple.felicity.shared.constants.AppConstants
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -42,6 +44,7 @@ class LrcRepository @Inject constructor(
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
+        .socketFactory(TaggedSocketFactory(NETWORK_TAG))
         .build()
 
     private val gson = Gson()
@@ -197,7 +200,45 @@ class LrcRepository @Inject constructor(
     }
 
     /**
-     * Search for available lyrics for a track.
+     * Same as [searchLyrics] but returns all results including those that only have
+     * plain (non-synced) lyrics or metadata with no lyrics at all. Used by the
+     * metadata search screen where we want to populate title, artist, album, and
+     * any available lyrics — not just synced LRC content.
+     */
+    suspend fun searchAllLyrics(trackName: String, artistName: String): Result<List<LrcLibResponse>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val urlBuilder = HttpUrl.Builder()
+                    .scheme("https")
+                    .host("lrclib.net")
+                    .addPathSegment("api")
+                    .addPathSegment("search")
+                    .addQueryParameter("track_name", trackName)
+                    .addQueryParameter("artist_name", artistName)
+
+                val request = Request.Builder()
+                    .url(urlBuilder.build())
+                    .header("User-Agent", AppConstants.MUSIC_BRAINZ_USER_AGENT)
+                    .build()
+
+                client.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        return@withContext Result.failure(
+                                IOException("Failed to search: ${response.code}")
+                        )
+                    }
+                    val listType = object : TypeToken<List<LrcLibResponse>>() {}.type
+                    val results: List<LrcLibResponse> = gson.fromJson(response.body.string(), listType)
+                    return@withContext Result.success(results)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error searching all lyrics", e)
+                return@withContext Result.failure(e)
+            }
+        }
+    }
+
+    /**
      * Returns a list of all available lyrics matches from LrcLib.
      *
      * @param trackName  The title of the song.
@@ -217,7 +258,7 @@ class LrcRepository @Inject constructor(
 
                 val request = Request.Builder()
                     .url(urlBuilder.build())
-                    .header("User-Agent", USER_AGENT)
+                    .header("User-Agent", AppConstants.MUSIC_BRAINZ_USER_AGENT)
                     .build()
 
                 client.newCall(request).execute().use { response ->
@@ -261,7 +302,7 @@ class LrcRepository @Inject constructor(
 
                 val request = Request.Builder()
                     .url(urlBuilder.build())
-                    .header("User-Agent", USER_AGENT)
+                    .header("User-Agent", AppConstants.MUSIC_BRAINZ_USER_AGENT)
                     .build()
 
                 client.newCall(request).execute().use { response ->
@@ -396,7 +437,7 @@ class LrcRepository @Inject constructor(
 
     companion object {
         private const val TAG = "LrcRepository"
-        private const val USER_AGENT = "Felicity Music Player (https://github.com/Hamza417/Felicity)"
+        private const val NETWORK_TAG = 0x1003
 
         /**
          * Using "application/octet-stream" instead of "text/plain" when creating new sidecar

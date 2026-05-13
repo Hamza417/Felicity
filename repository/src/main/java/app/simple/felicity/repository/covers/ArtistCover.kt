@@ -22,9 +22,12 @@ object ArtistCover {
      * The lookup order is:
      * 1. MediaStore's album art cache — the fastest option, no file I/O needed.
      * 2. Artwork embedded inside the audio file's tags.
+     * 3. MusicBrainz → Wikipedia — fetches the artist's photo from MusicBrainz's
+     *    linked Wikipedia page. This requires a network connection and is only
+     *    attempted when the local sources come up empty.
      *
      * Folder-based artwork (folder.jpg etc.) is skipped because song paths are
-     * content URIs and we can't walk up to a parent directory from a content URI.
+     * content URIs, and we can't walk up to a parent directory from a content URI.
      * MediaStore doesn't index artwork by artist either, so the first song acts
      * as a representative for the whole artist.
      *
@@ -33,6 +36,16 @@ object ArtistCover {
      * @return Bitmap of artist cover, or a placeholder if no artwork is found.
      */
     fun load(context: Context, artist: Artist): Bitmap {
+        if (LibraryPreferences.isMusicBrainzEnabled()) {
+            val musicBrainzArtwork = artist.name?.let { MusicBrainzArtistCover.fetchArtistImage(it) }
+            if (musicBrainzArtwork != null) {
+                Log.d(TAG, "Loaded artist art from MusicBrainz/Wikipedia for: ${artist.name}")
+                return musicBrainzArtwork
+            }
+        } else {
+            Log.d(TAG, "MusicBrainz disabled, skipping network fetch for artist: ${artist.name}")
+        }
+
         if (artist.songPaths.isNotEmpty()) {
             if (LibraryPreferences.isUseMediaStoreArtwork()) {
                 val uri = context.loadCoverFromMediaStore(artist.songPaths.first())

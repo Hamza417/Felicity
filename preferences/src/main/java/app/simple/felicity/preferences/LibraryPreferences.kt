@@ -9,6 +9,12 @@ object LibraryPreferences {
     private const val SCANNER_ON_RESUME = "scanner_on_resume"
     const val ALBUM_ARTIST_OVER_ARTIST = "album_artist_over_artist"
 
+    /**
+     * Key used to store whether the user wants the app to fetch artist info
+     * from MusicBrainz. When disabled, no network requests are made to MusicBrainz.
+     */
+    const val MUSICBRAINZ_ENABLED = "musicbrainz_enabled"
+
     const val MINIMUM_AUDIO_LENGTH = "minimum_audio_length"
     const val MINIMUM_AUDIO_SIZE = "minimum_audio_size"
 
@@ -86,6 +92,20 @@ object LibraryPreferences {
 
     fun setScannerOnResumeEnabled(enabled: Boolean) {
         SharedPreferences.getSharedPreferences().edit { putBoolean(SCANNER_ON_RESUME, enabled) }
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    /**
+     * Due to F-Droid policy, this feature uses internet and is disabled by default to ensure app works fully offline
+     * at first launch. Users can enable it if they want.
+     */
+    fun isMusicBrainzEnabled(): Boolean {
+        return SharedPreferences.getSharedPreferences().getBoolean(MUSICBRAINZ_ENABLED, false)
+    }
+
+    fun setMusicBrainzEnabled(enabled: Boolean) {
+        SharedPreferences.getSharedPreferences().edit { putBoolean(MUSICBRAINZ_ENABLED, enabled) }
     }
 }
 

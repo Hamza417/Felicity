@@ -73,6 +73,18 @@ class ComposerPage : BasePageFragment() {
     }
 
     /**
+     * Called once the adapter is ready. We start collecting the MusicBrainz profile
+     * from here so the adapter is guaranteed to exist when the first value arrives.
+     */
+    override fun onPageAdapterCreated() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            composerViewerViewModel.artistInfo.collect { info ->
+                pageAdapter?.setArtistInfo(info)
+            }
+        }
+    }
+
+    /**
      * Delegates sort re-ordering to the [ComposerViewerViewModel] without a database round-trip.
      */
     override fun resortPageData() {

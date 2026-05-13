@@ -7,7 +7,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
-import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.GridLayoutManager
@@ -17,6 +16,10 @@ import app.simple.felicity.databinding.FragmentLyricsSearchBinding
 import app.simple.felicity.databinding.HeaderGenericSearchBinding
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.extensions.fragments.MediaFragment
+import app.simple.felicity.repository.constants.BundleConstants
+import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.ui.subpanels.LyricsSearch.Companion.REQUEST_KEY_LYRICS_FOR_EDITOR
+import app.simple.felicity.utils.ParcelUtils.parcelable
 import app.simple.felicity.viewmodels.panels.LyricsSearchViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -40,6 +43,15 @@ class LyricsSearch : MediaFragment() {
     private lateinit var headerBinding: HeaderGenericSearchBinding
 
     private var adapterLrcSearch: AdapterLrcSearch? = null
+
+    /**
+     * When this fragment is opened from [MetadataEditor], this holds the audio whose
+     * lyrics we are searching for. When null, the screen operates in its normal mode
+     * and saves the picked result as a sidecar `.lrc` file.
+     */
+    private val editorAudio: Audio? by lazy {
+        arguments?.parcelable<Audio>(BundleConstants.AUDIO)
+    }
 
     /**
      * Guards against the [android.text.TextWatcher] treating programmatic text updates as user edits.
@@ -67,6 +79,18 @@ class LyricsSearch : MediaFragment() {
         setupSearchBox()
         setupSearchButton()
         observeViewModel()
+
+        // If we were opened from the metadata editor, pre-populate the search with
+        // the audio's title and kick off a fresh search right away.
+        editorAudio?.let { audio ->
+            val keyword = audio.title?.takeIf { it.isNotBlank() } ?: audio.name
+            isProgrammaticTextSet = true
+            headerBinding.editText.setText(keyword)
+            headerBinding.editText.setSelection(keyword.length)
+            isProgrammaticTextSet = false
+            viewModel.setUserKeyword(keyword)
+            viewModel.searchWithCurrentKeyword()
+        }
     }
 
     override fun onDestroyView() {
@@ -142,7 +166,7 @@ class LyricsSearch : MediaFragment() {
             if (saved) {
                 // Notify the Lyrics panel that new lyrics were saved so it can reload without
                 // requiring the user to close and reopen the screen.
-                parentFragmentManager.setFragmentResult(REQUEST_KEY_LYRICS_SAVED, bundleOf())
+                parentFragmentManager.setFragmentResult(REQUEST_KEY_LYRICS_SAVED, Bundle())
                 goBack()
             }
         }
@@ -157,7 +181,20 @@ class LyricsSearch : MediaFragment() {
     private fun ensureAdapterCreated() {
         if (adapterLrcSearch == null) {
             adapterLrcSearch = AdapterLrcSearch { lrcResponse ->
-                viewModel.downloadAndSaveLrc(lrcResponse)
+                if (editorAudio != null) {
+                    // When opened from the editor, deliver the lyrics back via the
+                    // Fragment Result API so the editor can paste them into the field.
+                    parentFragmentManager.setFragmentResult(
+                            REQUEST_KEY_LYRICS_FOR_EDITOR,
+                            Bundle().apply {
+                                putString(KEY_PLAIN_LYRICS, lrcResponse.plainLyrics)
+                                putString(KEY_SYNCED_LYRICS, lrcResponse.syncedLyrics)
+                            }
+                    )
+                    goBack()
+                } else {
+                    viewModel.downloadAndSaveLrc(lrcResponse)
+                }
             }
             binding.recyclerView.adapter = adapterLrcSearch
         }
@@ -165,18 +202,38 @@ class LyricsSearch : MediaFragment() {
 
     companion object {
         /**
-         * Creates a new instance of [LyricsSearch].
-         *
-         * @return a fresh [LyricsSearch] fragment.
+         * Creates a new [LyricsSearch] instance in its normal mode — results are saved
+         * as a sidecar `.lrc` file next to the currently playing audio.
          */
         fun newInstance(): LyricsSearch {
-            val args = Bundle()
-            val fragment = LyricsSearch()
-            fragment.arguments = args
-            return fragment
+            return LyricsSearch().apply { arguments = Bundle() }
+        }
+
+        /**
+         * Creates a [LyricsSearch] instance in editor mode. The search is pre-populated
+         * with [audio]'s title, and picking a result fires [REQUEST_KEY_LYRICS_FOR_EDITOR]
+         * back to [MetadataEditor] instead of saving a sidecar file.
+         *
+         * @param audio The track whose lyrics the user is looking up in the editor.
+         */
+        fun newInstanceForEditor(audio: Audio): LyricsSearch {
+            return LyricsSearch().apply {
+                arguments = Bundle().apply {
+                    putParcelable(BundleConstants.AUDIO, audio)
+                }
+            }
         }
 
         const val TAG = "LyricsSearch"
+
+        /** Fragment Result API key used when the screen is opened from [MetadataEditor]. */
+        const val REQUEST_KEY_LYRICS_FOR_EDITOR = "lyrics_search_for_editor"
+
+        /** Bundle key carrying the plain (unsynced) lyrics string. */
+        const val KEY_PLAIN_LYRICS = "plain_lyrics"
+
+        /** Bundle key carrying the synced LRC lyrics string. */
+        const val KEY_SYNCED_LYRICS = "synced_lyrics"
 
         /**
          * Fragment Result API key broadcast by [LyricsSearch] when a lyrics file is
