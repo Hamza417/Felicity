@@ -72,6 +72,18 @@ class AlbumArtistPage : BasePageFragment() {
     }
 
     /**
+     * Called once the adapter is ready. We start collecting the MusicBrainz profile
+     * from here so the adapter is guaranteed to exist when the first value arrives.
+     */
+    override fun onPageAdapterCreated() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            albumArtistViewerViewModel.artistInfo.collect { info ->
+                pageAdapter?.setArtistInfo(info)
+            }
+        }
+    }
+
+    /**
      * Re-applies the current sort order to the cached song list without re-fetching
      * anything from the database — quick and cheap.
      */

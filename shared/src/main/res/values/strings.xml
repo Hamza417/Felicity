@@ -483,9 +483,12 @@
     <string name="scan_on_resume_summary">Automatically scan the library for changes every time the app is resumed. May consume battery.</string>
     <string name="lock">Lock</string>
     <string name="about_artist">About the Artist</string>
+    <string name="about_album">About the Album</string>
     <string name="read_more">Read more</string>
     <string name="read_less">Read less</string>
     <string name="active_since">Active since %1$s</string>
     <string name="active_years">%1$s – %2$s</string>
     <string name="active_since_present">%1$s – present</string>
+    <string name="released_in">Released %1$s</string>
+    <string name="label_on">On %1$s</string>
 </resources>

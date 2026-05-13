@@ -115,3 +115,54 @@ data class WikidataSitelink(
         val title: String?
 )
 
+/**
+ * The top-level wrapper returned by the MusicBrainz release-search endpoint.
+ * Contains a list of [MusicBrainzReleaseResult] objects ranked by relevance score.
+ */
+data class MusicBrainzReleaseSearchResponse(
+        val releases: List<MusicBrainzReleaseResult>?
+)
+
+/**
+ * A single release entry from the search results. We only need the [id] (MBID)
+ * to look up full details in a follow-up request.
+ */
+data class MusicBrainzReleaseResult(
+        val id: String?,
+        val title: String?,
+        val score: Int = 0
+)
+
+/**
+ * The full release detail response from MusicBrainz when we request a release by MBID
+ * with tags, URL relations, and label info included.
+ */
+data class MusicBrainzReleaseDetail(
+        val id: String?,
+        val title: String?,
+        val disambiguation: String?,
+        val date: String?,
+        val country: String?,
+        val status: String?,
+        val packaging: String?,
+        val tags: List<MusicBrainzTag>?,
+        val relations: List<MusicBrainzUrlRelation>?,
+        @SerializedName("label-info")
+        val labelInfo: List<MusicBrainzLabelInfo>?
+)
+
+/**
+ * A wrapper that pairs a [MusicBrainzLabel] with optional catalog number info.
+ * We only care about the label name for display purposes.
+ */
+data class MusicBrainzLabelInfo(
+        val label: MusicBrainzLabel?
+)
+
+/**
+ * A record label attached to a release. Just the name is enough for the info card.
+ */
+data class MusicBrainzLabel(
+        val name: String?
+)
+

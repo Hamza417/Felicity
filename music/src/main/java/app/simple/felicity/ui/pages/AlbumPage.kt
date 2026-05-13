@@ -57,6 +57,18 @@ class AlbumPage : BasePageFragment() {
         collectPageData { albumViewerViewModel.data }
     }
 
+    /**
+     * Called once the adapter is ready. We start collecting the MusicBrainz release profile
+     * from here so the adapter is guaranteed to exist when the first value arrives.
+     */
+    override fun onPageAdapterCreated() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            albumViewerViewModel.albumInfo.collect { info ->
+                pageAdapter?.setAlbumInfo(info)
+            }
+        }
+    }
+
     override fun resortPageData() {
         albumViewerViewModel.resort()
     }

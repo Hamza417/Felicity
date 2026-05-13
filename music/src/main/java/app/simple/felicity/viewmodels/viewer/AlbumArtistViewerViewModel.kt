@@ -3,10 +3,13 @@ package app.simple.felicity.viewmodels.viewer
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.models.MusicBrainzArtistInfo
 import app.simple.felicity.repository.models.PageData
 import app.simple.felicity.repository.repositories.AudioRepository
+import app.simple.felicity.repository.repositories.MusicBrainzRepository
 import app.simple.felicity.repository.sort.PageSort.sortedForArtistPage
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -30,17 +33,28 @@ import kotlinx.coroutines.launch
 @HiltViewModel(assistedFactory = AlbumArtistViewerViewModel.Factory::class)
 class AlbumArtistViewerViewModel @AssistedInject constructor(
         @Assisted private val albumArtist: Artist,
-        private val audioRepository: AudioRepository
+        private val audioRepository: AudioRepository,
+        private val musicBrainzRepository: MusicBrainzRepository
 ) : ViewModel() {
 
     private val _data = MutableStateFlow<PageData?>(null)
     val data: StateFlow<PageData?> = _data.asStateFlow()
+
+    private val _artistInfo = MutableStateFlow<MusicBrainzArtistInfo?>(null)
+
+    /**
+     * Profile fetched from MusicBrainz for this album artist — bio, genre tags,
+     * country, active years, etc. Stays null while the fetch is running or when
+     * no matching entry exists in MusicBrainz.
+     */
+    val artistInfo: StateFlow<MusicBrainzArtistInfo?> = _artistInfo.asStateFlow()
 
     /** The raw, unsorted song list — cached so re-sorting never touches the database. */
     private var rawSongs: List<Audio> = emptyList()
 
     init {
         loadAlbumArtistData()
+        loadArtistInfo()
     }
 
     private fun loadAlbumArtistData() {
@@ -79,6 +93,28 @@ class AlbumArtistViewerViewModel @AssistedInject constructor(
         }
     }
 
+    /**
+     * Kicks off a background fetch of the album artist's MusicBrainz profile.
+     * The result lands in [artistInfo] once ready; until then it stays null.
+     * If the user has disabled MusicBrainz in Library preferences, no request is made.
+     */
+    private fun loadArtistInfo() {
+        if (!LibraryPreferences.isMusicBrainzEnabled()) {
+            Log.d(TAG, "MusicBrainz is disabled, skipping fetch for: ${albumArtist.name}")
+            return
+        }
+        val name = albumArtist.name ?: return
+        viewModelScope.launch {
+            val info = musicBrainzRepository.fetchArtistInfo(name)
+            _artistInfo.value = info
+            if (info != null) {
+                Log.d(TAG, "Loaded MusicBrainz info for: $name (type=${info.type}, country=${info.country})")
+            } else {
+                Log.d(TAG, "No MusicBrainz info available for: $name")
+            }
+        }
+    }
+
     @AssistedFactory
     interface Factory {
         fun create(albumArtist: Artist): AlbumArtistViewerViewModel
@@ -88,4 +124,3 @@ class AlbumArtistViewerViewModel @AssistedInject constructor(
         private const val TAG = "AlbumArtistViewerViewModel"
     }
 }
-

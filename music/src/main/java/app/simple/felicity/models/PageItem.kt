@@ -4,6 +4,7 @@ import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Genre
+import app.simple.felicity.repository.models.MusicBrainzAlbumInfo
 import app.simple.felicity.repository.models.MusicBrainzArtistInfo
 
 sealed class PageItem {
@@ -55,6 +56,15 @@ sealed class PageItem {
      */
     data class ArtistInfoSection(
             val info: MusicBrainzArtistInfo
+    ) : PageItem()
+
+    /**
+     * A section that shows release date, country, status, record labels, genre tags,
+     * and a bio paragraph fetched from MusicBrainz. Shown right after the header on
+     * the album page.
+     */
+    data class AlbumInfoSection(
+            val info: MusicBrainzAlbumInfo
     ) : PageItem()
 }
 
