@@ -242,6 +242,7 @@
     <string name="delete_lyrics">Delete Lyrics</string>
     <string name="auto_download_lyrics">Auto Download Lyrics</string>
     <string name="searching_lyrics">Searching for lyrics…</string>
+    <string name="search_lyrics">Search Lyrics</string>
     <string name="downloading_lyrics">Downloading…</string>
     <string name="always_skip">Always Skip</string>
     <string name="never_skip">Never Skip</string>

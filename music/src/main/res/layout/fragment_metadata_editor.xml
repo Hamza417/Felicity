@@ -498,13 +498,33 @@
                     app:appFontStyle="regular"
                     app:textColorStyle="primary" />
 
-                <app.simple.felicity.decorations.typeface.TypeFaceTextView
-                    android:layout_height="wrap_content"
+                <LinearLayout
                     android:layout_width="match_parent"
-                    android:text="@string/lyrics"
-                    android:textSize="@dimen/text_size_12"
-                    app:appFontStyle="bold"
-                    app:textColorStyle="accent" />
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="@dimen/padding_5"
+                    android:orientation="horizontal">
+
+                    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_width="0dp"
+                        android:text="@string/lyrics"
+                        android:textSize="@dimen/text_size_12"
+                        app:appFontStyle="bold"
+                        app:textColorStyle="accent" />
+
+                    <app.simple.felicity.decorations.highlight.HighlightTextView
+                        android:id="@+id/search_lyrics"
+                        android:layout_height="wrap_content"
+                        android:paddingVertical="@dimen/padding_5"
+                        android:paddingHorizontal="@dimen/padding_10"
+                        android:layout_width="wrap_content"
+                        android:text="@string/search_lyrics"
+                        android:textSize="@dimen/text_size_12"
+                        app:appFontStyle="bold"
+                        app:textColorStyle="accent" />
+
+                </LinearLayout>
 
                 <app.simple.felicity.decorations.corners.DynamicCornerEditText
                     android:id="@+id/lyrics_input"

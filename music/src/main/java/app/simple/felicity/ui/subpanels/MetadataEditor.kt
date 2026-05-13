@@ -19,6 +19,7 @@ import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.metadata.MetadataWriter
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.MetadataSearchResult
+import app.simple.felicity.repository.repositories.LrcRepository
 import app.simple.felicity.utils.ParcelUtils.parcelable
 import app.simple.felicity.viewmodels.panels.MetadataEditorViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -26,6 +27,7 @@ import dagger.hilt.android.lifecycle.withCreationCallback
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
+import javax.inject.Inject
 
 /**
  * Full-screen panel that allows the user to view and edit the embedded tag
@@ -52,6 +54,9 @@ import java.io.FileOutputStream
 class MetadataEditor : MediaFragment() {
 
     private lateinit var binding: FragmentMetadataEditorBinding
+
+    @Inject
+    lateinit var lrcRepository: LrcRepository
 
     private val audio: Audio by lazy {
         requireArguments().parcelable<Audio>(BundleConstants.AUDIO)!!
@@ -92,6 +97,7 @@ class MetadataEditor : MediaFragment() {
         setupAlbumArtPicker()
         observeViewModel()
         registerMetadataSearchResult()
+        registerLyricsSearchResult()
 
         binding.saveButton.setOnClickListener {
             saveMetadata()
@@ -99,6 +105,36 @@ class MetadataEditor : MediaFragment() {
 
         binding.searchButton.setOnClickListener {
             openFragment(MetadataSearch.newInstance(audio), MetadataSearch.TAG)
+        }
+
+        binding.searchLyrics.setOnClickListener {
+            openFragment(LyricsSearch.newInstanceForEditor(audio), LyricsSearch.TAG)
+        }
+    }
+
+    /**
+     * Registers a listener on [LyricsSearch.REQUEST_KEY_LYRICS_FOR_EDITOR] so that when
+     * the user picks a result in the lyrics search screen, the plain lyrics are pasted
+     * straight into the lyrics field. If the result also contains synced lyrics, they are
+     * saved as a sidecar `.lrc` file next to the audio file on a background thread.
+     */
+    private fun registerLyricsSearchResult() {
+        parentFragmentManager.setFragmentResultListener(
+                LyricsSearch.REQUEST_KEY_LYRICS_FOR_EDITOR,
+                viewLifecycleOwner
+        ) { _, bundle ->
+            val plain = bundle.getString(LyricsSearch.KEY_PLAIN_LYRICS)
+            val synced = bundle.getString(LyricsSearch.KEY_SYNCED_LYRICS)
+
+            if (!plain.isNullOrBlank()) {
+                binding.lyricsInput.setText(plain)
+            }
+
+            if (!synced.isNullOrBlank()) {
+                viewLifecycleOwner.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    lrcRepository.saveLrcToFile(synced, audio.uri)
+                }
+            }
         }
     }
 
