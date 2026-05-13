@@ -17,6 +17,7 @@ import app.simple.felicity.repository.models.MusicBrainzReleaseSearchResponse
 import app.simple.felicity.repository.models.WikidataEntityResponse
 import app.simple.felicity.repository.models.WikipediaPageSummary
 import app.simple.felicity.repository.repositories.MusicBrainzRepository.Companion.CACHE_TTL_MS
+import app.simple.felicity.shared.constants.AppConstants
 import com.google.gson.Gson
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -383,7 +384,7 @@ class MusicBrainzRepository @Inject constructor(
 
     private fun get(url: String): String? {
         return try {
-            val request = Request.Builder().url(url).header("User-Agent", USER_AGENT).build()
+            val request = Request.Builder().url(url).header("User-Agent", AppConstants.MUSIC_BRAINZ_USER_AGENT).build()
             client.newCall(request).execute().use { response ->
                 if (response.isSuccessful) response.body.string()
                 else {
@@ -398,13 +399,6 @@ class MusicBrainzRepository @Inject constructor(
 
     companion object {
         private const val TAG = "MusicBrainzRepository"
-
-        /**
-         * MusicBrainz requires every API client to identify itself. Without this header
-         * the server will return HTTP 429 (Too Many Requests) almost immediately.
-         * See: https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting
-         */
-        private const val USER_AGENT = "Felicity/1.0 (https://github.com/Hamza417/Felicity)"
 
         /** Cache entries older than 30 days are considered stale and will be re-fetched. */
         private const val CACHE_TTL_MS = 30L * 24 * 60 * 60 * 1000

@@ -8,6 +8,7 @@ import androidx.core.net.toUri
 import app.simple.felicity.repository.factories.TaggedSocketFactory
 import app.simple.felicity.repository.metadata.LyricsMetaHelper
 import app.simple.felicity.repository.models.LrcLibResponse
+import app.simple.felicity.shared.constants.AppConstants
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -217,7 +218,7 @@ class LrcRepository @Inject constructor(
 
                 val request = Request.Builder()
                     .url(urlBuilder.build())
-                    .header("User-Agent", USER_AGENT)
+                    .header("User-Agent", AppConstants.MUSIC_BRAINZ_USER_AGENT)
                     .build()
 
                 client.newCall(request).execute().use { response ->
@@ -257,7 +258,7 @@ class LrcRepository @Inject constructor(
 
                 val request = Request.Builder()
                     .url(urlBuilder.build())
-                    .header("User-Agent", USER_AGENT)
+                    .header("User-Agent", AppConstants.MUSIC_BRAINZ_USER_AGENT)
                     .build()
 
                 client.newCall(request).execute().use { response ->
@@ -301,7 +302,7 @@ class LrcRepository @Inject constructor(
 
                 val request = Request.Builder()
                     .url(urlBuilder.build())
-                    .header("User-Agent", USER_AGENT)
+                    .header("User-Agent", AppConstants.MUSIC_BRAINZ_USER_AGENT)
                     .build()
 
                 client.newCall(request).execute().use { response ->
@@ -436,7 +437,6 @@ class LrcRepository @Inject constructor(
 
     companion object {
         private const val TAG = "LrcRepository"
-        private const val USER_AGENT = "Felicity Music Player (https://github.com/Hamza417/Felicity)"
         private const val NETWORK_TAG = 0x1003
 
         /**

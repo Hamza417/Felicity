@@ -8,6 +8,7 @@ import app.simple.felicity.repository.models.MusicBrainzArtistDetail
 import app.simple.felicity.repository.models.MusicBrainzArtistSearchResponse
 import app.simple.felicity.repository.models.WikidataEntityResponse
 import app.simple.felicity.repository.models.WikipediaPageSummary
+import app.simple.felicity.shared.constants.AppConstants
 import com.google.gson.Gson
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
@@ -36,14 +37,6 @@ internal object MusicBrainzArtistCover {
 
     private const val TAG = "MusicBrainzArtistCover"
 
-    /**
-     * MusicBrainz requires every API client to identify itself with a User-Agent
-     * that includes the application name, version, and a contact URL or email.
-     * Requests without a proper User-Agent are rate-limited very aggressively.
-     *
-     * See: https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting
-     */
-    private const val USER_AGENT = "FelicityMusicPlayer/1.0 (https://github.com/Hamza417/Felicity)"
     private const val NETWORK_TAG = 0x1002
 
     private val client: OkHttpClient by lazy {
@@ -105,7 +98,7 @@ internal object MusicBrainzArtistCover {
 
             val request = Request.Builder()
                 .url(url)
-                .header("User-Agent", USER_AGENT)
+                .header("User-Agent", AppConstants.MUSIC_BRAINZ_USER_AGENT)
                 .build()
 
             client.newCall(request).execute().use { response ->
@@ -147,7 +140,7 @@ internal object MusicBrainzArtistCover {
 
             val request = Request.Builder()
                 .url(url)
-                .header("User-Agent", USER_AGENT)
+                .header("User-Agent", AppConstants.MUSIC_BRAINZ_USER_AGENT)
                 .build()
 
             client.newCall(request).execute().use { response ->
@@ -214,7 +207,7 @@ internal object MusicBrainzArtistCover {
 
             val request = Request.Builder()
                 .url(url)
-                .header("User-Agent", USER_AGENT)
+                .header("User-Agent", AppConstants.MUSIC_BRAINZ_USER_AGENT)
                 .build()
 
             client.newCall(request).execute().use { response ->
@@ -270,7 +263,7 @@ internal object MusicBrainzArtistCover {
 
             val request = Request.Builder()
                 .url(summaryUrl)
-                .header("User-Agent", USER_AGENT)
+                .header("User-Agent", AppConstants.MUSIC_BRAINZ_USER_AGENT)
                 .build()
 
             client.newCall(request).execute().use { response ->
@@ -301,7 +294,7 @@ internal object MusicBrainzArtistCover {
 
             val request = Request.Builder()
                 .url(url)
-                .header("User-Agent", USER_AGENT)
+                .header("User-Agent", AppConstants.MUSIC_BRAINZ_USER_AGENT)
                 .build()
 
             client.newCall(request).execute().use { response ->
