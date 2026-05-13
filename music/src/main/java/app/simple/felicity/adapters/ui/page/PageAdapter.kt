@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.adapters.home.sub.AdapterCarouselItems
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
+import app.simple.felicity.databinding.AdapterArtistInfoBinding
 import app.simple.felicity.databinding.AdapterGenreAlbumsBinding
 import app.simple.felicity.databinding.AdapterHeaderArtistPageBinding
 import app.simple.felicity.databinding.AdapterStyleListBinding
@@ -23,6 +24,7 @@ import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Folder
 import app.simple.felicity.repository.models.Genre
+import app.simple.felicity.repository.models.MusicBrainzArtistInfo
 import app.simple.felicity.repository.models.PageData
 import app.simple.felicity.repository.models.Playlist
 import app.simple.felicity.repository.models.YearGroup
@@ -49,6 +51,9 @@ class PageAdapter(
 
     private var listener: GeneralAdapterCallbacks? = null
     private val items = mutableListOf<PageItem>()
+
+    /** Holds the artist info loaded from MusicBrainz. Set from outside via [setArtistInfo]. */
+    private var artistInfo: MusicBrainzArtistInfo? = null
 
     /**
      * Sealed class to represent different page types
@@ -242,6 +247,12 @@ class PageAdapter(
             ))
         }
 
+        // Show the MusicBrainz artist profile block right before the song list on artist pages.
+        val currentInfo = artistInfo
+        if (currentInfo != null && (pageType is PageType.ArtistPage || pageType is PageType.ComposerPage)) {
+            items.add(1, PageItem.ArtistInfoSection(currentInfo))
+        }
+
         // Add albums section if available
         if (data.albums.isNotEmpty()) {
             val artistName = when (pageType) {
@@ -299,6 +310,9 @@ class PageAdapter(
             PageConstants.VIEW_TYPE_SONG -> {
                 Song(AdapterStyleListBinding.inflate(inflater, parent, false))
             }
+            PageConstants.VIEW_TYPE_ARTIST_INFO -> {
+                ArtistInfo(AdapterArtistInfoBinding.inflate(inflater, parent, false))
+            }
             else -> throw IllegalArgumentException("Unknown view type: $viewType")
         }
     }
@@ -340,6 +354,10 @@ class PageAdapter(
                     true
                 }
             }
+            is ArtistInfo -> {
+                val infoItem = item as PageItem.ArtistInfoSection
+                holder.bind(infoItem.info)
+            }
         }
     }
 
@@ -370,6 +388,7 @@ class PageAdapter(
             is PageItem.ArtistsSection -> PageConstants.VIEW_TYPE_ARTISTS
             is PageItem.GenresSection -> PageConstants.VIEW_TYPE_GENRES
             is PageItem.SongItem -> PageConstants.VIEW_TYPE_SONG
+            is PageItem.ArtistInfoSection -> PageConstants.VIEW_TYPE_ARTIST_INFO
         }
     }
 
@@ -701,6 +720,105 @@ class PageAdapter(
 
     fun setArtistAdapterListener(listener: GeneralAdapterCallbacks) {
         this.listener = listener
+    }
+
+    /**
+     * Delivers the MusicBrainz artist info to the adapter. When called with a non-null
+     * value, a new [PageItem.ArtistInfoSection] is inserted at position 1 (right below
+     * the header) and the list is updated without a full rebind.
+     *
+     * This is called from the fragment once [ArtistViewerViewModel.artistInfo] emits.
+     *
+     * @param info The artist profile to display, or null to remove the section.
+     */
+    fun setArtistInfo(info: MusicBrainzArtistInfo?) {
+        artistInfo = info
+        val oldItems = items.toList()
+        buildItemsList()
+        val diff = DiffUtil.calculateDiff(PageDiffCallback(oldItems, items))
+        diff.dispatchUpdatesTo(this)
+    }
+
+    inner class ArtistInfo(val binding: AdapterArtistInfoBinding) : VerticalListViewHolder(binding.root) {
+
+        private var bioExpanded = false
+
+        fun bind(info: MusicBrainzArtistInfo) {
+            binding.apply {
+                // Artist type badge (Person, Group, Orchestra…)
+                if (!info.type.isNullOrBlank()) {
+                    typeBadge.text = info.type
+                    typeBadge.visibility = View.VISIBLE
+                } else {
+                    typeBadge.visibility = View.GONE
+                }
+
+                // Country badge
+                if (!info.country.isNullOrBlank()) {
+                    countryBadge.text = info.country
+                    countryBadge.visibility = View.VISIBLE
+                } else {
+                    countryBadge.visibility = View.GONE
+                }
+
+                // Active years badge — covers all three cases: open range, closed range, or single year
+                val yearText = when {
+                    info.beginYear != null && info.endYear != null ->
+                        context.getString(R.string.active_years, info.beginYear, info.endYear)
+                    info.beginYear != null && !info.ended ->
+                        context.getString(R.string.active_since_present, info.beginYear)
+                    info.beginYear != null ->
+                        context.getString(R.string.active_since, info.beginYear)
+                    else -> null
+                }
+                if (yearText != null) {
+                    yearsBadge.text = yearText
+                    yearsBadge.visibility = View.VISIBLE
+                } else {
+                    yearsBadge.visibility = View.GONE
+                }
+
+                // Genre/style tags — inflate a HighlightTextView pill for each tag
+                if (info.tags.isNotEmpty()) {
+                    tagsContainer.removeAllViews()
+                    val inflater = LayoutInflater.from(context)
+                    info.tags.forEach { tag ->
+                        val pill = inflater.inflate(
+                                R.layout.item_tag_pill, tagsContainer, false
+                        ) as app.simple.felicity.decorations.highlight.HighlightTextView
+                        pill.text = tag
+                        tagsContainer.addView(pill)
+                    }
+                    tagsScroll.visibility = View.VISIBLE
+                } else {
+                    tagsScroll.visibility = View.GONE
+                }
+
+                // Bio text — show "Read more / Read less" toggle when the text is long enough
+                if (!info.bio.isNullOrBlank()) {
+                    bio.text = info.bio
+                    bio.visibility = View.VISIBLE
+                    bio.post {
+                        // After layout, check whether the text was actually truncated
+                        val truncated = (bio.layout?.lineCount ?: 0) > 4
+                        bioToggle.visibility = if (truncated || bioExpanded) View.VISIBLE else View.GONE
+                    }
+                    bioToggle.setOnClickListener {
+                        bioExpanded = !bioExpanded
+                        if (bioExpanded) {
+                            bio.maxLines = Int.MAX_VALUE
+                            bioToggle.setText(R.string.read_less)
+                        } else {
+                            bio.maxLines = 4
+                            bioToggle.setText(R.string.read_more)
+                        }
+                    }
+                } else {
+                    bio.visibility = View.GONE
+                    bioToggle.visibility = View.GONE
+                }
+            }
+        }
     }
 
     companion object {

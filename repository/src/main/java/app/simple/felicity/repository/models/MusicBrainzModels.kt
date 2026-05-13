@@ -39,19 +39,49 @@ data class MusicBrainzUrl(
 )
 
 /**
- * The artist detail response that MusicBrainz sends when we request a specific artist
- * by MBID with URL relations included. We only need the relations list here.
+ * The full artist detail response from MusicBrainz when we request an artist by MBID
+ * with tags and URL relations included. Each field maps directly to the JSON key
+ * MusicBrainz uses, hence the [SerializedName] annotations.
  */
 data class MusicBrainzArtistDetail(
-        @SerializedName("relations")
+        val id: String?,
+        val name: String?,
+        val disambiguation: String?,
+        val type: String?,
+        val country: String?,
+        @SerializedName("life-span")
+        val lifeSpan: MusicBrainzLifeSpan?,
+        val tags: List<MusicBrainzTag>?,
         val relations: List<MusicBrainzUrlRelation>?
 )
 
 /**
+ * The birth/formation and death/disbandment years for an artist.
+ * Both fields can be a full date ("1988-06-14") or just a year ("1988").
+ * We only care about the year portion, so we trim if needed at use-time.
+ */
+data class MusicBrainzLifeSpan(
+        val begin: String?,
+        val end: String?,
+        val ended: Boolean = false
+)
+
+/**
+ * A single genre or style tag attached to an artist. [count] is the net vote
+ * score — higher means more community members agree this tag fits.
+ */
+data class MusicBrainzTag(
+        val name: String?,
+        val count: Int = 0
+)
+
+/**
  * The response shape from the Wikipedia REST API's "page summary" endpoint.
- * We only care about the thumbnail image, so everything else is ignored.
+ * [extract] is the plain-text introductory paragraph — perfect for a bio blurb.
+ * [thumbnail] holds the representative image if one exists.
  */
 data class WikipediaPageSummary(
+        val extract: String?,
         val thumbnail: WikipediaThumbnail?
 )
 

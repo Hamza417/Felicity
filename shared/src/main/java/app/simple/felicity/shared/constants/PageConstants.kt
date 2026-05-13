@@ -6,4 +6,5 @@ object PageConstants {
     const val VIEW_TYPE_ARTISTS = 2
     const val VIEW_TYPE_GENRES = 3
     const val VIEW_TYPE_SONG = 4
+    const val VIEW_TYPE_ARTIST_INFO = 5
 }

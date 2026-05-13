@@ -17,7 +17,9 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.page.PageAdapter
@@ -66,10 +68,20 @@ class ArtistPage : BasePageFragment() {
 
     /**
      * Sets up the RecyclerView and begins collecting [PageData] from [ArtistViewerViewModel].
+     * Also observes the MusicBrainz artist info stream and feeds it to the adapter as soon
+     * as the network fetch completes — the list updates itself without a full rebind.
      */
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         collectPageData { artistViewerViewModel.data }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                artistViewerViewModel.artistInfo.collect { info ->
+                    pageAdapter?.setArtistInfo(info)
+                }
+            }
+        }
     }
 
     /**
