@@ -1,11 +1,9 @@
 package app.simple.felicity.ui.pages
 
-import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.net.toUri
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
@@ -14,6 +12,8 @@ import app.simple.felicity.adapters.ui.page.PageAdapter
 import app.simple.felicity.databinding.FragmentPageArtistBinding
 import app.simple.felicity.decorations.views.PopupMenuItem
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
+import app.simple.felicity.dialogs.playlists.AddMultipleToPlaylistDialog.Companion.showAddMultipleToPlaylistDialog
+import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.fragments.BasePageFragment
 import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.models.Album
@@ -71,23 +71,17 @@ class AlbumPage : BasePageFragment() {
                     menuItems = listOf(
                             PopupMenuItem(title = R.string.play, icon = R.drawable.ic_play),
                             PopupMenuItem(title = R.string.shuffle, icon = R.drawable.ic_shuffle),
+                            PopupMenuItem(title = R.string.add_to_queue, icon = R.drawable.ic_add_to_queue),
+                            PopupMenuItem(title = R.string.add_to_playlist, icon = R.drawable.ic_add_to_playlist),
                             PopupMenuItem(title = R.string.send, icon = R.drawable.ic_send)
                     ),
                     onMenuItemClick = {
                         when (it) {
                             R.string.play -> setMediaItems(currentData.songs.toMutableList(), 0)
                             R.string.shuffle -> shuffleMediaItems(currentData.songs)
-                            R.string.send -> {
-                                val audioUris = currentData.songs.map { audio ->
-                                    java.io.File(audio.uri).toUri()
-                                }
-                                val shareIntent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
-                                    setType("audio/*")
-                                    putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(audioUris))
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                }
-                                startActivity(Intent.createChooser(shareIntent, getString(R.string.send)))
-                            }
+                            R.string.add_to_queue -> currentData.songs.forEach { song -> MediaPlaybackManager.addToQueue(song) }
+                            R.string.add_to_playlist -> parentFragmentManager.showAddMultipleToPlaylistDialog(currentData.songs)
+                            R.string.send -> shareAudioList(currentData.songs)
                         }
                     },
                     onDismiss = {}
@@ -110,3 +104,4 @@ class AlbumPage : BasePageFragment() {
         }
     }
 }
+

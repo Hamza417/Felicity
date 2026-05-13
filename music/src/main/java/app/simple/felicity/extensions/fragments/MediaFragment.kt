@@ -1110,7 +1110,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
      *
      * @param audios The list of [Audio] tracks to share.
      */
-    private fun shareAudioList(audios: List<Audio>) {
+    protected fun shareAudioList(audios: List<Audio>) {
         val uris = audios.map { it.uri.toUri() } as ArrayList<Uri>
         if (uris.isEmpty()) return
         val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
