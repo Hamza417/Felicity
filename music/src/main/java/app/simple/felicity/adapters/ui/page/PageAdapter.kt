@@ -28,6 +28,7 @@ import app.simple.felicity.repository.models.Playlist
 import app.simple.felicity.repository.models.YearGroup
 import app.simple.felicity.repository.sort.PageSort.setAlbumPageSort
 import app.simple.felicity.repository.sort.PageSort.setArtistPageSort
+import app.simple.felicity.repository.sort.PageSort.setComposerPageSort
 import app.simple.felicity.repository.sort.PageSort.setFolderPageSort
 import app.simple.felicity.repository.sort.PageSort.setGenrePageSort
 import app.simple.felicity.repository.sort.PageSort.setPlaylistPageSort
@@ -55,6 +56,7 @@ class PageAdapter(
     sealed class PageType {
         data class AlbumPage(val album: Album) : PageType()
         data class ArtistPage(val artist: Artist) : PageType()
+        data class ComposerPage(val composer: Artist) : PageType()
         data class GenrePage(val genre: Genre) : PageType()
         data class FolderPage(val folder: Folder) : PageType()
         data class YearPage(val yearGroup: YearGroup) : PageType()
@@ -159,6 +161,20 @@ class PageAdapter(
                         songs = data.songs
                 ))
             }
+            is PageType.ComposerPage -> {
+                items.add(PageItem.Header(
+                        album = Album(
+                                id = pageType.composer.id,
+                                name = pageType.composer.name,
+                                artist = pageType.composer.name,
+                                artistId = pageType.composer.id
+                        ),
+                        totalSongs = data.songs.size,
+                        totalDuration = data.songs.sumOf { it.duration },
+                        albumArtists = data.artists,
+                        songs = data.songs
+                ))
+            }
             is PageType.GenrePage -> {
                 items.add(PageItem.Header(
                         album = Album(
@@ -231,6 +247,7 @@ class PageAdapter(
             val artistName = when (pageType) {
                 is PageType.AlbumPage -> pageType.album.name
                 is PageType.ArtistPage -> pageType.artist.name
+                is PageType.ComposerPage -> pageType.composer.name
                 is PageType.GenrePage -> pageType.genre.name
                 is PageType.FolderPage -> pageType.folder.name
                 is PageType.YearPage -> pageType.yearGroup.year
@@ -377,6 +394,10 @@ class PageAdapter(
                         R.string.albums_from_artist,
                         item.artistName ?: context.getString(R.string.unknown)
                 )
+                is PageType.ComposerPage -> context.getString(
+                        R.string.albums_from_artist,
+                        item.artistName ?: context.getString(R.string.unknown)
+                )
                 is PageType.GenrePage -> context.getString(
                         R.string.albums_in_genre,
                         item.artistName ?: context.getString(R.string.unknown)
@@ -432,6 +453,10 @@ class PageAdapter(
                 is PageType.ArtistPage -> context.getString(
                         R.string.with_other_artists,
                         pageType.artist.name ?: context.getString(R.string.unknown)
+                )
+                is PageType.ComposerPage -> context.getString(
+                        R.string.with_other_artists,
+                        pageType.composer.name ?: context.getString(R.string.unknown)
                 )
                 is PageType.GenrePage -> context.getString(
                         R.string.artists_in_genre,
@@ -525,6 +550,9 @@ class PageAdapter(
                     is PageType.ArtistPage -> {
                         sortStyle.setArtistPageSort()
                     }
+                    is PageType.ComposerPage -> {
+                        sortStyle.setComposerPageSort()
+                    }
                     is PageType.PlaylistPage -> {
                         sortStyle.setPlaylistPageSort()
                     }
@@ -535,7 +563,7 @@ class PageAdapter(
 
                 // Show art flow for albums and artists
                 when (pageType) {
-                    is PageType.AlbumPage, is PageType.ArtistPage, is PageType.FolderPage, is PageType.PlaylistPage -> {
+                    is PageType.AlbumPage, is PageType.ArtistPage, is PageType.ComposerPage, is PageType.FolderPage, is PageType.PlaylistPage -> {
                         artFlow.visibility = View.VISIBLE
                         when {
                             item.songs.isNotEmpty() -> {

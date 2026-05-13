@@ -608,6 +608,54 @@ class AudioRepository @Inject constructor(
     }
 
     /**
+     * Get page data for a specific composer as a Flow.
+     * Returns all songs whose composer tag matches the given name, along with
+     * their albums and genres — everything you'd want to see on a composer page.
+     * Results are filtered in real-time by [LibraryPreferences] minimum duration and size.
+     *
+     * @param composer The [Artist] (acting as a composer) whose page data we want.
+     * @return Flow of [PageData] with songs, albums, and genres for this composer.
+     */
+    fun getComposerPageData(composer: Artist): Flow<PageData> {
+        return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
+            val composerAudios = audioList.filter { audio ->
+                audio.composer?.trim().equals(composer.name?.trim(), ignoreCase = true)
+            }
+
+            val albumsMap = composerAudios.groupBy { it.album }
+                .mapNotNull { (albumName, albumSongs) ->
+                    if (albumName.isNullOrEmpty()) return@mapNotNull null
+                    Album(
+                            id = albumName.hashCode().toLong(),
+                            name = albumName,
+                            artist = composer.name ?: "",
+                            artistId = composer.id,
+                            songCount = albumSongs.size,
+                            songPaths = albumSongs.map { it.uri }
+                    )
+                }
+
+            val genresMap = composerAudios.groupBy { it.genre }
+                .mapNotNull { (genreName, _) ->
+                    if (genreName.isNullOrEmpty()) return@mapNotNull null
+                    val genreAllSongs = audioList.filter { it.genre == genreName }
+                    Genre(
+                            id = genreName.hashCode().toLong(),
+                            name = genreName,
+                            songPaths = genreAllSongs.map { it.uri },
+                            songCount = genreAllSongs.size
+                    )
+                }
+
+            PageData(
+                    songs = composerAudios,
+                    albums = albumsMap,
+                    genres = genresMap
+            )
+        } ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
      * Get page data for a specific artist as a Flow.
      * Returns songs, albums, and genres associated with the artist.
      * Results are filtered in real-time by [LibraryPreferences] minimum duration and size.

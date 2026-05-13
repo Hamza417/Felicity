@@ -34,16 +34,19 @@ object PagePreferences {
     const val PAGE_SORT_PLAYLIST = "page_sort_playlist"
     const val PAGE_ORDER_PLAYLIST = "page_order_playlist"
 
+    const val PAGE_SORT_COMPOSER = "page_sort_composer"
+    const val PAGE_ORDER_COMPOSER = "page_order_composer"
+
     /** All sort-field keys as a set for quick membership checks. */
     val ALL_SORT_KEYS: Set<String> = setOf(
             PAGE_SORT_ALBUM, PAGE_SORT_ARTIST, PAGE_SORT_GENRE,
-            PAGE_SORT_FOLDER, PAGE_SORT_YEAR, PAGE_SORT_PLAYLIST
+            PAGE_SORT_FOLDER, PAGE_SORT_YEAR, PAGE_SORT_PLAYLIST, PAGE_SORT_COMPOSER
     )
 
     /** All sort-order keys as a set for quick membership checks. */
     val ALL_ORDER_KEYS: Set<String> = setOf(
             PAGE_ORDER_ALBUM, PAGE_ORDER_ARTIST, PAGE_ORDER_GENRE,
-            PAGE_ORDER_FOLDER, PAGE_ORDER_YEAR, PAGE_ORDER_PLAYLIST
+            PAGE_ORDER_FOLDER, PAGE_ORDER_YEAR, PAGE_ORDER_PLAYLIST, PAGE_ORDER_COMPOSER
     )
 
     /** Returns the combined set of all sort-related preference keys. */
@@ -120,5 +123,17 @@ object PagePreferences {
 
     fun setPlaylistOrder(value: Int) =
         SharedPreferences.getSharedPreferences().edit { putInt(PAGE_ORDER_PLAYLIST, value) }
+
+    fun getComposerSort(): Int =
+        SharedPreferences.getSharedPreferences().getInt(PAGE_SORT_COMPOSER, CommonPreferencesConstants.BY_TITLE)
+
+    fun setComposerSort(value: Int) =
+        SharedPreferences.getSharedPreferences().edit { putInt(PAGE_SORT_COMPOSER, value) }
+
+    fun getComposerOrder(): Int =
+        SharedPreferences.getSharedPreferences().getInt(PAGE_ORDER_COMPOSER, CommonPreferencesConstants.ASCENDING)
+
+    fun setComposerOrder(value: Int) =
+        SharedPreferences.getSharedPreferences().edit { putInt(PAGE_ORDER_COMPOSER, value) }
 }
 

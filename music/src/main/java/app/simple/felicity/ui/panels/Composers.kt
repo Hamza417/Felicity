@@ -21,6 +21,7 @@ import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.ComposerPreferences
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.sort.ComposerSort.setCurrentSortStyle
+import app.simple.felicity.ui.pages.ComposerPage
 import app.simple.felicity.viewmodels.panels.ComposersViewModel
 
 /**
@@ -93,7 +94,7 @@ class Composers : BasePanelFragment() {
             adapterComposers?.setHasStableIds(true)
             adapterComposers?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
                 override fun onComposerClicked(composers: List<Artist>, position: Int, view: View) {
-                    // TODO: open a ComposerPage when it is available
+                    openFragment(ComposerPage.newInstance(composers[position]), ComposerPage.TAG)
                 }
 
                 override fun onComposerLongClicked(composers: List<Artist>, position: Int, imageView: android.widget.ImageView?) {

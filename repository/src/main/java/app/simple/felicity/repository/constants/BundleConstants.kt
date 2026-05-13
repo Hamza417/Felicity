@@ -4,6 +4,7 @@ object BundleConstants {
     const val GENRE = "genre"
     const val ARTIST = "artist"
     const val ALBUM_ARTIST = "album_artist"
+    const val COMPOSER = "composer"
     const val ALBUM = "album"
     const val AUDIO = "song"
     const val SONGS = "songs"

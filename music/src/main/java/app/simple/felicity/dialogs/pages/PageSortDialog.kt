@@ -94,6 +94,7 @@ class PageSortDialog : ScopedBottomSheetFragment() {
             PageSort.PAGE_TYPE_FOLDER -> PagePreferences.getFolderSort()
             PageSort.PAGE_TYPE_YEAR -> PagePreferences.getYearSort()
             PageSort.PAGE_TYPE_PLAYLIST -> PagePreferences.getPlaylistSort()
+            PageSort.PAGE_TYPE_COMPOSER -> PagePreferences.getComposerSort()
             else -> CommonPreferencesConstants.BY_TITLE
         }
     }
@@ -106,6 +107,7 @@ class PageSortDialog : ScopedBottomSheetFragment() {
             PageSort.PAGE_TYPE_FOLDER -> PagePreferences.getFolderOrder()
             PageSort.PAGE_TYPE_YEAR -> PagePreferences.getYearOrder()
             PageSort.PAGE_TYPE_PLAYLIST -> PagePreferences.getPlaylistOrder()
+            PageSort.PAGE_TYPE_COMPOSER -> PagePreferences.getComposerOrder()
             else -> CommonPreferencesConstants.ASCENDING
         }
     }
@@ -118,6 +120,7 @@ class PageSortDialog : ScopedBottomSheetFragment() {
             PageSort.PAGE_TYPE_FOLDER -> PagePreferences.setFolderSort(value)
             PageSort.PAGE_TYPE_YEAR -> PagePreferences.setYearSort(value)
             PageSort.PAGE_TYPE_PLAYLIST -> PagePreferences.setPlaylistSort(value)
+            PageSort.PAGE_TYPE_COMPOSER -> PagePreferences.setComposerSort(value)
         }
     }
 
@@ -129,6 +132,7 @@ class PageSortDialog : ScopedBottomSheetFragment() {
             PageSort.PAGE_TYPE_FOLDER -> PagePreferences.setFolderOrder(value)
             PageSort.PAGE_TYPE_YEAR -> PagePreferences.setYearOrder(value)
             PageSort.PAGE_TYPE_PLAYLIST -> PagePreferences.setPlaylistOrder(value)
+            PageSort.PAGE_TYPE_COMPOSER -> PagePreferences.setComposerOrder(value)
         }
     }
 

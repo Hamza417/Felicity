@@ -26,6 +26,7 @@ object PageSort {
     const val PAGE_TYPE_FOLDER = "folder"
     const val PAGE_TYPE_YEAR = "year"
     const val PAGE_TYPE_PLAYLIST = "playlist"
+    const val PAGE_TYPE_COMPOSER = "composer"
 
     /** Bundle key for the page-type string. */
     const val PAGE_TYPE = "page_type"
@@ -52,6 +53,10 @@ object PageSort {
 
     fun List<Audio>.sortedForPlaylistPage(): List<Audio> {
         return applySort(PagePreferences.getPlaylistSort(), PagePreferences.getPlaylistOrder())
+    }
+
+    fun List<Audio>.sortedForComposerPage(): List<Audio> {
+        return applySort(PagePreferences.getComposerSort(), PagePreferences.getComposerOrder())
     }
 
     /** Applies [sortField] and [order] to this [List]<[Audio]>. */
@@ -96,6 +101,9 @@ object PageSort {
 
     fun AppCompatTextView.setPlaylistPageSort() = setSortLabel(PagePreferences.getPlaylistSort())
     fun AppCompatTextView.setPlaylistPageOrder() = setOrderLabel(PagePreferences.getPlaylistOrder())
+
+    fun AppCompatTextView.setComposerPageSort() = setSortLabel(PagePreferences.getComposerSort())
+    fun AppCompatTextView.setComposerPageOrder() = setOrderLabel(PagePreferences.getComposerOrder())
 
     private fun AppCompatTextView.setSortLabel(sortField: Int) {
         text = when (sortField) {

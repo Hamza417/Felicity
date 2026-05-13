@@ -152,6 +152,7 @@ abstract class BasePageFragment : MediaFragment() {
         return when (pageType) {
             is PageAdapter.PageType.AlbumPage -> PageSort.PAGE_TYPE_ALBUM
             is PageAdapter.PageType.ArtistPage -> PageSort.PAGE_TYPE_ARTIST
+            is PageAdapter.PageType.ComposerPage -> PageSort.PAGE_TYPE_COMPOSER
             is PageAdapter.PageType.GenrePage -> PageSort.PAGE_TYPE_GENRE
             is PageAdapter.PageType.FolderPage -> PageSort.PAGE_TYPE_FOLDER
             is PageAdapter.PageType.YearPage -> PageSort.PAGE_TYPE_YEAR
