@@ -305,6 +305,8 @@
     <string name="visualizer">Visualizer</string>
     <string name="metadata">Metadata</string>
     <string name="show_album_artists">Show Album Artists</string>
+    <string name="musicbrainz_enabled">Extra Info from MusicBrainz</string>
+    <string name="musicbrainz_enabled_summary">Fetch info from the MusicBrainz open database. Requires an internet connection. Disabling stops all MusicBrainz network requests.</string>
     <string name="show_album_artists_summary">Show album artists instead of artists in the artists field of the lists in the app.</string>
     <string name="copy">Copy</string>
     <string name="edit_metadata">Edit Metadata</string>

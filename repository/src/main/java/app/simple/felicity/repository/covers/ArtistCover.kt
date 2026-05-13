@@ -36,10 +36,14 @@ object ArtistCover {
      * @return Bitmap of artist cover, or a placeholder if no artwork is found.
      */
     fun load(context: Context, artist: Artist): Bitmap {
-        val musicBrainzArtwork = artist.name?.let { MusicBrainzArtistCover.fetchArtistImage(it) }
-        if (musicBrainzArtwork != null) {
-            Log.d(TAG, "Loaded artist art from MusicBrainz/Wikipedia for: ${artist.name}")
-            return musicBrainzArtwork
+        if (LibraryPreferences.isMusicBrainzEnabled()) {
+            val musicBrainzArtwork = artist.name?.let { MusicBrainzArtistCover.fetchArtistImage(it) }
+            if (musicBrainzArtwork != null) {
+                Log.d(TAG, "Loaded artist art from MusicBrainz/Wikipedia for: ${artist.name}")
+                return musicBrainzArtwork
+            }
+        } else {
+            Log.d(TAG, "MusicBrainz disabled, skipping network fetch for artist: ${artist.name}")
         }
 
         if (artist.songPaths.isNotEmpty()) {

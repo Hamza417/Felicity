@@ -3,6 +3,7 @@ package app.simple.felicity.viewmodels.viewer
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.MusicBrainzArtistInfo
@@ -87,8 +88,13 @@ class ArtistViewerViewModel @AssistedInject constructor(
     /**
      * Kicks off a background fetch of the artist's MusicBrainz profile.
      * The result lands in [artistInfo] once ready; until then it stays null.
+     * If the user has disabled MusicBrainz in Library preferences, no request is made.
      */
     private fun loadArtistInfo() {
+        if (!LibraryPreferences.isMusicBrainzEnabled()) {
+            Log.d(TAG, "MusicBrainz is disabled in preferences, skipping fetch for: ${artist.name}")
+            return
+        }
         val name = artist.name ?: return
         viewModelScope.launch {
             val info = musicBrainzRepository.fetchArtistInfo(name)
