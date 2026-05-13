@@ -18,13 +18,18 @@ import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.metadata.MetadataWriter
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.models.MetadataSearchResult
+import app.simple.felicity.repository.repositories.LrcRepository
 import app.simple.felicity.utils.ParcelUtils.parcelable
 import app.simple.felicity.viewmodels.panels.MetadataEditorViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.lifecycle.withCreationCallback
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import javax.inject.Inject
 
 /**
  * Full-screen panel that allows the user to view and edit the embedded tag
@@ -36,8 +41,13 @@ import java.io.FileOutputStream
  * system image picker. The chosen image is copied to a temporary file and
  * passed to [app.simple.felicity.repository.metadata.MetadataWriter] for embedding.
  *
+ * A "Search" button opens [MetadataSearch] which queries LrcLib and returns a
+ * [MetadataSearchResult] via the Fragment Result API. All non-null fields in the
+ * result are applied to the editor automatically, and any synced lyrics are saved
+ * as a sidecar .lrc file alongside the audio file.
+ *
  * On save, [app.simple.felicity.viewmodels.panels.MetadataEditorViewModel] writes the changes to disk via
- * JAudioTagger, updates the Room database, and triggers a MediaStore rescan
+ * TagLib, updates the Room database, and triggers a MediaStore rescan
  * so the changes are reflected in the app immediately.
  *
  * @author Hamza417
@@ -46,6 +56,9 @@ import java.io.FileOutputStream
 class MetadataEditor : MediaFragment() {
 
     private lateinit var binding: FragmentMetadataEditorBinding
+
+    @Inject
+    lateinit var lrcRepository: LrcRepository
 
     private val audio: Audio by lazy {
         requireArguments().parcelable<Audio>(BundleConstants.AUDIO)!!
@@ -85,9 +98,70 @@ class MetadataEditor : MediaFragment() {
         populateFields()
         setupAlbumArtPicker()
         observeViewModel()
+        registerMetadataSearchResult()
 
         binding.saveButton.setOnClickListener {
             saveMetadata()
+        }
+
+        binding.searchButton.setOnClickListener {
+            openFragment(MetadataSearch.newInstance(audio), MetadataSearch.TAG)
+        }
+    }
+
+    /**
+     * Registers a one-time listener on [MetadataSearch.REQUEST_KEY_METADATA_RESULT] so that
+     * when the user picks a result in the search screen, we automatically fill in all the
+     * fields we received and navigate back here.
+     */
+    private fun registerMetadataSearchResult() {
+        parentFragmentManager.setFragmentResultListener(
+                MetadataSearch.REQUEST_KEY_METADATA_RESULT,
+                viewLifecycleOwner
+        ) { _, bundle ->
+            val result = bundle.parcelable<MetadataSearchResult>(MetadataSearch.KEY_RESULT)
+            if (result != null) {
+                applySearchResult(result)
+            }
+        }
+    }
+
+    /**
+     * Applies all available fields from [result] to the editor's input fields.
+     * Only non-null values overwrite the current text — fields absent from the
+     * result are left as they are so the user doesn't lose anything they typed.
+     *
+     * If [result] also contains synced LRC lyrics those are saved as a .lrc
+     * sidecar file alongside the audio file in the background, matching the
+     * same behaviour as the dedicated lyrics search screen.
+     */
+    private fun applySearchResult(result: MetadataSearchResult) {
+        with(binding) {
+            // Overwrite only the fields we actually received from the search.
+            if (result.title.isNotBlank()) titleInput.setText(result.title)
+            if (result.artist.isNotBlank()) artistInput.setText(result.artist)
+            result.album?.takeIf { it.isNotBlank() }?.let { albumInput.setText(it) }
+            result.plainLyrics?.takeIf { it.isNotBlank() }?.let { lyricsInput.setText(it) }
+        }
+
+        // Save synced lyrics as an .lrc sidecar so the player picks them up automatically.
+        val syncedLyrics = result.syncedLyrics
+        if (!syncedLyrics.isNullOrBlank()) {
+            val audioUri = audio.uri
+            if (!audioUri.isNullOrBlank()) {
+                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                    lrcRepository.saveLrcToFile(syncedLyrics, audioUri)
+                        .onSuccess {
+                            Log.d(TAG, "Synced lyrics saved as .lrc sidecar: $audioUri")
+                            withContext(Dispatchers.Main) {
+                                showWarning(R.string.metadata_synced_lyrics_saved)
+                            }
+                        }
+                        .onFailure { e ->
+                            Log.e(TAG, "Failed to save synced lyrics sidecar", e)
+                        }
+                }
+            }
         }
     }
 

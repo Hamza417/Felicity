@@ -484,6 +484,9 @@
     <string name="lock">Lock</string>
     <string name="about_artist">About the Artist</string>
     <string name="about_album">About the Album</string>
+    <string name="search_metadata">Search</string>
+    <string name="synced">Synced</string>
+    <string name="metadata_synced_lyrics_saved">Synced lyrics saved</string>
     <string name="read_more">Read more</string>
     <string name="read_less">Read less</string>
     <string name="active_since">Active since %1$s</string>

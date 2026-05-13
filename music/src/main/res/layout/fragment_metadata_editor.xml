@@ -706,6 +706,17 @@
         android:padding="@dimen/padding_15">
 
         <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+            android:id="@+id/search_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="@dimen/padding_10"
+            android:padding="@dimen/padding_15"
+            android:text="@string/search_metadata"
+            android:textSize="@dimen/popup_text_size"
+            app:appFontStyle="bold"
+            app:textColorStyle="secondary" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleTextView
             android:id="@+id/save_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
