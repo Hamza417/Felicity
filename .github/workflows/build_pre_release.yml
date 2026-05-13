@@ -24,8 +24,7 @@ jobs:
                 id: version
                 run: |
                     BASE_VERSION_NAME=$(grep -oP 'versionName "\K[^"]*' music/build.gradle)
-                    COMMIT_ID=$(git rev-parse --short HEAD)
-                    VERSION_NAME="${BASE_VERSION_NAME}-${COMMIT_ID}"
+                    VERSION_NAME="${BASE_VERSION_NAME}"
                     TAG=$(echo "$VERSION_NAME" | tr '[:upper:]' '[:lower:]')
 
                     echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
@@ -320,7 +319,6 @@ jobs:
                     name: ${{ needs.prepare.outputs.version_name }}
                     tag_name: ${{ needs.prepare.outputs.tag }}
                     prerelease: true
-                    body: |
-                        **Commit:** ${{ github.sha }}
+                    body_path: changelogs.md
                 env:
                     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
