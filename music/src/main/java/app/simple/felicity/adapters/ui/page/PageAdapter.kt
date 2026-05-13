@@ -5,7 +5,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
-import androidx.core.view.doOnLayout
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
@@ -806,17 +805,11 @@ class PageAdapter(
 
                     // Always reset to collapsed state on bind so recycled holders are consistent.
                     bioExpanded = false
-                    bio.maxLines = 4
-                    bioToggle.setText(R.string.read_more)
 
-                    // Show speculatively; doOnLayout hides it again if the text fits in 4 lines.
-                    bioToggle.visibility = View.VISIBLE
-
-                    bio.doOnLayout {
-                        // lineCount is the real rendered count; maxLines is what's visible.
-                        // If they're equal or the real count is smaller, no toggle is needed.
-                        val needsToggle = (bio.layout?.lineCount ?: 0) > bio.maxLines
-                        bioToggle.visibility = if (needsToggle) View.VISIBLE else View.GONE
+                    bio.post {
+                        val ellipsisCount = bio.layout.getEllipsisCount(bio.layout.lineCount - 1)
+                        val isEllipsized = ellipsisCount > 0
+                        bioToggle.visibility = if (isEllipsized) View.VISIBLE else View.GONE
                     }
 
                     bioToggle.setOnClickListener {
