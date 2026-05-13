@@ -92,4 +92,12 @@ public interface GeneralAdapterCallbacks {
     default void onYearGroupClicked(@NonNull YearGroup yearGroup, @NonNull View view) {
     
     }
+    
+    default void onComposerClicked(@NonNull List <Artist> composers, int position, @NonNull View view) {
+    
+    }
+    
+    default void onComposerLongClicked(@NonNull List <Artist> composers, int position, @Nullable ImageView imageView) {
+    
+    }
 }

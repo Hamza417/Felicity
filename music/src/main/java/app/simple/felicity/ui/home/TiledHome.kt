@@ -194,6 +194,9 @@ class TiledHome : BaseHomeFragment() {
         if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_ALBUM_ARTISTS))
             tiles.add(SpannedTile.PanelTile(R.string.album_artists, R.drawable.ic_artist))
 
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_COMPOSERS))
+            tiles.add(SpannedTile.PanelTile(R.string.composers, R.drawable.ic_composer))
+
         if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_GENRES))
             tiles.add(SpannedTile.PanelTile(R.string.genres, R.drawable.ic_piano))
 

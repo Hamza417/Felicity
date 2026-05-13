@@ -11,6 +11,7 @@ import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import app.simple.felicity.preferences.AlbumArtistPreferences
 import app.simple.felicity.preferences.AlbumPreferences
 import app.simple.felicity.preferences.ArtistPreferences
+import app.simple.felicity.preferences.ComposerPreferences
 import app.simple.felicity.preferences.FavoritesPreferences
 import app.simple.felicity.preferences.FoldersPreferences
 import app.simple.felicity.preferences.GenresPreferences
@@ -135,6 +136,7 @@ class GenericListStyleDialog : ScopedBottomSheetFragment() {
             PANEL.ALBUM_ARTISTS -> AlbumArtistPreferences.getGridSize()
             PANEL.SEARCH -> SearchPreferences.getGridSize()
             PANEL.FOLDERS_HIERARCHY -> FoldersPreferences.getGridSize()
+            PANEL.COMPOSERS -> ComposerPreferences.getGridSize()
         }
     }
 
@@ -155,6 +157,7 @@ class GenericListStyleDialog : ScopedBottomSheetFragment() {
             PANEL.ALBUM_ARTISTS -> AlbumArtistPreferences.setGridSize(layoutMode)
             PANEL.SEARCH -> SearchPreferences.setGridSize(layoutMode)
             PANEL.FOLDERS_HIERARCHY -> FoldersPreferences.setGridSize(layoutMode)
+            PANEL.COMPOSERS -> ComposerPreferences.setGridSize(layoutMode)
         }
     }
 
@@ -190,7 +193,8 @@ class GenericListStyleDialog : ScopedBottomSheetFragment() {
             YEAR("year"),
             ALBUM_ARTISTS("album_artists"),
             SEARCH("search"),
-            FOLDERS_HIERARCHY("folders_hierarchy")
+            FOLDERS_HIERARCHY("folders_hierarchy"),
+            COMPOSERS("composers")
         }
     }
 }

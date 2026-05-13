@@ -113,6 +113,9 @@ object UserInterfacePreferences {
     /** Preference key for toggling Album Artists panel visibility. */
     const val PANEL_VISIBLE_ALBUM_ARTISTS = "panel_visible_album_artists"
 
+    /** Preference key for toggling Composers panel visibility. */
+    const val PANEL_VISIBLE_COMPOSERS = "panel_visible_composers"
+
     /** Preference key for toggling Genres panel visibility. */
     const val PANEL_VISIBLE_GENRES = "panel_visible_genres"
 
@@ -154,6 +157,7 @@ object UserInterfacePreferences {
      */
     val ALL_PANEL_VISIBILITY_KEYS = setOf(
             PANEL_VISIBLE_ALBUM_ARTISTS,
+            PANEL_VISIBLE_COMPOSERS,
             PANEL_VISIBLE_GENRES,
             PANEL_VISIBLE_YEAR,
             PANEL_VISIBLE_PLAYLISTS,

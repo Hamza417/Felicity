@@ -205,6 +205,34 @@ class AudioRepository @Inject constructor(
     }
 
     /**
+     * Get all composers with aggregated data including track counts and song paths.
+     * Groups audio files by the composer tag and builds one entry per unique name.
+     * Songs without a composer tag are quietly skipped.
+     * Results are filtered in real-time by [LibraryPreferences] minimum duration and size.
+     *
+     * @return Flow of composers represented as [Artist] objects, sorted by name
+     */
+    fun getAllComposersWithAggregation(): Flow<List<Artist>> {
+        return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
+            val map = mutableMapOf<String, MutableList<Audio>>()
+            audioList.forEach { audio ->
+                val name = audio.composer?.takeIf { it.isNotBlank() } ?: return@forEach
+                map.getOrPut(name) { mutableListOf() }.add(audio)
+            }
+            map.map { (name, songs) ->
+                val uniqueAlbums = songs.mapNotNull { it.album }.distinct().size
+                Artist(
+                        id = name.hashCode().toLong(),
+                        name = name,
+                        albumCount = uniqueAlbums,
+                        trackCount = songs.size,
+                        songPaths = songs.map { it.uri }
+                )
+            }.sortedBy { it.name?.lowercase() }
+        } ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
      * Get all unique album artists from the database as a Flow, with aggregated
      * album counts, track counts, and song paths grouped by the album_artist tag.
      * Songs that have no album artist tag are quietly skipped — no tag, no entry.

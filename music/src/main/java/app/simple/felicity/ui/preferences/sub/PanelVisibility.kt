@@ -57,6 +57,7 @@ class PanelVisibility : PreferenceFragment() {
         // Library subsection — the optional library panels that sit below the always-visible three.
         prefs.add(Preference(type = PreferenceType.SUB_HEADER, title = R.string.library))
         prefs.add(makePanelToggle(R.string.album_artists, R.drawable.ic_artist, UserInterfacePreferences.PANEL_VISIBLE_ALBUM_ARTISTS))
+        prefs.add(makePanelToggle(R.string.composers, R.drawable.ic_composer, UserInterfacePreferences.PANEL_VISIBLE_COMPOSERS))
         prefs.add(makePanelToggle(R.string.genres, R.drawable.ic_piano, UserInterfacePreferences.PANEL_VISIBLE_GENRES))
         prefs.add(makePanelToggle(R.string.year, R.drawable.ic_date_range, UserInterfacePreferences.PANEL_VISIBLE_YEAR))
         prefs.add(makePanelToggle(R.string.playlists, R.drawable.ic_list, UserInterfacePreferences.PANEL_VISIBLE_PLAYLISTS))

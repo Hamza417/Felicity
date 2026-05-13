@@ -34,6 +34,7 @@
     <string name="x_songs">%1$d Songs</string>
     <string name="x_artists">%1$d Artists</string>
     <string name="x_album_artists">%1$d Album Artists</string>
+    <string name="x_composers">%1$d Composers</string>
     <string name="x_genres">%1$d Genres</string>
     <string name="x_folders">%1$d Folders</string>
     <string name="x_years">%1$d Years</string>
@@ -45,6 +46,7 @@
     <string name="artists_in_playlist">Artists in %1$s</string>
     <string name="albums_from_artist">Albums from %1$s</string>
     <string name="album_artists">Album Artists</string>
+    <string name="composers">Composers</string>
     <string name="album_genres">Album Genres</string>
     <string name="with_other_artists">%1$s Collaborated With</string>
     <string name="add_to_queue">Add to Queue</string>

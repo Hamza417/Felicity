@@ -43,6 +43,8 @@ class SimpleHomeViewModel(application: Application) : WrappedViewModel(applicati
             libraryItems.add(Panel(R.string.artists, R.drawable.ic_people))
             if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_ALBUM_ARTISTS))
                 libraryItems.add(Panel(R.string.album_artists, R.drawable.ic_artist))
+            if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_COMPOSERS))
+                libraryItems.add(Panel(R.string.composers, R.drawable.ic_composer))
             if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_GENRES))
                 libraryItems.add(Panel(R.string.genres, R.drawable.ic_piano))
             if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_YEAR))

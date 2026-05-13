@@ -30,6 +30,7 @@ import app.simple.felicity.ui.panels.AlbumArtists
 import app.simple.felicity.ui.panels.Albums
 import app.simple.felicity.ui.panels.AlwaysSkipped
 import app.simple.felicity.ui.panels.Artists
+import app.simple.felicity.ui.panels.Composers
 import app.simple.felicity.ui.panels.Favorites
 import app.simple.felicity.ui.panels.Folders
 import app.simple.felicity.ui.panels.FoldersHierarchy
@@ -111,6 +112,7 @@ class ArtFlowHome : MediaFragment() {
                             backProgression = false,
                             menuItems = listOf(
                                     PopupMenuItem(title = R.string.album_artists, icon = R.drawable.ic_artist),
+                                    PopupMenuItem(title = R.string.composers, icon = R.drawable.ic_composer),
                                     PopupMenuItem(title = R.string.genres, icon = R.drawable.ic_piano),
                                     PopupMenuItem(title = R.string.year, icon = R.drawable.ic_date_range),
                                     PopupMenuItem(title = R.string.folders, icon = R.drawable.ic_folder),
@@ -127,6 +129,7 @@ class ArtFlowHome : MediaFragment() {
                             onMenuItemClick = { itemResId ->
                                 when (itemResId) {
                                     R.string.album_artists -> openFragment(AlbumArtists.newInstance(), AlbumArtists.TAG)
+                                    R.string.composers -> openFragment(Composers.newInstance(), Composers.TAG)
                                     R.string.genres -> openFragment(Genres.newInstance(), Genres.TAG)
                                     R.string.year -> openFragment(Year.newInstance(), Year.TAG)
                                     R.string.folders -> openFragment(Folders.newInstance(), Folders.TAG)

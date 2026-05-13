@@ -152,6 +152,9 @@ class DashboardViewModel @Inject constructor(
         if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_ALBUM_ARTISTS))
             panels.add(Panel(R.string.album_artists, R.drawable.ic_artist_16dp))
 
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_COMPOSERS))
+            panels.add(Panel(R.string.composers, R.drawable.ic_composer_16dp))
+
         if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_GENRES))
             panels.add(Panel(R.string.genres, R.drawable.ic_piano_16dp))
 
