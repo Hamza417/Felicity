@@ -24,6 +24,7 @@ import app.simple.felicity.utils.ParcelUtils.parcelable
 import app.simple.felicity.viewmodels.panels.MetadataEditorViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.lifecycle.withCreationCallback
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
@@ -127,13 +128,15 @@ class MetadataEditor : MediaFragment() {
             val synced = bundle.getString(LyricsSearch.KEY_SYNCED_LYRICS)
 
             if (!plain.isNullOrBlank()) {
-                binding.lyricsInput.setText(plain)
+                // binding.lyricsInput.setText(plain)
             }
 
             if (!synced.isNullOrBlank()) {
-                viewLifecycleOwner.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                     lrcRepository.saveLrcToFile(synced, audio.uri)
                 }
+
+                binding.lyricsInput.setText(synced)
             }
         }
     }
