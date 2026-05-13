@@ -297,6 +297,9 @@ jobs:
         needs: [ prepare, build-arm64-v8a, build-x86_64, build-armeabi-v7a, build-x86, build-universal, build-play-universal ]
 
         steps:
+            -   name: Checkout code
+                uses: actions/checkout@v5
+
             -   name: Download all APKs
                 uses: actions/download-artifact@v4
                 with:
