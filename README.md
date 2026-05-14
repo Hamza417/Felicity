@@ -27,6 +27,7 @@ future.
 
 [![](https://img.shields.io/badge/Play%20Store-05acff?logo=googleplay&logoColor=white)](https://play.google.com/store/apps/details?id=app.simple.felicity)
 [![](https://img.shields.io/github/v/release/Hamza417/Felicity?color=181717&logo=github&label=GitHub%20Release)](https://github.com/Hamza417/Felicity/releases/latest)
+[![](https://img.shields.io/f-droid/v/app.simple.felicity?logo=fdroid&logoColor=white&label=F-Droid&color=1976D2)](https://f-droid.org/en/packages/app.simple.felicity/)
 
 _F-Droid MR has been created [here](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/37503)._
 
