@@ -343,11 +343,19 @@ abstract class BasePlayerFragment : MediaFragment() {
         }
 
         equalizer.setOnClickListener {
-            openFragment(Equalizer.newInstance(), Equalizer.TAG)
+            if (AudioPreferences.isHiresOutputEnabled().not()) {
+                openFragment(Equalizer.newInstance(), Equalizer.TAG)
+            } else {
+                showWarning("All processors are disabled. EQ is not available in 32-bit output mode.")
+            }
         }
 
         visualizerButton.setOnClickListener {
-            childFragmentManager.showVisualizerConfig()
+            if (AudioPreferences.isHiresOutputEnabled().not()) {
+                childFragmentManager.showVisualizerConfig()
+            } else {
+                showWarning("All processors are disabled. Visualizers are not available in 32-bit output mode.")
+            }
         }
 
         // Collect lyrics from the shared manager. When this screen and the full Lyrics panel
