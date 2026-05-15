@@ -59,6 +59,14 @@ class AaudioAudioSink(
     private var currentChannelCount: Int = 0
 
     /**
+     * The sample rate from the very last [configure] call, regardless of whether AAudio
+     * is active. This is different from [currentSampleRate], which only updates when an
+     * AAudio stream is successfully created. We need this separate value to detect rate
+     * changes even on the non-AAudio path and to know when to flush the delegate.
+     */
+    private var lastConfiguredSampleRate: Int = 0
+
+    /**
      * Volume last requested by ExoPlayer. Stored so the AudioTrack volume can be
      * un-muted correctly if AAudio is later disabled between configure calls.
      */
@@ -87,6 +95,10 @@ class AaudioAudioSink(
         val sr = inputFormat.sampleRate.takeIf { it > 0 } ?: return
         val ch = inputFormat.channelCount.takeIf { it > 0 } ?: return
 
+        val previousRate = lastConfiguredSampleRate
+        lastConfiguredSampleRate = sr
+        val sampleRateChanged = previousRate > 0 && sr != previousRate
+
         if (!AudioPreferences.isAaudioEnabled()) {
             /**
              * AAudio is off. If a stale stream exists from a previous session,
@@ -94,6 +106,21 @@ class AaudioAudioSink(
              */
             if (aaudioStream != null) {
                 releaseAaudioStream()
+            }
+
+            /**
+             * Even without AAudio, we need to make sure the DefaultAudioSink tears down
+             * its AudioTrack when the sample rate changes. Without this, ExoPlayer's
+             * gapless path keeps the same AudioTrack running and internally resamples the
+             * new track's audio to fit the old rate. The USB DAC never sees a rate change
+             * and its indicator light stays stuck on the previous rate's color.
+             *
+             * Flushing the delegate here signals it to discard the stale buffer and
+             * recreate the AudioTrack at the new rate on the next handleBuffer() call.
+             */
+            if (sampleRateChanged) {
+                super.flush()
+                Log.i(TAG, "Non-AAudio path: sample rate changed ($previousRate → $sr Hz) — flushed delegate to force AudioTrack recreation")
             }
             return
         }
@@ -116,6 +143,27 @@ class AaudioAudioSink(
                 currentSampleRate = sr
                 currentChannelCount = ch
                 isStreamActive = true
+
+                /**
+                 * When the sample rate changes, the muted DefaultAudioSink AudioTrack is
+                 * still open at the OLD rate. AudioFlinger locks the USB HAL output to that
+                 * old rate, so the newly-created AAudio stream at the new rate either fails
+                 * to get exclusive access or has its audio resampled to the old rate by
+                 * AudioFlinger before it reaches the DAC. Either way the DAC's indicator
+                 * light never updates.
+                 *
+                 * Flushing the delegate here forces it to close the stale AudioTrack and
+                 * recreate it at the new sample rate on the next handleBuffer() call. Once
+                 * the old AudioTrack is gone, AudioFlinger can re-negotiate the HAL rate
+                 * with the USB DAC and the indicator light will switch correctly.
+                 *
+                 * The delegate is muted (volume = 0) so there is no audio in its buffer
+                 * that matters discarding it has zero audible impact.
+                 */
+                if (sampleRateChanged) {
+                    super.flush()
+                    Log.i(TAG, "AAudio path: sample rate changed ($previousRate → $sr Hz) — flushed delegate to free USB HAL rate lock")
+                }
 
                 /**
                  * Mute the delegate AudioTrack immediately so only the AAudio stream
@@ -231,6 +279,7 @@ class AaudioAudioSink(
     override fun reset() {
         super.reset()
         releaseAaudioStream()
+        resetRateTracking()
     }
 
     /** Releases the native stream, then the delegate. */
@@ -307,6 +356,16 @@ class AaudioAudioSink(
         isStreamActive = false
         unmuteDelegateIfNeeded()
         Log.i(TAG, "AAudio stream released")
+    }
+
+    /**
+     * Resets all format tracking so the next [configure] call is treated as a fresh start.
+     * Called from [reset] so that after a full player teardown the rate-change detection
+     * starts clean and does not accidentally flush the delegate on the very first configure
+     * of a new playback session.
+     */
+    private fun resetRateTracking() {
+        lastConfiguredSampleRate = 0
     }
 
     /**
