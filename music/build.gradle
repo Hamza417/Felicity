@@ -17,8 +17,8 @@ android {
     defaultConfig {
         applicationId "app.simple.felicity"
 
-        versionCode 18
-        versionName "0.0.18_alpha"
+        versionCode 19
+        versionName "0.0.19_alpha"
     }
 
     signingConfigs {
