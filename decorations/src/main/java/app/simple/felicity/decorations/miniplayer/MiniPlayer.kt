@@ -607,9 +607,33 @@ class MiniPlayer @JvmOverloads constructor(
     }
 
     override fun onFling(e1: MotionEvent?, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
+        // A downward fling that is steeper than horizontal should hide the player
+        // temporarily rather than trigger a page swipe. The player will come back
+        // on its own the next time the attached list is scrolled.
+        if (!isBeingDragged && velocityY > 0f && abs(velocityY) > abs(velocityX) * 1.2f) {
+            val minFling = ViewConfiguration.get(context).scaledMinimumFlingVelocity.toFloat()
+            if (velocityY > minFling) {
+                slideToHideTemporarily()
+                return true
+            }
+        }
         if (scrollEngine.scrollState == SCROLL_STATE_DRAGGING) return false
         scrollEngine.finishDrag(velocityX, dragStartScrollPx)
         return true
+    }
+
+    /**
+     * Slides the player off screen to the hidden position without locking it there permanently.
+     *
+     * Unlike [hide], this does not set [isManuallyControlled], so the normal scroll-driven
+     * show logic in [attachToRecyclerView] and [attachToScrollView] can bring the player
+     * back into view the next time the user scrolls the attached list. Think of it as
+     * a "snooze" — out of the way for now, but ready to return on its own.
+     */
+    private fun slideToHideTemporarily() {
+        if (height == 0) return
+        suppressAutoFromRecyclerUntilIdle = false
+        slideTo(hideDistance, 280L, hideInterpolator)
     }
 
     private fun performPlayPauseClick() {
