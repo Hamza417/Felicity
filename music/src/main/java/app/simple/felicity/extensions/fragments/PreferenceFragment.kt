@@ -29,6 +29,7 @@ import app.simple.felicity.preferences.ConfigurationPreferences
 import app.simple.felicity.preferences.EqualizerPreferences
 import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
+import app.simple.felicity.repository.repositories.SongStatRepository
 import app.simple.felicity.repository.services.AudioDatabaseService
 import app.simple.felicity.ui.preferences.sub.AccentColors
 import app.simple.felicity.ui.preferences.sub.Language
@@ -880,6 +881,26 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val clearPlaybackStats = Preference(
+                title = R.string.clear_playback_stats,
+                summary = R.string.clear_playback_stats_summary,
+                icon = -1,
+                type = PreferenceType.NORMAL,
+                onPreferenceAction = { view, callback ->
+                    withSureDialog {
+                        if (it) {
+                            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Default) {
+                                SongStatRepository(requireContext()).wipeStats()
+
+                                withContext(Dispatchers.Main) {
+                                    showWarning(R.string.done)
+                                }
+                            }
+                        }
+                    }
+                }
+        )
+
         val metadataHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.metadata)
 
         val albumArtistsInsteadOfArtists = Preference(
@@ -1028,6 +1049,7 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(scannerOnResumeToggle)
         preferences.add(activityHeader)
         preferences.add(pauseActivityToggle)
+        preferences.add(clearPlaybackStats)
         preferences.add(metadataHeader)
         preferences.add(albumArtistsInsteadOfArtists)
         preferences.add(musicBrainz)

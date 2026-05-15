@@ -184,5 +184,9 @@ class SongStatRepository @Inject constructor(
     fun getMostSkippedWithStat(): Flow<List<AudioWithStat>> {
         return database.songStatDao().getMostSkippedWithStat()
     }
+
+    suspend fun wipeStats() {
+        database.songStatDao().deleteAllStatsInternal()
+    }
 }
 

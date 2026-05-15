@@ -498,4 +498,6 @@
     <string name="label_on">On %1$s</string>
     <string name="pause_activity">Pause Activity</string>
     <string name="pause_activity_summary">Prevent app from keeping the playback activity records.</string>
+    <string name="clear_playback_stats">Clear Playback Stats</string>
+    <string name="clear_playback_stats_summary">Wipe the playback history and records.</string>
 </resources>

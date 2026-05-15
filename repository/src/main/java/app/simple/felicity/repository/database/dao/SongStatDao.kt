@@ -112,4 +112,11 @@ interface SongStatDao {
     /** Wipes the stat row for a given hash without needing to load it first. */
     @Query("DELETE FROM song_stats WHERE audioHash = :audioHash")
     suspend fun deleteStatByHash(audioHash: Long)
+
+    /**
+     * Deletes all rows from the {@code song_stats} table, effectively wiping all play and skip
+     * history.
+     */
+    @Query("DELETE FROM song_stats")
+    suspend fun deleteAllStatsInternal()
 }
