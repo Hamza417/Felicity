@@ -865,6 +865,21 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val activityHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.activity)
+
+        val pauseActivityToggle = Preference(
+                title = R.string.pause_activity,
+                summary = R.string.pause_activity_summary,
+                icon = R.drawable.ic_pause,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    LibraryPreferences.setActivityPaused((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    LibraryPreferences.isActivityPaused()
+                }
+        )
+
         val metadataHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.metadata)
 
         val albumArtistsInsteadOfArtists = Preference(
@@ -1011,6 +1026,8 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(scanLibrary)
         preferences.add(refreshLibrary)
         preferences.add(scannerOnResumeToggle)
+        preferences.add(activityHeader)
+        preferences.add(pauseActivityToggle)
         preferences.add(metadataHeader)
         preferences.add(albumArtistsInsteadOfArtists)
         preferences.add(musicBrainz)

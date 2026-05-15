@@ -496,4 +496,6 @@
     <string name="active_since_present">%1$s – present</string>
     <string name="released_in">Released %1$s</string>
     <string name="label_on">On %1$s</string>
+    <string name="pause_activity">Pause Activity</string>
+    <string name="pause_activity_summary">Prevent app from keeping the playback activity records.</string>
 </resources>

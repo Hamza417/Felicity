@@ -7,6 +7,7 @@ object LibraryPreferences {
 
     private const val USE_MEDIASTORE_ARTWORK = "use_mediastore_artwork"
     private const val SCANNER_ON_RESUME = "scanner_on_resume"
+    private const val PAUSE_ACTIVITY = "pause_activity"
     const val ALBUM_ARTIST_OVER_ARTIST = "album_artist_over_artist"
 
     /**
@@ -106,6 +107,16 @@ object LibraryPreferences {
 
     fun setMusicBrainzEnabled(enabled: Boolean) {
         SharedPreferences.getSharedPreferences().edit { putBoolean(MUSICBRAINZ_ENABLED, enabled) }
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    fun isActivityPaused(): Boolean {
+        return SharedPreferences.getSharedPreferences().getBoolean(PAUSE_ACTIVITY, false)
+    }
+
+    fun setActivityPaused(paused: Boolean) {
+        SharedPreferences.getSharedPreferences().edit { putBoolean(PAUSE_ACTIVITY, paused) }
     }
 }
 

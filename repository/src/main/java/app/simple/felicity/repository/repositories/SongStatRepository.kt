@@ -1,6 +1,8 @@
 package app.simple.felicity.repository.repositories
 
 import android.content.Context
+import android.util.Log
+import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.AudioStat
@@ -24,6 +26,8 @@ import javax.inject.Singleton
 class SongStatRepository @Inject constructor(
         @param:ApplicationContext private val context: Context
 ) {
+
+    private val TAG = "SongStatRepository"
 
     private val database: AudioDatabase by lazy {
         AudioDatabase.getInstance(context)
@@ -58,6 +62,11 @@ class SongStatRepository @Inject constructor(
      * @param audioHash The XXHash64 fingerprint of the audio file (matches {@code audio.hash}).
      */
     suspend fun recordPlay(audioHash: Long) {
+        if (LibraryPreferences.isActivityPaused()) {
+            Log.d(TAG, "Skipping play stat update for hash $audioHash because activity is paused")
+            return
+        }
+
         val dao = database.songStatDao()
         val existing = dao.getStatByHash(audioHash)
         if (existing == null) {
@@ -88,6 +97,11 @@ class SongStatRepository @Inject constructor(
      * @param audioHash The XXHash64 fingerprint of the audio file.
      */
     suspend fun recordSkip(audioHash: Long) {
+        if (LibraryPreferences.isActivityPaused()) {
+            Log.d(TAG, "Skipping skip stat update for hash $audioHash because activity is paused")
+            return
+        }
+
         val dao = database.songStatDao()
         val existing = dao.getStatByHash(audioHash)
         if (existing == null) {
@@ -107,6 +121,11 @@ class SongStatRepository @Inject constructor(
      * @param audioHash The XXHash64 fingerprint of the audio file.
      */
     suspend fun recordReplay(audioHash: Long) {
+        if (LibraryPreferences.isActivityPaused()) {
+            Log.d(TAG, "Skipping replay stat update for hash $audioHash because activity is paused")
+            return
+        }
+
         val dao = database.songStatDao()
         val existing = dao.getStatByHash(audioHash)
         if (existing == null) {
