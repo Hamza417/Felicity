@@ -29,8 +29,6 @@ future.
 [![](https://img.shields.io/github/v/release/Hamza417/Felicity?color=181717&logo=github&label=GitHub%20Release)](https://github.com/Hamza417/Felicity/releases/latest)
 [![](https://img.shields.io/f-droid/v/app.simple.felicity?logo=fdroid&logoColor=white&label=F-Droid&color=1976D2)](https://f-droid.org/en/packages/app.simple.felicity/)
 
-_F-Droid MR has been created [here](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/37503)._
-
 ## Purchase
 
 [![](https://img.shields.io/badge/License%20Key%20(GumRoad)-Purchase-23a094?logo=gumroad&logoColor=white)](https://hamza417.gumroad.com/l/Felicity/)
