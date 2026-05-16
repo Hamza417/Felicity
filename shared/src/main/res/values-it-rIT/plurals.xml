@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="number_of_songs">
+        <item quantity="one">%d Brano</item>
+        <item quantity="other">%d Brani</item>
+    </plurals>
+    <plurals name="songs_selected">
+        <item quantity="one">%d Brano Selezionato</item>
+        <item quantity="other">%d Brani Selezionati</item>
+    </plurals>
+    <plurals name="number_of_albums">
+        <item quantity="one">%d Album</item>
+        <item quantity="other">%d Album</item>
+    </plurals>
+    <plurals name="total_times">
+        <item quantity="one">%d Volta</item>
+        <item quantity="other">%d Volte</item>
+    </plurals>
+</resources>
