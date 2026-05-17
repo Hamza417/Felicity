@@ -182,11 +182,28 @@ object EqualizerManager {
      * Enables or disables the equalizer effect and persists the new state.
      * When disabled the processor uses a zero-cost bypass path; no biquad math is executed.
      *
+     * Persisting the value here AND forwarding it to the processor is intentional — this
+     * method may be called directly from the UI (e.g., a preset loader) without going
+     * through the SharedPreferences listener, so both the store and the live engine must
+     * be updated in one call.
+     *
      * @param enabled True to activate the EQ bands, false to bypass them entirely.
      */
     fun setEnabled(enabled: Boolean) {
         EqualizerPreferences.setEqEnabled(enabled)
         processor?.eqEnabled = enabled
+    }
+
+    /**
+     * Applies the persisted EQ enabled state from [EqualizerPreferences] directly to the
+     * processor without writing to preferences again.
+     *
+     * Called by the player service's [android.content.SharedPreferences.OnSharedPreferenceChangeListener]
+     * so that a preference write from the UI is forwarded to the engine without causing
+     * a redundant second write that would re-trigger the listener.
+     */
+    fun applyEnabledFromPreference() {
+        processor?.eqEnabled = EqualizerPreferences.isEqEnabled()
     }
 
     /**
