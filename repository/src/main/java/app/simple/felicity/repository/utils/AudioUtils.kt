@@ -18,12 +18,23 @@ object AudioUtils {
 
     var albumArtistOverArtist: Boolean = LibraryPreferences.isAlbumArtistOverArtist()
 
-    fun Audio.getArtists(): String {
+    fun Audio.getProperArtists(): String {
         if (albumArtistOverArtist) {
-            return albumArtist.ifNullOrBlank("Unknown")
+            return albumArtist
+                .ifNullOrBlank("Unknown")
         }
 
         return artist.ifNullOrBlank("Unknown")
+    }
+
+    fun Audio.getProperAlbum(): String {
+        return album.ifNullOrBlank("Unknown")
+    }
+
+    fun Audio.getProperTitle(): String {
+        return title.ifNullOrBlank(
+                path?.substringAfterLast('/')
+                    .ifNullOrBlank("Unknown"))
     }
 
     /**

@@ -55,6 +55,9 @@ import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.PlaylistWithSongs
 import app.simple.felicity.repository.repositories.LrcRepository
 import app.simple.felicity.repository.shuffle.Shuffle.smartShuffle
+import app.simple.felicity.repository.utils.AudioUtils.getProperAlbum
+import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
 import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.theme.managers.ThemeManager
@@ -386,10 +389,10 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
 
             val onViewCreated: (DialogSongMenuBinding) -> Unit = { binding ->
                 miniPlayerCallbacks?.onHideMiniPlayer()
-                binding.title.text = audio.title
+                binding.title.text = audio.getProperTitle()
                 binding.title.addAudioQualityIcon(audio)
-                binding.secondaryDetail.text = audio.artist
-                binding.tertiaryDetail.text = audio.album
+                binding.secondaryDetail.text = audio.getProperArtists()
+                binding.tertiaryDetail.text = audio.getProperAlbum()
 
                 if (imageView.isNull()) {
                     binding.cover.loadArtCoverWithPayload(audio)
@@ -625,14 +628,14 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                     MediaPlaybackManager.duck()
                 }
 
-                val title = audio.title
+                val title = audio.getProperTitle()
                 val fullText = getString(R.string.delete_audio_summary, title)
 
                 val startIndex = fullText.indexOf(title ?: "")
                 val spannable = SpannableString(fullText)
 
                 if (startIndex >= 0) {
-                    val endIndex = startIndex + title!!.length
+                    val endIndex = startIndex + title.length
 
                     spannable.setSpan(
                             StyleSpan(Typeface.BOLD),

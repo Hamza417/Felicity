@@ -16,6 +16,8 @@ import app.simple.felicity.managers.LyricsLoadingStatus
 import app.simple.felicity.preferences.LyricsPreferences
 import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.shared.utils.ViewUtils.visible
 import app.simple.felicity.utils.ParcelUtils.parcelable
@@ -55,8 +57,8 @@ class Lyrics : MediaBottomDialogFragment(), AddLyrics.Companion.OnLyricsCreatedL
         setAlignment()
         applyTextSize()
 
-        binding.title.text = audio?.title
-        binding.artists.text = audio?.artist
+        binding.title.text = audio?.getProperTitle()
+        binding.artists.text = audio?.getProperArtists()
 
         lyricsViewModel.getLrcData().observe(viewLifecycleOwner) { lrcData ->
             binding.lrcView.reset()

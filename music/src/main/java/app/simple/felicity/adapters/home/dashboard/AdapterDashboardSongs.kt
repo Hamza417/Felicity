@@ -5,11 +5,12 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
-import app.simple.felicity.R
 import app.simple.felicity.databinding.AdapterCarouselBinding
 import app.simple.felicity.decorations.overscroll.HorizontalListViewHolder
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 
 /**
  * Reusable horizontal list adapter for [Audio] items shown in the dashboard carousels.
@@ -38,10 +39,8 @@ class AdapterDashboardSongs(
     override fun onBindViewHolder(holder: Holder, position: Int) {
         val song = songs[position]
         holder.binding.art.loadArtCoverWithPayload(song)
-        holder.binding.title.text = song.title
-            ?: holder.itemView.context.getString(R.string.unknown)
-        holder.binding.artist.text = song.artist
-            ?: holder.itemView.context.getString(R.string.unknown)
+        holder.binding.title.text = song.getProperTitle()
+        holder.binding.artist.text = song.getProperArtists()
         holder.binding.container.setOnClickListener {
             callbacks?.onSongClicked(songs.toMutableList(), holder.bindingAdapterPosition)
         }
@@ -85,10 +84,8 @@ class AdapterDashboardSongs(
         if (songs.isEmpty()) return
         val randomSong = songs.random()
         holder.binding.art.loadArtCoverWithPayload(randomSong)
-        holder.binding.title.text = randomSong.title
-            ?: holder.itemView.context.getString(R.string.unknown)
-        holder.binding.artist.text = randomSong.artist
-            ?: holder.itemView.context.getString(R.string.unknown)
+        holder.binding.title.text = randomSong.getProperTitle()
+        holder.binding.artist.text = randomSong.getProperArtists()
     }
 
     /**

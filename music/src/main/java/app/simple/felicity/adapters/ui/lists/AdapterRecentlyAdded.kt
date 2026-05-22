@@ -18,7 +18,9 @@ import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.preferences.RecentlyAddedPreferences
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.repository.utils.AudioUtils.getArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperAlbum
+import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 import app.simple.felicity.utils.AdapterUtils.addAudioQualityIcon
 import com.bumptech.glide.Glide
 
@@ -128,9 +130,9 @@ class AdapterRecentlyAdded(initial: List<Audio>) : FastScrollAdapter<VerticalLis
 
     inner class ListHolder(val binding: AdapterStyleListBinding) : VerticalListViewHolder(binding.root) {
         fun bind(audio: Audio, isLightBind: Boolean) {
-            binding.title.setTextOrUnknown(audio.title)
-            binding.secondaryDetail.setTextOrUnknown(audio.getArtists())
-            binding.tertiaryDetail.setTextOrUnknown(audio.album)
+            binding.title.setTextOrUnknown(audio.getProperTitle())
+            binding.secondaryDetail.setTextOrUnknown(audio.getProperArtists())
+            binding.tertiaryDetail.setTextOrUnknown(audio.getProperAlbum())
             binding.title.addAudioQualityIcon(audio)
             binding.container.setAudioID(audio.id)
             if (isLightBind) return
@@ -146,14 +148,14 @@ class AdapterRecentlyAdded(initial: List<Audio>) : FastScrollAdapter<VerticalLis
     }
 
     inner class GridHolder(val binding: AdapterStyleGridBinding) : VerticalListViewHolder(binding.root) {
-        fun bind(song: Audio, isLightBind: Boolean) {
+        fun bind(audio: Audio, isLightBind: Boolean) {
             binding.container.enableGridMode = true
-            binding.title.setTextOrUnknown(song.title)
-            binding.secondaryDetail.setTextOrUnknown(song.artist)
-            binding.tertiaryDetail.setTextOrUnknown(song.album)
-            binding.container.setAudioID(song.id)
+            binding.title.setTextOrUnknown(audio.getProperTitle())
+            binding.secondaryDetail.setTextOrUnknown(audio.getProperArtists())
+            binding.tertiaryDetail.setTextOrUnknown(audio.getProperAlbum())
+            binding.container.setAudioID(audio.id)
             if (isLightBind) return
-            binding.albumArt.loadArtCoverWithPayload(song)
+            binding.albumArt.loadArtCoverWithPayload(audio)
             binding.container.setOnLongClickListener {
                 generalAdapterCallbacks?.onSongLongClicked(songs, bindingAdapterPosition, binding.albumArt)
                 true
@@ -166,9 +168,9 @@ class AdapterRecentlyAdded(initial: List<Audio>) : FastScrollAdapter<VerticalLis
 
     inner class LabelHolder(val binding: AdapterStyleLabelsBinding) : VerticalListViewHolder(binding.root) {
         fun bind(audio: Audio, isLightBind: Boolean) {
-            binding.title.setTextOrUnknown(audio.title)
-            binding.secondaryDetail.setTextOrUnknown(audio.getArtists())
-            binding.tertiaryDetail.setTextOrUnknown(audio.album)
+            binding.title.setTextOrUnknown(audio.getProperTitle())
+            binding.secondaryDetail.setTextOrUnknown(audio.getProperArtists())
+            binding.tertiaryDetail.setTextOrUnknown(audio.getProperAlbum())
             binding.title.addAudioQualityIcon(audio)
             binding.container.setAudioID(audio.id)
             if (isLightBind) return

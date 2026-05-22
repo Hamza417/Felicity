@@ -24,7 +24,8 @@ import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.repository.utils.AudioUtils.getArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 import app.simple.felicity.shared.utils.ColorUtils.changeAlpha
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.utils.AdapterUtils.addAudioQualityIcon
@@ -187,8 +188,8 @@ class AdapterPlayingQueue(initial: List<Audio>) : FastScrollAdapter<AdapterPlayi
         }
 
         fun bind(audio: Audio, isLightBind: Boolean) {
-            binding.title.setTextOrUnknown(audio.title)
-            binding.secondaryDetail.setTextOrUnknown(audio.getArtists())
+            binding.title.setTextOrUnknown(audio.getProperTitle())
+            binding.secondaryDetail.setTextOrUnknown(audio.getProperArtists())
             binding.tertiaryDetail.setTextOrUnknown(audio.album)
             binding.title.addAudioQualityIcon(audio)
             binding.container.enableDragHandle = true

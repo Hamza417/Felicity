@@ -52,7 +52,8 @@ import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.repositories.AudioRepository
 import app.simple.felicity.repository.repositories.LrcRepository
 import app.simple.felicity.repository.services.AudioDatabaseService
-import app.simple.felicity.repository.utils.AudioUtils.getArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
 import app.simple.felicity.shared.utils.UnitUtils.dpToPx
@@ -186,8 +187,8 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
             MediaPlaybackManager.songListFlow.collect { songs ->
                 val items = songs.map { audio ->
                     MiniPlayerItem(
-                            title = audio.title,
-                            artist = audio.getArtists(),
+                            title = audio.getProperTitle(),
+                            artist = audio.getProperArtists(),
                             payload = audio
                     )
                 }

@@ -35,7 +35,9 @@ import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.repository.utils.AudioUtils.getArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperAlbum
+import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 import app.simple.felicity.ui.panels.Equalizer
 import app.simple.felicity.ui.panels.Lyrics
 import app.simple.felicity.ui.panels.PlayingQueue
@@ -404,9 +406,9 @@ abstract class BasePlayerFragment : MediaFragment() {
     private fun updateState() {
         val audio = MediaPlaybackManager.getCurrentSong() ?: return
         lastLoadedAudioId = audio.id
-        title.text = audio.title ?: getString(R.string.unknown)
-        artist.text = audio.getArtists()
-        album.text = audio.album ?: getString(R.string.unknown)
+        title.text = audio.getProperTitle()
+        artist.text = audio.getProperArtists()
+        album.text = audio.getProperAlbum()
         pcmInfo.text = PcmInfoFormatter.formatPcmInfo(audio)
         seekbar.setDuration(audio.duration)
         seekbar.setProgress(MediaPlaybackManager.getSeekPosition(), animate = false)
@@ -512,9 +514,9 @@ abstract class BasePlayerFragment : MediaFragment() {
             // Genuine song change: update text with the directional transition effect and
             // trigger the seekbar left-bar fade before the new waveform data arrives.
             lastLoadedAudioId = audio.id
-            title.setTextWithEffect(audio.title ?: getString(R.string.unknown), forward)
-            artist.setTextWithEffect(audio.getArtists(), forward, 50L)
-            album.setTextWithEffect(audio.album ?: getString(R.string.unknown), forward, 100L)
+            title.setTextWithEffect(audio.getProperTitle(), forward)
+            artist.setTextWithEffect(audio.getProperArtists(), forward, 50L)
+            album.setTextWithEffect(audio.getProperAlbum(), forward, 100L)
             pcmInfo.text = PcmInfoFormatter.formatPcmInfo(audio)
             seekbar.setDurationWithReset(audio.duration)
             lrc.clear()

@@ -30,6 +30,8 @@ import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.listeners.MediaStateListener
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.shuffle.Shuffle.smartShuffle
+import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 import app.simple.felicity.shared.utils.ProcessUtils.ensureOnMainThread
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -902,7 +904,7 @@ object MediaPlaybackManager {
                     .setMediaMetadata(
                             MediaMetadata.Builder()
                                 .setArtist(audio.artist)
-                                .setTitle(audio.title)
+                                .setTitle(audio.getProperTitle())
                                 .build()
                     )
                     .build()
@@ -958,8 +960,8 @@ object MediaPlaybackManager {
                     .setUri(uri)
                     .setMediaMetadata(
                             MediaMetadata.Builder()
-                                .setArtist(audio.artist)
-                                .setTitle(audio.title)
+                                .setArtist(audio.getProperArtists())
+                                .setTitle(audio.getProperTitle())
                                 .build()
                     )
                     .build()
@@ -1022,8 +1024,8 @@ object MediaPlaybackManager {
                     .setUri(uri)
                     .setMediaMetadata(
                             MediaMetadata.Builder()
-                                .setArtist(audio.artist)
-                                .setTitle(audio.title)
+                                .setArtist(audio.getProperArtists())
+                                .setTitle(audio.getProperTitle())
                                 .build()
                     )
                     .build()

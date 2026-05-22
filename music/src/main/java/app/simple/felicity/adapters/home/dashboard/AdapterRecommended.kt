@@ -8,6 +8,7 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.databinding.AdapterGridImageBinding
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 
 /**
  * Adapter for the recommended spanned art grid on the dashboard.
@@ -50,7 +51,7 @@ class AdapterRecommended(private var list: List<Audio>) :
                 true
             }
 
-            holder.binding.title.text = item.title
+            holder.binding.title.text = item.getProperTitle()
         }
     }
 

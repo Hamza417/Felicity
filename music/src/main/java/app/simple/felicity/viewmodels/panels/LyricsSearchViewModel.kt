@@ -12,6 +12,7 @@ import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.managers.LyricsManager
 import app.simple.felicity.repository.models.LrcLibResponse
 import app.simple.felicity.repository.repositories.LrcRepository
+import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -90,7 +91,7 @@ class LyricsSearchViewModel @Inject constructor(
     private fun triggerAutoSearch() {
         val audio = MediaPlaybackManager.getCurrentSong()
         if (audio != null) {
-            val title = audio.title ?: audio.name
+            val title = audio.getProperTitle()
             val artist = audio.artist ?: ""
             performSearch(title, artist)
         } else {
@@ -216,7 +217,7 @@ class LyricsSearchViewModel @Inject constructor(
      */
     private fun buildDefaultKeyword(): String {
         val audio = MediaPlaybackManager.getCurrentSong() ?: return ""
-        return audio.title ?: audio.name
+        return audio.getProperTitle()
     }
 
     companion object {

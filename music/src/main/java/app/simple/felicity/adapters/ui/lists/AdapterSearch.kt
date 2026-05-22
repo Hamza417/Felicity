@@ -24,7 +24,9 @@ import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Genre
-import app.simple.felicity.repository.utils.AudioUtils.getArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperAlbum
+import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.utils.AdapterUtils.addAudioQualityIcon
 import com.bumptech.glide.Glide
@@ -274,9 +276,9 @@ class AdapterSearch : FastScrollAdapter<VerticalListViewHolder>() {
 
         fun bind(item: SearchAdapterItem.SongItem, isLightBind: Boolean) {
             val audio = item.audio
-            binding.title.setTextOrUnknown(audio.title)
-            binding.secondaryDetail.setTextOrUnknown(audio.getArtists())
-            binding.tertiaryDetail.setTextOrUnknown(audio.album)
+            binding.title.setTextOrUnknown(audio.getProperTitle())
+            binding.secondaryDetail.setTextOrUnknown(audio.getProperArtists())
+            binding.tertiaryDetail.setTextOrUnknown(audio.getProperAlbum())
             binding.title.addAudioQualityIcon(audio)
             binding.container.setAudioID(audio.id)
 
@@ -308,9 +310,9 @@ class AdapterSearch : FastScrollAdapter<VerticalListViewHolder>() {
         fun bind(item: SearchAdapterItem.SongItem, isLightBind: Boolean) {
             val audio = item.audio
             binding.container.enableGridMode = true
-            binding.title.setTextOrUnknown(audio.title)
-            binding.secondaryDetail.setTextOrUnknown(audio.artist)
-            binding.tertiaryDetail.setTextOrUnknown(audio.album)
+            binding.title.setTextOrUnknown(audio.getProperTitle())
+            binding.secondaryDetail.setTextOrUnknown(audio.getProperArtists())
+            binding.tertiaryDetail.setTextOrUnknown(audio.getProperAlbum())
             binding.container.setAudioID(audio.id)
 
             if (isLightBind) return
@@ -340,9 +342,9 @@ class AdapterSearch : FastScrollAdapter<VerticalListViewHolder>() {
 
         fun bind(item: SearchAdapterItem.SongItem, isLightBind: Boolean) {
             val audio = item.audio
-            binding.title.setTextOrUnknown(audio.title)
-            binding.secondaryDetail.setTextOrUnknown(audio.getArtists())
-            binding.tertiaryDetail.setTextOrUnknown(audio.album)
+            binding.title.setTextOrUnknown(audio.getProperTitle())
+            binding.secondaryDetail.setTextOrUnknown(audio.getProperArtists())
+            binding.tertiaryDetail.setTextOrUnknown(audio.getProperAlbum())
             binding.title.addAudioQualityIcon(audio)
             binding.container.setAudioID(audio.id)
 

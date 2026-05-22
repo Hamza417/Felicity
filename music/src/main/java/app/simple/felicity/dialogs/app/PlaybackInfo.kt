@@ -14,6 +14,7 @@ import app.simple.felicity.databinding.DialogPlaybackInfoBinding
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 import app.simple.felicity.shared.utils.LocaleUtils
 import app.simple.felicity.shared.utils.TimeUtils
 import app.simple.felicity.utils.DateUtils.toDate
@@ -74,7 +75,7 @@ class PlaybackInfo : ScopedBottomSheetFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.title.text = audio.title
+        binding.title.text = audio.getProperTitle()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {

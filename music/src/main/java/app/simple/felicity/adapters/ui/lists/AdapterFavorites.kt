@@ -18,7 +18,8 @@ import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.preferences.FavoritesPreferences
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.repository.utils.AudioUtils.getArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 import app.simple.felicity.utils.AdapterUtils.addAudioQualityIcon
 import com.bumptech.glide.Glide
 
@@ -128,8 +129,8 @@ class AdapterFavorites(initial: List<Audio>) : FastScrollAdapter<VerticalListVie
 
     inner class ListHolder(val binding: AdapterStyleListBinding) : VerticalListViewHolder(binding.root) {
         fun bind(audio: Audio, isLightBind: Boolean) {
-            binding.title.setTextOrUnknown(audio.title)
-            binding.secondaryDetail.setTextOrUnknown(audio.getArtists())
+            binding.title.setTextOrUnknown(audio.getProperTitle())
+            binding.secondaryDetail.setTextOrUnknown(audio.getProperArtists())
             binding.tertiaryDetail.setTextOrUnknown(audio.album)
             binding.title.addAudioQualityIcon(audio)
             binding.container.setAudioID(audio.id)
@@ -148,8 +149,8 @@ class AdapterFavorites(initial: List<Audio>) : FastScrollAdapter<VerticalListVie
     inner class GridHolder(val binding: AdapterStyleGridBinding) : VerticalListViewHolder(binding.root) {
         fun bind(song: Audio, isLightBind: Boolean) {
             binding.container.enableGridMode = true
-            binding.title.setTextOrUnknown(song.title)
-            binding.secondaryDetail.setTextOrUnknown(song.artist)
+            binding.title.setTextOrUnknown(song.getProperTitle())
+            binding.secondaryDetail.setTextOrUnknown(song.getProperArtists())
             binding.tertiaryDetail.setTextOrUnknown(song.album)
             binding.container.setAudioID(song.id)
             if (isLightBind) return
@@ -166,8 +167,8 @@ class AdapterFavorites(initial: List<Audio>) : FastScrollAdapter<VerticalListVie
 
     inner class LabelHolder(val binding: AdapterStyleLabelsBinding) : VerticalListViewHolder(binding.root) {
         fun bind(audio: Audio, isLightBind: Boolean) {
-            binding.title.setTextOrUnknown(audio.title)
-            binding.secondaryDetail.setTextOrUnknown(audio.getArtists())
+            binding.title.setTextOrUnknown(audio.getProperTitle())
+            binding.secondaryDetail.setTextOrUnknown(audio.getProperArtists())
             binding.tertiaryDetail.setTextOrUnknown(audio.album)
             binding.title.addAudioQualityIcon(audio)
             binding.container.setAudioID(audio.id)

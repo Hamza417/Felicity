@@ -18,7 +18,9 @@ import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.preferences.FolderHierarchyPreferences
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Folder
-import app.simple.felicity.repository.utils.AudioUtils.getArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperAlbum
+import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 import app.simple.felicity.utils.AdapterUtils.addAudioQualityIcon
 import app.simple.felicity.viewmodels.panels.FolderHierarchyViewModel.FolderHierarchyContents
 import com.bumptech.glide.Glide
@@ -174,9 +176,9 @@ class AdapterFolderHierarchy(contents: FolderHierarchyContents) : RecyclerView.A
         }
 
         fun bind(audio: Audio) {
-            binding.title.setTextOrUnknown(audio.title)
-            binding.secondaryDetail.setTextOrUnknown(audio.getArtists())
-            binding.tertiaryDetail.setTextOrUnknown(audio.album)
+            binding.title.setTextOrUnknown(audio.getProperTitle())
+            binding.secondaryDetail.setTextOrUnknown(audio.getProperArtists())
+            binding.tertiaryDetail.setTextOrUnknown(audio.getProperAlbum())
             binding.title.addAudioQualityIcon(audio)
             bindSelectionState(audio)
             binding.cover.loadArtCoverWithPayload(audio)
@@ -198,9 +200,9 @@ class AdapterFolderHierarchy(contents: FolderHierarchyContents) : RecyclerView.A
 
         fun bind(song: Audio) {
             binding.container.enableGridMode = true
-            binding.title.setTextOrUnknown(song.title)
-            binding.secondaryDetail.setTextOrUnknown(song.artist)
-            binding.tertiaryDetail.setTextOrUnknown(song.album)
+            binding.title.setTextOrUnknown(song.getProperTitle())
+            binding.secondaryDetail.setTextOrUnknown(song.getProperArtists())
+            binding.tertiaryDetail.setTextOrUnknown(song.getProperAlbum())
             bindSelectionState(song)
             binding.albumArt.loadArtCoverWithPayload(song)
             binding.container.setOnClickListener {

@@ -18,7 +18,8 @@ import app.simple.felicity.decorations.seekbars.FelicitySeekbar
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.repository.utils.AudioUtils.getArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 import app.simple.felicity.ui.subpanels.LrcEditor.Companion.SEEK_JUMP_MS
 import app.simple.felicity.utils.ParcelUtils.parcelable
 import app.simple.felicity.viewmodels.player.LrcEditorViewModel
@@ -82,8 +83,8 @@ class LrcEditor : MediaFragment() {
         super.onViewCreated(view, savedInstanceState)
         requireHiddenMiniPlayer()
 
-        binding.name.text = audio.title
-        binding.artist.text = audio.getArtists()
+        binding.name.text = audio.getProperTitle()
+        binding.artist.text = audio.getProperArtists()
 
         setupRecyclerView()
         setupSeekbar()

@@ -18,7 +18,9 @@ import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.preferences.SongsPreferences
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.repository.utils.AudioUtils.getArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperAlbum
+import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 import app.simple.felicity.utils.AdapterUtils.addAudioQualityIcon
 import com.bumptech.glide.Glide
 
@@ -134,9 +136,9 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
         }
 
         fun bind(audio: Audio, isLightBind: Boolean) {
-            binding.title.setTextOrUnknown(audio.title)
-            binding.secondaryDetail.setTextOrUnknown(audio.getArtists())
-            binding.tertiaryDetail.setTextOrUnknown(audio.album)
+            binding.title.setTextOrUnknown(audio.getProperTitle())
+            binding.secondaryDetail.setTextOrUnknown(audio.getProperArtists())
+            binding.tertiaryDetail.setTextOrUnknown(audio.getProperAlbum())
             binding.title.addAudioQualityIcon(audio)
             bindSelectionState(audio)
             if (isLightBind) return
@@ -156,14 +158,14 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
             binding.container.setAudioID(song.id)
         }
 
-        fun bind(song: Audio, isLightBind: Boolean) {
+        fun bind(audio: Audio, isLightBind: Boolean) {
             binding.container.enableGridMode = true
-            binding.title.setTextOrUnknown(song.title)
-            binding.secondaryDetail.setTextOrUnknown(song.artist)
-            binding.tertiaryDetail.setTextOrUnknown(song.album)
-            bindSelectionState(song)
+            binding.title.setTextOrUnknown(audio.getProperTitle())
+            binding.secondaryDetail.setTextOrUnknown(audio.getProperArtists())
+            binding.tertiaryDetail.setTextOrUnknown(audio.getProperAlbum())
+            bindSelectionState(audio)
             if (isLightBind) return
-            binding.albumArt.loadArtCoverWithPayload(song)
+            binding.albumArt.loadArtCoverWithPayload(audio)
 
             binding.container.setOnLongClickListener {
                 generalAdapterCallbacks?.onSongLongClicked(songs, bindingAdapterPosition, binding.albumArt)
@@ -176,12 +178,12 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
     }
 
     inner class LabelHolder(val binding: AdapterStyleLabelsBinding) : VerticalListViewHolder(binding.root) {
-        fun bind(song: Audio, isLightBind: Boolean) {
-            binding.title.setTextOrUnknown(song.title)
-            binding.secondaryDetail.setTextOrUnknown(song.getArtists())
-            binding.tertiaryDetail.setTextOrUnknown(song.album)
-            binding.title.addAudioQualityIcon(song)
-            binding.container.setAudioID(song.id)
+        fun bind(audio: Audio, isLightBind: Boolean) {
+            binding.title.setTextOrUnknown(audio.getProperTitle())
+            binding.secondaryDetail.setTextOrUnknown(audio.getProperArtists())
+            binding.tertiaryDetail.setTextOrUnknown(audio.getProperAlbum())
+            binding.title.addAudioQualityIcon(audio)
+            binding.container.setAudioID(audio.id)
             if (isLightBind) return
             binding.container.setOnLongClickListener {
                 generalAdapterCallbacks?.onSongLongClicked(songs, bindingAdapterPosition, null)
@@ -191,11 +193,5 @@ class AdapterSongs(initial: List<Audio>) : FastScrollAdapter<VerticalListViewHol
                 generalAdapterCallbacks?.onSongClicked(songs, bindingAdapterPosition, it)
             }
         }
-    }
-
-    companion object {
-        const val VIEW_TYPE_LIST = CommonPreferencesConstants.GRID_TYPE_LIST
-        const val VIEW_TYPE_GRID = CommonPreferencesConstants.GRID_TYPE_GRID
-        const val VIEW_TYPE_LABEL = CommonPreferencesConstants.GRID_TYPE_LABEL
     }
 }

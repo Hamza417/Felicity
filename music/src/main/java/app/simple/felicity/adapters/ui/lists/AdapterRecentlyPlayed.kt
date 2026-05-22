@@ -20,7 +20,8 @@ import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.preferences.RecentlyPlayedPreferences
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.AudioWithStat
-import app.simple.felicity.repository.utils.AudioUtils.getArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 import app.simple.felicity.utils.AdapterUtils.addAudioQualityIcon
 import com.bumptech.glide.Glide
 
@@ -152,8 +153,8 @@ class AdapterRecentlyPlayed(initial: List<AudioWithStat>) : FastScrollAdapter<Ve
     inner class ListHolder(val binding: AdapterStyleListBinding) : VerticalListViewHolder(binding.root) {
         fun bind(item: AudioWithStat, isLightBind: Boolean) {
             val audio = item.audio
-            binding.title.setTextOrUnknown(audio.title)
-            binding.secondaryDetail.setTextOrUnknown(audio.getArtists())
+            binding.title.setTextOrUnknown(audio.getProperTitle())
+            binding.secondaryDetail.setTextOrUnknown(audio.getProperArtists())
             binding.tertiaryDetail.text = buildTertiaryText(item)
             binding.title.addAudioQualityIcon(audio)
             binding.container.setAudioID(audio.id)
@@ -173,7 +174,7 @@ class AdapterRecentlyPlayed(initial: List<AudioWithStat>) : FastScrollAdapter<Ve
         fun bind(item: AudioWithStat, isLightBind: Boolean) {
             val audio = item.audio
             binding.container.enableGridMode = true
-            binding.title.setTextOrUnknown(audio.title)
+            binding.title.setTextOrUnknown(audio.getProperTitle())
             binding.secondaryDetail.setTextOrUnknown(audio.artist)
             binding.tertiaryDetail.text = buildTertiaryText(item)
             binding.container.setAudioID(audio.id)
@@ -192,8 +193,8 @@ class AdapterRecentlyPlayed(initial: List<AudioWithStat>) : FastScrollAdapter<Ve
     inner class LabelHolder(val binding: AdapterStyleLabelsBinding) : VerticalListViewHolder(binding.root) {
         fun bind(item: AudioWithStat, isLightBind: Boolean) {
             val audio = item.audio
-            binding.title.setTextOrUnknown(audio.title)
-            binding.secondaryDetail.setTextOrUnknown(audio.getArtists())
+            binding.title.setTextOrUnknown(audio.getProperTitle())
+            binding.secondaryDetail.setTextOrUnknown(audio.getProperArtists())
             binding.tertiaryDetail.text = buildTertiaryText(item)
             binding.title.addAudioQualityIcon(audio)
             binding.container.setAudioID(audio.id)

@@ -5,7 +5,8 @@ import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.repository.utils.AudioUtils.getArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 import app.simple.felicity.utils.AdapterUtils.addAudioQualityIcon
 
 /**
@@ -32,9 +33,9 @@ class Song(val binding: AdapterStyleListBinding) : VerticalListViewHolder(bindin
      */
     fun bind(audio: Audio, showTrackInfo: Boolean = false, totalSongs: Int = 0) {
         binding.apply {
-            title.setTextOrUnknown(audio.title)
+            title.setTextOrUnknown(audio.getProperTitle())
             title.addAudioQualityIcon(audio)
-            secondaryDetail.setTextOrUnknown(audio.getArtists())
+            secondaryDetail.setTextOrUnknown(audio.getProperArtists())
             if (showTrackInfo && totalSongs > 0) {
                 // trackNumber may be stored as "N/total" by the tag reader, so extract
                 // only the part before the slash to avoid showing "N/total/total".

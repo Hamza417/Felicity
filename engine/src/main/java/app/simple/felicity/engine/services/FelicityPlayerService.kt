@@ -66,6 +66,9 @@ import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.repositories.AudioRepository
 import app.simple.felicity.repository.repositories.SongStatRepository
+import app.simple.felicity.repository.utils.AudioUtils.getProperAlbum
+import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -1403,8 +1406,8 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     private fun broadcastWidgetUpdate() {
         val mediaItem = player.currentMediaItem ?: return
         val currentSong = MediaPlaybackManager.getCurrentSong()
-        val title = currentSong?.title
-        val artist = currentSong?.artist
+        val title = currentSong?.getProperTitle()
+        val artist = currentSong?.getProperArtists()
         val isPlaying = player.isPlaying
         val songId = mediaItem.mediaId.toLongOrNull() ?: -1L
 
@@ -1944,9 +1947,9 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                             .setUri(audio.uri)
                             .setMediaMetadata(
                                     MediaMetadata.Builder()
-                                        .setTitle(audio.title ?: "Unknown Title")
-                                        .setArtist(audio.artist ?: "Unknown Artist")
-                                        .setAlbumTitle(audio.album ?: "Unknown Album")
+                                        .setTitle(audio.getProperTitle())
+                                        .setArtist(audio.getProperArtists())
+                                        .setAlbumTitle(audio.getProperAlbum())
                                         .setIsBrowsable(false) // Songs are leaves, not folders
                                         .setIsPlayable(true)
                                         .build()
@@ -2004,9 +2007,9 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                             .setUri(audio.uri)
                             .setMediaMetadata(
                                     MediaMetadata.Builder()
-                                        .setTitle(audio.title ?: "Unknown Title")
-                                        .setArtist(audio.artist ?: "Unknown Artist")
-                                        .setAlbumTitle(audio.album ?: "Unknown Album")
+                                        .setTitle(audio.getProperTitle())
+                                        .setArtist(audio.getProperArtists())
+                                        .setAlbumTitle(audio.getProperAlbum())
                                         .setIsPlayable(true)
                                         .build()
                             )
@@ -2037,9 +2040,9 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                                     .setUri(audio.uri)
                                     .setMediaMetadata(
                                             MediaMetadata.Builder()
-                                                .setTitle(audio.title)
-                                                .setArtist(audio.artist ?: "Unknown Artist")
-                                                .setAlbumTitle(audio.album ?: "Unknown Album")
+                                                .setTitle(audio.getProperTitle())
+                                                .setArtist(audio.getProperArtists())
+                                                .setAlbumTitle(audio.getProperAlbum())
                                                 .setIsPlayable(true)
                                                 .build()
                                     )

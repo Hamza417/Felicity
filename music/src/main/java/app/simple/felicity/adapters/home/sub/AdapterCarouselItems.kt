@@ -13,6 +13,8 @@ import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Genre
+import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 import app.simple.felicity.shared.utils.ViewUtils.gone
 
 class AdapterCarouselItems(private val data: ArtFlowData<Any>) : RecyclerView.Adapter<AdapterCarouselItems.Holder>() {
@@ -36,8 +38,8 @@ class AdapterCarouselItems(private val data: ArtFlowData<Any>) : RecyclerView.Ad
 
             when (item) {
                 is Audio -> {
-                    holder.binding.title.text = item.title ?: holder.getContext().getString(R.string.unknown)
-                    holder.binding.artist.text = item.artist ?: holder.getContext().getString(R.string.unknown)
+                    holder.binding.title.text = item.getProperTitle()
+                    holder.binding.artist.text = item.getProperArtists()
                 }
                 is Album -> {
                     holder.binding.title.text = item.name ?: holder.getContext().getString(R.string.unknown)

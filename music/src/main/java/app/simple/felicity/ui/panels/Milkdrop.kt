@@ -15,7 +15,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.viewpager2.widget.ViewPager2
-import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.AdapterMilkdropPager
 import app.simple.felicity.databinding.FragmentMilkdropBinding
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
@@ -27,7 +26,8 @@ import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.AppearancePreferences.getCornerRadius
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.repository.utils.AudioUtils.getArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 import app.simple.felicity.ui.panels.Milkdrop.Companion.OVERLAY_VISIBLE_MS
 import app.simple.felicity.viewmodels.panels.MilkdropViewModel
 import com.google.android.material.shape.CornerFamily
@@ -280,8 +280,8 @@ class Milkdrop : MediaFragment() {
 
     private fun updateState() {
         val audio = MediaPlaybackManager.getCurrentSong() ?: return
-        binding.name.text = audio.title
-        binding.artist.text = audio.getArtists()
+        binding.name.text = audio.getProperTitle()
+        binding.artist.text = audio.getProperArtists()
         binding.seekbar.setMax(audio.duration.toFloat())
         binding.seekbar.setProgress(MediaPlaybackManager.getSeekPosition().toFloat(), fromUser = false, animate = true)
         updatePlayButtonState(MediaPlaybackManager.isPlaying())
@@ -298,8 +298,8 @@ class Milkdrop : MediaFragment() {
     override fun onAudio(audio: Audio) {
         super.onAudio(audio)
         val forward = MediaPlaybackManager.lastNavigationDirection
-        binding.name.setTextWithEffect(audio.title ?: getString(R.string.unknown), forward)
-        binding.artist.setTextWithEffect(audio.getArtists(), forward, 50L)
+        binding.name.setTextWithEffect(audio.getProperTitle(), forward)
+        binding.artist.setTextWithEffect(audio.getProperArtists(), forward, 50L)
         binding.seekbar.setMaxWithReset(audio.duration.toFloat())
 
         // Always refresh the seek position (covers predictive-back resume and actual changes).

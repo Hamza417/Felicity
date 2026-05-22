@@ -257,15 +257,8 @@ public class Audio implements Parcelable {
         this.name = name;
     }
     
+    @Nullable
     public String getTitle() {
-        if (title == null || title.isEmpty()) {
-            return getName();
-        } else {
-            return title;
-        }
-    }
-    
-    public String getRawTitle() {
         return title;
     }
     
