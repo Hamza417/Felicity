@@ -19,4 +19,9 @@
         <item quantity="one">%d Time</item>
         <item quantity="other">%d Times</item>
     </plurals>
+
+    <plurals name="number_of_bookmarks">
+        <item quantity="one">%d Bookmark</item>
+        <item quantity="other">%d Bookmarks</item>
+    </plurals>
 </resources>

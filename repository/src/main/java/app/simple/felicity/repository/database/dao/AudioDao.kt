@@ -19,6 +19,10 @@ interface AudioDao {
     @Query("SELECT * FROM audio WHERE is_available = 1 ORDER BY title COLLATE NOCASE ASC")
     fun getAllAudioList(): MutableList<Audio>
 
+    /** Returns the first available track whose content hash matches [hash], or null if none found. */
+    @Query("SELECT * FROM audio WHERE hash = :hash AND is_available = 1 LIMIT 1")
+    suspend fun getAudioByHash(hash: Long): Audio?
+
     /**
      * Returns every row regardless of availability – used by reconcile and dedup passes.
      */

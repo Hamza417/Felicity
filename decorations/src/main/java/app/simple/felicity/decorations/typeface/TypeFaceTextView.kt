@@ -66,10 +66,7 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
         drawableTintMode = typedArray.getInt(R.styleable.TypeFaceTextView_drawableTintStyle, DRAWABLE_REGULAR)
         isDrawableHidden = typedArray.getBoolean(R.styleable.TypeFaceTextView_isDrawableHidden, true)
         hyphenationFrequency = Layout.HYPHENATION_FREQUENCY_NONE
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            breakStrategy = LineBreaker.BREAK_STRATEGY_SIMPLE
-        }
+        breakStrategy = LineBreaker.BREAK_STRATEGY_SIMPLE
 
         setTextColor(false)
         setDrawableTint(false)
@@ -221,6 +218,11 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
     fun setDrawableTineMode(drawableTintMode: Int) {
         this.drawableTintMode = drawableTintMode
         setDrawableTint(animate = false)
+    }
+
+    fun setTextColorMode(colorMode: Int) {
+        this.colorMode = colorMode
+        setTextColor(animate = false)
     }
 
     fun setTypeFaceStyle(fontStyle: Int) {

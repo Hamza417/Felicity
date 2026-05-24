@@ -12,6 +12,7 @@ import app.simple.felicity.ui.panels.AlbumArtists
 import app.simple.felicity.ui.panels.Albums
 import app.simple.felicity.ui.panels.AlwaysSkipped
 import app.simple.felicity.ui.panels.Artists
+import app.simple.felicity.ui.panels.Bookmarks
 import app.simple.felicity.ui.panels.Composers
 import app.simple.felicity.ui.panels.Favorites
 import app.simple.felicity.ui.panels.Folders
@@ -119,6 +120,7 @@ abstract class BaseHomeFragment : PanelFragment() {
             R.string.preferences -> openFragment(Preferences.newInstance(), Preferences.TAG)
             R.string.always_skipped -> openFragment(AlwaysSkipped.newInstance(), AlwaysSkipped.TAG)
             R.string.most_skipped -> openFragment(MostSkipped.newInstance(), MostSkipped.TAG)
+            R.string.bookmarks -> openFragment(Bookmarks.newInstance(), Bookmarks.TAG)
             R.string.search -> openSearch()
         }
     }

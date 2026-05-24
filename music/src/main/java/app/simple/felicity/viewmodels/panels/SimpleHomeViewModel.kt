@@ -76,6 +76,10 @@ class SimpleHomeViewModel(application: Application) : WrappedViewModel(applicati
                 )
             }
 
+            if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_BOOKMARKS)) {
+                activityItems.add(Panel(R.string.bookmarks, R.drawable.ic_bookmark_16dp))
+            }
+
             if (activityItems.isNotEmpty()) {
                 defaultPanels.add(Group(R.string.activity))
                 defaultPanels.addAll(activityItems)

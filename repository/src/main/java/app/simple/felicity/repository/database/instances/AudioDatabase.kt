@@ -9,11 +9,13 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import app.simple.felicity.repository.database.dao.AlbumInfoCacheDao
 import app.simple.felicity.repository.database.dao.ArtistInfoCacheDao
 import app.simple.felicity.repository.database.dao.AudioDao
+import app.simple.felicity.repository.database.dao.BookmarkDao
 import app.simple.felicity.repository.database.dao.PlaybackQueueDao
 import app.simple.felicity.repository.database.dao.PlaybackStateDao
 import app.simple.felicity.repository.database.dao.PlaylistDao
 import app.simple.felicity.repository.database.dao.SongStatDao
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.models.AudioBookmark
 import app.simple.felicity.repository.models.AudioStat
 import app.simple.felicity.repository.models.MusicBrainzAlbumInfo
 import app.simple.felicity.repository.models.MusicBrainzArtistInfo
@@ -38,6 +40,9 @@ import app.simple.felicity.repository.models.PlaylistSongCrossRef
  *   {@code replay_gain_album_gain}, and {@code replay_gain_album_peak}.
  *   These are populated from the embedded REPLAYGAIN_* tags during library scan.
  *   Existing rows default to NULL and are updated on the next rescan.
+ *   17 → 18: Created the {@code audio_bookmarks} table for per-track playback bookmarks.
+ *   Bookmarks are intentionally not foreign-keyed to {@code audio} so they survive
+ *   library deletions and are restored automatically when a track is re-added.
  *
  * @author Hamza417
  */
@@ -50,9 +55,10 @@ import app.simple.felicity.repository.models.PlaylistSongCrossRef
             Playlist::class,
             PlaylistSongCrossRef::class,
             MusicBrainzArtistInfo::class,
-            MusicBrainzAlbumInfo::class
+            MusicBrainzAlbumInfo::class,
+            AudioBookmark::class
         ],
-        version = 17,
+        version = 18,
         exportSchema = true
 )
 abstract class AudioDatabase : RoomDatabase() {
@@ -64,6 +70,7 @@ abstract class AudioDatabase : RoomDatabase() {
     abstract fun playlistDao(): PlaylistDao
     abstract fun artistInfoCacheDao(): ArtistInfoCacheDao
     abstract fun albumInfoCacheDao(): AlbumInfoCacheDao
+    abstract fun bookmarkDao(): BookmarkDao
 
     companion object {
         private const val DB_NAME = "audio.db"
@@ -173,6 +180,27 @@ abstract class AudioDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Creates the audio_bookmarks table. Each row ties a playback position (in
+         * milliseconds) to an audio track via its content hash. No foreign key is used so
+         * that bookmarks outlive library deletions and are automatically restored when the
+         * same file is re-scanned.
+         */
+        private val MIGRATION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `audio_bookmarks` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `audioHash` INTEGER NOT NULL,
+                        `timestampMs` INTEGER NOT NULL,
+                        `createdAt` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_audio_bookmarks_audioHash` ON `audio_bookmarks` (`audioHash`)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_audio_bookmarks_audioHash_timestampMs` ON `audio_bookmarks` (`audioHash`, `timestampMs`)")
+            }
+        }
+
         fun getInstance(context: Context): AudioDatabase {
             return instance ?: synchronized(this) {
                 instance ?: buildDatabase(context.applicationContext).also {
@@ -185,7 +213,7 @@ abstract class AudioDatabase : RoomDatabase() {
 
         private fun buildDatabase(context: Context): AudioDatabase {
             return Room.databaseBuilder(context, AudioDatabase::class.java, DB_NAME)
-                .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17)
+                .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18)
                 .fallbackToDestructiveMigration(dropAllTables = true)
                 .build()
         }

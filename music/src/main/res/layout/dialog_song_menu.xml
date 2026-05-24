@@ -392,6 +392,21 @@
                     app:drawableTintStyle="regular"
                     app:textColorStyle="primary" />
 
+                <!-- Bookmarks row — visible only when this is the currently playing song -->
+                <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+                    android:id="@+id/bookmarks"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:padding="@dimen/padding_10"
+                    android:text="@string/bookmarks"
+                    android:textSize="@dimen/text_size_14"
+                    android:drawablePadding="@dimen/padding_10"
+                    app:appFontStyle="bold"
+                    app:drawableStartCompat="@drawable/ic_bookmark_16dp"
+                    app:drawableTintStyle="regular"
+                    app:textColorStyle="primary" />
+
                 <!-- Delete row -->
                 <app.simple.felicity.decorations.ripple.DynamicRippleTextView
                     android:id="@+id/delete"

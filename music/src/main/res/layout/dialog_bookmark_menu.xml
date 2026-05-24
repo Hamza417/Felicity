@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<app.simple.felicity.decorations.corners.DynamicCornerLinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <!-- Header showing the timestamp this menu was opened at -->
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/timestamp_label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="@dimen/padding_15"
+        android:textSize="@dimen/text_size_16"
+        app:appFontStyle="bold"
+        app:textColorStyle="primary" />
+
+    <app.simple.felicity.decorations.theme.ThemeDivider
+        android:layout_width="match_parent"
+        android:layout_height="1px" />
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="@dimen/padding_10"
+        android:clipToPadding="false"
+        android:fadingEdge="vertical"
+        android:requiresFadingEdge="vertical"
+        android:fadingEdgeLength="@dimen/padding_20">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+                android:id="@+id/add_bookmark"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:padding="@dimen/padding_10"
+                android:text="@string/add_bookmark"
+                android:textSize="@dimen/text_size_14"
+                android:drawablePadding="@dimen/padding_10"
+                app:appFontStyle="bold"
+                app:drawableStartCompat="@drawable/ic_bookmark_add_16dp"
+                app:drawableTintStyle="regular"
+                app:textColorStyle="primary" />
+
+            <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+                android:id="@+id/remove_bookmark"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:padding="@dimen/padding_10"
+                android:text="@string/remove_bookmark"
+                android:textSize="@dimen/text_size_14"
+                android:drawablePadding="@dimen/padding_10"
+                app:appFontStyle="bold"
+                app:drawableStartCompat="@drawable/ic_bookmark_remove_16dp"
+                app:drawableTintStyle="regular"
+                app:textColorStyle="primary" />
+
+            <app.simple.felicity.decorations.theme.ThemeDivider
+                android:layout_width="match_parent"
+                android:layout_height="1px"
+                android:layout_marginVertical="@dimen/padding_5" />
+
+            <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+                android:id="@+id/view_bookmarks"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:padding="@dimen/padding_10"
+                android:text="@string/view_bookmarks"
+                android:textSize="@dimen/text_size_14"
+                android:drawablePadding="@dimen/padding_10"
+                app:appFontStyle="bold"
+                app:drawableStartCompat="@drawable/ic_bookmark_16dp"
+                app:drawableTintStyle="regular"
+                app:textColorStyle="primary" />
+
+        </LinearLayout>
+
+    </androidx.core.widget.NestedScrollView>
+
+</app.simple.felicity.decorations.corners.DynamicCornerLinearLayout>
+

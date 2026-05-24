@@ -4,6 +4,7 @@ import android.content.SharedPreferences
 import android.os.Bundle
 import android.text.format.DateUtils
 import android.util.Log
+import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.widget.ImageView
@@ -12,12 +13,18 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.R
 import app.simple.felicity.core.maths.Number.toNegative
+import app.simple.felicity.databinding.DialogBookmarkMenuBinding
+import app.simple.felicity.databinding.DialogBookmarksListBinding
 import app.simple.felicity.decorations.helpers.SwipeDownToCloseListener
 import app.simple.felicity.decorations.highlight.HighlightTextView
 import app.simple.felicity.decorations.lrc.view.LrcLineView
 import app.simple.felicity.decorations.pager.FelicityPager
 import app.simple.felicity.decorations.pager.ImagePageAdapter
+import app.simple.felicity.decorations.popups.SimpleDialog
+import app.simple.felicity.decorations.ripple.DynamicRippleTextView
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar
+import app.simple.felicity.decorations.typeface.TypeFaceTextView
+import app.simple.felicity.decorations.utils.TextViewUtils.setStartDrawable
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithEffect
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithFade
 import app.simple.felicity.decorations.views.FavoriteButton
@@ -42,6 +49,7 @@ import app.simple.felicity.ui.panels.Equalizer
 import app.simple.felicity.ui.panels.Lyrics
 import app.simple.felicity.ui.panels.PlayingQueue
 import app.simple.felicity.ui.panels.Search
+import app.simple.felicity.viewmodels.player.BookmarksViewModel
 import app.simple.felicity.viewmodels.player.LyricsViewModel
 import app.simple.felicity.viewmodels.player.WaveformViewModel
 import com.bumptech.glide.Glide
@@ -70,6 +78,9 @@ abstract class BasePlayerFragment : MediaFragment() {
 
     /** Reads lyrics data from the shared [LyricsManager] — no separate load needed. */
     private val lyricsViewModel: LyricsViewModel by viewModels()
+
+    /** Reads bookmark data from the shared [BookmarksManager] — updates automatically on song changes. */
+    private val bookmarksViewModel: BookmarksViewModel by viewModels()
 
     /**
      * Holds an [Audio] track whose waveform has been requested but whose load has been
@@ -265,13 +276,15 @@ abstract class BasePlayerFragment : MediaFragment() {
                     openSongsMenu(
                             audios = MediaPlaybackManager.getSongs(),
                             position = MediaPlaybackManager.getCurrentSongPosition(),
-                            imageView = pager.getCurrentImageView()
+                            imageView = pager.getCurrentImageView(),
+                            showBookmarks = true
                     )
                 }
                 UserInterfacePreferences.PLAYER_INTERFACE_FADED -> {
                     openSongsMenu(
                             audios = MediaPlaybackManager.getSongs(),
                             position = MediaPlaybackManager.getCurrentSongPosition(),
+                            showBookmarks = true,
                             imageView = null // No shared element transition on the faded player variant
                     )
                 }
@@ -323,6 +336,12 @@ abstract class BasePlayerFragment : MediaFragment() {
             MediaPlaybackManager.seekTo(positionMs)
         }
 
+        // When the user taps a bar (no drag) we show the bookmark context menu
+        // anchored to the tapped position so they can add or remove a bookmark there.
+        seekbar.setOnBarTapListener { positionMs ->
+            openBookmarkMenu(positionMs)
+        }
+
         seekbar.setLeftLabelProvider { progress, _, _ ->
             DateUtils.formatElapsedTime(progress / 1000L)
         }
@@ -371,6 +390,14 @@ abstract class BasePlayerFragment : MediaFragment() {
                     lrc.setLrcData(
                             lrcData, MediaPlaybackManager.getSeekPosition() + lyricsViewModel.syncOffset)
                 }
+            }
+        }
+
+        // Collect bookmarks from the shared manager and push the timestamp set to the
+        // seekbar so the dot indicators always match what is stored in the database.
+        viewLifecycleOwner.lifecycleScope.launch {
+            bookmarksViewModel.bookmarks.collect { bookmarkList ->
+                seekbar.bookmarks = bookmarkList.map { it.timestampMs }.toSet()
             }
         }
     }
@@ -521,6 +548,7 @@ abstract class BasePlayerFragment : MediaFragment() {
             seekbar.setDurationWithReset(audio.duration)
             lrc.clear()
             lyricsViewModel.loadLrcData()
+            bookmarksViewModel.loadBookmarks()
         }
 
         // Always sync seek position. For a same-song re-emission (e.g., predictive back
@@ -591,6 +619,125 @@ abstract class BasePlayerFragment : MediaFragment() {
                 pcmInfo.setTextWithFade(PcmInfoFormatter.formatPcmInfo(audio))
             }
         }
+    }
+
+    override fun onSongMenuBookmarksClicked(audio: Audio) {
+        openBookmarkMenu(MediaPlaybackManager.getSeekPosition())
+    }
+
+    /**
+     * Shows the bookmark context menu anchored to [timestampMs].
+     *
+     * The menu has three options:
+     *  - Add Bookmark — saves a bookmark at [timestampMs] (rejected if another is too close).
+     *  - Remove Bookmark — removes the bookmark nearest to [timestampMs].
+     *  - View All Bookmarks — opens a second dialog listing every bookmark; tapping one seeks to it.
+     */
+    private fun openBookmarkMenu(timestampMs: Long) {
+        val formattedTime = DateUtils.formatElapsedTime(timestampMs / 1000L)
+        val currentBookmarks = bookmarksViewModel.bookmarks.value
+
+        val onViewCreated: (DialogBookmarkMenuBinding) -> Unit = { binding ->
+            binding.timestampLabel.text = getString(R.string.bookmark_at, formattedTime)
+
+            // Gray out "Remove" when there's no bookmark near this position so the user
+            // gets instant visual feedback before tapping.
+            val hasNearby = currentBookmarks.any { kotlin.math.abs(it.timestampMs - timestampMs) < 1_000L }
+            binding.removeBookmark.alpha = if (hasNearby) 1f else 0.4f
+            binding.removeBookmark.isEnabled = hasNearby
+        }
+
+        val onDialogInflated: (DialogBookmarkMenuBinding, () -> Unit, () -> Unit) -> Unit = { binding, dismiss, _ ->
+            binding.addBookmark.setOnClickListener {
+                bookmarksViewModel.addBookmark(timestampMs) { added ->
+                    if (!added) {
+                        showWarning(getString(R.string.bookmark_too_close))
+                    }
+                }
+                dismiss()
+            }
+
+            binding.removeBookmark.setOnClickListener {
+                bookmarksViewModel.removeBookmarkNear(timestampMs)
+                dismiss()
+            }
+
+            binding.viewBookmarks.setOnClickListener {
+                dismiss()
+                openBookmarksList()
+            }
+        }
+
+        SimpleDialog.Builder(
+                container = requireContainerView(),
+                inflateBinding = DialogBookmarkMenuBinding::inflate)
+            .onViewCreated(onViewCreated)
+            .onDialogInflated(onDialogInflated)
+            .onDismiss { /* no-op */ }
+            .setWidthRatio(getDialogWidthRation())
+            .build()
+            .show()
+    }
+
+    /**
+     * Opens a dialog that lists every bookmark for the current song.
+     * Each entry shows the formatted timestamp and, when tapped, seeks the player to that position.
+     */
+    private fun openBookmarksList() {
+        val snapshots = bookmarksViewModel.bookmarks.value.sortedBy { it.timestampMs }
+
+        val onViewCreated: (DialogBookmarksListBinding) -> Unit = { binding ->
+            if (snapshots.isEmpty()) {
+                val empty = DynamicRippleTextView(requireContext()).apply {
+                    text = getString(R.string.no_bookmarks)
+                    setPadding(
+                            resources.getDimensionPixelSize(R.dimen.padding_15),
+                            resources.getDimensionPixelSize(R.dimen.padding_10),
+                            resources.getDimensionPixelSize(R.dimen.padding_15),
+                            resources.getDimensionPixelSize(R.dimen.padding_10)
+                    )
+                }
+                binding.bookmarksContainer.addView(empty)
+            }
+        }
+
+        val onDialogInflated: (DialogBookmarksListBinding, () -> Unit, () -> Unit) -> Unit = { binding, dismiss, _ ->
+            snapshots.forEach { bookmark ->
+                val label = DateUtils.formatElapsedTime(bookmark.timestampMs / 1000L)
+                val row = DynamicRippleTextView(requireContext()).apply {
+                    text = label
+                    setPadding(
+                            resources.getDimensionPixelSize(R.dimen.padding_15),
+                            resources.getDimensionPixelSize(R.dimen.padding_10),
+                            resources.getDimensionPixelSize(R.dimen.padding_15),
+                            resources.getDimensionPixelSize(R.dimen.padding_10)
+                    )
+
+                    setOnClickListener {
+                        MediaPlaybackManager.seekTo(bookmark.timestampMs)
+                        dismiss()
+                    }
+
+                    setStartDrawable(R.drawable.ic_bookmark_16dp)
+                    compoundDrawablePadding = resources.getDimensionPixelSize(R.dimen.padding_5)
+                    setDrawableTineMode(TypeFaceTextView.DRAWABLE_ACCENT)
+                    setTextColorMode(TypeFaceTextView.SECONDARY)
+                    // center-vertical to force drawable vertically centered
+                    gravity = Gravity.START or Gravity.CENTER_VERTICAL
+                }
+                binding.bookmarksContainer.addView(row)
+            }
+        }
+
+        SimpleDialog.Builder(
+                container = requireContainerView(),
+                inflateBinding = DialogBookmarksListBinding::inflate)
+            .onViewCreated(onViewCreated)
+            .onDialogInflated(onDialogInflated)
+            .onDismiss { /* no-op */ }
+            .setWidthRatio(getDialogWidthRation())
+            .build()
+            .show()
     }
 
     companion object {

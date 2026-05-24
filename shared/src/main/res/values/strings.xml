@@ -501,4 +501,12 @@
     <string name="pause_activity_summary">Prevent app from keeping the playback activity records.</string>
     <string name="clear_playback_stats">Clear Playback Stats</string>
     <string name="clear_playback_stats_summary">Wipe the playback history and records.</string>
+    <string name="bookmarks">Bookmarks</string>
+    <string name="add_bookmark">Add Bookmark</string>
+    <string name="remove_bookmark">Remove Bookmark</string>
+    <string name="view_bookmarks">View Bookmarks</string>
+    <string name="no_bookmarks">No bookmarks yet</string>
+    <string name="bookmark_too_close">A bookmark already exists nearby</string>
+    <string name="bookmark_at">Bookmark at %1$s</string>
+    <string name="clear_bookmarks">Clear All Bookmarks</string>
 </resources>

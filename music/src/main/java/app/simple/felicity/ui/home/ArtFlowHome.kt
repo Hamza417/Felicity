@@ -30,6 +30,7 @@ import app.simple.felicity.ui.panels.AlbumArtists
 import app.simple.felicity.ui.panels.Albums
 import app.simple.felicity.ui.panels.AlwaysSkipped
 import app.simple.felicity.ui.panels.Artists
+import app.simple.felicity.ui.panels.Bookmarks
 import app.simple.felicity.ui.panels.Composers
 import app.simple.felicity.ui.panels.Favorites
 import app.simple.felicity.ui.panels.Folders
@@ -124,7 +125,8 @@ class ArtFlowHome : MediaFragment() {
                                     PopupMenuItem(title = R.string.recently_played, icon = R.drawable.ic_history),
                                     PopupMenuItem(title = R.string.most_played, icon = R.drawable.ic_equalizer),
                                     PopupMenuItem(title = R.string.always_skipped, icon = R.drawable.ic_skip_next),
-                                    PopupMenuItem(title = R.string.most_skipped, icon = R.drawable.ic_skip_next)
+                                    PopupMenuItem(title = R.string.most_skipped, icon = R.drawable.ic_skip_next),
+                                    PopupMenuItem(title = R.string.bookmarks, icon = R.drawable.ic_bookmark_16dp)
                             ),
                             onMenuItemClick = { itemResId ->
                                 when (itemResId) {
@@ -142,6 +144,7 @@ class ArtFlowHome : MediaFragment() {
                                     R.string.most_played -> openFragment(MostPlayed.newInstance(), MostPlayed.TAG)
                                     R.string.always_skipped -> openFragment(AlwaysSkipped.newInstance(), AlwaysSkipped.TAG)
                                     R.string.most_skipped -> openFragment(MostSkipped.newInstance(), MostSkipped.TAG)
+                                    R.string.bookmarks -> openFragment(Bookmarks.newInstance(), Bookmarks.TAG)
                                     else -> Log.w(TAG, "Unknown popup item clicked: $itemResId")
                                 }
                             },

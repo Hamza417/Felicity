@@ -115,7 +115,7 @@ This feature list is not exhaustive and only main features are listed.
 - [ ] Global Search Provider
 - [ ] More widgets
 - [ ] Multiple Queue Support
-- [ ] Bookmarks
+- [x] Bookmarks
 
 ##### Niche Features
 

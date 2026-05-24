@@ -6,6 +6,7 @@ import app.simple.felicity.repository.loader.PlaylistDatabaseLoader
 import app.simple.felicity.repository.repositories.AlbumRepository
 import app.simple.felicity.repository.repositories.ArtistRepository
 import app.simple.felicity.repository.repositories.AudioRepository
+import app.simple.felicity.repository.repositories.BookmarkRepository
 import app.simple.felicity.repository.repositories.LrcRepository
 import dagger.Module
 import dagger.Provides
@@ -57,5 +58,11 @@ object AppModule {
     @Singleton
     fun providesLrcRepository(@ApplicationContext context: Context): LrcRepository {
         return LrcRepository(context)
+    }
+
+    @Provides
+    @Singleton
+    fun providesBookmarkRepository(@ApplicationContext context: Context): BookmarkRepository {
+        return BookmarkRepository(context)
     }
 }

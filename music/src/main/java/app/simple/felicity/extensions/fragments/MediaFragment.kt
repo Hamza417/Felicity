@@ -60,6 +60,7 @@ import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
 import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
 import app.simple.felicity.shared.utils.ViewUtils.gone
+import app.simple.felicity.shared.utils.ViewUtils.visible
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.ui.pages.AlbumPage
 import app.simple.felicity.ui.pages.ArtistPage
@@ -199,6 +200,19 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
     }
 
     /**
+     * Plays [audio] as a solo single-song queue starting at [startPositionMs].
+     *
+     * This is used by the Bookmarks panel when the user taps a specific bookmark —
+     * the song plays alone (no album/playlist context) and begins at the exact
+     * timestamp where the bookmark was placed.
+     */
+    protected fun setMediaItemWithSeek(audio: Audio, startPositionMs: Long) {
+        MediaPlaybackManager.setSongs(listOf(audio), 0, startPositionMs = startPositionMs, autoPlay = true)
+        createSongHistoryDatabase(listOf(audio))
+        showMiniPlayer()
+    }
+
+    /**
      * Shuffles [songs] using the smart artist-aware algorithm, then starts playing from
      * position 0. The shuffled queue replaces the current queue entirely.
      */
@@ -208,7 +222,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         createSongHistoryDatabase(shuffled)
     }
 
-    private fun openDefaultPlayer() {
+    protected fun openDefaultPlayer() {
         val player = when (UserInterfacePreferences.getPlayerInterface()) {
             UserInterfacePreferences.PLAYER_INTERFACE_FADED -> PlayerFaded.newInstance()
             else -> DefaultPlayer.newInstance()
@@ -377,10 +391,20 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         /* no-op */
     }
 
+    /**
+     * Called when the "Bookmarks" option in the song menu is tapped for the currently
+     * playing [audio]. The default implementation does nothing — [BasePlayerFragment]
+     * overrides this to open the bookmark context menu.
+     */
+    protected open fun onSongMenuBookmarksClicked(audio: Audio) {
+        /* no-op */
+    }
+
     protected fun openSongsMenu(
             audios: List<Audio>,
             position: Int,
             imageView: ImageView?,
+            showBookmarks: Boolean = false,
             onDismiss: (() -> Unit)? = null,
             onDismissStart: (() -> Unit)? = null) {
 
@@ -405,6 +429,9 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                     binding.insertAndPlay.gone(animate = false)
                     binding.addToQueue.gone(animate = false)
                     binding.playNext.gone(animate = false)
+                    // Bookmarks only make sense for the currently playing song since the
+                    // BookmarksManager only tracks the active track.
+                    binding.bookmarks.visible(animate = false)
                 }
 
                 if (audio.artist.isNullOrBlank()) binding.goToArtist.gone(animate = false)
@@ -434,6 +461,13 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                     } else {
                         binding.addToFavorites.setStartDrawable(R.drawable.ic_favorite_border_16dp)
                     }
+                }
+
+                // --------------- Bookmark button logic ---------------
+                if (showBookmarks) {
+                    binding.bookmarks.visible(false)
+                } else {
+                    binding.bookmarks.gone(animate = false)
                 }
             }
 
@@ -558,6 +592,13 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 binding.addToSelection.setOnClickListener {
                     SelectionManager.toggle(audio)
                     dismiss()
+                }
+
+                if (showBookmarks) {
+                    binding.bookmarks.setOnClickListener {
+                        dismiss()
+                        onSongMenuBookmarksClicked(audio)
+                    }
                 }
             }
 

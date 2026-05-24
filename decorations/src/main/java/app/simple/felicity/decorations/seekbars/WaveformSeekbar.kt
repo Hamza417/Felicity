@@ -103,6 +103,24 @@ class WaveformSeekbar @JvmOverloads constructor(
     }
 
     /**
+     * Notified when the user taps on a specific position in the waveform without
+     * dragging. This is separate from seeking — a tap is a quick press-and-release
+     * on a particular bar rather than a scroll gesture.
+     *
+     * Use this to show a context menu (like a bookmark menu) anchored to the tapped position.
+     */
+    fun interface OnBarTapListener {
+        /**
+         * Called once when the user lifts their finger at the same horizontal
+         * position where they pressed it down (within the tap-slop tolerance).
+         *
+         * @param positionMs the playback position in milliseconds that corresponds
+         *                   to the bar the user tapped
+         */
+        fun onBarTapped(positionMs: Long)
+    }
+
+    /**
      * Notified on each animation frame while a fling gesture is actively scrolling the waveform.
      * While any registered [OnFlingRunningListener] is active, [setProgress] will not accept
      * external updates to prevent the song position from snapping back mid-fling.
@@ -144,6 +162,19 @@ class WaveformSeekbar @JvmOverloads constructor(
     private var durationMs: Long = 0L
 
     /**
+     * A set of bookmark timestamps in milliseconds. When not empty, a small circular dot is
+     * drawn near the top of the waveform at each bookmark's horizontal position so the user
+     * can see exactly where they placed their markers without cluttering the bar area.
+     *
+     * Setting this triggers a redraw automatically.
+     */
+    var bookmarks: Set<Long> = emptySet()
+        set(value) {
+            field = value
+            invalidate()
+        }
+
+    /**
      * Controls the visual rendering mode of the waveform.
      * Use [WAVEFORM_MODE_HALF], [WAVEFORM_MODE_FULL], or [WAVEFORM_MODE_REFLECTION].
      * Can also be set via the [R.styleable.WaveformSeekbar_wsbWaveformMode] XML attribute.
@@ -169,6 +200,7 @@ class WaveformSeekbar @JvmOverloads constructor(
     private var flingEndListener: OnFlingEndListener? = null
     private var leftLabelProvider: LeftLabelProvider? = null
     private var rightLabelProvider: RightLabelProvider? = null
+    private var barTapListener: OnBarTapListener? = null
 
     private var playedColor: Int = Color.WHITE
     private var unplayedColor: Int = Color.GRAY
@@ -223,6 +255,11 @@ class WaveformSeekbar @JvmOverloads constructor(
 
     private val barRect = RectF()
     private val pillRect = RectF()
+
+    // Filled circle paint used to draw bookmark indicators above the waveform bars
+    private val bookmarkPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+    }
 
     // Pill background paint for label highlights (fill mode)
     private val labelBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -284,6 +321,10 @@ class WaveformSeekbar @JvmOverloads constructor(
     private var dragStartX = 0f
     private var dragStartProgressMs = 0L
     private var dragCurrentProgressMs = 0L
+
+    // Tracks where ACTION_DOWN happened so we can decide if ACTION_UP is a tap or a drag-end.
+    private var touchDownX = 0f
+    private var touchDownY = 0f
 
     // Smooth scroll animation for programmatic progress updates
     private var progressAnimator: ValueAnimator? = null
@@ -499,6 +540,13 @@ class WaveformSeekbar @JvmOverloads constructor(
         val labelAreaH = labelTextSizePx + labelPaddingPx * 1.5f
         val maxBarArea = h - labelAreaH - paddingTop - paddingBottom
 
+        // When bookmarks are present we carve a small strip from the top of the available
+        // bar area to house the bookmark dots. Bars grow from a lower baseline so the dots
+        // sit cleanly above them without any overlap.
+        val bookmarkDotRadius = if (bookmarks.isNotEmpty()) BOOKMARK_DOT_RADIUS_DP * resources.displayMetrics.density else 0f
+        val bookmarkStripH = if (bookmarks.isNotEmpty()) bookmarkDotRadius * 2f + BOOKMARK_DOT_MARGIN_DP * resources.displayMetrics.density else 0f
+        val effectiveMaxBarArea = maxBarArea - bookmarkStripH
+
         // Geometry pre-computed for reflection mode; values are unused in half/full modes.
         // Both halves use the smaller of the two available areas so bars are visually equal
         // regardless of label space or asymmetric padding.
@@ -511,13 +559,13 @@ class WaveformSeekbar @JvmOverloads constructor(
         val maxMainBarArea: Float
         val maxReflBarArea: Float
         if (waveformMode == WAVEFORM_MODE_REFLECTION) {
-            val topHalfArea = (mainWaveformBottom - paddingTop - labelAreaH).coerceAtLeast(0f)
+            val topHalfArea = (mainWaveformBottom - paddingTop - labelAreaH - bookmarkStripH).coerceAtLeast(0f)
             val bottomHalfArea = (h - paddingBottom - reflectionTop).coerceAtLeast(0f)
             val equalHalfArea = minOf(topHalfArea, bottomHalfArea)
             maxMainBarArea = equalHalfArea
             maxReflBarArea = equalHalfArea
         } else {
-            maxMainBarArea = maxBarArea
+            maxMainBarArea = effectiveMaxBarArea
             maxReflBarArea = 0f
         }
 
@@ -550,7 +598,7 @@ class WaveformSeekbar @JvmOverloads constructor(
             when (waveformMode) {
                 WAVEFORM_MODE_FULL -> {
                     // Symmetric: bar grows from center upward AND downward
-                    val halfH = max(minBarHeightPx / 2f, amp * (maxBarArea / 2f))
+                    val halfH = max(minBarHeightPx / 2f, amp * (effectiveMaxBarArea / 2f))
                     barRect.set(
                             barCenterX - barWidthPx / 2f,
                             centerY - halfH,
@@ -570,7 +618,7 @@ class WaveformSeekbar @JvmOverloads constructor(
                 }
                 else -> {
                     // Half: bar grows upward from center only
-                    val barH = max(minBarHeightPx, amp * maxBarArea)
+                    val barH = max(minBarHeightPx, amp * effectiveMaxBarArea)
                     barRect.set(
                             barCenterX - barWidthPx / 2f,
                             centerY - barH,
@@ -632,10 +680,25 @@ class WaveformSeekbar @JvmOverloads constructor(
             )
         }
 
+        // Draw bookmark dots inside the compositing layer so the horizontal edge fades
+        // clip them naturally, just like the bars. Each dot is a small filled circle placed
+        // at the very top of the waveform's reserved strip, horizontally aligned with
+        // the bar that corresponds to the bookmarked second.
+        if (bookmarks.isNotEmpty() && durationMs > 0L && amplitudes.isNotEmpty()) {
+            val dotCenterY = paddingTop.toFloat() + bookmarkDotRadius
+            bookmarkPaint.color = playedColor
+            bookmarkPaint.alpha = BOOKMARK_DOT_ALPHA
+            for (timestampMs in bookmarks) {
+                val bookmarkFraction = timestampMs.toFloat().coerceIn(0f, durationMs.toFloat()) / durationMs.toFloat()
+                val bookmarkScrollOffset = bookmarkFraction * (amplitudes.size * barStep)
+                val dotX = bookmarkScrollOffset - scrollOffset + centerX
+                if (dotX + bookmarkDotRadius < 0f || dotX - bookmarkDotRadius > w) continue
+                canvas.drawCircle(dotX, dotCenterY, bookmarkDotRadius, bookmarkPaint)
+            }
+        }
+
         // Rebuild gradient shaders only when the view width changes
         if (w != lastWidth) rebuildGradients(w)
-
-        // Left horizontal fade (opaque → transparent, erasing bars at the left edge)
         leftGradient?.let { fadePaint.shader = it }
         canvas.drawRect(0f, 0f, fadeEdgeLengthPx, h, fadePaint)
 
@@ -795,6 +858,10 @@ class WaveformSeekbar @JvmOverloads constructor(
                 dragStartProgressMs = animatedProgressMs
                 dragCurrentProgressMs = dragStartProgressMs
 
+                // Record exact press position for tap detection in ACTION_UP
+                touchDownX = event.x
+                touchDownY = event.y
+
                 // Start velocity tracking for the upcoming drag
                 if (velocityTracker == null) velocityTracker = VelocityTracker.obtain()
                 velocityTracker!!.clear()
@@ -836,6 +903,39 @@ class WaveformSeekbar @JvmOverloads constructor(
 
                     isDragging = false
                     parent?.requestDisallowInterceptTouchEvent(false)
+
+                    // Decide if this was a tap (finger barely moved) before resetting anything.
+                    // A tap fires the bar listener with the tapped timestamp so the fragment can
+                    // show a context menu without triggering a seek.
+                    val deltaX = abs(event.x - touchDownX)
+                    val deltaY = abs(event.y - touchDownY)
+                    val isTap = deltaX < TAP_SLOP_PX && deltaY < TAP_SLOP_PX
+                            && event.actionMasked == MotionEvent.ACTION_UP
+
+                    if (isTap && barTapListener != null) {
+                        // Convert the tap's horizontal position to a playback timestamp using the
+                        // same scroll math that onDraw uses, then notify the listener.
+                        val barStep = barWidthPx + barSpacingPx
+                        val totalScrollRange = amplitudes.size * barStep
+                        val displayProgress = animatedProgressMs
+                        val progressFraction = displayProgress.toFloat().coerceIn(0f, durationMs.toFloat()) / durationMs.toFloat()
+                        val scrollOffset = progressFraction * totalScrollRange
+                        val centerX = width / 2f
+                        val tapScrollPos = event.x - centerX + scrollOffset
+                        val tappedMs = if (totalScrollRange > 0f && durationMs > 0L) {
+                            (tapScrollPos / totalScrollRange * durationMs).toLong().coerceIn(0L, durationMs)
+                        } else {
+                            displayProgress
+                        }
+                        animateLabelVisibility(true)
+                        animateSeekLine(false)
+                        // Restore dragging state back to false before the callback so callers
+                        // that immediately call setProgress() are not blocked.
+                        barTapListener?.onBarTapped(tappedMs)
+                        performClick()
+                        return true
+                    }
+
                     animateLabelVisibility(true)
                     animateSeekLine(false)
 
@@ -1156,8 +1256,8 @@ class WaveformSeekbar @JvmOverloads constructor(
                     // Compute the exact fractional scroll position from the animated progress
                     // so the remaining bars land on the same pixel coordinates after the
                     // restructure. This eliminates the sub-bar micro-jitter that would occur
-                    // if the pivot index (integer) does not perfectly align with the floating-
-                    // point animated scroll offset.
+                    // if the pivot index (integer) does not perfectly align with the floating-point
+                    // animated scroll offset.
                     val exactScrollBars = if (durationMs > 0L) {
                         animatedProgressMs.toFloat() / durationMs.toFloat() * drawnAmplitudes.size
                     } else 0f
@@ -1169,7 +1269,7 @@ class WaveformSeekbar @JvmOverloads constructor(
                     // to the new song's amplitudes, so pre-flattening here is unnecessary.
                     val remaining = if (pivot < drawnAmplitudes.size) {
                         drawnAmplitudes.copyOfRange(pivot, drawnAmplitudes.size)
-                    } else FloatArray(1) { 0f }
+                    } else FloatArray(1)
 
                     val newSize = remaining.size
 
@@ -1255,6 +1355,17 @@ class WaveformSeekbar @JvmOverloads constructor(
      */
     fun setOnFlingEndListener(listener: OnFlingEndListener?) {
         flingEndListener = listener
+    }
+
+    /**
+     * Registers a listener that fires when the user taps on a bar without dragging.
+     * The tapped bar's playback position (in milliseconds) is passed to the callback.
+     * Use this to open a context menu (e.g., a bookmark menu) at the tapped position.
+     *
+     * @param listener the [OnBarTapListener] to register, or `null` to unregister
+     */
+    fun setOnBarTapListener(listener: OnBarTapListener?) {
+        barTapListener = listener
     }
 
     /**
@@ -1468,5 +1579,27 @@ class WaveformSeekbar @JvmOverloads constructor(
          * A value below 1.0 keeps the line subtle so it does not overpower the waveform.
          */
         private const val REFLECTION_LINE_ALPHA = 0.45f
+
+        /** Radius in dp of the circular bookmark indicator dot drawn above each bar. */
+        private const val BOOKMARK_DOT_RADIUS_DP = 3f
+
+        /**
+         * Vertical gap in dp between the bookmark dot and the top of the bar that follows it.
+         * This space is carved from the top of the available bar area.
+         */
+        private const val BOOKMARK_DOT_MARGIN_DP = 2f
+
+        /**
+         * Alpha (0–255) applied to bookmark dots. Keeping this a little below full opacity
+         * lets the dot read clearly without competing with the bar colors.
+         */
+        private const val BOOKMARK_DOT_ALPHA = 220
+
+        /**
+         * Maximum horizontal and vertical movement in pixels that still counts as a tap rather
+         * than the beginning of a drag. Keeping this small so that slow drags are not confused
+         * with taps by accident.
+         */
+        private const val TAP_SLOP_PX = 12f
     }
 }
