@@ -404,6 +404,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
             audios: List<Audio>,
             position: Int,
             imageView: ImageView?,
+            showBookmarks: Boolean = false,
             onDismiss: (() -> Unit)? = null,
             onDismissStart: (() -> Unit)? = null) {
 
@@ -460,6 +461,13 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                     } else {
                         binding.addToFavorites.setStartDrawable(R.drawable.ic_favorite_border_16dp)
                     }
+                }
+
+                // --------------- Bookmark button logic ---------------
+                if (showBookmarks) {
+                    binding.bookmarks.visible(false)
+                } else {
+                    binding.bookmarks.gone(animate = false)
                 }
             }
 
@@ -586,9 +594,11 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                     dismiss()
                 }
 
-                binding.bookmarks.setOnClickListener {
-                    dismiss()
-                    onSongMenuBookmarksClicked(audio)
+                if (showBookmarks) {
+                    binding.bookmarks.setOnClickListener {
+                        dismiss()
+                        onSongMenuBookmarksClicked(audio)
+                    }
                 }
             }
 

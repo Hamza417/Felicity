@@ -276,13 +276,15 @@ abstract class BasePlayerFragment : MediaFragment() {
                     openSongsMenu(
                             audios = MediaPlaybackManager.getSongs(),
                             position = MediaPlaybackManager.getCurrentSongPosition(),
-                            imageView = pager.getCurrentImageView()
+                            imageView = pager.getCurrentImageView(),
+                            showBookmarks = true
                     )
                 }
                 UserInterfacePreferences.PLAYER_INTERFACE_FADED -> {
                     openSongsMenu(
                             audios = MediaPlaybackManager.getSongs(),
                             position = MediaPlaybackManager.getCurrentSongPosition(),
+                            showBookmarks = true,
                             imageView = null // No shared element transition on the faded player variant
                     )
                 }
