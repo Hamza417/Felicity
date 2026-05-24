@@ -44,7 +44,6 @@ import app.simple.felicity.theme.models.Accent
 import app.simple.felicity.theme.models.Theme
 import kotlin.math.abs
 import kotlin.math.max
-import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
 /**
@@ -172,15 +171,8 @@ class WaveformSeekbar @JvmOverloads constructor(
     var bookmarks: Set<Long> = emptySet()
         set(value) {
             field = value
-            rebuildBookmarkBarIndices()
             invalidate()
         }
-
-    /**
-     * Cached set of bar indices that correspond to a bookmarked position. Recomputed whenever
-     * [bookmarks] or [amplitudes] change so [onDraw] never allocates during rendering.
-     */
-    private val bookmarkBarIndices: HashSet<Int> = HashSet()
 
     /**
      * Controls the visual rendering mode of the waveform.
@@ -264,13 +256,10 @@ class WaveformSeekbar @JvmOverloads constructor(
     private val barRect = RectF()
     private val pillRect = RectF()
 
-    // Paint and pre-allocated geometry objects used to draw the bookmark pin markers.
-    // Pre-allocating these here avoids any object creation inside onDraw.
+    // Filled circle paint used to draw bookmark indicators above the waveform bars
     private val bookmarkPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
     }
-    private val bookmarkPinPath = android.graphics.Path()
-    private val bookmarkPinOval = RectF()
 
     // Pill background paint for label highlights (fill mode)
     private val labelBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -551,20 +540,12 @@ class WaveformSeekbar @JvmOverloads constructor(
         val labelAreaH = labelTextSizePx + labelPaddingPx * 1.5f
         val maxBarArea = h - labelAreaH - paddingTop - paddingBottom
 
-        // Bookmark pin geometry — constant for the entire frame, computed once.
-        // Only bars that sit under a bookmark are individually shortened; all other bars
-        // keep the full height so the waveform stays visually stable.
-        val density = resources.displayMetrics.density
-        val pinHeadRadius = BOOKMARK_PIN_HEAD_RADIUS_DP * density
-        val pinTipLength = BOOKMARK_PIN_TIP_LENGTH_DP * density
-        // Total strip height = head diameter + pointed tail + small breathing room before the bar
-        val bookmarkStripH = pinHeadRadius * 2f + pinTipLength + BOOKMARK_PIN_MARGIN_DP * density
-
-        // Map each bookmark timestamp to the bar index it falls on. Only those specific
-        // bars will be shortened to make room for the dot above them.
-        // (Indices are pre-computed in rebuildBookmarkBarIndices and kept in sync.)
-
-        val effectiveMaxBarArea = maxBarArea
+        // When bookmarks are present we carve a small strip from the top of the available
+        // bar area to house the bookmark dots. Bars grow from a lower baseline so the dots
+        // sit cleanly above them without any overlap.
+        val bookmarkDotRadius = if (bookmarks.isNotEmpty()) BOOKMARK_DOT_RADIUS_DP * resources.displayMetrics.density else 0f
+        val bookmarkStripH = if (bookmarks.isNotEmpty()) bookmarkDotRadius * 2f + BOOKMARK_DOT_MARGIN_DP * resources.displayMetrics.density else 0f
+        val effectiveMaxBarArea = maxBarArea - bookmarkStripH
 
         // Geometry pre-computed for reflection mode; values are unused in half/full modes.
         // Both halves use the smaller of the two available areas so bars are visually equal
@@ -578,7 +559,7 @@ class WaveformSeekbar @JvmOverloads constructor(
         val maxMainBarArea: Float
         val maxReflBarArea: Float
         if (waveformMode == WAVEFORM_MODE_REFLECTION) {
-            val topHalfArea = (mainWaveformBottom - paddingTop - labelAreaH).coerceAtLeast(0f)
+            val topHalfArea = (mainWaveformBottom - paddingTop - labelAreaH - bookmarkStripH).coerceAtLeast(0f)
             val bottomHalfArea = (h - paddingBottom - reflectionTop).coerceAtLeast(0f)
             val equalHalfArea = minOf(topHalfArea, bottomHalfArea)
             maxMainBarArea = equalHalfArea
@@ -614,36 +595,20 @@ class WaveformSeekbar @JvmOverloads constructor(
             }
             barPaint.alpha = (255 * spotlightAlpha * leftFadeAlpha).toInt()
 
-            // Reduce the available height only for bars that carry a pin above them.
-            // All other bars keep the full height, so the waveform looks consistent.
-            // For bookmarked bars we cap the height so the bar top never rises above
-            // (paddingTop + bookmarkStripH), guaranteeing the pin always has visible space.
-            val hasBookmark = i in bookmarkBarIndices
             when (waveformMode) {
                 WAVEFORM_MODE_FULL -> {
-                    // Symmetric: bar grows from center upward AND downward.
-                    // For bookmarked bars cap the upward half so the pin can sit above it.
-                    val upMaxH = if (hasBookmark) {
-                        (centerY - paddingTop.toFloat() - bookmarkStripH).coerceAtLeast(minBarHeightPx)
-                    } else {
-                        effectiveMaxBarArea / 2f
-                    }
-                    val halfH = max(minBarHeightPx / 2f, amp * upMaxH)
+                    // Symmetric: bar grows from center upward AND downward
+                    val halfH = max(minBarHeightPx / 2f, amp * (effectiveMaxBarArea / 2f))
                     barRect.set(
                             barCenterX - barWidthPx / 2f,
                             centerY - halfH,
                             barCenterX + barWidthPx / 2f,
-                            centerY + max(minBarHeightPx / 2f, amp * (effectiveMaxBarArea / 2f))
+                            centerY + halfH
                     )
                 }
                 WAVEFORM_MODE_REFLECTION -> {
-                    // Reflection main: bar grows upward from just above the separator gap.
-                    val upMaxH = if (hasBookmark) {
-                        (mainWaveformBottom - paddingTop.toFloat() - bookmarkStripH).coerceAtLeast(minBarHeightPx)
-                    } else {
-                        maxMainBarArea
-                    }
-                    val barH = max(minBarHeightPx, amp * upMaxH)
+                    // Reflection main: bar grows upward from just above the separator gap
+                    val barH = max(minBarHeightPx, amp * maxMainBarArea)
                     barRect.set(
                             barCenterX - barWidthPx / 2f,
                             mainWaveformBottom - barH,
@@ -652,14 +617,8 @@ class WaveformSeekbar @JvmOverloads constructor(
                     )
                 }
                 else -> {
-                    // Half: bar grows upward from center only.
-                    // Cap bookmarked bars so they always leave room for the pin at the top.
-                    val upMaxH = if (hasBookmark) {
-                        (centerY - paddingTop.toFloat() - bookmarkStripH).coerceAtLeast(minBarHeightPx)
-                    } else {
-                        effectiveMaxBarArea
-                    }
-                    val barH = max(minBarHeightPx, amp * upMaxH)
+                    // Half: bar grows upward from center only
+                    val barH = max(minBarHeightPx, amp * effectiveMaxBarArea)
                     barRect.set(
                             barCenterX - barWidthPx / 2f,
                             centerY - barH,
@@ -721,50 +680,20 @@ class WaveformSeekbar @JvmOverloads constructor(
             )
         }
 
-        // Draw bookmark pins inside the compositing layer so the horizontal fade edges
-        // clip them naturally. Each pin sits directly above the bar it belongs to —
-        // the circle head at the very top of the carved strip, and the pointed tail
-        // reaching down to just touch the shortened bar beneath it.
+        // Draw bookmark dots inside the compositing layer so the horizontal edge fades
+        // clip them naturally, just like the bars. Each dot is a small filled circle placed
+        // at the very top of the waveform's reserved strip, horizontally aligned with
+        // the bar that corresponds to the bookmarked second.
         if (bookmarks.isNotEmpty() && durationMs > 0L && amplitudes.isNotEmpty()) {
-            // The pin head center is anchored to the very top of the view's content area
-            // so it is always on-screen. Bars under a bookmark are capped so they never
-            // rise into this strip, keeping the pin clearly above the bar.
-            val pinHeadCenterY = paddingTop.toFloat() + pinHeadRadius
-            // The tip of the pin points downward and lands just above the bar top
-            val pinTipY = pinHeadCenterY + pinHeadRadius + pinTipLength
-
-            // Pre-compute the oval bounds for the arc — only the Y values vary by pin head size
-            // and mode, so width offsets from pin X are added per-pin below
-            val ovalTop = pinHeadCenterY - pinHeadRadius
-            val ovalBottom = pinHeadCenterY + pinHeadRadius
-
-            // Tail attachment offsets from pin center — derived from sin/cos of the tail
-            // start angle (120° in Android coordinate space = 30° past 6 o'clock).
-            // These are constants: cos(120°) = -0.5, sin(120°) = 0.866
-            val tailOffsetX = pinHeadRadius * BOOKMARK_PIN_TAIL_COS  // horizontal offset
-            val tailOffsetY = pinHeadRadius * BOOKMARK_PIN_TAIL_SIN  // downward offset
-
+            val dotCenterY = paddingTop.toFloat() + bookmarkDotRadius
             bookmarkPaint.color = playedColor
-            bookmarkPaint.alpha = BOOKMARK_PIN_ALPHA
-
+            bookmarkPaint.alpha = BOOKMARK_DOT_ALPHA
             for (timestampMs in bookmarks) {
-                val fraction = timestampMs.toFloat().coerceIn(0f, durationMs.toFloat()) / durationMs.toFloat()
-                val pinScrollOffset = fraction * (amplitudes.size * barStep)
-                val pinX = pinScrollOffset - scrollOffset + centerX
-                if (pinX + pinHeadRadius < 0f || pinX - pinHeadRadius > w) continue
-
-                bookmarkPinPath.reset()
-                bookmarkPinOval.set(pinX - pinHeadRadius, ovalTop, pinX + pinHeadRadius, ovalBottom)
-
-                // Build the pin shape: start at the left tail attachment point, arc clockwise
-                // around the top of the circle to the right attachment point, then draw two
-                // lines that meet at the pointed tip below — like a teardrop facing down.
-                bookmarkPinPath.moveTo(pinX - tailOffsetX, pinHeadCenterY + tailOffsetY)
-                bookmarkPinPath.arcTo(bookmarkPinOval, BOOKMARK_PIN_TAIL_START_ANGLE, BOOKMARK_PIN_TAIL_SWEEP, false)
-                bookmarkPinPath.lineTo(pinX, pinTipY)
-                bookmarkPinPath.close()
-
-                canvas.drawPath(bookmarkPinPath, bookmarkPaint)
+                val bookmarkFraction = timestampMs.toFloat().coerceIn(0f, durationMs.toFloat()) / durationMs.toFloat()
+                val bookmarkScrollOffset = bookmarkFraction * (amplitudes.size * barStep)
+                val dotX = bookmarkScrollOffset - scrollOffset + centerX
+                if (dotX + bookmarkDotRadius < 0f || dotX - bookmarkDotRadius > w) continue
+                canvas.drawCircle(dotX, dotCenterY, bookmarkDotRadius, bookmarkPaint)
             }
         }
 
@@ -1146,7 +1075,6 @@ class WaveformSeekbar @JvmOverloads constructor(
         barAnimator = null
 
         amplitudes = normalizedData
-        rebuildBookmarkBarIndices()
 
         // Align start array to new data length, padding with zeros when growing
         if (animStartAmplitudes.size != normalizedData.size) {
@@ -1175,18 +1103,6 @@ class WaveformSeekbar @JvmOverloads constructor(
                 }
             })
             start()
-        }
-    }
-
-    /** Rebuilds [bookmarkBarIndices] from the current [bookmarks] and [amplitudes]. */
-    private fun rebuildBookmarkBarIndices() {
-        bookmarkBarIndices.clear()
-        if (bookmarks.isEmpty() || durationMs <= 0L || amplitudes.isEmpty()) return
-        bookmarks.forEach { ts ->
-            bookmarkBarIndices.add(
-                    (ts.toFloat() / durationMs.toFloat() * amplitudes.size)
-                        .roundToInt().coerceIn(0, amplitudes.size - 1)
-            )
         }
     }
 
@@ -1266,7 +1182,6 @@ class WaveformSeekbar @JvmOverloads constructor(
      */
     fun setDuration(durationMs: Long) {
         this.durationMs = durationMs
-        rebuildBookmarkBarIndices()
         invalidate()
     }
 
@@ -1665,41 +1580,20 @@ class WaveformSeekbar @JvmOverloads constructor(
          */
         private const val REFLECTION_LINE_ALPHA = 0.45f
 
-        /** Radius in dp of the circular head of the bookmark pin marker. */
-        private const val BOOKMARK_PIN_HEAD_RADIUS_DP = 3.5f
-
-        /** Length in dp of the pointed tail that extends below the pin head toward the bar. */
-        private const val BOOKMARK_PIN_TIP_LENGTH_DP = 5f
+        /** Radius in dp of the circular bookmark indicator dot drawn above each bar. */
+        private const val BOOKMARK_DOT_RADIUS_DP = 3f
 
         /**
-         * Breathing room in dp between the pin tip and the top of the shortened bar beneath it.
-         * A small gap makes it obvious the pin is a separate indicator, not part of the bar.
+         * Vertical gap in dp between the bookmark dot and the top of the bar that follows it.
+         * This space is carved from the top of the available bar area.
          */
-        private const val BOOKMARK_PIN_MARGIN_DP = 1.5f
+        private const val BOOKMARK_DOT_MARGIN_DP = 2f
 
         /**
-         * Alpha (0–255) applied to bookmark pin markers. Slightly below full opacity so they
-         * read clearly without visually dominating the waveform bars.
+         * Alpha (0–255) applied to bookmark dots. Keeping this a little below full opacity
+         * lets the dot read clearly without competing with the bar colors.
          */
-        private const val BOOKMARK_PIN_ALPHA = 220
-
-        /**
-         * Android canvas angle (degrees) where the arc starts for the pin tail attachment on
-         * the left side of the circle. 120° = 30° past the 6 o'clock position going clockwise.
-         */
-        private const val BOOKMARK_PIN_TAIL_START_ANGLE = 120f
-
-        /**
-         * Clockwise arc sweep in degrees from the left tail attachment to the right one,
-         * going up and around the top of the circle (300° skips the bottom 60° notch).
-         */
-        private const val BOOKMARK_PIN_TAIL_SWEEP = 300f
-
-        /** sin(120°) — vertical offset factor for the tail attachment points on the circle. */
-        private const val BOOKMARK_PIN_TAIL_SIN = 0.866f
-
-        /** |cos(120°)| — horizontal offset factor for the tail attachment points on the circle. */
-        private const val BOOKMARK_PIN_TAIL_COS = 0.5f
+        private const val BOOKMARK_DOT_ALPHA = 220
 
         /**
          * Maximum horizontal and vertical movement in pixels that still counts as a tap rather
