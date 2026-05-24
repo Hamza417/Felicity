@@ -733,9 +733,8 @@ class PageAdapter(
         }
 
         override fun onBindView(position: Int, view: View) {
-            val iv = view as ImageView
             if (data.items.isNotEmpty()) {
-                iv.loadArtCover(
+                (view as ImageView).loadArtCover(
                         item = data.items[position],
                         roundedCorners = false,
                         blur = false,
