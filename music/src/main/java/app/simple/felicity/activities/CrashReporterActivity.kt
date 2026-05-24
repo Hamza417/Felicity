@@ -8,8 +8,8 @@ import app.simple.felicity.R
 import app.simple.felicity.databinding.ActivityCrashBinding
 import app.simple.felicity.extensions.activities.BaseActivity
 import app.simple.felicity.factories.misc.ErrorViewModelFactory
+import app.simple.felicity.models.StackTrace
 import app.simple.felicity.preferences.CrashPreferences
-import app.simple.felicity.repository.models.normal.StackTrace
 import app.simple.felicity.shared.utils.ConditionUtils.invert
 import app.simple.felicity.utils.DateUtils.toDate
 import app.simple.felicity.viewmodels.misc.ErrorViewModel
