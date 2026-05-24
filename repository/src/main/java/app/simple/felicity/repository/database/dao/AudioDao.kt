@@ -82,8 +82,8 @@ interface AudioDao {
     fun getRecentAudio(): Flow<MutableList<Audio>>
 
     // Get recent audio with filtering – returns all songs added in the last 30 days
-    @Query("SELECT * FROM audio WHERE is_available = 1 AND duration >= :minDuration AND size >= :minSize AND date_added >= :minDateAdded ORDER BY date_added DESC")
-    fun getFilteredRecentAudio(minDuration: Long, minSize: Long, minDateAdded: Long): Flow<MutableList<Audio>>
+    @Query("SELECT * FROM audio WHERE is_available = 1 AND duration >= :minDuration AND size >= :minSize AND date_modified >= :minDateModified ORDER BY date_modified DESC")
+    fun getFilteredRecentAudio(minDuration: Long, minSize: Long, minDateModified: Long): Flow<MutableList<Audio>>
 
     // get all audio files by artist name in ascending order
     @Query("SELECT * FROM audio WHERE artist = :artist AND is_available = 1 ORDER BY title COLLATE NOCASE ASC")
