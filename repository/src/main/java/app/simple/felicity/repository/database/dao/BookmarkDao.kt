@@ -50,6 +50,13 @@ interface BookmarkDao {
     @Query("DELETE FROM audio_bookmarks WHERE audioHash = :audioHash")
     suspend fun deleteAllBookmarksForAudio(audioHash: Long)
 
+    /**
+     * Returns every bookmark in the table, across all tracks, ordered by creation time.
+     * Used by the Bookmarks panel to show all bookmarked songs at a glance.
+     */
+    @Query("SELECT * FROM audio_bookmarks ORDER BY createdAt DESC")
+    fun getAllBookmarks(): Flow<List<AudioBookmark>>
+
     /** Wipes the entire bookmarks table. */
     @Query("DELETE FROM audio_bookmarks")
     suspend fun deleteAllBookmarks()

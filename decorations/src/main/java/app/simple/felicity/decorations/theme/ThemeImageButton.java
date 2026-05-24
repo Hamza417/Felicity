@@ -33,6 +33,11 @@ public class ThemeImageButton extends AppCompatImageButton implements ThemeChang
     protected int tintMode;
     private ValueAnimator valueAnimator;
     
+    public ThemeImageButton(@NonNull Context context) {
+        super(context);
+        init(null);
+    }
+    
     public ThemeImageButton(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
         init(attrs);

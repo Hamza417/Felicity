@@ -3,8 +3,10 @@ package app.simple.felicity.repository.repositories
 import android.content.Context
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.models.AudioBookmark
+import app.simple.felicity.repository.models.AudioWithBookmarks
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -80,6 +82,35 @@ class BookmarkRepository @Inject constructor(
     /** Wipes all bookmarks for a given audio hash. */
     suspend fun clearBookmarks(audioHash: Long) {
         dao.deleteAllBookmarksForAudio(audioHash)
+    }
+
+    /**
+     * Returns a live stream of all bookmarked tracks as [AudioWithBookmarks] pairs.
+     *
+     * Every time a bookmark is added or removed, the flow emits a fresh list.
+     * Tracks whose audio row no longer exists in the library are silently dropped —
+     * their bookmarks stay in the database (non-cascading) but are not shown in the panel
+     * until the file is re-scanned.
+     *
+     * Note: because [getAudioByHash] is a suspend DAO query, the outer [map] must run
+     * inside a coroutine context. Call [kotlinx.coroutines.flow.flowOn] with
+     * [kotlinx.coroutines.Dispatchers.IO] in the ViewModel to keep database work off
+     * the main thread.
+     */
+    fun getAllWithAudio(): Flow<List<AudioWithBookmarks>> {
+        val audioDao = AudioDatabase.getInstance(context).audioDao()
+        return dao.getAllBookmarks().map { allBookmarks ->
+            allBookmarks
+                .groupBy { bookmark -> bookmark.audioHash }
+                .mapNotNull { (hash, bookmarks) ->
+                    val audio = audioDao?.getAudioByHash(hash) ?: return@mapNotNull null
+                    AudioWithBookmarks(
+                            audio = audio,
+                            bookmarks = bookmarks.sortedBy { b -> b.timestampMs }
+                    )
+                }
+                .sortedBy { entry -> entry.audio.title?.lowercase() }
+        }
     }
 
     companion object {

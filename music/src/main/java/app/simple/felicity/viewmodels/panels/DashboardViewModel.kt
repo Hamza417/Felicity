@@ -176,6 +176,9 @@ class DashboardViewModel @Inject constructor(
         if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_MOST_PLAYED))
             panels.add(Panel(R.string.most_played, R.drawable.ic_equalizer_16dp))
 
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_BOOKMARKS))
+            panels.add(Panel(R.string.bookmarks, R.drawable.ic_bookmark_16dp))
+
         if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_FAVORITES)) {
             panels.add(
                     if (UserInterfacePreferences.isLikeIconInsteadOfThumb()) {

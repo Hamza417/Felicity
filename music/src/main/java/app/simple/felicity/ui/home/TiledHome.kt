@@ -236,6 +236,10 @@ class TiledHome : BaseHomeFragment() {
         if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_MOST_SKIPPED))
             tiles.add(SpannedTile.PanelTile(R.string.most_skipped, R.drawable.ic_skip))
 
+        if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_BOOKMARKS)) {
+            tiles.add(SpannedTile.PanelTile(R.string.bookmarks, R.drawable.ic_bookmark_16dp))
+        }
+
         tiles.add(SpannedTile.PanelTile(R.string.preferences, R.drawable.ic_settings))
 
         return tiles

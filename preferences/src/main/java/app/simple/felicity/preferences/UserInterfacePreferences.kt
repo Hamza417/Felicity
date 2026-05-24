@@ -150,6 +150,7 @@ object UserInterfacePreferences {
     const val PANEL_VISIBLE_ALWAYS_SKIPPED = "panel_visible_always_skipped"
 
     const val PANEL_MOST_SKIPPED = "panel_most_skipped"
+    const val PANEL_VISIBLE_BOOKMARKS = "panel_bookmarks"
 
     /**
      * All panel visibility keys collected in one handy set,
@@ -169,6 +170,7 @@ object UserInterfacePreferences {
             PANEL_VISIBLE_FOLDERS,
             PANEL_VISIBLE_FOLDERS_HIERARCHY,
             PANEL_VISIBLE_ALWAYS_SKIPPED,
-            PANEL_MOST_SKIPPED
+            PANEL_MOST_SKIPPED,
+            PANEL_VISIBLE_BOOKMARKS
     )
 }

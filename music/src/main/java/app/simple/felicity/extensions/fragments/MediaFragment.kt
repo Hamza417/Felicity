@@ -200,6 +200,19 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
     }
 
     /**
+     * Plays [audio] as a solo single-song queue starting at [startPositionMs].
+     *
+     * This is used by the Bookmarks panel when the user taps a specific bookmark —
+     * the song plays alone (no album/playlist context) and begins at the exact
+     * timestamp where the bookmark was placed.
+     */
+    protected fun setMediaItemWithSeek(audio: Audio, startPositionMs: Long) {
+        MediaPlaybackManager.setSongs(listOf(audio), 0, startPositionMs = startPositionMs, autoPlay = true)
+        createSongHistoryDatabase(listOf(audio))
+        showMiniPlayer()
+    }
+
+    /**
      * Shuffles [songs] using the smart artist-aware algorithm, then starts playing from
      * position 0. The shuffled queue replaces the current queue entirely.
      */
@@ -209,7 +222,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         createSongHistoryDatabase(shuffled)
     }
 
-    private fun openDefaultPlayer() {
+    protected fun openDefaultPlayer() {
         val player = when (UserInterfacePreferences.getPlayerInterface()) {
             UserInterfacePreferences.PLAYER_INTERFACE_FADED -> PlayerFaded.newInstance()
             else -> DefaultPlayer.newInstance()
