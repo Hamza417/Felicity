@@ -103,6 +103,24 @@ class WaveformSeekbar @JvmOverloads constructor(
     }
 
     /**
+     * Notified when the user taps on a specific position in the waveform without
+     * dragging. This is separate from seeking — a tap is a quick press-and-release
+     * on a particular bar rather than a scroll gesture.
+     *
+     * Use this to show a context menu (like a bookmark menu) anchored to the tapped position.
+     */
+    fun interface OnBarTapListener {
+        /**
+         * Called once when the user lifts their finger at the same horizontal
+         * position where they pressed it down (within the tap-slop tolerance).
+         *
+         * @param positionMs the playback position in milliseconds that corresponds
+         *                   to the bar the user tapped
+         */
+        fun onBarTapped(positionMs: Long)
+    }
+
+    /**
      * Notified on each animation frame while a fling gesture is actively scrolling the waveform.
      * While any registered [OnFlingRunningListener] is active, [setProgress] will not accept
      * external updates to prevent the song position from snapping back mid-fling.
@@ -182,6 +200,7 @@ class WaveformSeekbar @JvmOverloads constructor(
     private var flingEndListener: OnFlingEndListener? = null
     private var leftLabelProvider: LeftLabelProvider? = null
     private var rightLabelProvider: RightLabelProvider? = null
+    private var barTapListener: OnBarTapListener? = null
 
     private var playedColor: Int = Color.WHITE
     private var unplayedColor: Int = Color.GRAY
@@ -302,6 +321,10 @@ class WaveformSeekbar @JvmOverloads constructor(
     private var dragStartX = 0f
     private var dragStartProgressMs = 0L
     private var dragCurrentProgressMs = 0L
+
+    // Tracks where ACTION_DOWN happened so we can decide if ACTION_UP is a tap or a drag-end.
+    private var touchDownX = 0f
+    private var touchDownY = 0f
 
     // Smooth scroll animation for programmatic progress updates
     private var progressAnimator: ValueAnimator? = null
@@ -835,6 +858,10 @@ class WaveformSeekbar @JvmOverloads constructor(
                 dragStartProgressMs = animatedProgressMs
                 dragCurrentProgressMs = dragStartProgressMs
 
+                // Record exact press position for tap detection in ACTION_UP
+                touchDownX = event.x
+                touchDownY = event.y
+
                 // Start velocity tracking for the upcoming drag
                 if (velocityTracker == null) velocityTracker = VelocityTracker.obtain()
                 velocityTracker!!.clear()
@@ -876,6 +903,39 @@ class WaveformSeekbar @JvmOverloads constructor(
 
                     isDragging = false
                     parent?.requestDisallowInterceptTouchEvent(false)
+
+                    // Decide if this was a tap (finger barely moved) before resetting anything.
+                    // A tap fires the bar listener with the tapped timestamp so the fragment can
+                    // show a context menu without triggering a seek.
+                    val deltaX = abs(event.x - touchDownX)
+                    val deltaY = abs(event.y - touchDownY)
+                    val isTap = deltaX < TAP_SLOP_PX && deltaY < TAP_SLOP_PX
+                            && event.actionMasked == MotionEvent.ACTION_UP
+
+                    if (isTap && barTapListener != null) {
+                        // Convert the tap's horizontal position to a playback timestamp using the
+                        // same scroll math that onDraw uses, then notify the listener.
+                        val barStep = barWidthPx + barSpacingPx
+                        val totalScrollRange = amplitudes.size * barStep
+                        val displayProgress = animatedProgressMs
+                        val progressFraction = displayProgress.toFloat().coerceIn(0f, durationMs.toFloat()) / durationMs.toFloat()
+                        val scrollOffset = progressFraction * totalScrollRange
+                        val centerX = width / 2f
+                        val tapScrollPos = event.x - centerX + scrollOffset
+                        val tappedMs = if (totalScrollRange > 0f && durationMs > 0L) {
+                            (tapScrollPos / totalScrollRange * durationMs).toLong().coerceIn(0L, durationMs)
+                        } else {
+                            displayProgress
+                        }
+                        animateLabelVisibility(true)
+                        animateSeekLine(false)
+                        // Restore dragging state back to false before the callback so callers
+                        // that immediately call setProgress() are not blocked.
+                        barTapListener?.onBarTapped(tappedMs)
+                        performClick()
+                        return true
+                    }
+
                     animateLabelVisibility(true)
                     animateSeekLine(false)
 
@@ -1298,6 +1358,17 @@ class WaveformSeekbar @JvmOverloads constructor(
     }
 
     /**
+     * Registers a listener that fires when the user taps on a bar without dragging.
+     * The tapped bar's playback position (in milliseconds) is passed to the callback.
+     * Use this to open a context menu (e.g., a bookmark menu) at the tapped position.
+     *
+     * @param listener the [OnBarTapListener] to register, or `null` to unregister
+     */
+    fun setOnBarTapListener(listener: OnBarTapListener?) {
+        barTapListener = listener
+    }
+
+    /**
      * Sets the provider for the left-side (elapsed) time label.
      *
      * @param provider label string provider, or `null` to hide the label
@@ -1523,5 +1594,12 @@ class WaveformSeekbar @JvmOverloads constructor(
          * lets the dot read clearly without competing with the bar colors.
          */
         private const val BOOKMARK_DOT_ALPHA = 220
+
+        /**
+         * Maximum horizontal and vertical movement in pixels that still counts as a tap rather
+         * than the beginning of a drag. Keeping this small so that slow drags are not confused
+         * with taps by accident.
+         */
+        private const val TAP_SLOP_PX = 12f
     }
 }

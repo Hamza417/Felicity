@@ -60,6 +60,7 @@ import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
 import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
 import app.simple.felicity.shared.utils.ViewUtils.gone
+import app.simple.felicity.shared.utils.ViewUtils.visible
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.ui.pages.AlbumPage
 import app.simple.felicity.ui.pages.ArtistPage
@@ -377,6 +378,15 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         /* no-op */
     }
 
+    /**
+     * Called when the "Bookmarks" option in the song menu is tapped for the currently
+     * playing [audio]. The default implementation does nothing — [BasePlayerFragment]
+     * overrides this to open the bookmark context menu.
+     */
+    protected open fun onSongMenuBookmarksClicked(audio: Audio) {
+        /* no-op */
+    }
+
     protected fun openSongsMenu(
             audios: List<Audio>,
             position: Int,
@@ -405,6 +415,9 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                     binding.insertAndPlay.gone(animate = false)
                     binding.addToQueue.gone(animate = false)
                     binding.playNext.gone(animate = false)
+                    // Bookmarks only make sense for the currently playing song since the
+                    // BookmarksManager only tracks the active track.
+                    binding.bookmarks.visible(animate = false)
                 }
 
                 if (audio.artist.isNullOrBlank()) binding.goToArtist.gone(animate = false)
@@ -558,6 +571,11 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 binding.addToSelection.setOnClickListener {
                     SelectionManager.toggle(audio)
                     dismiss()
+                }
+
+                binding.bookmarks.setOnClickListener {
+                    dismiss()
+                    onSongMenuBookmarksClicked(audio)
                 }
             }
 

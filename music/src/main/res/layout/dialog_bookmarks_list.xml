@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<app.simple.felicity.decorations.corners.DynamicCornerLinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="@dimen/padding_15"
+        android:text="@string/bookmarks"
+        android:textSize="@dimen/text_size_16"
+        app:appFontStyle="bold"
+        app:textColorStyle="primary" />
+
+    <app.simple.felicity.decorations.theme.ThemeDivider
+        android:layout_width="match_parent"
+        android:layout_height="1px" />
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="@dimen/padding_10"
+        android:clipToPadding="false"
+        android:fadingEdge="vertical"
+        android:requiresFadingEdge="vertical"
+        android:fadingEdgeLength="@dimen/padding_20">
+
+        <!-- Bookmark entries are added here programmatically -->
+        <LinearLayout
+            android:id="@+id/bookmarks_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+    </androidx.core.widget.NestedScrollView>
+
+</app.simple.felicity.decorations.corners.DynamicCornerLinearLayout>
+
