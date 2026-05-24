@@ -136,7 +136,7 @@ public class MediaMetadataLoader {
             audio.setSize(cachedSize);
             audio.setDateModified(cachedLastModified);
         }
-
+        
         audio.setAlbum(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM));
         audio.setArtist(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST));
         audio.setGenre(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_GENRE));
@@ -146,8 +146,7 @@ public class MediaMetadataLoader {
         audio.setNumTracks(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_NUM_TRACKS));
         audio.setComposer(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_COMPOSER));
         audio.setMimeType(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE));
-        audio.setBitrate(Long.parseLong(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)));
-        
+        audio.setBitrate(Long.parseLong(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)) / 1000); // Convert from bps to kbps
         audio.setAlbumArtist(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST));
         audio.setWriter(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_WRITER));
         audio.setCompilation(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_COMPILATION));
@@ -165,7 +164,7 @@ public class MediaMetadataLoader {
         } else {
             audio.setBitPerSample(0);
         }
-
+        
         audio.setDateAdded(System.currentTimeMillis());
         audio.setHash(MetaDataHelper.INSTANCE.generateStableHash(audio));
     }
