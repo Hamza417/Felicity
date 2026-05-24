@@ -20,6 +20,7 @@ import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.preferences.RecentlyPlayedPreferences
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.AudioWithStat
+import app.simple.felicity.repository.utils.AudioUtils.getProperAlbum
 import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
 import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 import app.simple.felicity.utils.AdapterUtils.addAudioQualityIcon
@@ -145,9 +146,9 @@ class AdapterRecentlyPlayed(initial: List<AudioWithStat>) : FastScrollAdapter<Ve
      * @param item the [AudioWithStat] whose tertiary text is being built
      */
     private fun buildTertiaryText(item: AudioWithStat): CharSequence {
-        val album = item.audio.album?.takeIf { it.isNotEmpty() }
+        val album = item.audio.getProperAlbum().takeIf { it.isNotEmpty() }
         val stat = formatRelativeTime(item.lastPlayed)
-        return if (album != null) "$album \u2022 $stat" else stat
+        return if (album != null) "$stat \u2022 $album" else stat
     }
 
     inner class ListHolder(val binding: AdapterStyleListBinding) : VerticalListViewHolder(binding.root) {

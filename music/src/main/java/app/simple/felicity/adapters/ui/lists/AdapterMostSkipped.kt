@@ -21,6 +21,7 @@ import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.preferences.MostSkippedPreferences
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.AudioWithStat
+import app.simple.felicity.repository.utils.AudioUtils.getProperAlbum
 import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
 import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 import app.simple.felicity.utils.AdapterUtils.addAudioQualityIcon
@@ -139,15 +140,15 @@ class AdapterMostSkipped(initial: List<AudioWithStat>) : FastScrollAdapter<Verti
     }
 
     /**
-     * Builds the combined album + skip count string for the tertiary detail line.
+     * Builds the combined skip count + album string for the tertiary detail line.
      * If the album name is absent the count text is shown on its own.
      *
      * @param item the [AudioWithStat] whose tertiary text is being built
      */
     private fun Context.buildTertiaryText(item: AudioWithStat): String {
-        val album = item.audio.album?.takeIf { it.isNotEmpty() }
+        val album = item.audio.getProperAlbum().takeIf { it.isNotEmpty() }
         val stat = resources.getQuantityString(R.plurals.total_times, item.skipCount, item.skipCount)
-        return if (album != null) "$album \u2022 $stat" else stat
+        return if (album != null) "$stat \u2022 $album" else stat
     }
 
     inner class ListHolder(val binding: AdapterStyleListBinding) : VerticalListViewHolder(binding.root) {
