@@ -277,11 +277,7 @@ public class Audio implements Parcelable {
     
     @Nullable
     public String getAlbum() {
-        if (album == null || album.isEmpty()) {
-            return NOT_AVAILABLE;
-        } else {
-            return album;
-        }
+        return album;
     }
     
     public void setAlbum(@Nullable String album) {
