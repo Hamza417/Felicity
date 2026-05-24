@@ -521,6 +521,9 @@ abstract class BasePlayerFragment : MediaFragment() {
             seekbar.setDurationWithReset(audio.duration)
             lrc.clear()
             lyricsViewModel.loadLrcData()
+
+            val bookmarks = setOf(855L, 2000L, 45000L) // TODO - load real bookmarks from the database
+            seekbar.bookmarks = bookmarks
         }
 
         // Always sync seek position. For a same-song re-emission (e.g., predictive back
