@@ -156,6 +156,13 @@ abstract class BasePageFragment : MediaFragment() {
     }
 
     /**
+     * Whether the current page is backed by an M3U playlist. Subclasses that display
+     * an M3U playlist should override this to return [true] so the sort dialog reveals
+     * the M3U Order chip.
+     */
+    protected open val isM3UPlaylist: Boolean get() = false
+
+    /**
      * Returns the [PageSort] page-type string constant that matches the current [pageType].
      * Used when opening the [app.simple.felicity.dialogs.pages.PageSortDialog].
      */
@@ -220,7 +227,7 @@ abstract class BasePageFragment : MediaFragment() {
             }
 
             override fun onSortClicked(view: View) {
-                childFragmentManager.showPageSortDialog(resolvePageTypeKey())
+                childFragmentManager.showPageSortDialog(resolvePageTypeKey(), isM3UPlaylist)
             }
         })
     }

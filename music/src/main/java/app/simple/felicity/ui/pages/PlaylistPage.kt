@@ -58,6 +58,9 @@ class PlaylistPage : BasePageFragment() {
 
     override val pageType: PageAdapter.PageType by lazy { PageAdapter.PageType.PlaylistPage(playlist) }
 
+    /** Tells the base fragment to reveal the M3U Order chip in the sort dialog when needed. */
+    override val isM3UPlaylist: Boolean get() = playlist.isM3UPlaylist
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentPageArtistBinding.inflate(inflater, container, false)
         return binding.root

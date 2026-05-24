@@ -63,6 +63,12 @@ object PageSort {
     private fun List<Audio>.applySort(sortField: Int, order: Int): List<Audio> {
         val ascending = order == CommonPreferencesConstants.ASCENDING
         return when (sortField) {
+            /**
+             * When M3U Order is selected, we skip all sorting and return the list exactly
+             * as it came from the database, which already reflects the song's position in
+             * the original M3U file (top to bottom).
+             */
+            CommonPreferencesConstants.BY_M3U_ORDER -> this
             CommonPreferencesConstants.BY_TITLE -> if (ascending) sortedBy { it.title } else sortedByDescending { it.title }
             CommonPreferencesConstants.BY_ARTIST -> if (ascending) sortedBy { it.artist } else sortedByDescending { it.artist }
             CommonPreferencesConstants.BY_ALBUM -> if (ascending) sortedBy { it.album } else sortedByDescending { it.album }
@@ -117,6 +123,7 @@ object PageSort {
             CommonPreferencesConstants.BY_YEAR -> context.getString(R.string.year)
             CommonPreferencesConstants.BY_TRACK_NUMBER -> context.getString(R.string.track_number)
             CommonPreferencesConstants.BY_COMPOSER -> context.getString(R.string.composer)
+            CommonPreferencesConstants.BY_M3U_ORDER -> context.getString(R.string.m3u_order)
             else -> context.getString(R.string.unknown)
         }
     }

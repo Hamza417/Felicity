@@ -356,6 +356,7 @@
     <string name="edit_playlist">Edit Playlist</string>
     <string name="add_all_to_queue">Add All to Queue</string>
     <string name="manual">Manual</string>
+    <string name="m3u_order">M3U Order</string>
     <string name="filter_categories">Filter Categories</string>
     <string name="about">About</string>
     <string name="about_desc">General information and version details.</string>

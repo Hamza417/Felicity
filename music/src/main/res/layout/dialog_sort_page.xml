@@ -89,6 +89,13 @@
                 android:text="@string/composer"
                 android:layout_height="wrap_content" />
 
+            <app.simple.felicity.decorations.views.Chip
+                android:id="@+id/m3u_order"
+                android:layout_width="wrap_content"
+                android:text="@string/m3u_order"
+                android:visibility="gone"
+                android:layout_height="wrap_content" />
+
         </com.google.android.material.chip.ChipGroup>
 
         <app.simple.felicity.decorations.typeface.TypeFaceTextView

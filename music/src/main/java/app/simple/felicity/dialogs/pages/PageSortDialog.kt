@@ -29,6 +29,10 @@ class PageSortDialog : ScopedBottomSheetFragment() {
         requireArguments().getString(PageSort.PAGE_TYPE, PageSort.PAGE_TYPE_ALBUM)
     }
 
+    private val isM3UPlaylist: Boolean by lazy {
+        requireArguments().getBoolean(ARG_IS_M3U_PLAYLIST, false)
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = DialogSortPageBinding.inflate(inflater, container, false)
         return binding.root
@@ -39,6 +43,10 @@ class PageSortDialog : ScopedBottomSheetFragment() {
 
         if (pageType == PageSort.PAGE_TYPE_ALBUM) {
             binding.trackNumber.visibility = View.VISIBLE
+        }
+
+        if (pageType == PageSort.PAGE_TYPE_PLAYLIST && isM3UPlaylist) {
+            binding.m3uOrder.visibility = View.VISIBLE
         }
 
         val currentSort = getCurrentSort()
@@ -58,6 +66,10 @@ class PageSortDialog : ScopedBottomSheetFragment() {
                 else binding.title.isChecked = true
             }
             CommonPreferencesConstants.BY_COMPOSER -> binding.composer.isChecked = true
+            CommonPreferencesConstants.BY_M3U_ORDER -> {
+                if (isM3UPlaylist) binding.m3uOrder.isChecked = true
+                else binding.title.isChecked = true
+            }
         }
 
         binding.normal.isChecked = currentOrder == CommonPreferencesConstants.ASCENDING
@@ -75,6 +87,7 @@ class PageSortDialog : ScopedBottomSheetFragment() {
                 binding.year.id -> setSort(CommonPreferencesConstants.BY_YEAR)
                 binding.trackNumber.id -> setSort(CommonPreferencesConstants.BY_TRACK_NUMBER)
                 binding.composer.id -> setSort(CommonPreferencesConstants.BY_COMPOSER)
+                binding.m3uOrder.id -> setSort(CommonPreferencesConstants.BY_M3U_ORDER)
             }
         }
 
@@ -138,10 +151,12 @@ class PageSortDialog : ScopedBottomSheetFragment() {
 
     companion object {
         private const val TAG = "PageSortDialog"
+        private const val ARG_IS_M3U_PLAYLIST = "is_m3u_playlist"
 
-        fun newInstance(pageType: String): PageSortDialog {
+        fun newInstance(pageType: String, isM3UPlaylist: Boolean = false): PageSortDialog {
             val args = Bundle()
             args.putString(PageSort.PAGE_TYPE, pageType)
+            args.putBoolean(ARG_IS_M3U_PLAYLIST, isM3UPlaylist)
             val fragment = PageSortDialog()
             fragment.arguments = args
             return fragment
@@ -151,10 +166,12 @@ class PageSortDialog : ScopedBottomSheetFragment() {
          * Shows the page sort dialog for the given [pageType].
          *
          * @param pageType One of the [PageSort].PAGE_TYPE_* constants.
+         * @param isM3UPlaylist Pass [true] when opening from a playlist page that was
+         *   generated from an M3U file, so the M3U Order chip is revealed.
          * @return The shown [PageSortDialog].
          */
-        fun FragmentManager.showPageSortDialog(pageType: String): PageSortDialog {
-            val dialog = newInstance(pageType)
+        fun FragmentManager.showPageSortDialog(pageType: String, isM3UPlaylist: Boolean = false): PageSortDialog {
+            val dialog = newInstance(pageType, isM3UPlaylist)
             dialog.show(this, TAG)
             return dialog
         }
