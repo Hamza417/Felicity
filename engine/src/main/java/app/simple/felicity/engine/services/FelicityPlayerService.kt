@@ -679,10 +679,6 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     /**
      * Variant of [buildPlayer] that uses a specific [extensionMode] directly, bypassing the
      * shared-preference read. Used for transient fallback / restore operations.
-     *
-     * Re-attaches the [EqualizerManager] processor so that any EQ/bass/treble changes
-     * made while the old player was alive are immediately forwarded to the new pipeline.
-     * Without this, all DSP effects would be silent until the user tweaked a control.
      */
     private fun buildPlayerWithExtensionMode(extensionMode: Int) {
         renderersFactory?.setExtensionRendererMode(extensionMode)
@@ -721,22 +717,6 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 EqualizerPreferences.getPlaybackSpeed(),
                 EqualizerPreferences.getPitch()
         )
-
-        // Re-wire the EqualizerManager so live EQ changes from the UI reach the new
-        // pipeline immediately. Also push the full saved state so that any settings
-        // changed while the player was being rebuilt are not silently dropped.
-        EqualizerManager.attachProcessor(audioProcessorManager.nativeDspProcessor)
-        audioProcessorManager.applyEqualizerState()
-        audioProcessorManager.applyBalance(EqualizerPreferences.getBalance())
-        audioProcessorManager.applyStereoWidth(EqualizerPreferences.getStereoWidth())
-        audioProcessorManager.applyTapeSaturationDrive(EqualizerPreferences.getTapeSaturationDrive())
-        audioProcessorManager.applyReverb(
-                EqualizerPreferences.getReverbMix(),
-                EqualizerPreferences.getReverbDecay(),
-                EqualizerPreferences.getReverbDamp(),
-                EqualizerPreferences.getReverbSize()
-        )
-
         player.addListener(playerListener)
         player.addAnalyticsListener(analyticsListener)
     }
@@ -1293,10 +1273,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             EqualizerPreferences.EQ_ENABLED -> {
                 val enabled = EqualizerPreferences.isEqEnabled()
                 Log.d(TAG, "Equalizer enabled preference changed to: $enabled")
-                // Use applyEnabledFromPreference so we don't write back to preferences here —
-                // the UI already did the write that triggered this listener, and a second write
-                // would cause a redundant re-trigger of this same callback.
-                EqualizerManager.applyEnabledFromPreference()
+                EqualizerManager.setEnabled(enabled)
             }
             EqualizerPreferences.PREAMP_DB -> {
                 Log.d(TAG, "EQ preamp preference changed")

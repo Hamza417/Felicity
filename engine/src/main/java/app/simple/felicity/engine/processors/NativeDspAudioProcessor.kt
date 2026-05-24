@@ -245,28 +245,6 @@ class NativeDspAudioProcessor(
             return
         }
 
-        /**
-         * Lazy recovery path — if the native DSP context was not created during [configure]
-         * (which happens when [VisualizerProcessor.getNativeHandle] returned 0 because the
-         * visualizer sits *after* this processor in the chain and hadn't been configured yet),
-         * try to build it now. By the time the first [queueInput] arrives, every processor
-         * before *and* after us in the pipeline has already gone through [configure], so the
-         * visualizer's FFT handle is guaranteed to be ready. Without this recovery the EQ,
-         * bass, treble, and all other effects would silently bypass until the user tweaked a
-         * preference and triggered an external setter call.
-         */
-        if (dspProcessor == null && inputFormat != AudioProcessor.AudioFormat.NOT_SET) {
-            val recovered = DspProcessor(
-                    visualizerProcessor,
-                    inputFormat.sampleRate,
-                    inputFormat.channelCount
-            )
-            if (recovered.isReady) {
-                dspProcessor = recovered
-                pushAllParameters()
-            }
-        }
-
         val dsp = dspProcessor
         if (dsp == null || !dsp.isReady) {
             outputBuffer = inputBuffer
