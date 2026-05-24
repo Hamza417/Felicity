@@ -83,6 +83,10 @@ public class Audio implements Parcelable {
     @ColumnInfo (name = "year")
     @Nullable
     private String year;
+    
+    /**
+     * Bitrate in kbps
+     */
     @ColumnInfo (name = "bitrate")
     private long bitrate;
     @ColumnInfo (name = "duration")
@@ -373,6 +377,11 @@ public class Audio implements Parcelable {
         this.size = size;
     }
     
+    /**
+     * Bitrate in kbps. E.g. 320 for a 320 kbps MP3, 1411 for CD-quality lossless, etc.
+     *
+     * @return the bitrate of this audio file in kilobits per second, or 0 if unknown.
+     */
     public long getBitrate() {
         return bitrate;
     }
@@ -807,7 +816,7 @@ public class Audio implements Parcelable {
      * <p>
      * Heuristics used:
      * - FLAC: use bit depth (bitPerSample) -> 24+ is Hi-Res, otherwise Lossless.
-     * - MP3/MPEG: use bitrate thresholds (bps) -> 320k+ HQ, 192k+ MQ, otherwise LQ.
+     * - MP3/MPEG: use bitrate thresholds (kbps) -> 320k+ HQ, 192k+ MQ, otherwise LQ.
      * - Other formats: fallback to bitrate thresholds.
      * <p>
      * Returns one of AUDIO_QUALITY_LQ, AUDIO_QUALITY_MQ, AUDIO_QUALITY_HQ,
@@ -815,28 +824,21 @@ public class Audio implements Parcelable {
      */
     public int getAudioQuality() {
         String mt = mimeType != null ? mimeType.toLowerCase() : "";
-        if (mt.contains("flac")) {
-            // FLAC: 16-bit considered Lossless, 24-bit considered Hi-Res
+        
+        // Group known lossless/uncompressed formats
+        if (mt.contains("flac") || mt.contains("wav") || mt.contains("alac") || mt.contains("aiff")) {
             return bitPerSample >= 24 ? AUDIO_QUALITY_HI_RES : AUDIO_QUALITY_LOSSLESS;
-        } else if (mt.contains("mp3") || mt.contains("mpeg")) {
-            // MP3: 320 kbps -> HQ, 192 kbps -> Standard (MQ), lower -> LQ
-            if (bitrate >= 320) {
-                return AUDIO_QUALITY_HQ;
-            } else if (bitrate >= 192) {
-                return AUDIO_QUALITY_MQ;
-            } else {
-                return AUDIO_QUALITY_LQ;
-            }
+        }
+        
+        if (bitrate >= 1000) {
+            // Fallback for lossless tracks missing explicit MIME types
+            return bitPerSample >= 24 ? AUDIO_QUALITY_HI_RES : AUDIO_QUALITY_LOSSLESS;
+        } else if (bitrate >= 320) {
+            return AUDIO_QUALITY_HQ;
+        } else if (bitrate >= 192) {
+            return AUDIO_QUALITY_MQ;
         } else {
-            // Fallback to bitrate-based classification
-            if (bitrate >= 320) {
-                return AUDIO_QUALITY_HQ;
-            } else if (bitrate >= 192) {
-                return AUDIO_QUALITY_MQ;
-            } else {
-                // Fallback to bitrate-based classification
-                return AUDIO_QUALITY_LQ;
-            }
+            return AUDIO_QUALITY_LQ;
         }
     }
     
