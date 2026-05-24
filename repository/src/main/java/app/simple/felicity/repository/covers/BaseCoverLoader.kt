@@ -5,9 +5,13 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.provider.DocumentsContract
 import android.util.Log
 import androidx.core.net.toUri
+import app.simple.felicity.preferences.SAFPreferences
 import app.simple.felicity.repository.covers.BaseCoverLoader.loadEmbeddedArtwork
+import app.simple.felicity.repository.covers.BaseCoverLoader.loadExternalArtwork
+import app.simple.felicity.repository.covers.BaseCoverLoader.loadExternalArtworkSAF
 import app.simple.felicity.repository.metadata.TagLibBridge
 import java.io.File
 
@@ -31,9 +35,9 @@ internal object BaseCoverLoader {
     /**
      * Hardcoded list of the most common album art filenames used by music rippers,
      * media players, and tagging tools. Ordered by real-world prevalence so the
-     * most likely match is found with the fewest [File.exists] calls.
+     * most likely match is found with the fewest file-existence checks.
      */
-    private val COMMON_ARTWORK_NAMES = listOf(
+    val COMMON_ARTWORK_NAMES = listOf(
             "folder.jpg",    // Most common — Windows Media Player, MusicBrainz Picard
             "cover.jpg",     // beets, MusicBrainz Picard alternate
             "front.jpg",     // EAC, dBpoweramp
@@ -49,11 +53,9 @@ internal object BaseCoverLoader {
     )
 
     /**
-     * TODO - migrate to SAF
      * Looks for common image files (folder.jpg, cover.jpg, etc.) directly inside
-     * a given directory. This is only useful when we have an actual [File] reference
-     * to the folder — SAF URIs can't be navigated this way, so callers should skip
-     * this method when the audio path is a content URI.
+     * a given directory. Only works when we have an actual [File] reference —
+     * use [loadExternalArtworkSAF] instead when dealing with content URIs.
      *
      * @param directory Directory to search for artwork files.
      * @param customNames Optional extra filenames to check (e.g., album or artist name variants).
@@ -75,6 +77,96 @@ internal object BaseCoverLoader {
                     Log.w(TAG, "Failed to decode external art: ${artFile.name}", e)
                 }
             }
+        }
+
+        return null
+    }
+
+    /**
+     * SAF-aware version of [loadExternalArtwork]. Given a content URI for an audio
+     * file, it figures out the parent folder's document ID, then asks the system
+     * for a list of that folder's children and looks for any of our known artwork
+     * filenames among them. If a match is found, we open it via the content resolver
+     * and decode it into a bitmap.
+     *
+     * This works because SAF uses document IDs that look like paths
+     * (e.g. "primary:Music/Album/song.mp3"), so we can strip the last segment to
+     * arrive at the parent ("primary:Music/Album") and query its children.
+     *
+     * @param context Android context needed to query the content resolver.
+     * @param audioUri The SAF content URI of the audio file whose folder we want to inspect.
+     * @param customNames Optional extra filenames to look for (e.g., album name variants).
+     * @return Bitmap from the first matching image file found, or null if none exists.
+     */
+    fun loadExternalArtworkSAF(context: Context, audioUri: Uri, customNames: List<String> = emptyList()): Bitmap? {
+        val docId = try {
+            DocumentsContract.getDocumentId(audioUri)
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not get document ID from URI: $audioUri", e)
+            return null
+        }
+
+        // Strip the last path segment to get the parent folder's document ID.
+        // For "primary:Music/Album/song.mp3" this gives "primary:Music/Album".
+        val parentDocId = docId.substringBeforeLast('/', missingDelimiterValue = "")
+        if (parentDocId.isEmpty()) {
+            Log.w(TAG, "Could not determine parent document ID for: $docId")
+            return null
+        }
+
+        // Find the tree URI that covers this document. The tree's root doc ID
+        // must be a prefix of (or equal to) our document's ID.
+        val treeUri = SAFPreferences.getTreeUris().firstNotNullOfOrNull { uriStr ->
+            val candidate = uriStr.toUri()
+            val rootDocId = try {
+                DocumentsContract.getTreeDocumentId(candidate)
+            } catch (e: Exception) {
+                return@firstNotNullOfOrNull null
+            }
+            if (docId.startsWith(rootDocId)) candidate else null
+        }
+
+        if (treeUri == null) {
+            Log.w(TAG, "No matching tree URI found for document: $docId")
+            return null
+        }
+
+        val allNames = (COMMON_ARTWORK_NAMES + customNames).map { it.lowercase() }.toHashSet()
+        val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, parentDocId)
+        val projection = arrayOf(
+                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                DocumentsContract.Document.COLUMN_DISPLAY_NAME
+        )
+
+        try {
+            context.contentResolver.query(childrenUri, projection, null, null, null)?.use { cursor ->
+                val idxDocId = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+                val idxName = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+
+                while (cursor.moveToNext()) {
+                    val name = cursor.getString(idxName) ?: continue
+                    if (!allNames.contains(name.lowercase())) continue
+
+                    val childDocId = cursor.getString(idxDocId) ?: continue
+                    val childUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, childDocId)
+
+                    val bitmap = try {
+                        context.contentResolver.openInputStream(childUri)?.use { stream ->
+                            BitmapFactory.decodeStream(stream)
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to decode SAF artwork: $name", e)
+                        null
+                    }
+
+                    if (bitmap != null) {
+                        Log.d(TAG, "Found SAF external art: $name")
+                        return bitmap
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to query SAF children for parent: $parentDocId", e)
         }
 
         return null

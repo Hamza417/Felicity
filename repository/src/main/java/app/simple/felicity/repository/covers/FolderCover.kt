@@ -2,8 +2,12 @@ package app.simple.felicity.repository.covers
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.provider.DocumentsContract
 import android.util.Log
+import androidx.core.net.toUri
 import app.simple.felicity.preferences.LibraryPreferences
+import app.simple.felicity.preferences.SAFPreferences
 import app.simple.felicity.repository.covers.MediaStoreCover.loadCoverFromMediaStore
 import app.simple.felicity.repository.covers.MediaStoreCover.uriToBitmap
 import app.simple.felicity.repository.models.Folder
@@ -43,9 +47,65 @@ object FolderCover {
             }
         }
 
-        // Try folder images only when the path is a real file path (not a content URI),
-        // since we can't peek inside a content URI directory for image files.
-        if (!folder.path.startsWith("content://")) {
+        // Try folder images — the lookup strategy depends on whether the folder
+        // path is a plain file system path or a SAF document ID.
+        // SAF document IDs look like "primary:Music/Album" — they contain a colon
+        // but don't start with a slash, so we can tell them apart from real paths.
+        val isSAFFolder = !folder.path.startsWith("/")
+
+        if (isSAFFolder) {
+            // The folder path IS the document ID. Find the tree URI that covers it,
+            // then list its children and look for common artwork filenames.
+            val treeUri = SAFPreferences.getTreeUris().firstNotNullOfOrNull { uriStr ->
+                val candidate = uriStr.toUri()
+                val rootDocId = try {
+                    DocumentsContract.getTreeDocumentId(candidate)
+                } catch (_: Exception) {
+                    return@firstNotNullOfOrNull null
+                }
+                if (folder.path.startsWith(rootDocId)) candidate else null
+            }
+
+            if (treeUri != null) {
+                val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, folder.path)
+                val projection = arrayOf(
+                        DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                        DocumentsContract.Document.COLUMN_DISPLAY_NAME
+                )
+                val commonNamesLower = BaseCoverLoader.COMMON_ARTWORK_NAMES.map { it.lowercase() }.toHashSet()
+
+                try {
+                    context.contentResolver.query(childrenUri, projection, null, null, null)?.use { cursor ->
+                        val idxDocId = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+                        val idxName = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+
+                        while (cursor.moveToNext()) {
+                            val name = cursor.getString(idxName) ?: continue
+                            if (!commonNamesLower.contains(name.lowercase())) continue
+
+                            val childDocId = cursor.getString(idxDocId) ?: continue
+                            val childUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, childDocId)
+
+                            val bitmap = try {
+                                context.contentResolver.openInputStream(childUri)?.use { stream ->
+                                    BitmapFactory.decodeStream(stream)
+                                }
+                            } catch (ex: Exception) {
+                                Log.w(TAG, "Failed to decode SAF artwork: $name", ex)
+                                null
+                            }
+
+                            if (bitmap != null) {
+                                Log.d(TAG, "Loaded folder art from SAF external file for: ${folder.name}")
+                                return bitmap
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to query SAF children for folder: ${folder.path}", e)
+                }
+            }
+        } else {
             val directory = File(folder.path)
             if (directory.exists()) {
                 val externalArtwork = BaseCoverLoader.loadExternalArtwork(directory, emptyList())

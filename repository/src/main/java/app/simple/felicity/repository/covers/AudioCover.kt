@@ -44,12 +44,20 @@ object AudioCover {
             if (mediaStoreBitmap != null) return mediaStoreBitmap
         }
 
-        // Folder images only make sense when we can navigate the file system.
-        // Content URIs live in a sandbox, so there's no "parent folder" to peek into.
-        if (!isSAFPath) {
+        val customNames = BaseCoverLoader.generateCustomArtworkNames(audio.album)
+
+        if (isSAFPath) {
+            // For SAF URIs we ask the system to list the parent folder's children and
+            // look for any of our known artwork filenames there.
+            val externalArtwork = BaseCoverLoader.loadExternalArtworkSAF(context, audioPath.toUri(), customNames)
+            if (externalArtwork != null) {
+                Log.d("AudioCover", "Found SAF external artwork for ${audio.title}")
+                return externalArtwork
+            }
+        } else {
+            // Regular file paths — we can navigate the directory directly.
             val directory = File(audioPath).parentFile
             if (directory != null && directory.exists()) {
-                val customNames = BaseCoverLoader.generateCustomArtworkNames(audio.album)
                 val externalArtwork = BaseCoverLoader.loadExternalArtwork(directory, customNames)
                 if (externalArtwork != null) {
                     Log.d("AudioCover", "Found external artwork for ${audio.title} at ${directory.path}")
