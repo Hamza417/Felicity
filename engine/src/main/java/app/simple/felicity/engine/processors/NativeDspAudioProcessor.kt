@@ -205,10 +205,27 @@ class NativeDspAudioProcessor(
                     inputAudioFormat.channelCount
             )
             dspProcessor = if (newDsp.isReady) newDsp else null
-            pushAllParameters()
         } else {
+            /**
+             * The native engine reconfigures its biquad filter delay states during this call,
+             * which can silently wipe the gain coefficients back to flat defaults depending on
+             * the native implementation. We always re-push all parameters afterwards so the
+             * user's saved settings survive any pipeline reconfiguration without requiring them
+             * to touch a knob to "reload" the effects.
+             */
             dspProcessor?.configure(inputAudioFormat.sampleRate, inputAudioFormat.channelCount)
         }
+
+        /**
+         * Always push all stored parameters to the native engine after any configure path.
+         * This covers three cases:
+         *  1. Fresh DspProcessor created — native context starts at flat defaults.
+         *  2. Same-format reconfigure (else branch) — nativeDspConfigure may reset coefficients.
+         *  3. Multiple renderers sharing this processor (e.g., FFmpeg + native codec with
+         *     EXTENSION_RENDERER_MODE_PREFER) — the second renderer's configure() used to
+         *     leave the DSP in an un-initialized state until the user adjusted a control.
+         */
+        pushAllParameters()
 
         return inputAudioFormat
     }
@@ -335,6 +352,33 @@ class NativeDspAudioProcessor(
     override fun flush() {
         outputBuffer = AudioProcessor.EMPTY_BUFFER
         inputEnded = false
+
+        /**
+         * Re-push all DSP parameters on every flush. ExoPlayer calls flush() after configure()
+         * and also on seeks and pipeline restarts — in all of those cases the native biquad
+         * delay lines are cleared, and depending on the native implementation the gain
+         * coefficients can drift back to flat defaults as well. Pushing here guarantees the
+         * user's saved EQ, bass, treble, and all other effects are always live from the very
+         * first audio frame after any pipeline event, not just after a manual knob touch.
+         *
+         * If DspProcessor creation failed during configure() (e.g., because VisualizerProcessor
+         * was not yet configured when the chain fired in order), we also retry creation here.
+         * flush() is always called AFTER configure() on the full chain, so by this point the
+         * visualizer has finished its own configure() pass and its FFT handle is valid.
+         */
+        if (active && inputFormat != AudioProcessor.AudioFormat.NOT_SET) {
+            if (dspProcessor == null) {
+                val retryDsp = DspProcessor(
+                        visualizerProcessor,
+                        inputFormat.sampleRate,
+                        inputFormat.channelCount
+                )
+                if (retryDsp.isReady) {
+                    dspProcessor = retryDsp
+                }
+            }
+            pushAllParameters()
+        }
     }
 
     override fun reset() {
