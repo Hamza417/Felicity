@@ -7,6 +7,8 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.util.Log
 import androidx.core.net.toUri
+import app.simple.felicity.repository.covers.BaseCoverLoader.loadEmbeddedArtwork
+import app.simple.felicity.repository.metadata.TagLibBridge
 import java.io.File
 
 /**
@@ -79,39 +81,18 @@ internal object BaseCoverLoader {
     }
 
     /**
-     * Pulls the embedded artwork out of an audio file using [MediaMetadataRetriever].
-     * Works with both content:// URIs (SAF) and plain file paths — just pass the
-     * right one and this method figures out how to open it.
+     * The single entry point for pulling embedded artwork out of any audio file.
+     * Internally it tries TagLib first (better WAV/FLAC/APE support), and only
+     * falls back to MediaMetadataRetriever when TagLib comes up empty. Callers
+     * don't need to know which extractor was actually used.
      *
-     * @param context Android context needed to open content URIs.
-     * @param audioUri The content:// URI of the audio file.
-     * @return Bitmap or null if no embedded artwork is found.
+     * @param context Android context needed to open the file for both extractors.
+     * @param audioUri The URI or file path of the audio file.
+     * @return Bitmap of the embedded artwork, or null if neither extractor found one.
      */
     fun loadEmbeddedArtwork(context: Context, audioUri: Uri): Bitmap? {
-        val retriever = MediaMetadataRetriever()
-
-        try {
-            retriever.setDataSource(context, audioUri)
-
-            val embeddedPicture = retriever.embeddedPicture
-            if (embeddedPicture != null && embeddedPicture.isNotEmpty()) {
-                val bitmap = BitmapFactory.decodeByteArray(embeddedPicture, 0, embeddedPicture.size)
-                if (bitmap != null) {
-                    Log.d(TAG, "Extracted embedded art via URI: $audioUri")
-                    return bitmap
-                }
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to extract artwork from URI: $audioUri", e)
-        } finally {
-            try {
-                retriever.release()
-            } catch (e: Exception) {
-                Log.w(TAG, "Error releasing MediaMetadataRetriever", e)
-            }
-        }
-
-        return null
+        return loadEmbeddedArtworkViaTagLib(context, audioUri)
+            ?: loadEmbeddedArtworkViaMMR(context, audioUri)
     }
 
     /**
@@ -119,33 +100,63 @@ internal object BaseCoverLoader {
      * embedded artwork from the first file that actually has one. Stops early once
      * artwork is found to avoid unnecessary work.
      *
+     * Each path goes through the same TagLib-first, MMR-fallback junction used by
+     * [loadEmbeddedArtwork], so WAV files and other tricky formats are handled correctly.
+     *
      * @param context Android context needed to open content URIs via SAF.
      * @param songPaths List of audio file paths or content URI strings to check.
      * @param maxFiles Maximum number of files to check before giving up (default: 5).
      * @return Bitmap or null if none of the checked files had embedded artwork.
      */
     fun loadEmbeddedArtworkFromPaths(context: Context, songPaths: List<String>, maxFiles: Int = 5): Bitmap? {
-        val retriever = MediaMetadataRetriever()
+        for (path in songPaths.take(maxFiles)) {
+            val bitmap = loadEmbeddedArtwork(context, path.toUri())
+            if (bitmap != null) return bitmap
+        }
+        return null
+    }
 
-        try {
-            for (path in songPaths.take(maxFiles)) {
-                try {
-                    // Both content:// URIs and file paths go through setDataSource(context, uri)
-                    // because MediaMetadataRetriever handles both just fine that way.
-                    retriever.setDataSource(context, path.toUri())
-
-                    val embeddedPicture = retriever.embeddedPicture
-                    if (embeddedPicture != null && embeddedPicture.isNotEmpty()) {
-                        val bitmap = BitmapFactory.decodeByteArray(embeddedPicture, 0, embeddedPicture.size)
-                        if (bitmap != null) {
-                            Log.d(TAG, "Extracted embedded art from: $path")
-                            return bitmap
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "Failed to extract artwork from: $path", e)
+    /**
+     * Uses TagLib (via JNI) to extract the embedded cover art. TagLib handles WAV,
+     * FLAC, APE, and most other lossless formats more reliably than MMR.
+     */
+    private fun loadEmbeddedArtworkViaTagLib(context: Context, audioUri: Uri): Bitmap? {
+        return try {
+            context.contentResolver.openFileDescriptor(audioUri, "r")?.use { pfd ->
+                val bytes = TagLibBridge.nativeExtractArtworkFromFd(pfd.fd)
+                if (bytes != null && bytes.isNotEmpty()) {
+                    val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                    if (bitmap != null) Log.d(TAG, "TagLib extracted artwork from: $audioUri")
+                    bitmap
+                } else {
+                    null
                 }
             }
+        } catch (e: Exception) {
+            Log.w(TAG, "TagLib failed to extract artwork from: $audioUri", e)
+            null
+        }
+    }
+
+    /**
+     * Uses MediaMetadataRetriever as a fallback for formats that TagLib missed,
+     * such as certain MP4/AAC variants where the system decoder has an edge.
+     */
+    private fun loadEmbeddedArtworkViaMMR(context: Context, audioUri: Uri): Bitmap? {
+        val retriever = MediaMetadataRetriever()
+        return try {
+            retriever.setDataSource(context, audioUri)
+            val embeddedPicture = retriever.embeddedPicture
+            if (embeddedPicture != null && embeddedPicture.isNotEmpty()) {
+                val bitmap = BitmapFactory.decodeByteArray(embeddedPicture, 0, embeddedPicture.size)
+                if (bitmap != null) Log.d(TAG, "MMR extracted artwork from: $audioUri")
+                bitmap
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "MMR failed to extract artwork from: $audioUri", e)
+            null
         } finally {
             try {
                 retriever.release()
@@ -153,8 +164,6 @@ internal object BaseCoverLoader {
                 Log.w(TAG, "Error releasing MediaMetadataRetriever", e)
             }
         }
-
-        return null
     }
 
     /**

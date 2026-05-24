@@ -502,5 +502,72 @@ Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeExtractLyricsFro
     return getProperty(env, props, "UNSYNCEDLYRICS");
 }
 
+/**
+ * Reads the embedded front cover art out of an audio file and returns the raw
+ * image bytes to the Kotlin side as a byte array. Uses TagLib 2.x's unified
+ * "complex properties" API, so it works for WAV, FLAC, MP3, M4A, OGG — any
+ * format that TagLib can open.
+ *
+ * This is especially useful for WAV files, where MediaMetadataRetriever
+ * sometimes fails to extract the picture even though it's there.
+ *
+ * @param fd A readable POSIX file descriptor pointing at an audio file.
+ * @return A jbyteArray containing the raw image bytes, or null if no cover was found.
+ */
+JNIEXPORT jbyteArray JNICALL
+Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeExtractArtworkFromFd(
+        JNIEnv *env, jobject thiz, jint fd) {
+
+    int dupFd = dup(static_cast<int>(fd));
+    if (dupFd < 0) {
+        LOGE("dup() failed for fd=%d — cannot extract artwork", fd);
+        return nullptr;
+    }
+
+    // Read-only stream — we don't need write access just to pull artwork out.
+    TagLib::FileStream stream(dupFd, true);
+    TagLib::FileRef fileRef(&stream, false);
+    if (fileRef.isNull() || !fileRef.file()) {
+        LOGE("FileRef is null for fd=%d — unsupported format", fd);
+        return nullptr;
+    }
+
+    // complexProperties("PICTURE") returns a list of VariantMaps, one per
+    // embedded image. The first entry is almost always the front cover.
+    auto pictures = fileRef.file()->complexProperties("PICTURE");
+    if (pictures.isEmpty()) {
+        return nullptr;
+    }
+
+    // Grab the raw image bytes from the first picture entry.
+    const auto &pic = pictures.front();
+    auto dataIt = pic.find("data");
+    if (dataIt == pic.end()) {
+        return nullptr;
+    }
+
+    // The "data" field is a TagLib::ByteVector wrapped in a TagLib::Variant.
+    const TagLib::ByteVector &imageData = dataIt->second.value<TagLib::ByteVector>();
+    if (imageData.isEmpty()) {
+        return nullptr;
+    }
+
+    // Copy the image data into a Java byte array so it can cross the JNI boundary.
+    jbyteArray result = env->NewByteArray(static_cast<jsize>(imageData.size()));
+    if (!result) {
+        if (env->ExceptionCheck()) env->ExceptionClear();
+        LOGE("NewByteArray failed for fd=%d — out of memory?", fd);
+        return nullptr;
+    }
+
+    env->SetByteArrayRegion(
+            result, 0, static_cast<jsize>(imageData.size()),
+            reinterpret_cast<const jbyte *>(imageData.data())
+    );
+
+    LOGI("Extracted %d bytes of artwork from fd=%d", static_cast<int>(imageData.size()), fd);
+    return result;
+}
+
 } // extern "C"
 

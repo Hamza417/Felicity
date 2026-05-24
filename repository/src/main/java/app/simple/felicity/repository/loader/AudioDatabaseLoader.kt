@@ -427,7 +427,7 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             if (audio.path == null) {
                 // Lower-case all three tags to match the case-insensitive map keys.
                 val key = Triple(
-                        audio.rawTitle?.lowercase() ?: "",
+                        audio.title?.lowercase() ?: "",
                         audio.artist?.lowercase() ?: "",
                         audio.album?.lowercase() ?: ""
                 )

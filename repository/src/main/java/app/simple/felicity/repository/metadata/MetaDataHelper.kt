@@ -106,7 +106,7 @@ object MetaDataHelper {
      * track even when the file is moved or temporarily removed.
      */
     fun Audio.generateStableHash(): Long {
-        val safeTitle = rawTitle?.trim()?.lowercase() ?: "unknown_title"
+        val safeTitle = title?.trim()?.lowercase() ?: "unknown_title"
         val safeArtist = artist?.trim()?.lowercase() ?: "unknown_artist"
         val safeAlbum = album?.trim()?.lowercase() ?: "unknown_album"
 

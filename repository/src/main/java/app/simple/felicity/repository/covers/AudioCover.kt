@@ -2,7 +2,8 @@ package app.simple.felicity.repository.covers
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.net.Uri
+import android.util.Log
+import androidx.core.net.toUri
 import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.repository.covers.MediaStoreCover.loadCoverFromMediaStore
 import app.simple.felicity.repository.covers.MediaStoreCover.uriToBitmap
@@ -50,13 +51,19 @@ object AudioCover {
             if (directory != null && directory.exists()) {
                 val customNames = BaseCoverLoader.generateCustomArtworkNames(audio.album)
                 val externalArtwork = BaseCoverLoader.loadExternalArtwork(directory, customNames)
-                if (externalArtwork != null) return externalArtwork
+                if (externalArtwork != null) {
+                    Log.d("AudioCover", "Found external artwork for ${audio.title} at ${directory.path}")
+                    return externalArtwork
+                } else {
+                    Log.d("AudioCover", "No external artwork found for ${audio.title} in ${directory.path}")
+                }
             }
         }
 
         // Last resort: crack open the audio file and read the embedded image tag.
-        // MediaMetadataRetriever handles both content URIs and file paths via context.
-        val embeddedArtwork = BaseCoverLoader.loadEmbeddedArtwork(context, Uri.parse(audioPath))
+        // The junction inside BaseCoverLoader handles the extractor order.
+        val embeddedArtwork = BaseCoverLoader.loadEmbeddedArtwork(context, audioPath.toUri())
+        Log.d("AudioCover", "Embedded artwork ${if (embeddedArtwork != null) "found" else "not found"} for ${audio.title}")
         if (embeddedArtwork != null) return embeddedArtwork
 
         return BaseCoverLoader.loadEmptyAudioCover()

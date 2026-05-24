@@ -95,6 +95,16 @@ object TagLibBridge {
      * @return `true` if the artwork was saved, `false` otherwise.
      */
     external fun nativeSaveArtworkToFd(fd: Int, artworkData: ByteArray, mimeType: String): Boolean
+
+    /**
+     * Reads the embedded cover art from an audio file and returns the raw image
+     * bytes. This is particularly useful for WAV files, which MediaMetadataRetriever
+     * sometimes fails to handle correctly.
+     *
+     * @param fd A readable POSIX file descriptor pointing at an audio file.
+     * @return The raw image bytes of the embedded cover, or null if none was found.
+     */
+    external fun nativeExtractArtworkFromFd(fd: Int): ByteArray?
 }
 
 /**
