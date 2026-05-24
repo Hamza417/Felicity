@@ -42,6 +42,7 @@ import app.simple.felicity.ui.panels.Equalizer
 import app.simple.felicity.ui.panels.Lyrics
 import app.simple.felicity.ui.panels.PlayingQueue
 import app.simple.felicity.ui.panels.Search
+import app.simple.felicity.viewmodels.player.BookmarksViewModel
 import app.simple.felicity.viewmodels.player.LyricsViewModel
 import app.simple.felicity.viewmodels.player.WaveformViewModel
 import com.bumptech.glide.Glide
@@ -70,6 +71,9 @@ abstract class BasePlayerFragment : MediaFragment() {
 
     /** Reads lyrics data from the shared [LyricsManager] — no separate load needed. */
     private val lyricsViewModel: LyricsViewModel by viewModels()
+
+    /** Reads bookmark data from the shared [BookmarksManager] — updates automatically on song changes. */
+    private val bookmarksViewModel: BookmarksViewModel by viewModels()
 
     /**
      * Holds an [Audio] track whose waveform has been requested but whose load has been
@@ -373,6 +377,14 @@ abstract class BasePlayerFragment : MediaFragment() {
                 }
             }
         }
+
+        // Collect bookmarks from the shared manager and push the timestamp set to the
+        // seekbar so the dot indicators always match what is stored in the database.
+        viewLifecycleOwner.lifecycleScope.launch {
+            bookmarksViewModel.bookmarks.collect { bookmarkList ->
+                seekbar.bookmarks = bookmarkList.map { it.timestampMs }.toSet()
+            }
+        }
     }
 
     override fun getShuffleButton(): HighlightTextView? {
@@ -521,9 +533,7 @@ abstract class BasePlayerFragment : MediaFragment() {
             seekbar.setDurationWithReset(audio.duration)
             lrc.clear()
             lyricsViewModel.loadLrcData()
-
-            val bookmarks = setOf(855L, 2000L, 45000L) // TODO - load real bookmarks from the database
-            seekbar.bookmarks = bookmarks
+            bookmarksViewModel.loadBookmarks()
         }
 
         // Always sync seek position. For a same-song re-emission (e.g., predictive back
