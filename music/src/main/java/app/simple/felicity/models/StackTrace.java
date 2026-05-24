@@ -1,4 +1,4 @@
-package app.simple.felicity.repository.models.normal;
+package app.simple.felicity.models;
 
 import android.os.Parcel;
 import android.os.Parcelable;
