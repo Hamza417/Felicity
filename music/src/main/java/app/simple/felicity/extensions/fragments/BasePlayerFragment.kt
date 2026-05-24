@@ -4,6 +4,7 @@ import android.content.SharedPreferences
 import android.os.Bundle
 import android.text.format.DateUtils
 import android.util.Log
+import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.widget.ImageView
@@ -22,6 +23,8 @@ import app.simple.felicity.decorations.pager.ImagePageAdapter
 import app.simple.felicity.decorations.popups.SimpleDialog
 import app.simple.felicity.decorations.ripple.DynamicRippleTextView
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar
+import app.simple.felicity.decorations.typeface.TypeFaceTextView
+import app.simple.felicity.decorations.utils.TextViewUtils.setStartDrawable
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithEffect
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithFade
 import app.simple.felicity.decorations.views.FavoriteButton
@@ -707,10 +710,18 @@ abstract class BasePlayerFragment : MediaFragment() {
                             resources.getDimensionPixelSize(R.dimen.padding_15),
                             resources.getDimensionPixelSize(R.dimen.padding_10)
                     )
+
                     setOnClickListener {
                         MediaPlaybackManager.seekTo(bookmark.timestampMs)
                         dismiss()
                     }
+
+                    setStartDrawable(R.drawable.ic_bookmark_16dp)
+                    compoundDrawablePadding = resources.getDimensionPixelSize(R.dimen.padding_5)
+                    setDrawableTineMode(TypeFaceTextView.DRAWABLE_ACCENT)
+                    setTextColorMode(TypeFaceTextView.SECONDARY)
+                    // center-vertical to force drawable vertically centered
+                    gravity = Gravity.START or Gravity.CENTER_VERTICAL
                 }
                 binding.bookmarksContainer.addView(row)
             }
