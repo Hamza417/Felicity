@@ -156,11 +156,14 @@ abstract class BasePageFragment : MediaFragment() {
     }
 
     /**
-     * Whether the current page is backed by an M3U playlist. Subclasses that display
-     * an M3U playlist should override this to return [true] so the sort dialog reveals
-     * the M3U Order chip.
+     * Called when the user taps the sort button. Defaults to opening [PageSortDialog]
+     * with the current page's type key. Subclasses like PlaylistPage can override this
+     * to show a per-playlist sort dialog that persists the preference to the database
+     * instead of using the shared global sort preference.
      */
-    protected open val isM3UPlaylist: Boolean get() = false
+    protected open fun onSortDialogRequested(view: View) {
+        childFragmentManager.showPageSortDialog(resolvePageTypeKey())
+    }
 
     /**
      * Returns the [PageSort] page-type string constant that matches the current [pageType].
@@ -227,7 +230,7 @@ abstract class BasePageFragment : MediaFragment() {
             }
 
             override fun onSortClicked(view: View) {
-                childFragmentManager.showPageSortDialog(resolvePageTypeKey(), isM3UPlaylist)
+                onSortDialogRequested(view)
             }
         })
     }

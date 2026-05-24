@@ -24,12 +24,6 @@ object CommonPreferencesConstants {
     const val BY_PATH = 14
     const val BY_NUMBER_OF_ALBUMS = 15
 
-    /**
-     * Used when the user wants the songs in a playlist shown in the exact order
-     * they appear in the source M3U file. This is only available for playlists
-     * that were created from an M3U file, not manually built ones.
-     */
-    const val BY_M3U_ORDER = 16
 
     // Grid type constants
     const val GRID_TYPE_LIST = 0

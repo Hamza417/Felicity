@@ -18,12 +18,15 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Bottom-sheet sort dialog for the PlaylistSongs panel.
+ * Bottom-sheet sort dialog for the PlaylistSongs panel and the PlaylistPage.
  *
- * <p>Displays sort-by chips (Manual, Title, Artist, Album, Duration, Date Added) and
+ * Displays sort-by chips (As Added, Title, Artist, Album, Duration, Date Added) and
  * direction chips (Normal / Reversed). The selection is persisted directly into the
  * [Playlist] DB row via [PlaylistRepository.updateSortPreference], which causes Room to
- * re-emit the updated playlist and automatically triggers a re-sort in the ViewModel.</p>
+ * re-emit the updated playlist and automatically triggers a re-sort in the ViewModel.
+ *
+ * "As Added" keeps songs in the order they were inserted into the playlist, which for M3U
+ * playlists corresponds to the top-to-bottom order in the file.
  *
  * @author Hamza417
  */
@@ -49,13 +52,13 @@ class PlaylistSongsSort : ScopedBottomSheetFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         when (playlist.sortOrder) {
-            -1 -> binding.manual.isChecked = true
+            -1 -> binding.asAdded.isChecked = true
             CommonPreferencesConstants.BY_TITLE -> binding.title.isChecked = true
             CommonPreferencesConstants.BY_ARTIST -> binding.artist.isChecked = true
             CommonPreferencesConstants.BY_ALBUM -> binding.album.isChecked = true
             CommonPreferencesConstants.BY_DURATION -> binding.duration.isChecked = true
             CommonPreferencesConstants.BY_DATE_ADDED -> binding.dateAdded.isChecked = true
-            else -> binding.manual.isChecked = true
+            else -> binding.asAdded.isChecked = true
         }
 
         binding.normal.isChecked = playlist.sortStyle == CommonPreferencesConstants.ASCENDING
@@ -63,7 +66,7 @@ class PlaylistSongsSort : ScopedBottomSheetFragment() {
 
         binding.sortByChipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
             val newSortOrder = when (checkedIds.firstOrNull()) {
-                binding.manual.id -> -1
+                binding.asAdded.id -> -1
                 binding.title.id -> CommonPreferencesConstants.BY_TITLE
                 binding.artist.id -> CommonPreferencesConstants.BY_ARTIST
                 binding.album.id -> CommonPreferencesConstants.BY_ALBUM
@@ -113,4 +116,3 @@ class PlaylistSongsSort : ScopedBottomSheetFragment() {
         }
     }
 }
-

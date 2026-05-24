@@ -28,9 +28,9 @@
             app:singleSelection="true">
 
             <app.simple.felicity.decorations.views.Chip
-                android:id="@+id/manual"
+                android:id="@+id/as_added"
                 android:layout_width="wrap_content"
-                android:text="@string/manual"
+                android:text="@string/as_added"
                 android:layout_height="wrap_content" />
 
             <app.simple.felicity.decorations.views.Chip

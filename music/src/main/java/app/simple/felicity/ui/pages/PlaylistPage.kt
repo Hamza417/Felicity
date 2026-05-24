@@ -24,6 +24,7 @@ import app.simple.felicity.databinding.FragmentPageArtistBinding
 import app.simple.felicity.decorations.views.PopupMenuItem
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.playlists.AddMultipleToPlaylistDialog.Companion.showAddMultipleToPlaylistDialog
+import app.simple.felicity.dialogs.playlists.PlaylistSongsSort.Companion.showPlaylistSongsSort
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.fragments.BasePageFragment
 import app.simple.felicity.repository.constants.BundleConstants
@@ -58,9 +59,6 @@ class PlaylistPage : BasePageFragment() {
 
     override val pageType: PageAdapter.PageType by lazy { PageAdapter.PageType.PlaylistPage(playlist) }
 
-    /** Tells the base fragment to reveal the M3U Order chip in the sort dialog when needed. */
-    override val isM3UPlaylist: Boolean get() = playlist.isM3UPlaylist
-
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentPageArtistBinding.inflate(inflater, container, false)
         return binding.root
@@ -72,6 +70,12 @@ class PlaylistPage : BasePageFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         collectPageData { playlistViewerViewModel.data }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            playlistViewerViewModel.currentPlaylist.collect { playlist ->
+                pageAdapter?.updatePlaylist(playlist)
+            }
+        }
     }
 
     /**
@@ -79,6 +83,14 @@ class PlaylistPage : BasePageFragment() {
      */
     override fun resortPageData() {
         playlistViewerViewModel.resort()
+    }
+
+    /**
+     * Opens [PlaylistSongsSort] instead of the generic page sort dialog so that the
+     * sort preference is saved per-playlist in the database rather than globally.
+     */
+    override fun onSortDialogRequested(view: View) {
+        childFragmentManager.showPlaylistSongsSort(playlistViewerViewModel.currentPlaylist.value)
     }
 
     /**
@@ -132,5 +144,3 @@ class PlaylistPage : BasePageFragment() {
         }
     }
 }
-
-

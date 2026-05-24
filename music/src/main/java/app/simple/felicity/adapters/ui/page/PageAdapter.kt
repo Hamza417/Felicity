@@ -36,6 +36,7 @@ import app.simple.felicity.repository.sort.PageSort.setComposerPageSort
 import app.simple.felicity.repository.sort.PageSort.setFolderPageSort
 import app.simple.felicity.repository.sort.PageSort.setGenrePageSort
 import app.simple.felicity.repository.sort.PageSort.setPlaylistPageSort
+import app.simple.felicity.repository.sort.PageSort.setPlaylistPageSortFromOrder
 import app.simple.felicity.repository.sort.PageSort.setYearPageSort
 import app.simple.felicity.shared.constants.PageConstants
 import app.simple.felicity.shared.utils.TimeUtils.toDynamicTimeString
@@ -59,6 +60,13 @@ class PageAdapter(
 
     /** Holds the album release info loaded from MusicBrainz. Set from outside via [setAlbumInfo]. */
     private var albumInfo: MusicBrainzAlbumInfo? = null
+
+    /**
+     * Tracks the latest [Playlist] metadata for playlist pages. Updated reactively from
+     * the ViewModel so the sort label in the header always reflects the current DB value
+     * rather than a stale snapshot from when the adapter was first created.
+     */
+    private var livePlaylist: Playlist? = (pageType as? PageType.PlaylistPage)?.playlist
 
     /**
      * Sealed class to represent different page types
@@ -598,7 +606,7 @@ class PageAdapter(
                         sortStyle.setComposerPageSort()
                     }
                     is PageType.PlaylistPage -> {
-                        sortStyle.setPlaylistPageSort()
+                        sortStyle.setPlaylistPageSortFromOrder(livePlaylist?.sortOrder ?: pageType.playlist.sortOrder)
                     }
                     else -> {
                         sortStyle.setAlbumPageSort()
@@ -745,6 +753,19 @@ class PageAdapter(
 
     fun setArtistAdapterListener(listener: GeneralAdapterCallbacks) {
         this.listener = listener
+    }
+
+    /**
+     * Pushes an updated [Playlist] to the adapter so the sort label in the header
+     * reflects the latest sort preference saved to the database. Only the header item
+     * (always at position 0) needs to be rebound, so a targeted [notifyItemChanged]
+     * is used instead of a full list refresh.
+     *
+     * @param playlist The newest version of the playlist from the database.
+     */
+    fun updatePlaylist(playlist: Playlist) {
+        livePlaylist = playlist
+        notifyItemChanged(0)
     }
 
     /**

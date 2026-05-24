@@ -63,12 +63,6 @@ object PageSort {
     private fun List<Audio>.applySort(sortField: Int, order: Int): List<Audio> {
         val ascending = order == CommonPreferencesConstants.ASCENDING
         return when (sortField) {
-            /**
-             * When M3U Order is selected, we skip all sorting and return the list exactly
-             * as it came from the database, which already reflects the song's position in
-             * the original M3U file (top to bottom).
-             */
-            CommonPreferencesConstants.BY_M3U_ORDER -> this
             CommonPreferencesConstants.BY_TITLE -> if (ascending) sortedBy { it.title } else sortedByDescending { it.title }
             CommonPreferencesConstants.BY_ARTIST -> if (ascending) sortedBy { it.artist } else sortedByDescending { it.artist }
             CommonPreferencesConstants.BY_ALBUM -> if (ascending) sortedBy { it.album } else sortedByDescending { it.album }
@@ -108,6 +102,24 @@ object PageSort {
     fun AppCompatTextView.setPlaylistPageSort() = setSortLabel(PagePreferences.getPlaylistSort())
     fun AppCompatTextView.setPlaylistPageOrder() = setOrderLabel(PagePreferences.getPlaylistOrder())
 
+    /**
+     * Sets this view's text to the label for the given [sortOrder] value directly,
+     * without reading from preferences. Used by the playlist page header, which stores
+     * its sort preference per-playlist in the database rather than in shared preferences.
+     * A value of {@code -1} maps to "As Added" (natural insertion order).
+     */
+    fun AppCompatTextView.setPlaylistPageSortFromOrder(sortOrder: Int) {
+        text = when (sortOrder) {
+            -1 -> context.getString(R.string.as_added)
+            CommonPreferencesConstants.BY_TITLE -> context.getString(R.string.title)
+            CommonPreferencesConstants.BY_ARTIST -> context.getString(R.string.artist)
+            CommonPreferencesConstants.BY_ALBUM -> context.getString(R.string.album)
+            CommonPreferencesConstants.BY_DURATION -> context.getString(R.string.duration)
+            CommonPreferencesConstants.BY_DATE_ADDED -> context.getString(R.string.date_added)
+            else -> context.getString(R.string.as_added)
+        }
+    }
+
     fun AppCompatTextView.setComposerPageSort() = setSortLabel(PagePreferences.getComposerSort())
     fun AppCompatTextView.setComposerPageOrder() = setOrderLabel(PagePreferences.getComposerOrder())
 
@@ -123,7 +135,6 @@ object PageSort {
             CommonPreferencesConstants.BY_YEAR -> context.getString(R.string.year)
             CommonPreferencesConstants.BY_TRACK_NUMBER -> context.getString(R.string.track_number)
             CommonPreferencesConstants.BY_COMPOSER -> context.getString(R.string.composer)
-            CommonPreferencesConstants.BY_M3U_ORDER -> context.getString(R.string.m3u_order)
             else -> context.getString(R.string.unknown)
         }
     }
