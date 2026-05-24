@@ -5,8 +5,6 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.SharedPreferences;
 
-import java.util.Objects;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.AndroidViewModel;
@@ -14,7 +12,6 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import app.simple.felicity.extensions.livedata.ErrorLiveData;
 import app.simple.felicity.preferences.ConfigurationPreferences;
-import app.simple.felicity.repository.database.instances.StackTraceDatabase;
 import app.simple.felicity.shared.utils.ContextUtils;
 
 public class WrappedViewModel extends AndroidViewModel implements SharedPreferences.OnSharedPreferenceChangeListener {
@@ -66,7 +63,7 @@ public class WrappedViewModel extends AndroidViewModel implements SharedPreferen
     }
     
     protected void postError(Throwable throwable) {
-        error.postError(throwable, getApplication());
+        error.postError(throwable);
     }
     
     public void cleanErrorStack() {
@@ -76,11 +73,6 @@ public class WrappedViewModel extends AndroidViewModel implements SharedPreferen
     @Override
     protected void onCleared() {
         super.onCleared();
-        try {
-            Objects.requireNonNull(StackTraceDatabase.Companion.getInstance()).close();
-        } catch (NullPointerException ignored) {
-        }
-        
         app.simple.felicity.manager.SharedPreferences.INSTANCE.unregisterListener(this);
     }
     

@@ -4,20 +4,15 @@ import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.R
 import app.simple.felicity.databinding.ActivityCrashBinding
 import app.simple.felicity.extensions.activities.BaseActivity
 import app.simple.felicity.factories.misc.ErrorViewModelFactory
 import app.simple.felicity.preferences.CrashPreferences
-import app.simple.felicity.repository.database.instances.StackTraceDatabase
 import app.simple.felicity.repository.models.normal.StackTrace
 import app.simple.felicity.shared.utils.ConditionUtils.invert
-import app.simple.felicity.shared.utils.ProcessUtils
 import app.simple.felicity.utils.DateUtils.toDate
 import app.simple.felicity.viewmodels.misc.ErrorViewModel
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
 class CrashReporterActivity : BaseActivity() {
 
@@ -39,7 +34,6 @@ class CrashReporterActivity : BaseActivity() {
             binding.message.text = CrashPreferences.getMessage()
                 ?: getString(R.string.desc_not_available)
             showTrace(crash)
-            saveTraceToDataBase(crash)
             isPreview = false
         }
 
@@ -94,25 +88,6 @@ class CrashReporterActivity : BaseActivity() {
             }
         }
         finish()
-    }
-
-    private fun saveTraceToDataBase(trace: String?) {
-        lifecycleScope.launch(Dispatchers.IO) {
-            ProcessUtils.ensureNotOnMainThread {
-                runCatching {
-                    val stackTrace =
-                        StackTrace(
-                                trace,
-                                CrashPreferences.getMessage() ?: getString(R.string.desc_not_available),
-                                CrashPreferences.getCause() ?: getString(R.string.not_available),
-                                System.currentTimeMillis()
-                        )
-                    val stackTraceDatabase = StackTraceDatabase.getInstance(applicationContext)
-                    stackTraceDatabase!!.stackTraceDao()!!.insertTrace(stackTrace)
-                    stackTraceDatabase.close()
-                }
-            }
-        }
     }
 
     companion object {

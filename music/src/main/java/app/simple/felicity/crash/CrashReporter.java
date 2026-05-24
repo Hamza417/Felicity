@@ -8,13 +8,10 @@ import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
-import java.util.Objects;
 
 import androidx.annotation.NonNull;
 import app.simple.felicity.activities.CrashReporterActivity;
 import app.simple.felicity.preferences.CrashPreferences;
-import app.simple.felicity.repository.database.instances.StackTraceDatabase;
-import app.simple.felicity.repository.models.normal.StackTrace;
 import app.simple.felicity.shared.utils.StackTraceUtils;
 
 /*
@@ -77,17 +74,5 @@ public class CrashReporter implements Thread.UncaughtExceptionHandler {
         }
         
         Thread.setDefaultUncaughtExceptionHandler(new CrashReporter(context));
-    }
-    
-    @SuppressWarnings ("unused")
-    public void saveTraceToDataBase(Throwable throwable) {
-        new Thread(() -> {
-            Log.d(TAG, "Thread started");
-            StackTrace stackTrace = new StackTrace(throwable);
-            StackTraceDatabase stackTraceDatabase = StackTraceDatabase.Companion.getInstance(context);
-            assert stackTraceDatabase != null;
-            Objects.requireNonNull(stackTraceDatabase.stackTraceDao()).insertTrace(stackTrace);
-            Log.d(TAG, "Trace saved to database");
-        }).start();
     }
 }
