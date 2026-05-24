@@ -402,7 +402,6 @@
                     android:text="@string/bookmarks"
                     android:textSize="@dimen/text_size_14"
                     android:drawablePadding="@dimen/padding_10"
-                    android:visibility="gone"
                     app:appFontStyle="bold"
                     app:drawableStartCompat="@drawable/ic_bookmark_16dp"
                     app:drawableTintStyle="regular"
