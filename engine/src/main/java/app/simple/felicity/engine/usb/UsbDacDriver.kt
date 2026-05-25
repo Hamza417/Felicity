@@ -79,6 +79,9 @@ class UsbDacDriver private constructor(private val context: Context) {
      */
     fun detach() {
         runCatching { context.unregisterReceiver(permissionReceiver) }
+        // Stop the isochronous stream before closing the USB connection so no
+        // in-flight transfers touch a handle that is already being released.
+        nativeStopStream()
         releaseConnection()
         Log.d(TAG, "UsbDacDriver detached")
     }
@@ -108,11 +111,13 @@ class UsbDacDriver private constructor(private val context: Context) {
 
     /**
      * Called by [UsbDacReceiver] when the USB device is physically removed.
-     * We release the connection and let the native layer know it should clean up.
+     * We stop the stream and release the connection so the native layer can
+     * clean up libusb resources before the file descriptor becomes invalid.
      */
     fun onDeviceDetached(device: UsbDevice) {
         if (activeDevice?.deviceId == device.deviceId) {
-            Log.i(TAG, "Active DAC unplugged, releasing resources")
+            Log.i(TAG, "Active DAC unplugged — halting stream and releasing resources")
+            nativeStopStream()
             nativeReleaseUsb()
             releaseConnection()
         }
@@ -159,6 +164,16 @@ class UsbDacDriver private constructor(private val context: Context) {
         // We default to 24-bit / 96 kHz stereo — the negotiator will fall back to
         // the best available alt-setting if the device does not support that exactly.
         negotiateFormat(sampleRate = 96_000, bitDepth = 24, channels = 2)
+
+        // Start the isochronous data pipeline. The ring buffer is empty at this
+        // point so the first URBs will be filled with silence until the DSP thread
+        // starts calling pushPcm().
+        val streamOk = nativeStartStream()
+        if (streamOk) {
+            Log.i(TAG, "USB isochronous stream running")
+        } else {
+            Log.e(TAG, "Failed to start USB stream — DAC is initialized but silent")
+        }
     }
 
     /** Closes and clears the current [UsbDeviceConnection]. */
@@ -169,7 +184,8 @@ class UsbDacDriver private constructor(private val context: Context) {
     }
 
     /**
-     * Re-runs format negotiation on the currently open DAC with the given parameters.
+     * Re-runs format negotiation on the currently open DAC with the given parameters,
+     * then restarts the isochronous stream in the new format.
      * Safe to call at any time after a successful [onDeviceAttached]; returns silently
      * if no device is connected. Useful when the user changes the DSP output sample
      * rate or bit depth in the app settings.
@@ -184,9 +200,16 @@ class UsbDacDriver private constructor(private val context: Context) {
             return
         }
         Log.i(TAG, "Negotiating format: $sampleRate Hz / ${bitDepth}-bit / $channels ch")
+
+        // Stop the current stream before changing the interface alt-setting.
+        // Sending control transfers to the device while isochronous transfers are
+        // in-flight can confuse some DAC firmware.
+        nativeStopStream()
+
         val ok = nativeNegotiateFormat(sampleRate, bitDepth, channels)
         if (ok) {
-            Log.i(TAG, "Format negotiation succeeded")
+            Log.i(TAG, "Format negotiation succeeded — restarting stream")
+            nativeStartStream()
         } else {
             Log.w(TAG, "Format negotiation failed — DAC may use a fallback format")
         }
@@ -217,7 +240,30 @@ class UsbDacDriver private constructor(private val context: Context) {
      */
     private external fun nativeNegotiateFormat(sampleRate: Int, bitDepth: Int, channels: Int): Boolean
 
-    /** Tells the native layer to release the libusb handle and close the context. */
+    /**
+     * Allocates the isochronous URB pool and spawns the high-priority USB event
+     * thread. Must be called after [nativeNegotiateFormat] succeeds.
+     */
+    private external fun nativeStartStream(): Boolean
+
+    /**
+     * Cancels all pending isochronous transfers, joins the event thread, and frees
+     * the URB pool. Idempotent — safe to call even if the stream was never started.
+     */
+    private external fun nativeStopStream()
+
+    /**
+     * Pushes interleaved float PCM into the ring buffer that feeds the isochronous
+     * USB pipeline. Call this from the DSP output thread.
+     *
+     * @param samples Interleaved float samples in [-1.0, 1.0].
+     * @param offset  Starting index within [samples].
+     * @param count   Number of floats to push (frames × channels).
+     * @return Number of samples actually accepted.
+     */
+    external fun nativePushPcm(samples: FloatArray, offset: Int, count: Int): Int
+
+    /** Tells the native layer to stop the stream, release libusb, and exit. */
     private external fun nativeReleaseUsb()
 
     companion object {

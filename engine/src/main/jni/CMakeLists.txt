@@ -55,7 +55,8 @@ FetchContent_MakeAvailable(libusb)
 add_library(felicity_usb_dac SHARED
         felicity_usb_dac.cpp
         uac_parser.cpp
-        uac_negotiator.cpp)
+        uac_negotiator.cpp
+        usb_iso_stream.cpp)
 
 find_library(log-lib-usb log)
 

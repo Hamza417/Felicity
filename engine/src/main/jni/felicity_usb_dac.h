@@ -52,6 +52,36 @@ JNIEXPORT void JNICALL
 Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeReleaseUsb(
         JNIEnv *env, jobject thiz);
 
+/**
+ * Allocates the isochronous URB pool and spawns the SCHED_FIFO USB event thread.
+ * Must be called after a successful nativeNegotiateFormat.
+ */
+JNIEXPORT jboolean JNICALL
+Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeStartStream(
+        JNIEnv *env, jobject thiz);
+
+/**
+ * Cancels all pending isochronous transfers, joins the event thread, and frees
+ * the URB pool. Safe to call even if the stream was never started.
+ */
+JNIEXPORT void JNICALL
+Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeStopStream(
+        JNIEnv *env, jobject thiz);
+
+/**
+ * Pushes interleaved float PCM samples from the DSP thread into the ring buffer
+ * that feeds the isochronous USB pipeline. Thread-safe (SPSC).
+ *
+ * @param samples FloatArray of interleaved samples in [-1.0, 1.0].
+ * @param offset  Starting index within the array.
+ * @param count   Number of floats to write (frames × channels).
+ * @return Number of samples actually accepted (may be less if buffer is full).
+ */
+JNIEXPORT jint JNICALL
+Java_app_simple_felicity_engine_usb_UsbDacDriver_nativePushPcm(
+        JNIEnv *env, jobject thiz,
+        jfloatArray samples, jint offset, jint count);
+
 #ifdef __cplusplus
 }
 #endif

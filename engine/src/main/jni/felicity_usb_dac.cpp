@@ -1,6 +1,7 @@
 #include "felicity_usb_dac.h"
 #include "uac_parser.h"
 #include "uac_negotiator.h"
+#include "usb_iso_stream.h"
 
 static const int audio_interfaces[] = {USB_AUDIO_CONTROL_INTERFACE, USB_AUDIO_STREAMING_INTERFACE};
 
@@ -14,6 +15,10 @@ static int g_claimed_interface = -1;
 // Kept alive so re-negotiation (e.g. sample rate change) skips the parse step.
 static UacDeviceInfo g_device_info{};
 static bool g_device_info_valid = false;
+
+// The active ISO stream — created by nativeStartStream, destroyed by nativeStopStream.
+// Using a pointer so its constructor does not run at static-init time.
+static UsbIsoStream *g_iso_stream = nullptr;
 
 /**
  * Attempts to detach a kernel driver from the given interface, if one is attached.
@@ -172,7 +177,18 @@ JNIEXPORT void JNICALL
 Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeReleaseUsb(
         JNIEnv * /*env*/, jobject /*thiz*/) {
 
-    LOGI("nativeReleaseUsb — cleaning up libusb resources");
+    LOGI("nativeReleaseUsb — tearing down USB DAC session");
+
+    // Phase 5 teardown: stop the ISO stream and cancel all pending transfers
+    // BEFORE releasing the interface or closing the handle. Attempting to close
+    // libusb resources while transfers are still pending causes undefined behavior
+    // and may lock up the USB host controller.
+    if (g_iso_stream != nullptr) {
+        g_iso_stream->stop();
+        delete g_iso_stream;
+        g_iso_stream = nullptr;
+        LOGI("ISO stream torn down");
+    }
 
     if (g_usb_handle != nullptr) {
         if (g_claimed_interface >= 0) {
@@ -195,6 +211,93 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeReleaseUsb(
     }
 
     g_device_info_valid = false;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeStartStream(
+        JNIEnv * /*env*/, jobject /*thiz*/) {
+
+    if (g_usb_handle == nullptr) {
+        LOGE("nativeStartStream called but no USB device is open");
+        return JNI_FALSE;
+    }
+    if (!g_device_info_valid || g_device_info.altSettingCount == 0) {
+        LOGE("nativeStartStream called before format negotiation completed");
+        return JNI_FALSE;
+    }
+
+    // Tear down any previous stream (e.g., after a sample rate change).
+    if (g_iso_stream != nullptr) {
+        g_iso_stream->stop();
+        delete g_iso_stream;
+        g_iso_stream = nullptr;
+    }
+
+    // Find the active alt-setting (the one with a valid endpoint).
+    // The negotiator will have selected the best one; we look for it by scanning
+    // for the first entry with a non-zero endpoint address.
+    const UacAltSetting *chosen = nullptr;
+    for (int i = 0; i < g_device_info.altSettingCount; i++) {
+        if (g_device_info.altSettings[i].endpointAddress != 0) {
+            chosen = &g_device_info.altSettings[i];
+            break;
+        }
+    }
+
+    if (chosen == nullptr) {
+        LOGE("No alt-setting with an endpoint found — cannot start stream");
+        return JNI_FALSE;
+    }
+
+    g_iso_stream = new UsbIsoStream();
+    const bool ok = g_iso_stream->start(
+            g_usb_ctx,
+            g_usb_handle,
+            *chosen,
+            chosen->bSubslotSize,
+            chosen->bBitResolution
+    );
+
+    if (!ok) {
+        delete g_iso_stream;
+        g_iso_stream = nullptr;
+        LOGE("Failed to start isochronous stream");
+        return JNI_FALSE;
+    }
+
+    LOGI("Isochronous USB audio stream started");
+    return JNI_TRUE;
+}
+
+JNIEXPORT void JNICALL
+Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeStopStream(
+        JNIEnv * /*env*/, jobject /*thiz*/) {
+
+    if (g_iso_stream == nullptr) return;
+
+    LOGI("nativeStopStream — halting isochronous pipeline");
+    g_iso_stream->stop();
+    delete g_iso_stream;
+    g_iso_stream = nullptr;
+    LOGI("Isochronous USB audio stream stopped");
+}
+
+JNIEXPORT jint JNICALL
+Java_app_simple_felicity_engine_usb_UsbDacDriver_nativePushPcm(
+        JNIEnv *env, jobject /*thiz*/,
+        jfloatArray samples, jint offset, jint count) {
+
+    if (g_iso_stream == nullptr || !g_iso_stream->isRunning()) return 0;
+
+    // GetFloatArrayElements gives us a direct or copied pointer to the float array.
+    // We use JNI_ABORT on release since we never modify the array — no need to
+    // copy back changes, and this avoids an unnecessary heap copy on some JVMs.
+    jfloat *ptr = env->GetFloatArrayElements(samples, nullptr);
+    if (ptr == nullptr) return 0;
+
+    const int written = g_iso_stream->pushPcm(ptr + offset, count);
+    env->ReleaseFloatArrayElements(samples, ptr, JNI_ABORT);
+    return written;
 }
 
 } // extern "C"
