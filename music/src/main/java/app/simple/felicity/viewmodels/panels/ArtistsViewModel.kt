@@ -46,7 +46,13 @@ class ArtistsViewModel @Inject constructor(
                 }
                 .flowOn(Dispatchers.IO)
                 .collect { sortedArtists ->
-                    _artists.value = sortedArtists as MutableList<Artist>
+                    try {
+                        _artists.value = sortedArtists as MutableList<Artist>
+                    } catch (e: ClassCastException) {
+                        Log.e(TAG, "Error casting sorted artists to MutableList", e)
+                        _artists.value = sortedArtists.toMutableList()
+                    }
+
                     Log.d(TAG, "loadData: ${sortedArtists.size} artists loaded")
                 }
         }
