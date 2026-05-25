@@ -59,7 +59,14 @@ abstract class BaseHomeFragment : PanelFragment() {
             if (ServerModeService.isRunning.value) {
                 ServerModeService.stop(requireContext())
             } else {
-                ServerModeService.start(requireContext())
+                try {
+                    ServerModeService.start(requireContext())
+                } catch (e: Exception) {
+                    // Starting the server can fail for various reasons (e.g. port in use, missing permissions).
+                    // Just show a toast and keep the toggle off if that happens — no need to crash the app.
+                    e.printStackTrace()
+                    showWarning("failed to start server: ${e.message ?: "unknown error"}")
+                }
             }
         }
 
