@@ -66,8 +66,8 @@ object PcmInfoFormatter {
                     Audio.AUDIO_QUALITY_HI_RES -> {
                         append("Hi-Res")
                     }
-                    else -> {
-
+                    Audio.AUDIO_QUALITY_MQ -> {
+                        append("MQ")
                     }
                 }
             }

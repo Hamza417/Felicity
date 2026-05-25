@@ -812,28 +812,58 @@ public class Audio implements Parcelable {
     }
     
     /**
-     * Determine an approximate audio quality class for this track.
+     * Determines the specific audio quality classification of a track.
      * <p>
-     * Heuristics used:
-     * - FLAC: use bit depth (bitPerSample) -> 24+ is Hi-Res, otherwise Lossless.
-     * - MP3/MPEG: use bitrate thresholds (kbps) -> 320k+ HQ, 192k+ MQ, otherwise LQ.
-     * - Other formats: fallback to bitrate thresholds.
+     * This evaluation uses rigorous thresholds to categorize streams, ensuring that
+     * high-fidelity files (including ultra-high sample rates up to 384kHz, 768kHz, and beyond)
+     * are correctly flagged for downstream processing.
      * <p>
-     * Returns one of AUDIO_QUALITY_LQ, AUDIO_QUALITY_MQ, AUDIO_QUALITY_HQ,
-     * AUDIO_QUALITY_LOSSLESS or AUDIO_QUALITY_HI_RES.
+     * Quality parameters:
+     * - Hi-Res: Uncompressed/Lossless with bit depth >= 24-bit OR sample rate > 48,000 Hz.
+     * - Lossless: Uncompressed/Lossless matching standard CD quality (16-bit, up to 48kHz).
+     * - High Quality (HQ): Lossy streams with a bitrate >= 320 kbps.
+     * - Medium Quality (MQ): Lossy streams with a bitrate >= 192 kbps.
+     * - Low Quality (LQ): Lossy streams falling below 192 kbps.
+     *
+     * @return An integer constant representing the evaluated audio quality.
      */
     public int getAudioQuality() {
+        // Sanitize MIME type for reliable matching
         String mt = mimeType != null ? mimeType.toLowerCase() : "";
         
-        // Group known lossless/uncompressed formats
-        if (mt.contains("flac") || mt.contains("wav") || mt.contains("alac") || mt.contains("aiff")) {
-            return bitPerSample >= 24 ? AUDIO_QUALITY_HI_RES : AUDIO_QUALITY_LOSSLESS;
+        // Determine if the track meets the objective mathematical threshold for High-Resolution audio.
+        // The JAS (Japan Audio Society) specification defines Hi-Res as anything strictly exceeding
+        // standard CD specifications (16-bit depth / 48kHz sample rate).
+        // Using a > 48000 check guarantees coverage for all extreme sample rates without upper bounds.
+        boolean isHiRes = (bitPerSample >= 24) || (samplingRate > 48000);
+        
+        // Explicit Lossless/Uncompressed Check
+        // Covers standard lossless codecs (FLAC, ALAC, APE), uncompressed PCM (WAV, AIFF),
+        // and SACD formats (DSD/DSF) which utilize extreme sample frequencies.
+        boolean isLosslessFormat = mt.contains("flac")
+                || mt.contains("wav")
+                || mt.contains("alac")
+                || mt.contains("aiff")
+                || mt.contains("ape")
+                || mt.contains("dsf")
+                || mt.contains("dsd");
+        
+        if (isLosslessFormat) {
+            return isHiRes ? AUDIO_QUALITY_HI_RES : AUDIO_QUALITY_LOSSLESS;
         }
         
+        // Fallback Heuristics for Missing or Generic MIME Types
+        // If a track lacks clear metadata but pushes a massive bitrate (>= 1000 kbps),
+        // it is mathematically guaranteed to be a lossless file rather than a bloated lossy stream.
         if (bitrate >= 1000) {
-            // Fallback for lossless tracks missing explicit MIME types
-            return bitPerSample >= 24 ? AUDIO_QUALITY_HI_RES : AUDIO_QUALITY_LOSSLESS;
-        } else if (bitrate >= 320) {
+            return isHiRes ? AUDIO_QUALITY_HI_RES : AUDIO_QUALITY_LOSSLESS;
+        }
+        
+        // Lossy Format Classification (MP3, AAC, OGG, Opus)
+        // Lossy files are evaluated purely by their compression threshold (kbps).
+        // Even if a lossy file was artificially up-sampled to 96kHz, it retains its original
+        // lossy artifacts and should never be falsely elevated to Hi-Res status.
+        if (bitrate >= 320) {
             return AUDIO_QUALITY_HQ;
         } else if (bitrate >= 192) {
             return AUDIO_QUALITY_MQ;

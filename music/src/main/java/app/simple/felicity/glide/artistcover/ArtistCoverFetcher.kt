@@ -8,7 +8,6 @@ import app.simple.felicity.repository.models.Artist
 import com.bumptech.glide.Priority
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.data.DataFetcher
-import java.io.FileNotFoundException
 
 /**
  * Glide DataFetcher for loading artist cover artwork.
@@ -23,7 +22,6 @@ class ArtistCoverFetcher internal constructor(
         try {
             // Delegate to ArtistCover for centralized artist cover loading
             val bitmap = ArtistCover.load(context, artist)
-                ?: throw FileNotFoundException("Could not find artist artwork for: ${artist.name}")
 
             callback.onDataReady(bitmap)
         } catch (e: Exception) {
