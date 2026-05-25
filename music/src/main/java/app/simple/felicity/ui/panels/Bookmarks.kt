@@ -92,9 +92,8 @@ class Bookmarks : BasePanelFragment() {
                     openDefaultPlayer()
                     dismiss()
                 },
-                onDelete = { bookmark, rowView ->
+                onDelete = { bookmark ->
                     viewModel.deleteBookmark(bookmark)
-                    rowView.visibility = View.GONE
                 }
         )
     }

@@ -688,9 +688,8 @@ abstract class BasePlayerFragment : MediaFragment() {
                     MediaPlaybackManager.seekTo(bookmark.timestampMs)
                     dismiss()
                 },
-                onDelete = { bookmark, rowView ->
+                onDelete = { bookmark ->
                     bookmarksViewModel.removeBookmark(bookmark)
-                    rowView.visibility = View.GONE
                 }
         )
     }

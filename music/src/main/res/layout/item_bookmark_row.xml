@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/bookmark_timestamp"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:drawablePadding="@dimen/padding_8"
+        android:gravity="start|center_vertical"
+        android:paddingStart="@dimen/padding_15"
+        android:paddingTop="@dimen/padding_10"
+        android:paddingEnd="@dimen/padding_5"
+        android:paddingBottom="@dimen/padding_10"
+        android:textSize="@dimen/text_size_14"
+        app:appFontStyle="bold"
+        app:drawableStartCompat="@drawable/ic_bookmark_16dp"
+        app:drawableTintStyle="accent"
+        app:textColorStyle="secondary" />
+
+    <app.simple.felicity.decorations.ripple.DynamicRippleImageButton xmlns:tools="http://schemas.android.com/tools"
+        android:id="@+id/bookmark_delete"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:padding="@dimen/padding_10"
+        android:src="@drawable/ic_delete_16dp"
+        android:visibility="gone"
+        tools:visibility="visible" />
+
+</LinearLayout>
+

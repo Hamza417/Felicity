@@ -3,6 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:animateLayoutChanges="true"
     android:orientation="vertical">
 
     <app.simple.felicity.decorations.typeface.TypeFaceTextView
@@ -18,23 +19,33 @@
         android:layout_width="match_parent"
         android:layout_height="1px" />
 
-    <androidx.core.widget.NestedScrollView
+    <!-- Capped at a comfortable height so the dialog never overflows the screen.
+         The list scrolls naturally when there are many bookmarks. -->
+    <app.simple.felicity.decorations.overscroll.CustomVerticalRecyclerView
+        android:id="@+id/bookmarks_recycler"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="@dimen/padding_10"
-        android:clipToPadding="false"
+        android:overScrollMode="never"
         android:fadingEdge="vertical"
         android:requiresFadingEdge="vertical"
-        android:fadingEdgeLength="@dimen/padding_20">
+        android:fadingEdgeLength="@dimen/padding_20"
+        android:clipToPadding="false"
+        android:paddingTop="@dimen/padding_5"
+        android:paddingBottom="@dimen/padding_5"
+        app:navigationPaddingRequired="false"
+        app:statusPaddingRequired="false" />
 
-        <!-- Bookmark entries are added here programmatically -->
-        <LinearLayout
-            android:id="@+id/bookmarks_container"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical" />
-
-    </androidx.core.widget.NestedScrollView>
+    <!-- Shown only when there are no bookmarks saved for this song -->
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/bookmarks_empty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="@dimen/padding_15"
+        android:text="@string/no_bookmarks"
+        android:textSize="@dimen/text_size_14"
+        android:visibility="gone"
+        app:appFontStyle="bold"
+        app:textColorStyle="quaternary" />
 
 </app.simple.felicity.decorations.corners.DynamicCornerLinearLayout>
 
