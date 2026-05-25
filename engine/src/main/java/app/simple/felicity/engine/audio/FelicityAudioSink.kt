@@ -49,7 +49,7 @@ import java.nio.ByteBuffer
  * @author Hamza417
  */
 @OptIn(UnstableApi::class)
-class AaudioAudioSink(
+class FelicityAudioSink(
         private val delegate: DefaultAudioSink,
         private val context: Context
 ) : ForwardingAudioSink(delegate) {
@@ -171,14 +171,14 @@ class AaudioAudioSink(
             val stream = AaudioOutputProcessor(sr, ch, useSafeBuffers)
             if (stream.isReady) {
                 aaudioStream = stream
-                isStreamActive = true
+                isAAudioStreamActive = true
                 muteDelegateIfNeeded()
                 Log.i(TAG, "AAudio stream configured — sampleRate=$sr, channels=$ch, " +
                         "encoding=$enc, actualFormat=${stream.getActualFormatName()}, " +
                         "safeBuffers=$useSafeBuffers")
             } else {
                 Log.e(TAG, "AAudio stream creation failed for sampleRate=$sr, channels=$ch")
-                isStreamActive = false
+                isAAudioStreamActive = false
                 unmuteDelegateIfNeeded()
             }
         }
@@ -350,7 +350,7 @@ class AaudioAudioSink(
     private fun releaseAaudioStream() {
         aaudioStream?.release()
         aaudioStream = null
-        isStreamActive = false
+        isAAudioStreamActive = false
         if (!UsbDacManager.isActive) {
             unmuteDelegateIfNeeded()
         }
@@ -377,13 +377,13 @@ class AaudioAudioSink(
     }
 
     companion object {
-        private const val TAG = "AaudioAudioSink"
+        private const val TAG = "FelicityAudioSink"
 
         /**
          * Reflects whether the native AAudio stream is currently open and running.
          * The snapshot builder reads this to show the true hardware state.
          */
         @Volatile
-        var isStreamActive: Boolean = false
+        var isAAudioStreamActive: Boolean = false
     }
 }

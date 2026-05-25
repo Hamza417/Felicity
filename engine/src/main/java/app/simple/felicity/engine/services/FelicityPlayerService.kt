@@ -45,7 +45,7 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
 import app.simple.felicity.engine.R
-import app.simple.felicity.engine.audio.AaudioAudioSink
+import app.simple.felicity.engine.audio.FelicityAudioSink
 import app.simple.felicity.engine.managers.AudioPipelineManager
 import app.simple.felicity.engine.managers.AudioProcessorManager
 import app.simple.felicity.engine.managers.EqualizerManager
@@ -307,14 +307,14 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 audioSink.setOffloadMode(offloadMode)
 
                 /**
-                 * Wrap the [DefaultAudioSink] with [AaudioAudioSink] unconditionally.
+                 * Wrap the [DefaultAudioSink] with [FelicityAudioSink] unconditionally.
                  * The wrapper is a transparent forwarding sink when AAudio is disabled;
                  * when [AudioPreferences.isAaudioEnabled] returns true, [handleBuffer]
                  * also routes float PCM to the native AAudio stream for direct-to-HAL
                  * low-latency output. The [DefaultAudioSink] (with its [AudioTrack] muted)
                  * is kept alive for clock and state management.
                  */
-                return AaudioAudioSink(audioSink, context)
+                return FelicityAudioSink(audioSink, context)
             }
 
             override fun buildAudioRenderers(
@@ -1216,7 +1216,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
      *
      * When the DAC attaches, the snapshot will reflect the new direct USB output. When it
      * detaches, the snapshot reverts to showing whichever path (AAudio or AudioTrack) takes
-     * over. The actual audio rerouting is handled inside [AaudioAudioSink], not here.
+     * over. The actual audio rerouting is handled inside [FelicityAudioSink], not here.
      */
     private val usbDacManagerListener = object : UsbDacManager.Listener {
         override fun onUsbDacAttached(sampleRate: Int, channelCount: Int) {
@@ -1620,7 +1620,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         // Reflect the actual AAudio stream state rather than just the user preference.
         // If AAudio was enabled but the stream failed to open, this will correctly show
         // "AudioTrack" instead of falsely advertising a low-latency path that isn't running.
-        val audioOutputMode = if (AaudioAudioSink.isStreamActive) "AAudio (Low Latency)" else "AudioTrack"
+        val audioOutputMode = if (FelicityAudioSink.isAAudioStreamActive) "AAudio (Low Latency)" else "AudioTrack"
 
         val snapshot = AudioPipelineSnapshot(
                 trackFormat = trackFormat,

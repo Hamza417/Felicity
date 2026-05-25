@@ -8,7 +8,7 @@ import android.util.Log
  *
  * This object is the single source of truth that bridges three layers:
  *  - [UsbDacDriver] writes state (calls notifyAttached / notifyDetached).
- *  - [app.simple.felicity.engine.audio.AaudioAudioSink] reads state on every
+ *  - [app.simple.felicity.engine.audio.FelicityAudioSink] reads state on every
  *    buffer cycle and syncs the DAC format when a format change is detected.
  *  - [app.simple.felicity.engine.services.FelicityPlayerService] registers a
  *    listener to rebuild the audio pipeline snapshot and log routing changes.
