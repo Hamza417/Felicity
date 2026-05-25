@@ -12,6 +12,8 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.audio.ForwardingAudioSink
 import app.simple.felicity.engine.processors.AaudioOutputProcessor
+import app.simple.felicity.engine.usb.UsbDacDriver
+import app.simple.felicity.engine.usb.UsbDacManager
 import app.simple.felicity.engine.utils.PcmUtils
 import app.simple.felicity.preferences.AudioPreferences
 import java.nio.ByteBuffer
@@ -22,21 +24,27 @@ import java.nio.ByteBuffer
  * is on, while keeping the inner [DefaultAudioSink] alive (muted) for ExoPlayer's clock
  * and state machine.
  *
- * Two production correctness issues are handled transparently:
+ * **USB DAC direct output**: When a USB audio DAC is connected and [UsbDacManager.isActive]
+ * is true, this sink acts as an exclusive splitter: the [DefaultAudioSink] is kept muted
+ * (for clock), AAudio is bypassed entirely, and all float PCM is pushed directly into the
+ * USB isochronous ring buffer via [UsbDacDriver.nativePushPcm]. This avoids double-output
+ * to the DAC that would otherwise happen because Android's audio routing also directs
+ * AudioTrack data to the USB device.
  *
- * **Format fallback (Bug 1)**: [AaudioOutputProcessor] detects whether the HAL honoured
- * [AAUDIO_FORMAT_PCM_FLOAT] or fell back to [AAUDIO_FORMAT_PCM_I16]. The native write
- * path converts float→int16 via NEON when needed; this class is unaffected.
+ * **Output priority (exclusive):**
+ *   1. USB DAC direct (when [UsbDacManager.isActive] — highest fidelity, bypasses Android mixer)
+ *   2. AAudio direct-to-HAL (when [AudioPreferences.isAaudioEnabled] and USB DAC not active)
+ *   3. DefaultAudioSink / AudioTrack (fallback)
  *
- * **Bluetooth buffer starvation (Bug 2)**: [isBluetoothOutputActive] inspects the
- * system's connected output devices at [configure] time. When a Bluetooth device is
- * found, [AaudioOutputProcessor] is created with `useSafeBuffers = true`, which opens
- * the stream with [AAUDIO_PERFORMANCE_MODE_NONE] and an 8× burst buffer instead of the
- * tiny low-latency buffer that causes A2DP / BLE stuttering.
+ * **Format sync**: [configure] is the source of truth for the current ExoPlayer format.
+ * When a USB DAC attaches mid-session, the [UsbDacManager.Listener] receives the attach
+ * event and immediately re-negotiates the DAC to match the live ExoPlayer sample rate,
+ * bit depth, and channel count so there is never a rate mismatch between what the DSP
+ * outputs and what the DAC expects.
  *
  * @param delegate  The [DefaultAudioSink] owned by the ExoPlayer renderer.
- * @param context   Application context; used solely to query [AudioManager] for the
- *                  currently connected output devices (Bluetooth detection).
+ * @param context   Application context used to query [AudioManager] (Bluetooth detection)
+ *                  and to reach [UsbDacDriver] for PCM push calls.
  *
  * @author Hamza417
  */
@@ -60,22 +68,62 @@ class AaudioAudioSink(
 
     /**
      * Volume last requested by ExoPlayer. Stored so the AudioTrack volume can be
-     * un-muted correctly if AAudio is later disabled between configure calls.
+     * unmuted correctly if AAudio is later disabled between configure calls.
      */
     private var pendingVolume: Float = 1f
 
     /**
      * Tracks whether the delegate [DefaultAudioSink] is currently muted (volume = 0)
-     * because AAudio is producing the audible output. Used to avoid redundant
-     * [AudioTrack.setVolume] calls on every [handleBuffer] frame.
+     * because AAudio or the USB DAC is producing the audible output.
      */
     private var delegateMuted: Boolean = false
 
     /**
+     * Registered with [UsbDacManager] so we hear about DAC connect/disconnect events.
+     * On attach we immediately re-negotiate the USB DAC format to match whatever ExoPlayer
+     * is currently configured for — this handles the case where the DAC is plugged in
+     * while a song is already playing at a different rate than the DAC's default 96 kHz.
+     * On detach we restore the delegate volume so normal output resumes.
+     */
+    private val usbDacListener = object : UsbDacManager.Listener {
+        override fun onUsbDacAttached(sampleRate: Int, channelCount: Int) {
+            // If ExoPlayer has already configured us with a valid format, sync the
+            // USB DAC to it immediately so there is no sample-rate mismatch.
+            if (currentSampleRate > 0 && currentChannelCount > 0) {
+                val bitDepth = encodingToBitDepth(currentEncoding)
+                Log.i(TAG, "USB DAC attached mid-stream — re-negotiating to " +
+                        "$currentSampleRate Hz / ${bitDepth}-bit / $currentChannelCount ch")
+                UsbDacDriver.getInstance(context)
+                    .negotiateFormat(currentSampleRate, bitDepth, currentChannelCount)
+            }
+            // Mute the delegate so Android's AudioTrack → USB routing path produces silence
+            // while our direct USB pipeline carries the real audio.
+            muteDelegateIfNeeded()
+        }
+
+        override fun onUsbDacDetached() {
+            // Restore normal delegate output now that the direct USB path is gone.
+            // If AAudio is still enabled and its stream is ready, keep the delegate muted
+            // so we don't accidentally unmute while AAudio is still driving output.
+            val aaudioStillActive = AudioPreferences.isAaudioEnabled() && aaudioStream?.isReady == true
+            if (!aaudioStillActive) {
+                unmuteDelegateIfNeeded()
+            }
+            Log.i(TAG, "USB DAC detached — reverted to ${if (aaudioStillActive) "AAudio" else "AudioTrack"} output")
+        }
+    }
+
+    init {
+        UsbDacManager.addListener(usbDacListener)
+    }
+
+    /**
      * Configures the sink for [inputFormat]. Always delegates to [DefaultAudioSink],
-     * then — when [AudioPreferences.isAaudioEnabled] is true — creates or recreates the
-     * native AAudio stream. Bluetooth routing is detected at this point so the stream
-     * is opened with the correct performance mode and buffer sizing.
+     * then — when [AudioPreferences.isAaudioEnabled] is true and no USB DAC is active —
+     * creates or recreates the native AAudio stream.
+     *
+     * If a USB DAC is already active when [configure] is called (e.g. after an ExoPlayer
+     * format switch), the DAC is re-negotiated so its alt-setting matches the new rate.
      */
     override fun configure(inputFormat: Format, specifiedBufferSize: Int, outputChannels: IntArray?) {
         super.configure(inputFormat, specifiedBufferSize, outputChannels)
@@ -87,24 +135,34 @@ class AaudioAudioSink(
         val sr = inputFormat.sampleRate.takeIf { it > 0 } ?: return
         val ch = inputFormat.channelCount.takeIf { it > 0 } ?: return
 
+        // Capture old values before we overwrite them so the format-change check below
+        // can detect whether a new AAudio stream or DAC re-negotiation is actually needed.
+        val prevSampleRate = currentSampleRate
+        val prevChannelCount = currentChannelCount
+        currentSampleRate = sr
+        currentChannelCount = ch
+
+        // When USB DAC is active, keep AAudio dormant to avoid double output.
+        // Re-negotiate the DAC format if ExoPlayer switched to a new sample rate.
+        if (UsbDacManager.isActive) {
+            if (aaudioStream != null) releaseAaudioStream()
+            val bitDepth = encodingToBitDepth(currentEncoding)
+            Log.i(TAG, "USB DAC active — syncing DAC format to $sr Hz / ${bitDepth}-bit / $ch ch")
+            UsbDacDriver.getInstance(context).negotiateFormat(sr, bitDepth, ch)
+            muteDelegateIfNeeded()
+            return
+        }
+
         if (!AudioPreferences.isAaudioEnabled()) {
-            /**
-             * AAudio is off. If a stale stream exists from a previous session,
-             * release it and restore the delegate's volume.
-             */
             if (aaudioStream != null) {
                 releaseAaudioStream()
             }
             return
         }
 
-        if (sr != currentSampleRate || ch != currentChannelCount || aaudioStream?.isReady != true) {
+        if (sr != prevSampleRate || ch != prevChannelCount || aaudioStream?.isReady != true) {
             releaseAaudioStream()
 
-            /**
-             * Bug 2 fix: detect Bluetooth output at configure time and open the stream
-             * in safe-buffer mode so the A2DP / BLE stack is not starved.
-             */
             val useSafeBuffers = isBluetoothOutputActive()
             if (useSafeBuffers) {
                 Log.i(TAG, "Bluetooth output detected — opening AAudio stream in safe-buffer mode")
@@ -113,18 +171,8 @@ class AaudioAudioSink(
             val stream = AaudioOutputProcessor(sr, ch, useSafeBuffers)
             if (stream.isReady) {
                 aaudioStream = stream
-                currentSampleRate = sr
-                currentChannelCount = ch
                 isStreamActive = true
-
-                /**
-                 * Mute the delegate AudioTrack immediately so only the AAudio stream
-                 * produces audible output. Without this, both the AudioTrack and the
-                 * AAudio stream play the same PCM simultaneously, causing double
-                 * volume and a timing-offset echo.
-                 */
                 muteDelegateIfNeeded()
-
                 Log.i(TAG, "AAudio stream configured — sampleRate=$sr, channels=$ch, " +
                         "encoding=$enc, actualFormat=${stream.getActualFormatName()}, " +
                         "safeBuffers=$useSafeBuffers")
@@ -136,9 +184,13 @@ class AaudioAudioSink(
         }
     }
 
-    /** Starts the delegate and, when AAudio is enabled, starts the native stream. */
+    /** Starts the delegate and, when AAudio is enabled (and USB DAC is not active), starts the native stream. */
     override fun play() {
         super.play()
+        if (UsbDacManager.isActive) {
+            muteDelegateIfNeeded()
+            return
+        }
         if (AudioPreferences.isAaudioEnabled()) {
             muteDelegateIfNeeded()
             aaudioStream?.start()
@@ -152,63 +204,61 @@ class AaudioAudioSink(
     }
 
     /**
-     * Routes a PCM buffer through [DefaultAudioSink] (for clock / state) and, if AAudio
-     * is active and the buffer was consumed, also writes it to the native AAudio stream.
+     * Routes the PCM buffer through [DefaultAudioSink] (for clock / state management) and
+     * — depending on the active output path — also pushes the same data to either the
+     * native AAudio stream or the USB DAC ring buffer.
      *
-     * The buffer is snapshotted via [ByteBuffer.slice] before delegation so its readable
-     * region is preserved for the AAudio write regardless of how [DefaultAudioSink]
-     * advances the position internally.
+     * Only one external output is active at a time:
+     *   - USB DAC active   → push to USB ring buffer; AAudio bypassed; delegate muted.
+     *   - AAudio active    → push to AAudio stream; delegate muted.
+     *   - Neither active   → delegate drives AudioTrack output directly (unmuted).
+     *
+     * The buffer snapshot is taken BEFORE delegation to preserve the readable region
+     * regardless of how [DefaultAudioSink] advances the position internally.
+     * Its byte order is restored to match ExoPlayer's little-endian convention so
+     * float / short / int reads in the conversion path are always correct.
      */
     override fun handleBuffer(
             buffer: ByteBuffer,
             presentationTimeUs: Long,
             encodedAccessUnitCount: Int
     ): Boolean {
-        val stream = aaudioStream
-        if (!AudioPreferences.isAaudioEnabled() || stream?.isReady != true) {
+        val usbActive = UsbDacManager.isActive
+        val aaudioReady = AudioPreferences.isAaudioEnabled() && aaudioStream?.isReady == true
+
+        if (!usbActive && !aaudioReady) {
             unmuteDelegateIfNeeded()
             return super.handleBuffer(buffer, presentationTimeUs, encodedAccessUnitCount)
         }
 
-        /**
-         * Ensure the delegate stays muted while AAudio is driving output. This
-         * covers the edge case where ExoPlayer called [setVolume] before the
-         * AAudio stream was created and the delegate inherited a non-zero volume.
-         */
         muteDelegateIfNeeded()
 
-        /**
-         * Snapshot the readable slice BEFORE the delegate potentially advances
-         * buffer.position(), so we can re-read the same bytes for AAudio.
-         *
-         * [ByteBuffer.slice] resets byte order to [java.nio.ByteOrder.BIG_ENDIAN] on
-         * Android API < 34. ExoPlayer audio buffers are always
-         * [java.nio.ByteOrder.LITTLE_ENDIAN] (native ARM byte order). Without explicitly
-         * restoring the byte order here, every [java.nio.ByteBuffer.getFloat] /
-         * [java.nio.ByteBuffer.getShort] call in [writeSnapshotToAaudio] would read bytes
-         * in the wrong order, producing garbage samples and causing constant static noise.
-         */
+        // Preserve the readable slice — same byte-order fix as before.
         val snapshot: ByteBuffer = buffer.slice().order(buffer.order())
-
         val consumed = super.handleBuffer(buffer, presentationTimeUs, encodedAccessUnitCount)
 
         if (consumed) {
-            writeSnapshotToAaudio(snapshot, stream)
+            // Convert once; push to whichever output is live.
+            val floatBuf = snapshotToFloat(snapshot)
+            if (usbActive) {
+                UsbDacDriver.getInstance(context).nativePushPcm(floatBuf, 0, floatBuf.size)
+            } else {
+                aaudioStream?.write(floatBuf)
+            }
         }
 
         return consumed
     }
 
     /**
-     * When AAudio is active, mutes the [DefaultAudioSink]'s [AudioTrack] (volume = 0)
-     * so only the AAudio stream produces audible output. The requested volume is stored
-     * in [pendingVolume] in case AAudio is later disabled and the AudioTrack needs to be
-     * unmuted.
+     * Updates the muting decision when ExoPlayer changes the stream volume. USB DAC and
+     * AAudio both require the delegate to stay muted while they are the active output.
      */
     override fun setVolume(volume: Float) {
         pendingVolume = volume
-        val aaudioActive = AudioPreferences.isAaudioEnabled() && aaudioStream?.isReady == true
-        if (aaudioActive) {
+        val exclusiveOutputActive = UsbDacManager.isActive ||
+                (AudioPreferences.isAaudioEnabled() && aaudioStream?.isReady == true)
+        if (exclusiveOutputActive) {
             muteDelegateIfNeeded()
         } else {
             unmuteDelegateIfNeeded()
@@ -216,8 +266,10 @@ class AaudioAudioSink(
     }
 
     /**
-     * Flushes the delegate sink and restarts the AAudio stream to clear any in-flight
-     * frames, matching seek and discontinuity behaviour.
+     * Flushes the delegate and restarts the AAudio stream (if active) to clear in-flight
+     * frames on seeks and discontinuities. USB ring buffer is NOT flushed here because the
+     * native isochronous pipeline will drain the stale bytes as silence before new data
+     * arrives — abruptly flushing mid-transfer is more disruptive than letting it drain.
      */
     override fun flush() {
         super.flush()
@@ -233,62 +285,58 @@ class AaudioAudioSink(
         releaseAaudioStream()
     }
 
-    /** Releases the native stream, then the delegate. */
+    /**
+     * Releases all resources. Unregisters from [UsbDacManager] so this instance does not
+     * receive callbacks after the ExoPlayer session ends.
+     */
     override fun release() {
+        UsbDacManager.removeListener(usbDacListener)
         releaseAaudioStream()
         super.release()
     }
 
     /**
-     * Converts the PCM content of [snapshot] to a [FloatArray] and writes it to the
-     * AAudio stream.
+     * Converts the PCM content of [snapshot] to an interleaved [FloatArray].
      *
-     * **Float path ([C.ENCODING_PCM_FLOAT])**: uses [java.nio.ByteBuffer.asFloatBuffer]
-     * plus a single bulk [java.nio.FloatBuffer.get] call. This avoids thousands of
-     * individual [java.nio.ByteBuffer.getFloat] calls per buffer, respects the byte order
-     * that was restored in [handleBuffer], and keeps the hot audio path allocation-free
-     * in steady state.
-     *
-     * **All other encodings**: delegates to [PcmUtils.readFloat] per sample. [PcmUtils]
-     * reads 24-bit data byte-by-byte (byte-order neutral) and uses [java.nio.ByteBuffer.getShort]
-     * / [java.nio.ByteBuffer.getInt] for 16-bit and 32-bit (both of which are now correct
-     * because [snapshot]'s byte order was fixed in [handleBuffer]).
-     *
-     * The native layer handles any further format conversion (e.g., float→int16) transparently.
+     * For [C.ENCODING_PCM_FLOAT] input, uses a single bulk [java.nio.FloatBuffer.get] call.
+     * For all other encodings, [PcmUtils.readFloat] converts each sample individually.
+     * Both paths produce values nominally in [-1.0, 1.0] (float PCM may exceed this with headroom).
      */
-    private fun writeSnapshotToAaudio(snapshot: ByteBuffer, stream: AaudioOutputProcessor) {
+    private fun snapshotToFloat(snapshot: ByteBuffer): FloatArray {
         val bps = PcmUtils.bytesPerSample(currentEncoding)
         val totalSamples = snapshot.remaining() / bps
-        if (totalSamples <= 0) return
+        if (totalSamples <= 0) return FloatArray(0)
 
         val floatBuf = FloatArray(totalSamples)
-
         if (currentEncoding == C.ENCODING_PCM_FLOAT) {
-            /**
-             * Bulk transfer: [ByteBuffer.asFloatBuffer] creates a view that inherits the
-             * corrected byte order, then [FloatBuffer.get] copies all samples in one call.
-             */
             snapshot.asFloatBuffer().get(floatBuf)
         } else {
             for (i in 0 until totalSamples) {
                 floatBuf[i] = PcmUtils.readFloat(snapshot, currentEncoding)
             }
         }
+        return floatBuf
+    }
 
-        stream.write(floatBuf)
+    /**
+     * Maps a Media3 PCM encoding constant to the closest integer bit depth for use
+     * in USB DAC format negotiation.
+     */
+    private fun encodingToBitDepth(encoding: Int): Int = when (encoding) {
+        C.ENCODING_PCM_8BIT -> 8
+        C.ENCODING_PCM_16BIT -> 16
+        C.ENCODING_PCM_24BIT -> 24
+        C.ENCODING_PCM_32BIT, C.ENCODING_PCM_FLOAT -> 32
+        else -> 16
     }
 
     /**
      * Returns true when at least one Bluetooth A2DP or BLE audio output device is
      * currently connected according to [AudioManager.getDevices].
-     *
-     * Checked at [configure] time so the AAudio stream is opened with the correct
-     * performance mode and buffer sizing from the start of each playback session.
      */
     private fun isBluetoothOutputActive(): Boolean {
         val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
                 ?: return false
-
         return audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).any { device ->
             device.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
                     device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
@@ -302,17 +350,14 @@ class AaudioAudioSink(
     private fun releaseAaudioStream() {
         aaudioStream?.release()
         aaudioStream = null
-        currentSampleRate = 0
-        currentChannelCount = 0
         isStreamActive = false
-        unmuteDelegateIfNeeded()
+        if (!UsbDacManager.isActive) {
+            unmuteDelegateIfNeeded()
+        }
         Log.i(TAG, "AAudio stream released")
     }
 
-    /**
-     * Mutes the delegate [DefaultAudioSink] (volume = 0) so only the AAudio stream
-     * is audible. No-op if already muted.
-     */
+    /** Mutes the delegate [DefaultAudioSink] so only the active exclusive output is audible. */
     private fun muteDelegateIfNeeded() {
         if (!delegateMuted) {
             super.setVolume(0f)
@@ -321,9 +366,8 @@ class AaudioAudioSink(
     }
 
     /**
-     * Restores the delegate [DefaultAudioSink] volume to the last value ExoPlayer
-     * requested ([pendingVolume]) so the normal AudioTrack path is audible again.
-     * No-op if not currently muted.
+     * Restores the delegate [DefaultAudioSink] volume so the normal AudioTrack path
+     * is audible again. No-op if not currently muted.
      */
     private fun unmuteDelegateIfNeeded() {
         if (delegateMuted) {
@@ -337,10 +381,7 @@ class AaudioAudioSink(
 
         /**
          * Reflects whether the native AAudio stream is currently open and running.
-         * Updated to `true` the moment a stream is successfully created, and back to
-         * `false` whenever the stream is released or creation fails. The snapshot builder
-         * reads this instead of the user preference so the pipeline dialog shows what is
-         * actually happening at the hardware level, not just what the user asked for.
+         * The snapshot builder reads this to show the true hardware state.
          */
         @Volatile
         var isStreamActive: Boolean = false

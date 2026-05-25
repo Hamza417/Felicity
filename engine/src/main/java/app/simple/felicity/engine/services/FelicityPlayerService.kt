@@ -55,6 +55,7 @@ import app.simple.felicity.engine.managers.VisualizerManager
 import app.simple.felicity.engine.model.AudioPipelineSnapshot
 import app.simple.felicity.engine.notifications.PlaybackErrorNotifier
 import app.simple.felicity.engine.usb.UsbDacDriver
+import app.simple.felicity.engine.usb.UsbDacManager
 import app.simple.felicity.manager.SharedPreferences.initRegisterSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.AppearancePreferences
@@ -220,6 +221,10 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         // Register the USB DAC driver so it starts listening for permission results.
         // This must happen before any USB device could be plugged in during the service lifetime.
         UsbDacDriver.getInstance(applicationContext).attach()
+
+        // Listen for USB DAC attach/detach so the audio pipeline snapshot stays current
+        // and we can log routing changes for diagnostics.
+        UsbDacManager.addListener(usbDacManagerListener)
 
         // Expose the processor via VisualizerManager so the player fragment can call
         // setDirectOutput() and wire the lock-free twin-buffer path without a service bind.
@@ -1205,6 +1210,29 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         }
     }
 
+    /**
+     * Tracks USB DAC connect/disconnect events so the pipeline snapshot is refreshed
+     * any time the direct USB output path is activated or deactivated.
+     *
+     * When the DAC attaches, the snapshot will reflect the new direct USB output. When it
+     * detaches, the snapshot reverts to showing whichever path (AAudio or AudioTrack) takes
+     * over. The actual audio rerouting is handled inside [AaudioAudioSink], not here.
+     */
+    private val usbDacManagerListener = object : UsbDacManager.Listener {
+        override fun onUsbDacAttached(sampleRate: Int, channelCount: Int) {
+            currentOutputDevice = detectActiveOutputDevice()
+            Log.i(TAG, "USB DAC stream active — rebuilding pipeline snapshot " +
+                    "(DAC negotiated at $sampleRate Hz / $channelCount ch)")
+            buildAndPushSnapshot()
+        }
+
+        override fun onUsbDacDetached() {
+            currentOutputDevice = detectActiveOutputDevice()
+            Log.i(TAG, "USB DAC stream stopped — reverting pipeline snapshot")
+            buildAndPushSnapshot()
+        }
+    }
+
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = mediaSession
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
@@ -1344,6 +1372,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
         // Unregister the USB DAC driver and release any open USB connection before
         // the service context disappears, so no dangling file descriptor is left open.
+        UsbDacManager.removeListener(usbDacManagerListener)
         UsbDacDriver.getInstance(applicationContext).detach()
 
         // Stop the periodic snapshot pulse before releasing resources.

@@ -1,5 +1,6 @@
 package app.simple.felicity.engine.usb
 
+import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -79,8 +80,7 @@ class UsbDacDriver private constructor(private val context: Context) {
      */
     fun detach() {
         runCatching { context.unregisterReceiver(permissionReceiver) }
-        // Stop the isochronous stream before closing the USB connection so no
-        // in-flight transfers touch a handle that is already being released.
+        UsbDacManager.notifyDetached()
         nativeStopStream()
         releaseConnection()
         Log.d(TAG, "UsbDacDriver detached")
@@ -117,6 +117,7 @@ class UsbDacDriver private constructor(private val context: Context) {
     fun onDeviceDetached(device: UsbDevice) {
         if (activeDevice?.deviceId == device.deviceId) {
             Log.i(TAG, "Active DAC unplugged — halting stream and releasing resources")
+            UsbDacManager.notifyDetached()
             nativeStopStream()
             nativeReleaseUsb()
             releaseConnection()
@@ -171,6 +172,9 @@ class UsbDacDriver private constructor(private val context: Context) {
         val streamOk = nativeStartStream()
         if (streamOk) {
             Log.i(TAG, "USB isochronous stream running")
+            // Notify the audio sink and service that the DAC is live. They will
+            // re-negotiate the format to match whatever ExoPlayer is currently playing.
+            UsbDacManager.notifyAttached(96_000, 2)
         } else {
             Log.e(TAG, "Failed to start USB stream — DAC is initialized but silent")
         }
@@ -270,6 +274,7 @@ class UsbDacDriver private constructor(private val context: Context) {
         private const val TAG = "UsbDacDriver"
         private const val ACTION_USB_PERMISSION = "app.simple.felicity.USB_PERMISSION"
 
+        @SuppressLint("StaticFieldLeak")
         @Volatile
         private var instance: UsbDacDriver? = null
 
