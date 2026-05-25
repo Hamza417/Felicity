@@ -1,6 +1,8 @@
 package app.simple.felicity.repository.database.instances
 
+import android.annotation.SuppressLint
 import android.content.Context
+import android.util.Log
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -211,7 +213,35 @@ abstract class AudioDatabase : RoomDatabase() {
 
         fun getInstance(): AudioDatabase? = instance
 
+        /**
+         * Bumps Android's default [android.database.CursorWindow] size from the factory default
+         * of 2 MB up to 20 MB. Room loads an entire query result into a single cursor window, so
+         * when a library has thousands of tracks and each row has many text columns (uri, path,
+         * title, artist, album, …) the 2 MB ceiling fills up and Android throws an
+         * [OutOfMemoryError] deep inside [android.database.CursorWindow.nativeGetString].
+         *
+         * The window size is a private static field, so we reach it via reflection. If a future
+         * Android release renames or removes the field, we silently carry on with the default
+         * size rather than crashing during database initialization.
+         *
+         * Source: https://github.com/andpor/react-native-sqlite-storage/issues/364#issuecomment-526423153
+         */
+        @SuppressLint("DiscouragedPrivateApi")
+        private fun expandCursorWindowSize() {
+            try {
+                val field = android.database.CursorWindow::class.java.getDeclaredField("sCursorWindowSize")
+                field.isAccessible = true
+                val expected = 20 * 1024 * 1024
+                field.set(null, expected) // 20 MB
+                val size = field.getInt(null)
+                Log.i("AudioDatabase", "Expanded CursorWindow size to $size bytes, expected: $expected bytes")
+            } catch (_: Exception) {
+                // Nothing we can do if the field is gone; carry on with the default.
+            }
+        }
+
         private fun buildDatabase(context: Context): AudioDatabase {
+            expandCursorWindowSize()
             return Room.databaseBuilder(context, AudioDatabase::class.java, DB_NAME)
                 .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18)
                 .fallbackToDestructiveMigration(dropAllTables = true)
