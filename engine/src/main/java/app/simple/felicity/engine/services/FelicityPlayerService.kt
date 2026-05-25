@@ -54,6 +54,7 @@ import app.simple.felicity.engine.managers.PlaybackStateManager
 import app.simple.felicity.engine.managers.VisualizerManager
 import app.simple.felicity.engine.model.AudioPipelineSnapshot
 import app.simple.felicity.engine.notifications.PlaybackErrorNotifier
+import app.simple.felicity.engine.usb.UsbDacDriver
 import app.simple.felicity.manager.SharedPreferences.initRegisterSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.AppearancePreferences
@@ -215,6 +216,10 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         super.onCreate()
         initRegisterSharedPreferenceChangeListener(applicationContext)
         playbackErrorNotifier = PlaybackErrorNotifier(applicationContext)
+
+        // Register the USB DAC driver so it starts listening for permission results.
+        // This must happen before any USB device could be plugged in during the service lifetime.
+        UsbDacDriver.getInstance(applicationContext).attach()
 
         // Expose the processor via VisualizerManager so the player fragment can call
         // setDirectOutput() and wire the lock-free twin-buffer path without a service bind.
@@ -1336,6 +1341,10 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     override fun onDestroy() {
         savePlaybackStateToDatabase()
         unregisterSharedPreferenceChangeListener()
+
+        // Unregister the USB DAC driver and release any open USB connection before
+        // the service context disappears, so no dangling file descriptor is left open.
+        UsbDacDriver.getInstance(applicationContext).detach()
 
         // Stop the periodic snapshot pulse before releasing resources.
         stopSnapshotPulse()

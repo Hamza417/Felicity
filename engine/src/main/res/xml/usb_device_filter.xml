@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    A catch-all USB device filter. An empty <usb-device /> entry tells Android to show
+    our permission dialog for any USB device plugged in. We then check the USB device
+    class ourselves in UsbDacReceiver to make sure it is actually an audio device.
+-->
+<resources>
+    <usb-device />
+</resources>
+

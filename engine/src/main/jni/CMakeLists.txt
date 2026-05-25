@@ -37,6 +37,33 @@ FetchContent_Declare(pffft
 # Download and make the library available to CMake
 FetchContent_MakeAvailable(pffft)
 
+# ---------------------------------------------------------------------------
+# libusb — pulled at build time so we always get a known-good version.
+# v1.0.27 is the first release that ships a first-class CMakeLists.txt, which
+# means FetchContent_MakeAvailable works without any manual source wiring.
+# ---------------------------------------------------------------------------
+FetchContent_Declare(
+        libusb
+        GIT_REPOSITORY https://github.com/libusb/libusb-cmake.git
+        GIT_TAG v1.0.30-0
+)
+FetchContent_MakeAvailable(libusb)
+
+# The USB DAC driver is a separate shared library so it can be loaded
+# independently of the main audio engine. The Kotlin side loads it via
+# System.loadLibrary("felicity_usb_dac") inside UsbDacDriver.
+add_library(felicity_usb_dac SHARED
+        felicity_usb_dac.cpp)
+
+find_library(log-lib-usb log)
+
+target_include_directories(felicity_usb_dac PRIVATE
+        ${libusb_SOURCE_DIR}/libusb)
+
+target_link_libraries(felicity_usb_dac
+        usb-1.0          # target name exposed by libusb's own CMakeLists.txt
+        ${log-lib-usb})
+
 # JNI bridge code
 add_library(felicity_audio_engine SHARED
             visualizer-fft.cpp
