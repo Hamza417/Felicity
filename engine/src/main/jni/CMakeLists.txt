@@ -53,7 +53,9 @@ FetchContent_MakeAvailable(libusb)
 # independently of the main audio engine. The Kotlin side loads it via
 # System.loadLibrary("felicity_usb_dac") inside UsbDacDriver.
 add_library(felicity_usb_dac SHARED
-        felicity_usb_dac.cpp)
+        felicity_usb_dac.cpp
+        uac_parser.cpp
+        uac_negotiator.cpp)
 
 find_library(log-lib-usb log)
 

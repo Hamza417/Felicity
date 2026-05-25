@@ -3,6 +3,7 @@
 #include <jni.h>
 #include <libusb.h>
 #include <android/log.h>
+#include "uac_descriptors.h"
 
 #define FELICITY_USB_TAG "felicity_usb_dac"
 
@@ -32,6 +33,16 @@ JNIEXPORT jboolean JNICALL
 Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeInitUsb(
         JNIEnv *env, jobject thiz,
         jint fileDescriptor, jint vendorId, jint productId);
+
+/**
+ * Called from UsbDacDriver.nativeNegotiateFormat. Runs the UAC descriptor parser
+ * and then the format negotiator so the DAC is locked into the requested sample
+ * rate, bit depth, and channel count.
+ */
+JNIEXPORT jboolean JNICALL
+Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeNegotiateFormat(
+        JNIEnv *env, jobject thiz,
+        jint sampleRate, jint bitDepth, jint channels);
 
 /**
  * Called from UsbDacDriver.nativeReleaseUsb. Releases the interface, closes the

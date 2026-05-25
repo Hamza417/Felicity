@@ -152,7 +152,13 @@ class UsbDacDriver private constructor(private val context: Context) {
         if (!success) {
             Log.e(TAG, "Native USB initialization failed, releasing connection")
             releaseConnection()
+            return
         }
+
+        // With the device claimed, immediately negotiate the format.
+        // We default to 24-bit / 96 kHz stereo — the negotiator will fall back to
+        // the best available alt-setting if the device does not support that exactly.
+        negotiateFormat(sampleRate = 96_000, bitDepth = 24, channels = 2)
     }
 
     /** Closes and clears the current [UsbDeviceConnection]. */
@@ -160,6 +166,30 @@ class UsbDacDriver private constructor(private val context: Context) {
         connection?.close()
         connection = null
         activeDevice = null
+    }
+
+    /**
+     * Re-runs format negotiation on the currently open DAC with the given parameters.
+     * Safe to call at any time after a successful [onDeviceAttached]; returns silently
+     * if no device is connected. Useful when the user changes the DSP output sample
+     * rate or bit depth in the app settings.
+     *
+     * @param sampleRate Target sample rate in Hz (e.g. 48000, 96000).
+     * @param bitDepth   Desired bit depth (e.g. 16, 24, 32).
+     * @param channels   Number of output channels.
+     */
+    fun negotiateFormat(sampleRate: Int, bitDepth: Int, channels: Int) {
+        if (connection == null) {
+            Log.d(TAG, "negotiateFormat skipped — no DAC connected")
+            return
+        }
+        Log.i(TAG, "Negotiating format: $sampleRate Hz / ${bitDepth}-bit / $channels ch")
+        val ok = nativeNegotiateFormat(sampleRate, bitDepth, channels)
+        if (ok) {
+            Log.i(TAG, "Format negotiation succeeded")
+        } else {
+            Log.w(TAG, "Format negotiation failed — DAC may use a fallback format")
+        }
     }
 
     // JNI declarations — implemented in felicity_usb_dac.cpp
@@ -175,6 +205,17 @@ class UsbDacDriver private constructor(private val context: Context) {
      * @return `true` if libusb initialization succeeded and the interface was claimed.
      */
     private external fun nativeInitUsb(fileDescriptor: Int, vendorId: Int, productId: Int): Boolean
+
+    /**
+     * Runs the UAC descriptor parser on the open device, then selects the best
+     * matching alt-setting and programs the DAC's clock and mute state to match.
+     *
+     * @param sampleRate Target sample rate in Hz (e.g. 48000, 96000).
+     * @param bitDepth   Desired bit depth (e.g. 16, 24, 32).
+     * @param channels   Number of output channels (1 = mono, 2 = stereo).
+     * @return `true` if format negotiation succeeded and the DAC is ready to stream.
+     */
+    private external fun nativeNegotiateFormat(sampleRate: Int, bitDepth: Int, channels: Int): Boolean
 
     /** Tells the native layer to release the libusb handle and close the context. */
     private external fun nativeReleaseUsb()
