@@ -122,7 +122,8 @@ public class Audio implements Parcelable {
     @ColumnInfo (name = "num_tracks")
     private String numTracks;
     @ColumnInfo (name = "sampling_rate")
-    private long samplingRate;
+    // TODO -> rename to "sample_rate" for consistency
+    private long sampleRate;
     @ColumnInfo (name = "bit_per_sample")
     private long bitPerSample;
     @ColumnInfo (name = "writer")
@@ -478,12 +479,12 @@ public class Audio implements Parcelable {
         this.numTracks = numTracks;
     }
     
-    public long getSamplingRate() {
-        return samplingRate;
+    public long getSampleRate() {
+        return sampleRate;
     }
     
-    public void setSamplingRate(long samplingRate) {
-        this.samplingRate = samplingRate;
+    public void setSampleRate(long sampleRate) {
+        this.sampleRate = sampleRate;
     }
     
     public long getBitPerSample() {
@@ -610,7 +611,7 @@ public class Audio implements Parcelable {
                 ", compilation='" + compilation + '\'' +
                 ", mimeType='" + mimeType + '\'' +
                 ", numTracks='" + numTracks + '\'' +
-                ", samplingRate=" + samplingRate +
+                ", samplingRate=" + sampleRate +
                 ", bitPerSample=" + bitPerSample +
                 ", writer='" + writer + '\'' +
                 ", isAvailable=" + isAvailable +
@@ -665,7 +666,7 @@ public class Audio implements Parcelable {
         if (albumId != audio.albumId) {
             return false;
         }
-        if (samplingRate != audio.samplingRate) {
+        if (sampleRate != audio.sampleRate) {
             return false;
         }
         if (bitPerSample != audio.bitPerSample) {
@@ -761,7 +762,7 @@ public class Audio implements Parcelable {
         result = 31 * result + (mimeType != null ? mimeType.hashCode() : 0);
         result = 31 * result + (numTracks != null ? numTracks.hashCode() :
                 0);
-        result = 31 * result + Long.hashCode(samplingRate);
+        result = 31 * result + Long.hashCode(sampleRate);
         result = 31 * result + Long.hashCode(bitPerSample);
         result = 31 * result + (writer != null ? writer.hashCode() : 0);
         result = 31 * result + (isAvailable ? 1 : 0);
@@ -798,7 +799,7 @@ public class Audio implements Parcelable {
         audio.setCompilation(getCompilation());
         audio.setMimeType(getMimeType());
         audio.setNumTracks(getNumTracks());
-        audio.setSamplingRate(getSamplingRate());
+        audio.setSampleRate(getSampleRate());
         audio.setBitPerSample(getBitPerSample());
         audio.setWriter(getWriter());
         audio.setFavorite(isFavorite());
@@ -835,7 +836,7 @@ public class Audio implements Parcelable {
         // The JAS (Japan Audio Society) specification defines Hi-Res as anything strictly exceeding
         // standard CD specifications (16-bit depth / 48kHz sample rate).
         // Using a > 48000 check guarantees coverage for all extreme sample rates without upper bounds.
-        boolean isHiRes = (bitPerSample >= 24) || (samplingRate > 48000);
+        boolean isHiRes = (bitPerSample >= 24) || (sampleRate > 48000);
         
         // Explicit Lossless/Uncompressed Check
         // Covers standard lossless codecs (FLAC, ALAC, APE), uncompressed PCM (WAV, AIFF),

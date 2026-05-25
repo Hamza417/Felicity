@@ -281,7 +281,7 @@ class M3uRepository @Inject constructor(
         audio.size = 0L
         audio.duration = 0L
         audio.bitrate = 0L
-        audio.samplingRate = 0L
+        audio.sampleRate = 0L
         audio.bitPerSample = 0L
         audio.dateAdded = System.currentTimeMillis()
         audio.dateModified = 0L

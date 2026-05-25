@@ -36,9 +36,9 @@ object PcmInfoFormatter {
                     append("${audio.bitPerSample}bit")
                 }
 
-                if (audio.samplingRate > 0) {
+                if (audio.sampleRate > 0) {
                     if (isNotEmpty()) append(" ")
-                    append(audio.samplingRate.toKhzString())
+                    append(audio.sampleRate.toKhzString())
                 }
             }
 

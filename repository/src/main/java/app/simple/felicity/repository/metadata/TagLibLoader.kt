@@ -208,7 +208,7 @@ object TagLibLoader {
         audio.numTracks = numTracks
         audio.duration = duration
         audio.bitrate = bitrate
-        audio.samplingRate = sampleRate
+        audio.sampleRate = sampleRate
         audio.bitPerSample = bitsPerSample
         audio.size = size
         audio.dateModified = dateModified

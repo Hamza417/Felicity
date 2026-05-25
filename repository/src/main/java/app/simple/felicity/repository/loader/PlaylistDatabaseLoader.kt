@@ -296,7 +296,7 @@ class PlaylistDatabaseLoader @Inject constructor(private val context: Context) {
             size = 0L
             duration = 0L
             bitrate = 0L
-            samplingRate = 0L
+            sampleRate = 0L
             bitPerSample = 0L
             dateAdded = System.currentTimeMillis()
             dateModified = 0L

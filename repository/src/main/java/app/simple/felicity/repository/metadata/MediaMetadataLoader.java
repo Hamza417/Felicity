@@ -153,7 +153,7 @@ public class MediaMetadataLoader {
         audio.setDate(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DATE));
         audio.setDiscNumber(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DISC_NUMBER));
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            audio.setSamplingRate(Long.parseLong(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)));
+            audio.setSampleRate(Long.parseLong(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)));
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             try {

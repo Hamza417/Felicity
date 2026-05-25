@@ -54,7 +54,7 @@ class AudioInformationViewModel @AssistedInject constructor(
                 add(data(R.string.duration, audio.duration.toDynamicTimeString()))
                 add(data(R.string.size, Formatter.formatShortFileSize(getApplication(), audio.size)))
                 add(data(R.string.bitrate, audio.getProperBitrate()))
-                add(data(R.string.sample_rate, "${audio.samplingRate} Hz"))
+                add(data(R.string.sample_rate, "${audio.sampleRate} Hz"))
                 add(data(R.string.bit_depth, if (audio.bitPerSample > 0) "${audio.bitPerSample}-bit" else "–"))
                 add(data(R.string.mime_type, audio.mimeType ?: "–"))
                 add(data(R.string.format, audio.uri.getAudioFormat() ?: "–"))
