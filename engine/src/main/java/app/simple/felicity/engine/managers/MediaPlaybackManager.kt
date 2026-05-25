@@ -39,8 +39,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -194,14 +197,21 @@ object MediaPlaybackManager {
     // Flows are mutable internally but exposed as read-only to callers.
     private val _songListFlow = MutableSharedFlow<List<Audio>>(replay = 1)
     private val _songPositionFlow = MutableSharedFlow<Int>(replay = 1)
-    private val _songSeekPositionFlow = MutableSharedFlow<Long>(replay = 1)
+
+    /**
+     * Using StateFlow here instead of SharedFlow because seek position is a "current value" —
+     * we only ever care about the latest position, not the history. StateFlow's update never
+     * suspends (it just replaces the stored value), so fast emission loops can't pile up in memory.
+     */
+    private val _songSeekPositionFlow = MutableStateFlow(0L)
+
     private val _playbackStateFlow = MutableSharedFlow<Int>(replay = 1)
     private val _repeatModeFlow = MutableSharedFlow<Int>(replay = 1)
     private val _shuffleStateFlow = MutableSharedFlow<Boolean>(replay = 1)
 
     val songListFlow: SharedFlow<List<Audio>> = _songListFlow.asSharedFlow()
     val songPositionFlow: SharedFlow<Int> = _songPositionFlow.asSharedFlow()
-    val songSeekPositionFlow: SharedFlow<Long> = _songSeekPositionFlow.asSharedFlow()
+    val songSeekPositionFlow: StateFlow<Long> = _songSeekPositionFlow.asStateFlow()
     val playbackStateFlow: SharedFlow<Int> = _playbackStateFlow.asSharedFlow()
     val repeatModeFlow: SharedFlow<Int> = _repeatModeFlow.asSharedFlow()
     val shuffleStateFlow: SharedFlow<Boolean> = _shuffleStateFlow.asSharedFlow()
@@ -633,8 +643,8 @@ object MediaPlaybackManager {
         val duration = getDuration()
         val clamped = if (duration > 0L) position.coerceIn(0L, duration) else max(0L, position)
         mediaController?.seekTo(clamped)
-        // Optimistically emit the new seek position for responsive UI
-        scope.launch { _songSeekPositionFlow.emit(clamped) }
+        // StateFlow update is instant and non-suspending, no coroutine wrapper needed
+        _songSeekPositionFlow.value = clamped
     }
 
     fun seekRelative(offsetMs: Long) {
@@ -834,7 +844,7 @@ object MediaPlaybackManager {
                 val position = getSeekPosition()
                 // Only emit if position actually changed to reduce overhead
                 if (position != lastEmittedPosition) {
-                    _songSeekPositionFlow.emit(position)
+                    _songSeekPositionFlow.value = position
                     lastEmittedPosition = position
                 }
                 delay(intervalMs)
