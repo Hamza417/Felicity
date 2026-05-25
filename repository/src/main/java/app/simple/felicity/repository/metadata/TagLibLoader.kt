@@ -4,8 +4,8 @@ import android.content.Context
 import android.net.Uri
 import android.os.ParcelFileDescriptor
 import android.util.Log
+import android.webkit.MimeTypeMap
 import app.simple.felicity.repository.models.Audio
-import java.io.FileInputStream
 
 /**
  * The native bridge object that loads the TagLib JNI shared library and
@@ -134,12 +134,16 @@ object TagLibLoader {
             // ParcelFileDescriptor.open() gives us a raw int fd directly,
             // whereas FileInputStream.fd is a FileDescriptor *object* — not an int.
             ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { pfd ->
+                val mimeType = file.extension.lowercase().let { ext ->
+                    MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
+                }
                 TagLibBridge.nativeLoadFromFd(pfd.fd)
                     ?.toAudio(
                             name = file.name,
                             path = file.absolutePath,
                             size = file.length(),
-                            dateModified = file.lastModified()
+                            dateModified = file.lastModified(),
+                            mimeType = mimeType
                     )
             }
         } catch (e: Exception) {
@@ -165,12 +169,16 @@ object TagLibLoader {
     fun loadFromUri(context: Context, uri: Uri, fileSize: Long, lastModified: Long): Audio? {
         return try {
             context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                // The content resolver already knows the MIME type for the URI — no
+                // need to guess from the extension here.
+                val mimeType = context.contentResolver.getType(uri)
                 TagLibBridge.nativeLoadFromFd(pfd.fd)
                     ?.toAudio(
                             name = uri.lastPathSegment ?: uri.toString(),
                             path = uri.toString(),
                             size = fileSize,
-                            dateModified = lastModified
+                            dateModified = lastModified,
+                            mimeType = mimeType
                     )
             }
         } catch (e: Exception) {
@@ -188,12 +196,13 @@ object TagLibLoader {
             name: String,
             path: String,
             size: Long,
-            dateModified: Long
+            dateModified: Long,
+            mimeType: String?
     ): Audio {
         val audio = Audio()
         audio.name = name
         audio.uri = path
-        audio.setTitle(title)
+        audio.title = title
         audio.artist = artist
         audio.album = album
         audio.genre = genre
@@ -213,6 +222,7 @@ object TagLibLoader {
         audio.size = size
         audio.dateModified = dateModified
         audio.dateAdded = System.currentTimeMillis()
+        audio.mimeType = mimeType
         audio.replayGainTrackGain = replayGainTrackGain
         audio.replayGainTrackPeak = replayGainTrackPeak
         audio.replayGainAlbumGain = replayGainAlbumGain

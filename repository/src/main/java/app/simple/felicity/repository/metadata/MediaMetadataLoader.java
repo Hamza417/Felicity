@@ -15,6 +15,12 @@ import app.simple.felicity.repository.models.Audio;
  * Supports both traditional file paths and SAF content URIs so the app can
  * read tags from any folder the user has granted access to — not just files
  * it has direct filesystem access to.
+ * <p>
+ * This is the safety net that runs when TagLib fails. Because
+ * {@link MediaMetadataRetriever} relies on the OS media framework, it supports
+ * every format the device can actually play.
+ *
+ * @author Hamza417
  */
 public class MediaMetadataLoader {
     
@@ -123,14 +129,12 @@ public class MediaMetadataLoader {
             // SAF path — use the URI string as the path identifier so we can
             // reconstruct the URI later for playback and cover art loading.
             String uriString = contentUri != null ? contentUri.toString() : "";
-            // Extract just the filename from the document URI if we can.
-            String displayName = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE);
-            if (displayName == null || displayName.isEmpty()) {
-                // Fall back to the last path segment as a reasonable display name.
-                displayName = contentUri != null && contentUri.getLastPathSegment() != null
-                        ? contentUri.getLastPathSegment()
-                        : uriString;
-            }
+            // Use the last path segment of the document URI as the file's display
+            // name. This is more reliable than the title tag for naming purposes
+            // since the title could be empty or missing entirely.
+            String displayName = contentUri != null && contentUri.getLastPathSegment() != null
+                    ? contentUri.getLastPathSegment()
+                    : uriString;
             audio.setName(displayName);
             audio.setUri(uriString);
             audio.setSize(cachedSize);
@@ -141,23 +145,33 @@ public class MediaMetadataLoader {
         audio.setArtist(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST));
         audio.setGenre(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_GENRE));
         audio.setYear(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_YEAR));
-        audio.setDuration(Long.parseLong(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)));
+        
+        // Duration and bitrate can occasionally be absent — guard against null to
+        // avoid a NumberFormatException crashing the whole scan for one bad file.
+        String rawDuration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+        audio.setDuration(rawDuration != null ? Long.parseLong(rawDuration) : 0L);
+
         audio.setTrackNumber(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER));
         audio.setNumTracks(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_NUM_TRACKS));
         audio.setComposer(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_COMPOSER));
         audio.setMimeType(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE));
-        audio.setBitrate(Long.parseLong(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)) / 1000); // Convert from bps to kbps
+        
+        String rawBitrate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE);
+        audio.setBitrate(rawBitrate != null ? Long.parseLong(rawBitrate) / 1000L : 0L); // bps → kbps
+
         audio.setAlbumArtist(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST));
         audio.setWriter(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_WRITER));
         audio.setCompilation(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_COMPILATION));
         audio.setDate(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DATE));
         audio.setDiscNumber(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DISC_NUMBER));
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            audio.setSampleRate(Long.parseLong(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE)));
+            String rawSampleRate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE);
+            audio.setSampleRate(rawSampleRate != null ? Long.parseLong(rawSampleRate) : 0L);
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             try {
-                audio.setBitPerSample(Long.parseLong(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITS_PER_SAMPLE)));
+                String rawBitsPerSample = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITS_PER_SAMPLE);
+                audio.setBitPerSample(rawBitsPerSample != null ? Long.parseLong(rawBitsPerSample) : 0L);
             } catch (NumberFormatException e) {
                 audio.setBitPerSample(0);
             }
