@@ -640,6 +640,8 @@ abstract class BasePlayerFragment : MediaFragment() {
             val hasNearby = currentBookmarks.any { kotlin.math.abs(it.timestampMs - timestampMs) < 1_000L }
             binding.removeBookmark.alpha = if (hasNearby) 1f else 0.4f
             binding.removeBookmark.isEnabled = hasNearby
+            binding.addBookmark.alpha = if (hasNearby) 0.4f else 1f
+            binding.addBookmark.isEnabled = !hasNearby
         }
 
         val onDialogInflated: (DialogBookmarkMenuBinding, () -> Unit, () -> Unit) -> Unit = { binding, dismiss, _ ->
