@@ -1,58 +1,40 @@
 ### Library
 
-- Added artist separator to split artist having **;** in artists fields. #62
-- Split artists with **&** only when it is surrounded by spaces. #62
-- Match single artist exclusively to avoid matching artists containing the artist name. #62
-- Split **Album Artists** with artist separator.
-- Added complete **MusicBrainz** integration with the app.
-    - Added **Artist** and **Album** info on the page panels.
-    - Added **Metadata Search** to search and fetch metadata from **MusicBrainz**.
-    - Added **Artist** image loader form **MusicBrainz**.
-    - Added toggle to enable/disable **MusicBrainz** integration.
+- Toggle to pause activity records. #74
+- Option to clear all activity records. #74
+- Cache downloaded artist images internally to avoid redownloading. #71
 
 ### User Interface
 
-- Update **Purchase** panel interface for play builds.
-- Added **Lock** to move **Speed** and **Pitch** knob simultaneously. #53
-- Added **Composers** panel.
-- Added **Composers Page** showing albums and songs of the composer.
-- Added **Search Lyrics** button to search and embed lyrics in the **Metadata Editor**.
-- Added info about artists, albums etc. in all **Pages** panels.
-- Implemented functions for all menus for all page panels.
+- Added **Bookmarks** support.
+    - Added tap to add bookmarks in **Waveform** on player screen.
+    - Added **Bookmarks** panel to view all songs with atleast one bookmark.
+    - Added quick jump to bookmarked positions in the player screen.
+    - Dedicated **Bookmarks** menus.
+    - Added bookmark indicator in the **Waveform**.
+- Add **monochrome** app icon. #70
+- Added option to sort by **As Added** in playlist to show songs in order as they were added. #73
 
 ### Bug Fixes
 
-- Fixed proguard removing TagLib classes leading to missing metadata for whole library. #57
-- Fixed invalid theme states on cold app launches.
-- Fixed an OOM in restoring media states. #48
-- Fixed song state ballooning on each playback state restore on cold app launches. #48
-- Fixed wrong **Playing Queue** time updates.
-- Fixed app showing raw bitrates and without any formatting.
-- Fixed PCM pipeline info inconsistencies.
-- Fixed non-terminating recursion while initializing the preferences leading to a frozen/blank app
-  launch.
-- Fixed first song of the queue is not added to the **Recently Played** list. #58
-- Fixed artist song count in the **Artists** panel and **Search** panel. #62
-- Fixed **Album Page** showing **Artists** instead of **Album Artists**. #62
-- Fixed app header stays offscreen when list count has changed while header is in partially/hidden
-  state.
+- Fixed **EQ params** not loaded in first launches.
+- Fixed weird filenames for metadata-less files. #84
+- Fixed cover art not showing for some formats like WAV. #75
+- Fixed audio quality badge showing incorrect quality for some formats. #77
+- Fixed metadata extractor not parsing some fields like **NumTracks** etc. #77, #75
+- Fixed **Audio Information** showing no for _Embedded Album Art_ field. #75
+- Fixed external art covers are never queried due to SAF migration.
+- Fixed multiple OOMs in database and playback managers causing the app to crash when library grew
+  too big.
+- Fixed a crash caused by **Server Service** not starting properly.
 
 ### Improvements
 
-- Improved **Knob** highlight color to be distinguishable from the background.
-- Multiple songs to playlist dialog should only parcel hashes to avoid potential OOMs.
+- Swipe down to hide **Mini Player** temporarily. #74
 
 ### Changes
 
-- Changed **Most Played** parameter to include songs played at least two times. #58
-
-### Removed
-
-- PCM info dialog for Hi-Res mode.
-    - Since audio processors are not supported by ExoPlayer yet, the dialog will always show random
-      info on Hi-Res mode.
-
-### Development
-
-- 32-bit support dropped for store builds.
-    - 32-bit users can still get 32-bit builds from the GitHub releases page.
+- Disable visualizer and equalizer in Hi-Res mode.
+- Changed the stats information to show first in stats panels like **Most Played** etc. #60
+- Include sample rate to check audio quality for lossless formats. #77
+- Large heap to create more memory buffer for burst library parsing in lower end devices.
