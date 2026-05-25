@@ -14,6 +14,7 @@ import app.simple.felicity.repository.covers.BaseCoverLoader.loadExternalArtwork
 import app.simple.felicity.repository.covers.BaseCoverLoader.loadExternalArtworkSAF
 import app.simple.felicity.repository.metadata.TagLibBridge
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Core cover art loading functionality shared across all media types.
@@ -31,6 +32,26 @@ internal object BaseCoverLoader {
      * Compiled once at class initialization to avoid repeated compilation overhead.
      */
     private val SANITIZE_REGEX = Regex("[^a-zA-Z0-9.-]")
+
+    /**
+     * Caches the external artwork bitmap (or a "we already looked and found nothing" marker)
+     * keyed by folder path or SAF parent document ID. This prevents us from scanning the
+     * same folder over and over for every track inside an album — which was the main culprit
+     * behind the 2-second load times.
+     *
+     * The value is a [Result] wrapping the bitmap so we can distinguish between
+     * "not cached yet" (absent) and "cached as empty" (present with null inside).
+     */
+    private val externalArtworkCache = ConcurrentHashMap<String, Result<Bitmap?>>()
+
+    /**
+     * Clears the in-memory external artwork cache. Call this when the user adds or removes
+     * music folders so stale entries don't linger.
+     */
+    fun clearExternalArtworkCache() {
+        externalArtworkCache.clear()
+        Log.d(TAG, "External artwork cache cleared")
+    }
 
     /**
      * Hardcoded list of the most common album art filenames used by music rippers,
@@ -62,6 +83,11 @@ internal object BaseCoverLoader {
      * @return Bitmap of the first matching artwork file, or null if none is found.
      */
     fun loadExternalArtwork(directory: File, customNames: List<String> = emptyList()): Bitmap? {
+        val cacheKey = directory.absolutePath
+
+        // Return cached result immediately — no disk I/O needed for tracks in the same folder.
+        externalArtworkCache[cacheKey]?.let { return it.getOrNull() }
+
         val allNames = COMMON_ARTWORK_NAMES + customNames
 
         for (filename in allNames) {
@@ -71,6 +97,7 @@ internal object BaseCoverLoader {
                     val bitmap = BitmapFactory.decodeFile(artFile.absolutePath)
                     if (bitmap != null) {
                         Log.d(TAG, "Found external art: ${artFile.name}")
+                        externalArtworkCache[cacheKey] = Result.success(bitmap)
                         return bitmap
                     }
                 } catch (e: Exception) {
@@ -79,6 +106,8 @@ internal object BaseCoverLoader {
             }
         }
 
+        // Store a null result so we don't re-scan this folder for future tracks.
+        externalArtworkCache[cacheKey] = Result.success(null)
         return null
     }
 
@@ -114,8 +143,33 @@ internal object BaseCoverLoader {
             return null
         }
 
-        // Find the tree URI that covers this document. The tree's root doc ID
-        // must be a prefix of (or equal to) our document's ID.
+        return loadExternalArtworkSAFByDocId(context, parentDocId, customNames)
+    }
+
+    /**
+     * The actual SAF artwork scanner — given a parent folder's document ID, it directly
+     * probes for each known artwork filename in that folder without any cursor traversal.
+     *
+     * SAF document IDs for the standard Android storage provider are path-based
+     * (e.g. "primary:Music/Album"), so we can construct a child doc ID by simply
+     * appending the filename ("primary:Music/Album/folder.jpg") and try to open it.
+     * If the file isn't there, [openInputStream] returns null and we move on.
+     * No listing, no child queries — pure hit-or-miss per filename.
+     *
+     * Both [loadExternalArtworkSAF] (which derives the parent doc ID from an audio URI)
+     * and [FolderCover] (which already has the folder doc ID directly) funnel through here
+     * so the logic and cache live in exactly one place.
+     *
+     * @param context Android context needed for the content resolver.
+     * @param parentDocId SAF document ID of the folder to inspect (e.g. "primary:Music/Album").
+     * @param customNames Optional extra filenames to look for beyond the common defaults.
+     * @return Bitmap from the first matching image, or null if the folder has no artwork.
+     */
+    fun loadExternalArtworkSAFByDocId(context: Context, parentDocId: String, customNames: List<String> = emptyList()): Bitmap? {
+        // Return cached result immediately — avoids any I/O for tracks in the same folder.
+        externalArtworkCache[parentDocId]?.let { return it.getOrNull() }
+
+        // Find the tree URI whose root covers our parent document ID.
         val treeUri = SAFPreferences.getTreeUris().firstNotNullOfOrNull { uriStr ->
             val candidate = uriStr.toUri()
             val rootDocId = try {
@@ -123,52 +177,38 @@ internal object BaseCoverLoader {
             } catch (e: Exception) {
                 return@firstNotNullOfOrNull null
             }
-            if (docId.startsWith(rootDocId)) candidate else null
+            if (parentDocId.startsWith(rootDocId)) candidate else null
         }
 
         if (treeUri == null) {
-            Log.w(TAG, "No matching tree URI found for document: $docId")
+            Log.w(TAG, "No matching tree URI found for document: $parentDocId")
+            externalArtworkCache[parentDocId] = Result.success(null)
             return null
         }
 
-        val allNames = (COMMON_ARTWORK_NAMES + customNames).map { it.lowercase() }.toHashSet()
-        val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, parentDocId)
-        val projection = arrayOf(
-                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                DocumentsContract.Document.COLUMN_DISPLAY_NAME
-        )
-
-        try {
-            context.contentResolver.query(childrenUri, projection, null, null, null)?.use { cursor ->
-                val idxDocId = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
-                val idxName = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
-
-                while (cursor.moveToNext()) {
-                    val name = cursor.getString(idxName) ?: continue
-                    if (!allNames.contains(name.lowercase())) continue
-
-                    val childDocId = cursor.getString(idxDocId) ?: continue
-                    val childUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, childDocId)
-
-                    val bitmap = try {
-                        context.contentResolver.openInputStream(childUri)?.use { stream ->
-                            BitmapFactory.decodeStream(stream)
-                        }
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Failed to decode SAF artwork: $name", e)
-                        null
-                    }
-
-                    if (bitmap != null) {
-                        Log.d(TAG, "Found SAF external art: $name")
-                        return bitmap
-                    }
+        // Probe each known filename directly — no child listing needed.
+        // We build "parentDocId/filename.jpg", convert it to a URI, and try to open it.
+        // If the file isn't there the stream will be null, and we just try the next name.
+        for (filename in COMMON_ARTWORK_NAMES + customNames) {
+            val childUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, "$parentDocId/$filename")
+            val bitmap = try {
+                context.contentResolver.openInputStream(childUri)?.use { stream ->
+                    BitmapFactory.decodeStream(stream)
                 }
+            } catch (e: Exception) {
+                // File doesn't exist or can't be read — not an error worth logging every time.
+                null
             }
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to query SAF children for parent: $parentDocId", e)
+
+            if (bitmap != null) {
+                Log.d(TAG, "Found SAF external art: $filename")
+                externalArtworkCache[parentDocId] = Result.success(bitmap)
+                return bitmap
+            }
         }
 
+        // Nothing found — cache the negative result to skip this folder next time.
+        externalArtworkCache[parentDocId] = Result.success(null)
         return null
     }
 
