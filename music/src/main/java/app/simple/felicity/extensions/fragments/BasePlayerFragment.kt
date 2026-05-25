@@ -4,7 +4,6 @@ import android.content.SharedPreferences
 import android.os.Bundle
 import android.text.format.DateUtils
 import android.util.Log
-import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.widget.ImageView
@@ -14,17 +13,13 @@ import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.R
 import app.simple.felicity.core.maths.Number.toNegative
 import app.simple.felicity.databinding.DialogBookmarkMenuBinding
-import app.simple.felicity.databinding.DialogBookmarksListBinding
 import app.simple.felicity.decorations.helpers.SwipeDownToCloseListener
 import app.simple.felicity.decorations.highlight.HighlightTextView
 import app.simple.felicity.decorations.lrc.view.LrcLineView
 import app.simple.felicity.decorations.pager.FelicityPager
 import app.simple.felicity.decorations.pager.ImagePageAdapter
 import app.simple.felicity.decorations.popups.SimpleDialog
-import app.simple.felicity.decorations.ripple.DynamicRippleTextView
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar
-import app.simple.felicity.decorations.typeface.TypeFaceTextView
-import app.simple.felicity.decorations.utils.TextViewUtils.setStartDrawable
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithEffect
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithFade
 import app.simple.felicity.decorations.views.FavoriteButton
@@ -684,60 +679,18 @@ abstract class BasePlayerFragment : MediaFragment() {
      * Each entry shows the formatted timestamp and, when tapped, seeks the player to that position.
      */
     private fun openBookmarksList() {
-        val snapshots = bookmarksViewModel.bookmarks.value.sortedBy { it.timestampMs }
-
-        val onViewCreated: (DialogBookmarksListBinding) -> Unit = { binding ->
-            if (snapshots.isEmpty()) {
-                val empty = DynamicRippleTextView(requireContext()).apply {
-                    text = getString(R.string.no_bookmarks)
-                    setPadding(
-                            resources.getDimensionPixelSize(R.dimen.padding_15),
-                            resources.getDimensionPixelSize(R.dimen.padding_10),
-                            resources.getDimensionPixelSize(R.dimen.padding_15),
-                            resources.getDimensionPixelSize(R.dimen.padding_10)
-                    )
+        val bookmarks = bookmarksViewModel.bookmarks.value.sortedBy { it.timestampMs }
+        openBookmarksList(
+                bookmarks = bookmarks,
+                onTimestampClicked = { bookmark, dismiss ->
+                    MediaPlaybackManager.seekTo(bookmark.timestampMs)
+                    dismiss()
+                },
+                onDelete = { bookmark, rowView ->
+                    bookmarksViewModel.removeBookmark(bookmark)
+                    rowView.visibility = View.GONE
                 }
-                binding.bookmarksContainer.addView(empty)
-            }
-        }
-
-        val onDialogInflated: (DialogBookmarksListBinding, () -> Unit, () -> Unit) -> Unit = { binding, dismiss, _ ->
-            snapshots.forEach { bookmark ->
-                val label = DateUtils.formatElapsedTime(bookmark.timestampMs / 1000L)
-                val row = DynamicRippleTextView(requireContext()).apply {
-                    text = label
-                    setPadding(
-                            resources.getDimensionPixelSize(R.dimen.padding_15),
-                            resources.getDimensionPixelSize(R.dimen.padding_10),
-                            resources.getDimensionPixelSize(R.dimen.padding_15),
-                            resources.getDimensionPixelSize(R.dimen.padding_10)
-                    )
-
-                    setOnClickListener {
-                        MediaPlaybackManager.seekTo(bookmark.timestampMs)
-                        dismiss()
-                    }
-
-                    setStartDrawable(R.drawable.ic_bookmark_16dp)
-                    compoundDrawablePadding = resources.getDimensionPixelSize(R.dimen.padding_5)
-                    setDrawableTineMode(TypeFaceTextView.DRAWABLE_ACCENT)
-                    setTextColorMode(TypeFaceTextView.SECONDARY)
-                    // center-vertical to force drawable vertically centered
-                    gravity = Gravity.START or Gravity.CENTER_VERTICAL
-                }
-                binding.bookmarksContainer.addView(row)
-            }
-        }
-
-        SimpleDialog.Builder(
-                container = requireContainerView(),
-                inflateBinding = DialogBookmarksListBinding::inflate)
-            .onViewCreated(onViewCreated)
-            .onDialogInflated(onDialogInflated)
-            .onDismiss { /* no-op */ }
-            .setWidthRatio(getDialogWidthRation())
-            .build()
-            .show()
+        )
     }
 
     companion object {

@@ -8,11 +8,14 @@ import android.os.Bundle
 import android.provider.DocumentsContract
 import android.text.Spannable
 import android.text.SpannableString
+import android.text.format.DateUtils
 import android.text.style.ForegroundColorSpan
 import android.text.style.StyleSpan
 import android.util.Log
+import android.view.Gravity
 import android.view.View
 import android.widget.ImageView
+import android.widget.LinearLayout
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.app.ShareCompat
 import androidx.core.net.toUri
@@ -27,6 +30,7 @@ import app.simple.felicity.R
 import app.simple.felicity.callbacks.MiniPlayerCallbacks
 import app.simple.felicity.databinding.DialogAlbumMenuBinding
 import app.simple.felicity.databinding.DialogArtistMenuBinding
+import app.simple.felicity.databinding.DialogBookmarksListBinding
 import app.simple.felicity.databinding.DialogDeleteSongBinding
 import app.simple.felicity.databinding.DialogEditPlaylistBinding
 import app.simple.felicity.databinding.DialogPlaylistMenuBinding
@@ -35,6 +39,8 @@ import app.simple.felicity.databinding.DialogSureBinding
 import app.simple.felicity.decorations.highlight.HighlightTextView
 import app.simple.felicity.decorations.popups.SimpleDialog
 import app.simple.felicity.decorations.popups.SimpleSharedImageDialog
+import app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+import app.simple.felicity.decorations.typeface.TypeFaceTextView
 import app.simple.felicity.decorations.utils.TextViewUtils.setStartDrawable
 import app.simple.felicity.dialogs.app.AudioInformation.Companion.showAudioInfo
 import app.simple.felicity.dialogs.app.PlaybackInfo.Companion.showPlaybackInfo
@@ -52,6 +58,7 @@ import app.simple.felicity.repository.managers.SelectionManager
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.models.AudioBookmark
 import app.simple.felicity.repository.models.PlaylistWithSongs
 import app.simple.felicity.repository.repositories.LrcRepository
 import app.simple.felicity.repository.shuffle.Shuffle.smartShuffle
@@ -1207,6 +1214,106 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 setShuffleButtonState()
             }
         }
+    }
+
+    /**
+     * Shows a dialog listing all [bookmarks] for a given song.
+     *
+     * Every row shows the bookmark's timestamp. Tapping a row triggers [onTimestampClicked],
+     * which receives the bookmark and a lambda you can call to close the dialog.
+     *
+     * If [onDelete] is provided, each row also gets a small trash button next to the timestamp.
+     * Tapping it calls [onDelete] with the bookmark and the row's view, so the caller can
+     * remove the entry and hide the row however it likes.
+     */
+    protected fun openBookmarksList(
+            bookmarks: List<AudioBookmark>,
+            onTimestampClicked: (AudioBookmark, dismiss: () -> Unit) -> Unit,
+            onDelete: ((AudioBookmark, rowView: View) -> Unit)? = null
+    ) {
+        val onViewCreated: (DialogBookmarksListBinding) -> Unit = { binding ->
+            if (bookmarks.isEmpty()) {
+                val empty = TypeFaceTextView(requireContext()).apply {
+                    text = getString(R.string.no_bookmarks)
+                    setPadding(
+                            resources.getDimensionPixelSize(R.dimen.padding_15),
+                            resources.getDimensionPixelSize(R.dimen.padding_10),
+                            resources.getDimensionPixelSize(R.dimen.padding_15),
+                            resources.getDimensionPixelSize(R.dimen.padding_10)
+                    )
+                }
+                binding.bookmarksContainer.addView(empty)
+            }
+        }
+
+        val onDialogInflated: (DialogBookmarksListBinding, () -> Unit, () -> Unit) -> Unit = { binding, dismiss, _ ->
+            bookmarks.forEach { bookmark ->
+                val label = DateUtils.formatElapsedTime(bookmark.timestampMs / 1000L)
+
+                val row = LinearLayout(requireContext()).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                }
+
+                val timestampView = TypeFaceTextView(requireContext()).apply {
+                    text = label
+                    setPadding(
+                            resources.getDimensionPixelSize(R.dimen.padding_15),
+                            resources.getDimensionPixelSize(R.dimen.padding_10),
+                            resources.getDimensionPixelSize(R.dimen.padding_5),
+                            resources.getDimensionPixelSize(R.dimen.padding_10)
+                    )
+                    layoutParams = if (onDelete != null) {
+                        LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                    } else {
+                        LinearLayout.LayoutParams(
+                                LinearLayout.LayoutParams.MATCH_PARENT,
+                                LinearLayout.LayoutParams.WRAP_CONTENT
+                        )
+                    }
+                    setStartDrawable(R.drawable.ic_bookmark_16dp)
+                    compoundDrawablePadding = resources.getDimensionPixelSize(R.dimen.padding_5)
+                    setDrawableTineMode(TypeFaceTextView.DRAWABLE_ACCENT)
+                    setTextColorMode(TypeFaceTextView.SECONDARY)
+                    gravity = Gravity.START or Gravity.CENTER_VERTICAL
+
+                    setOnClickListener {
+                        onTimestampClicked(bookmark, dismiss)
+                    }
+                }
+
+                row.addView(timestampView)
+
+                if (onDelete != null) {
+                    val deleteButton = DynamicRippleImageButton(requireContext()).apply {
+                        setImageResource(R.drawable.ic_delete_16dp)
+                        val p = resources.getDimensionPixelSize(R.dimen.padding_10)
+                        setPadding(p, p, p, p)
+                        layoutParams = LinearLayout.LayoutParams(
+                                LinearLayout.LayoutParams.WRAP_CONTENT,
+                                LinearLayout.LayoutParams.WRAP_CONTENT
+                        )
+
+                        setOnClickListener {
+                            onDelete(bookmark, row)
+                        }
+                    }
+                    row.addView(deleteButton)
+                }
+
+                binding.bookmarksContainer.addView(row)
+            }
+        }
+
+        SimpleDialog.Builder(
+                container = requireContainerView(),
+                inflateBinding = DialogBookmarksListBinding::inflate)
+            .onViewCreated(onViewCreated)
+            .onDialogInflated(onDialogInflated)
+            .onDismiss { /* no-op */ }
+            .setWidthRatio(getDialogWidthRation())
+            .build()
+            .show()
     }
 
     companion object {

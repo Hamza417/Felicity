@@ -1,21 +1,14 @@
 package app.simple.felicity.ui.panels
 
 import android.os.Bundle
-import android.text.format.DateUtils
-import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.AdapterBookmarks
-import app.simple.felicity.databinding.DialogBookmarksListBinding
 import app.simple.felicity.databinding.FragmentBookmarksBinding
 import app.simple.felicity.databinding.HeaderBookmarksBinding
-import app.simple.felicity.decorations.popups.SimpleDialog
-import app.simple.felicity.decorations.ripple.DynamicRippleImageButton
-import app.simple.felicity.decorations.typeface.TypeFaceTextView
-import app.simple.felicity.decorations.utils.TextViewUtils.setStartDrawable
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.repository.models.AudioWithBookmarks
@@ -87,89 +80,23 @@ class Bookmarks : BasePanelFragment() {
     }
 
     /**
-     * Opens the existing bookmarks list dialog for a specific song.
-     * Each row shows a timestamp and a small delete button. Tapping the timestamp
-     * plays the song solo from that position and closes the dialog.
+     * Opens the bookmarks list dialog for a specific song, with the ability to
+     * delete individual bookmarks using the delete button on each row.
      */
     private fun openBookmarksList(item: AudioWithBookmarks) {
         val bookmarks = item.bookmarks.sortedBy { it.timestampMs }
-
-        val onDialogInflated: (DialogBookmarksListBinding, () -> Unit, () -> Unit) -> Unit = { dialogBinding, dismiss, _ ->
-            if (bookmarks.isEmpty()) {
-                val empty = TypeFaceTextView(requireContext()).apply {
-                    text = getString(R.string.no_bookmarks)
-                    setPadding(
-                            resources.getDimensionPixelSize(R.dimen.padding_15),
-                            resources.getDimensionPixelSize(R.dimen.padding_10),
-                            resources.getDimensionPixelSize(R.dimen.padding_15),
-                            resources.getDimensionPixelSize(R.dimen.padding_10)
-                    )
+        openBookmarksList(
+                bookmarks = bookmarks,
+                onTimestampClicked = { bookmark, dismiss ->
+                    setMediaItemWithSeek(item.audio, bookmark.timestampMs)
+                    openDefaultPlayer()
+                    dismiss()
+                },
+                onDelete = { bookmark, rowView ->
+                    viewModel.deleteBookmark(bookmark)
+                    rowView.visibility = View.GONE
                 }
-                dialogBinding.bookmarksContainer.addView(empty)
-            }
-
-            bookmarks.forEach { bookmark ->
-                val label = DateUtils.formatElapsedTime(bookmark.timestampMs / 1000L)
-
-                // Each row is a horizontal box: timestamp on the left, delete button on the right.
-                val row = android.widget.LinearLayout(requireContext()).apply {
-                    orientation = android.widget.LinearLayout.HORIZONTAL
-                    gravity = Gravity.CENTER_VERTICAL
-                }
-
-                val timestampView = TypeFaceTextView(requireContext()).apply {
-                    text = label
-                    setPadding(
-                            resources.getDimensionPixelSize(R.dimen.padding_15),
-                            resources.getDimensionPixelSize(R.dimen.padding_10),
-                            resources.getDimensionPixelSize(R.dimen.padding_5),
-                            resources.getDimensionPixelSize(R.dimen.padding_10)
-                    )
-                    layoutParams = android.widget.LinearLayout.LayoutParams(
-                            0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f
-                    )
-                    setStartDrawable(R.drawable.ic_bookmark_16dp)
-                    compoundDrawablePadding = resources.getDimensionPixelSize(R.dimen.padding_5)
-                    setDrawableTineMode(TypeFaceTextView.DRAWABLE_ACCENT)
-                    setTextColorMode(TypeFaceTextView.SECONDARY)
-                    gravity = Gravity.START or Gravity.CENTER_VERTICAL
-
-                    setOnClickListener {
-                        setMediaItemWithSeek(item.audio, bookmark.timestampMs)
-                        openDefaultPlayer()
-                        dismiss()
-                    }
-                }
-
-                val deleteButton = DynamicRippleImageButton(requireContext()).apply {
-                    setImageResource(R.drawable.ic_delete_16dp)
-                    val p = resources.getDimensionPixelSize(R.dimen.padding_10)
-                    setPadding(p, p, p, p)
-                    layoutParams = android.widget.LinearLayout.LayoutParams(
-                            android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
-                            android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
-                    )
-
-                    setOnClickListener {
-                        viewModel.deleteBookmark(bookmark)
-                        row.visibility = View.GONE
-                    }
-                }
-
-                row.addView(timestampView)
-                row.addView(deleteButton)
-                dialogBinding.bookmarksContainer.addView(row)
-            }
-        }
-
-        SimpleDialog.Builder(
-                container = requireContainerView(),
-                inflateBinding = DialogBookmarksListBinding::inflate)
-            .onDialogInflated(onDialogInflated)
-            .onDismiss { /* no-op */ }
-            .setWidthRatio(getDialogWidthRation())
-            .build()
-            .show()
+        )
     }
 
     companion object {
