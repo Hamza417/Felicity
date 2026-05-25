@@ -3,6 +3,7 @@ package app.simple.felicity.viewmodels.dialogs
 import android.app.Application
 import android.media.MediaMetadataRetriever
 import android.text.format.Formatter
+import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.R
@@ -104,11 +105,17 @@ class AudioInformationViewModel @AssistedInject constructor(
         }
     }
 
+    /**
+     * Checks whether the audio file has embedded cover art by opening it through
+     * the content resolver. We use the Uri overload of setDataSource so it works
+     * correctly with both SAF content:// URIs and regular file paths — the plain
+     * String overload only works for file paths and silently fails on content URIs.
+     */
     private fun checkEmbeddedArt(path: String?): Boolean {
         if (path == null) return false
         return try {
             val retriever = MediaMetadataRetriever()
-            retriever.setDataSource(path)
+            retriever.setDataSource(getApplication(), path.toUri())
             val art = retriever.embeddedPicture
             retriever.release()
             art != null

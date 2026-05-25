@@ -106,7 +106,7 @@ object MediaStorePaths {
                     val album = cursor.getString(albumCol)?.lowercase() ?: ""
                     val data = cursor.getString(dataCol) ?: ""
 
-                    Log.d(TAG, "MediaStore entry: title='$title', artist='$artist', album='$album', path='$data'")
+                    // Log.d(TAG, "MediaStore entry: title='$title', artist='$artist', album='$album', path='$data'")
 
                     map[Triple(title, artist, album)] = data
                 }

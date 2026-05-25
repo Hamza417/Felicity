@@ -207,6 +207,7 @@ Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeLoadFromFd(
     TagLib::PropertyMap props;
     if (tag) props = tag->properties();
 
+
     jstring title = tag ? toJString(env, tag->title()) : nullptr;
     jstring artist = tag ? toJString(env, tag->artist()) : nullptr;
     jstring album = tag ? toJString(env, tag->album()) : nullptr;
@@ -232,10 +233,65 @@ Java_app_simple_felicity_repository_metadata_TagLibBridge_nativeLoadFromFd(
     if (!albumArtist) albumArtist = getProperty(env, props, "ALBUM ARTIST");
     jstring composer = getProperty(env, props, "COMPOSER");
     jstring lyricist = getProperty(env, props, "LYRICIST");
-    jstring discNumber = getProperty(env, props, "DISCNUMBER");
-    jstring trackNumber = getProperty(env, props, "TRACKNUMBER");
-    jstring numTracks = getProperty(env, props, "TRACKTOTAL");
-    if (!numTracks) numTracks = getProperty(env, props, "TOTALTRACKS");
+    // DISCNUMBER can also be packed as "1/2" — split it the same way.
+    jstring discNumber = nullptr;
+    {
+        jstring rawDisc = getProperty(env, props, "DISCNUMBER");
+        if (rawDisc) {
+            const char *raw = env->GetStringUTFChars(rawDisc, nullptr);
+            if (raw) {
+                std::string rawStr(raw);
+                env->ReleaseStringUTFChars(rawDisc, raw);
+                auto slash = rawStr.find('/');
+                if (slash != std::string::npos) {
+                    std::string numPart = rawStr.substr(0, slash);
+                    if (!numPart.empty()) discNumber = env->NewStringUTF(numPart.c_str());
+                } else {
+                    discNumber = rawDisc;
+                }
+            }
+        }
+    }
+    // ID3v2 (and some other formats) pack both the track number and the total
+    // into a single "5/10" string inside the TRACKNUMBER field. We need to
+    // split on the slash so each piece lands in the right variable.
+    jstring trackNumber = nullptr;
+    jstring numTracks = nullptr;
+    {
+        jstring rawTrack = getProperty(env, props, "TRACKNUMBER");
+        // LOGI("Raw TRACKNUMBER for fd=%d: %s", fd, rawTrack ? env->GetStringUTFChars(rawTrack, nullptr) : "null");
+        if (rawTrack) {
+            const char *raw = env->GetStringUTFChars(rawTrack, nullptr);
+            if (raw) {
+                std::string rawStr(raw);
+                env->ReleaseStringUTFChars(rawTrack, raw);
+                auto slash = rawStr.find('/');
+                if (slash != std::string::npos) {
+                    // Split "5/10" into "5" and "10"
+                    std::string numPart = rawStr.substr(0, slash);
+                    std::string totalPart = rawStr.substr(slash + 1);
+                    if (!numPart.empty()) trackNumber = env->NewStringUTF(numPart.c_str());
+                    if (!totalPart.empty()) numTracks = env->NewStringUTF(totalPart.c_str());
+                } else {
+                    trackNumber = rawTrack;
+                }
+            }
+        }
+//        LOGI("Parsed trackNumber='%s', numTracks='%s' for fd=%d",
+//             trackNumber ? env->GetStringUTFChars(trackNumber, nullptr) : "null",
+//             numTracks ? env->GetStringUTFChars(numTracks, nullptr) : "null",
+//             fd);
+
+        // If the tagger stored the total in its own dedicated field, prefer that.
+        if (!numTracks) numTracks = getProperty(env, props, "TRACKTOTAL");
+//        LOGI("After fallback, numTracks='%s' for fd=%d",
+//             numTracks ? env->GetStringUTFChars(numTracks, nullptr) : "null",
+//             fd);
+        if (!numTracks) numTracks = getProperty(env, props, "TOTALTRACKS");
+//        LOGI("After second fallback, numTracks='%s' for fd=%d",
+//             numTracks ? env->GetStringUTFChars(numTracks, nullptr) : "null",
+//             fd);
+    }
     jstring compilation = getProperty(env, props, "COMPILATION");
 
     // ReplayGain fields — present in well-mastered libraries but optional.
