@@ -33,6 +33,20 @@
         android:padding="@dimen/padding_10">
 
         <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+            android:id="@+id/play"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:drawablePadding="@dimen/padding_10"
+            android:gravity="center_vertical"
+            android:padding="@dimen/padding_10"
+            android:text="@string/play"
+            android:textSize="@dimen/text_size_14"
+            app:appFontStyle="bold"
+            app:drawableStartCompat="@drawable/ic_play_16dp"
+            app:drawableTintStyle="regular"
+            app:textColorStyle="primary" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleTextView
             android:id="@+id/delete_all"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

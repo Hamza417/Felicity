@@ -621,7 +621,7 @@ class PageAdapter(
 
                 // Show art flow for albums and artists
                 when (pageType) {
-                    is PageType.AlbumPage, is PageType.ArtistPage, is PageType.ComposerPage, is PageType.FolderPage, is PageType.PlaylistPage -> {
+                    is PageType.AlbumPage, is PageType.ComposerPage, is PageType.FolderPage, is PageType.PlaylistPage -> {
                         artFlow.visibility = View.VISIBLE
                         when {
                             item.songs.isNotEmpty() -> {
@@ -634,6 +634,18 @@ class PageAdapter(
                                 artFlow.setAdapter(SliderAdapter(ArtFlowData(R.string.artists, pageData.artists)))
                             }
                         }
+                        artFlow.start()
+                    }
+                    is PageType.ArtistPage -> {
+                        artFlow.visibility = View.VISIBLE
+                        val artist = Artist(
+                                id = 0,
+                                name = item.album.name,
+                                albumCount = 0,
+                                trackCount = 0,
+                                songPaths = pageData.songs.map { it.uri }
+                        )
+                        artFlow.setAdapter(SliderAdapter(ArtFlowData(R.string.artists, listOf(artist))))
                         artFlow.start()
                     }
                     is PageType.GenrePage -> {

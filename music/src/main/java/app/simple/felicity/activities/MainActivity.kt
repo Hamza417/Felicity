@@ -43,6 +43,7 @@ import app.simple.felicity.glide.util.AudioCoverUtils.loadArtIntoBitmap
 import app.simple.felicity.interfaces.MiniPlayerPolicy
 import app.simple.felicity.managers.LyricsManager
 import app.simple.felicity.preferences.LibraryPreferences
+import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.preferences.TrialPreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.constants.MediaConstants
@@ -457,6 +458,11 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
                 binding.selectionCount.setSelectedSongsSize(selected.size)
             }
             .onDialogInflated { dialogBinding, dismiss, _ ->
+                dialogBinding.play.setOnClickListener {
+                    MediaPlaybackManager.setSongs(selected, autoPlay = true)
+                    createSongHistoryDatabase(selected)
+                    dismiss()
+                }
                 dialogBinding.deleteAll.setOnClickListener {
                     dismiss()
                     // Route through the same confirmation dialog used by the action bar button.
@@ -660,6 +666,33 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
 
     private fun TextView.setSelectedSongsSize(size: Int) {
         text = resources.getQuantityString(R.plurals.songs_selected, size, size)
+    }
+
+    private fun createSongHistoryDatabase(songs: List<Audio>) {
+        val seek = MediaPlaybackManager.getSeekPosition()
+        val shuffleEnabled = ShufflePreferences.isShuffleEnabled()
+
+        // Save the original (unshuffled) queue with the index pointing to the current song
+        // inside that original order, so a restore can re-apply shuffle from a clean starting point.
+        val queueToSave = MediaPlaybackManager.getOriginalQueue().takeIf { it.isNotEmpty() } ?: songs
+        val currentSong = MediaPlaybackManager.getCurrentSong()
+        val idx = if (currentSong != null) {
+            queueToSave.indexOfFirst { it.id == currentSong.id }.coerceAtLeast(0)
+        } else {
+            MediaPlaybackManager.getCurrentSongPosition()
+        }
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            val audioDatabase = AudioDatabase.getInstance(baseContext)
+            PlaybackStateManager.savePlaybackState(
+                    db = audioDatabase,
+                    queueHash = queueToSave.map { it.hash },
+                    index = idx,
+                    position = seek,
+                    shuffle = shuffleEnabled,
+                    repeat = 0
+            )
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

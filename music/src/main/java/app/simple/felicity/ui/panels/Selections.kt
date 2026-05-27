@@ -77,6 +77,12 @@ class Selections : BasePanelFragment() {
             requireActivity().onBackPressedDispatcher.onBackPressed()
         }
 
+        // Tapping "Play" queues up all selected songs in order and starts from the first one.
+        headerBinding.play.setOnClickListener {
+            val songs = SelectionManager.selectedAudios.value
+            if (songs.isNotEmpty()) setMediaItems(songs, 0)
+        }
+
         // The shuffle chip plays the entire selection in random order — because
         // sometimes you just want chaos.
         headerBinding.shuffle.setOnClickListener {
