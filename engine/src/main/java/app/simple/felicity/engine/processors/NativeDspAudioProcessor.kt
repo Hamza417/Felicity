@@ -426,24 +426,37 @@ class NativeDspAudioProcessor(
 
     /**
      * Same as [processInPlace] but only treats the first [length] elements of [samples]
-     * as valid audio. If [samples] is exactly [length] elements long the array is used
-     * as-is (zero allocation). If it is larger, a trimmed copy is made — this only
-     * happens on the very first few frames before the scratch buffer size stabilizes,
-     * so the steady-state hot path stays allocation-free.
+     * as valid audio. When [samples] is exactly [length] elements the array is processed
+     * directly with zero allocation — this is the steady-state fast path.
+     *
+     * When [samples] is larger than [length] (the reusable scratch buffer was grown for a
+     * bigger previous frame), we trim to a copy, run the DSP, then write the results back
+     * into [samples[0..[length])] so the caller sees fully processed data. Without the
+     * copy-back step the caller would push the original unprocessed bytes to hardware and
+     * EQ / preamp / bass / treble would appear to have no effect at all.
      *
      * @param samples  Buffer that holds the audio data (may be larger than [length]).
-     * @param length   How many samples at the start of [samples] are actually valid.
+     * @param length   Number of valid samples at the start of [samples].
      */
     fun processInPlace(samples: FloatArray, length: Int) {
         val dsp = dspProcessor ?: return
         val preamp = preampLinearGain * replayGainLinearGain * tagReplayGainLinearGain
-        val effectiveSamples = if (samples.size == length) samples else samples.copyOf(length)
-        if (preamp != 1f) {
-            for (i in effectiveSamples.indices) {
-                effectiveSamples[i] *= preamp
+
+        if (samples.size == length) {
+            if (preamp != 1f) {
+                for (i in 0 until length) samples[i] *= preamp
             }
+            dsp.processAudio(samples)
+        } else {
+            // Work on a correctly-sized copy so the native engine only sees valid frames,
+            // then write the processed values back so the caller's push uses correct data.
+            val slice = samples.copyOf(length)
+            if (preamp != 1f) {
+                for (i in 0 until length) slice[i] *= preamp
+            }
+            dsp.processAudio(slice)
+            slice.copyInto(samples, endIndex = length)
         }
-        dsp.processAudio(effectiveSamples)
     }
 
     /**

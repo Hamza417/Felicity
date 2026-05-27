@@ -8,6 +8,7 @@ import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.Format
+import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.audio.ForwardingAudioSink
@@ -178,6 +179,20 @@ class FelicityAudioSink(
         val prevChannelCount = currentChannelCount
         currentSampleRate = sr
         currentChannelCount = ch
+
+        /**
+         * Explicitly drive the NativeDsp lifecycle here instead of relying on ExoPlayer's
+         * internal chain forwarding. When Hi-Res float output is active and
+         * [isBypassedForDirectOutput] is true, ExoPlayer can detect the chain as a no-op
+         * passthrough and skip forwarding flush() to individual processors — which means
+         * neither the DspProcessor retry block nor pushAllParameters() ever fire.
+         * By calling configure() + flush() ourselves we guarantee [dspProcessor] is always
+         * live and fully loaded with the user's saved EQ / preamp / bass / treble settings
+         * before the very first [handleBuffer] call, regardless of ExoPlayer's optimizations.
+         */
+        val audioFormat = AudioProcessor.AudioFormat(sr, ch, currentEncoding)
+        nativeDsp.configure(audioFormat)
+        nativeDsp.flush()
 
         // When USB DAC is active, keep AAudio dormant to avoid double output.
         // Re-negotiate the DAC format if ExoPlayer switched to a new sample rate.
