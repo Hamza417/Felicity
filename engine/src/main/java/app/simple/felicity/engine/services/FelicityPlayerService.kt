@@ -1617,10 +1617,15 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         // If HW resampling happens, the chain ends at the hardware's forced rate. Otherwise, it ends at the DSP rate.
         val effectiveOutRate = if (hwResampling) deviceSampleRate else dspSampleRateHz
 
-        // Reflect the actual AAudio stream state rather than just the user preference.
-        // If AAudio was enabled but the stream failed to open, this will correctly show
-        // "AudioTrack" instead of falsely advertising a low-latency path that isn't running.
-        val audioOutputMode = if (FelicityAudioSink.isAAudioStreamActive) "AAudio (Low Latency)" else "AudioTrack"
+        // Reflect the true active output sink, not just user preferences. The priority matches
+        // FelicityAudioSink's own routing logic: USB DAC beats AAudio, which beats AudioTrack.
+        // If AAudio was enabled but the stream failed to open, this correctly shows "AudioTrack"
+        // instead of falsely advertising a low-latency path that isn't actually running.
+        val audioOutputMode = when {
+            UsbDacManager.isActive -> "USB DAC (Direct)"
+            FelicityAudioSink.isAAudioStreamActive -> "AAudio (Low Latency)"
+            else -> "AudioTrack"
+        }
 
         val snapshot = AudioPipelineSnapshot(
                 trackFormat = trackFormat,
