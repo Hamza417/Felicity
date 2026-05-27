@@ -11,35 +11,36 @@
     <string name="xml" translatable="false">.XML</string>
     <string name="json" translatable="false">.JSON</string>
     <string name="csv" translatable="false">.CSV</string>
-    <string name="z_spread">z Spread</string>
-    <string name="ffmpeg">FFmpeg</string>
-    <string name="time_minus">- 1s</string>
-    <string name="time_minus_ms">- 0.5s</string>
-    <string name="time_plus">+ 1s</string>
-    <string name="time_plus_ms">+ 0.5s</string>
-    <string name="fisher_yates">Fisher-Yates</string>
-    <string name="miller">Miller</string>
-    <string name="lrc_timestamp_hint">00:00.000</string>
+    <string name="z_spread" translatable="false">z Spread</string>
+    <string name="ffmpeg" translatable="false">FFmpeg</string>
+    <string name="time_minus" translatable="false">- 1s</string>
+    <string name="time_minus_ms" translatable="false">- 0.5s</string>
+    <string name="time_plus" translatable="false">+ 1s</string>
+    <string name="time_plus_ms" translatable="false">+ 0.5s</string>
+    <string name="fisher_yates" translatable="false">Fisher-Yates</string>
+    <string name="miller" translatable="false">Miller</string>
+    <string name="lrc_timestamp_hint" translatable="false">00:00.000</string>
 
     <!-- Audio Pipeline Dialog — channel display values -->
-    <string name="channel_mono">1 (Mono)</string>
-    <string name="channel_stereo">2 (Stereo)</string>
+    <string name="channel_mono" translatable="false">1 (Mono)</string>
+    <string name="channel_stereo" translatable="false">2 (Stereo)</string>
 
     <!-- Audio Pipeline Dialog — value format strings -->
-    <string name="format_hz">%1$d Hz</string>
-    <string name="format_hz_cutoff">%1$d Hz, %2$d%%</string>
-    <string name="format_kbps">%1$d kbps</string>
-    <string name="format_bit_depth">%1$d-bit</string>
-    <string name="format_percent">%1$d%%</string>
-    <string name="format_approx_ms">~%1$d ms</string>
-    <string name="format_io_rate">%1$s ➔ %2$s</string>
-    <string name="format_bit_depth_io">In: %1$d-bit  Out: %2$d-bit</string>
-    <string name="telegram_channel">Telegram Channel</string>
+    <string name="format_hz" translatable="false">%1$d Hz</string>
+    <string name="format_hz_cutoff" translatable="false">%1$d Hz, %2$d%%</string>
+    <string name="format_kbps" translatable="false">%1$d kbps</string>
+    <string name="format_bit_depth" translatable="false">%1$d-bit</string>
+    <string name="format_percent" translatable="false">%1$d%%</string>
+    <string name="format_approx_ms" translatable="false">~%1$d ms</string>
+    <string name="format_io_rate" translatable="false">%1$s ➔ %2$s</string>
+    <string name="format_bit_depth_io" translatable="false">In: %1$d-bit  Out: %2$d-bit</string>
+    <string name="telegram_channel" translatable="false">Telegram Channel</string>
 
     <!-- GRID -->
-    <string name="_2x">2x</string>
-    <string name="_3x">3x</string>
-    <string name="_4x">4x</string>
-    <string name="_5x">5x</string>
-    <string name="_6x">6x</string>
+    <string name="_2x" translatable="false">2x</string>
+    <string name="_3x" translatable="false">3x</string>
+    <string name="_4x" translatable="false">4x</string>
+    <string name="_5x" translatable="false">5x</string>
+    <string name="_6x" translatable="false">6x</string>
+    <string name="uri" translatable="false">URI</string>
 </resources>

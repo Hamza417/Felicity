@@ -45,10 +45,11 @@ public class Utils {
             int right = navigationPaddingRequired ? baseRight + insets.right : baseRight;
             
             viewGroup.setPadding(left, top, right, bottom);
-
-            // Return CONSUMED if you don't want the window insets to keep being
-            // passed down to descendant views.
-            return WindowInsetsCompat.CONSUMED;
+            
+            // Pass the insets along unchanged so that any child views that also
+            // have inset listeners (or padding-aware layouts nested inside this one)
+            // still get a chance to respond to the same insets.
+            return windowInsets;
         });
     }
     

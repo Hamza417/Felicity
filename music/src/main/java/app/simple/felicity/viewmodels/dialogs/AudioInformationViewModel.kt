@@ -6,6 +6,7 @@ import android.text.format.Formatter
 import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import app.simple.felicity.BuildConfig
 import app.simple.felicity.R
 import app.simple.felicity.adapters.dialogs.AdapterAudioInformation.Data
 import app.simple.felicity.repository.constants.FileConstants.getAudioFormat
@@ -44,12 +45,15 @@ class AudioInformationViewModel @AssistedInject constructor(
             val hasLrc = lrcRepository.lrcFileExists(audio.uri)
 
             val list = buildList {
-                // ── Full-span rows (wide data) ──────────────────────────────
                 add(data(R.string.title, audio.title ?: audio.name ?: "–", fullSpan = true))
                 add(data(R.string.path, audio.path ?: "–", fullSpan = true))
+
+                if (BuildConfig.DEBUG) {
+                    add(data(R.string.uri, audio.uri ?: "–", fullSpan = true))
+                }
+
                 add(data(R.string.album, audio.album ?: "–", fullSpan = true))
 
-                // ── Half-span rows (2-column grid) ──────────────────────────
                 add(data(R.string.artist, audio.artist ?: "–"))
                 add(data(R.string.album_artist, audio.albumArtist ?: "–"))
                 add(data(R.string.duration, audio.duration.toDynamicTimeString()))

@@ -116,28 +116,23 @@ class VolumeKnob : ScopedBottomSheetFragment() {
         }
 
         // Hardware volume keys
-        dialog?.setOnKeyListener { _, keyCode, _ ->
+        dialog?.setOnKeyListener { _, keyCode, event ->
             when (keyCode) {
                 KeyEvent.KEYCODE_VOLUME_UP -> {
-                    withUnregisteredVolumeObserver {
-                        audioManager?.adjustStreamVolume(
-                                /* streamType = */ AudioManager.STREAM_MUSIC,
-                                /* direction = */ AudioManager.ADJUST_RAISE,
-                                /* flags = */ AudioManager.FLAG_VIBRATE)
-                        setVolumeKnobPosition()
+                    if (event.action == KeyEvent.ACTION_DOWN) {
+                        raiseByFivePercent()
                     }
+
                     true
                 }
                 KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                    withUnregisteredVolumeObserver {
-                        audioManager?.adjustStreamVolume(
-                                /* streamType = */ AudioManager.STREAM_MUSIC,
-                                /* direction = */ AudioManager.ADJUST_LOWER,
-                                /* flags = */ AudioManager.FLAG_VIBRATE)
-                        setVolumeKnobPosition()
+                    if (event.action == KeyEvent.ACTION_DOWN) {
+                        lowerByFivePercent()
                     }
+
                     true
                 }
+
                 else -> false
             }
         }
@@ -152,6 +147,26 @@ class VolumeKnob : ScopedBottomSheetFragment() {
                 requireContext().contentResolver.registerContentObserver(
                         Settings.System.CONTENT_URI, true, volumeObserver)
             }
+        }
+    }
+
+    private fun raiseByFivePercent() {
+        withUnregisteredVolumeObserver {
+            val currentVolume = audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC)?.toFloat() ?: 0f
+            val maxVolume = audioManager?.getStreamMaxVolume(AudioManager.STREAM_MUSIC)?.toFloat() ?: 1f
+            val newVolume = (currentVolume + 0.05f * maxVolume).coerceAtMost(maxVolume)
+            audioManager?.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume.roundToInt(), 0)
+            setVolumeKnobPosition()
+        }
+    }
+
+    private fun lowerByFivePercent() {
+        withUnregisteredVolumeObserver {
+            val currentVolume = audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC)?.toFloat() ?: 0f
+            val maxVolume = audioManager?.getStreamMaxVolume(AudioManager.STREAM_MUSIC)?.toFloat() ?: 1f
+            val newVolume = (currentVolume - 0.05f * maxVolume).coerceAtLeast(0f)
+            audioManager?.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume.roundToInt(), 0)
+            setVolumeKnobPosition()
         }
     }
 

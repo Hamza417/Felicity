@@ -15,7 +15,7 @@
         app:appFontStyle="bold"
         app:textColorStyle="primary" />
 
-    <app.simple.felicity.decorations.overscroll.CustomHorizontalRecyclerView
+    <app.simple.felicity.decorations.views.CarouselStateRecyclerView
         android:id="@+id/recycler_view"
         android:layout_width="match_parent"
         android:paddingHorizontal="@dimen/padding_10"
