@@ -9,7 +9,7 @@
         android:layout_width="match_parent"
         android:clipToPadding="false"
         android:clipChildren="false"
-        android:paddingBottom="@dimen/padding_15"
+        android:animateLayoutChanges="true"
         android:layout_height="match_parent"
         app:layout_behavior="app.simple.felicity.decorations.behaviors.OverScrollBehavior"
         app:navigationPaddingRequired="false">
