@@ -473,6 +473,8 @@ class PageAdapter(
                 binding.recyclerView.addItemDecoration(LinearHorizontalSpacingDecoration(24))
             }
 
+            binding.recyclerView.setUniqueKey("albums_carousel")
+
             adapter = AdapterCarouselItems(ArtFlowData(R.string.unknown, item.albums))
             binding.recyclerView.adapter = adapter
 
@@ -533,6 +535,8 @@ class PageAdapter(
                 binding.recyclerView.addItemDecoration(LinearHorizontalSpacingDecoration(24))
             }
 
+            binding.recyclerView.setUniqueKey("artists_carousel")
+
             adapter = AdapterCarouselItems(ArtFlowData(R.string.unknown, item.artists))
             binding.recyclerView.adapter = adapter
 
@@ -573,6 +577,8 @@ class PageAdapter(
                 binding.recyclerView.setHasFixedSize(true)
                 binding.recyclerView.addItemDecoration(LinearHorizontalSpacingDecoration(24))
             }
+
+            binding.recyclerView.setUniqueKey("genres_carousel")
 
             adapter = AdapterCarouselItems(ArtFlowData(R.string.unknown, item.genres))
             binding.recyclerView.adapter = adapter

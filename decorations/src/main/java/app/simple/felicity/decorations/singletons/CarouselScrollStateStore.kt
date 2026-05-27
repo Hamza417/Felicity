@@ -1,17 +1,34 @@
 package app.simple.felicity.decorations.singletons
 
-import androidx.recyclerview.widget.RecyclerView
+import android.os.Parcelable
 
+/**
+ * A simple in-memory store that holds the scroll state of every horizontal carousel
+ * by a unique string key. Each entry is a [Parcelable] produced by the layout manager,
+ * so both the first visible item position and its pixel offset are preserved.
+ *
+ * @author Hamza417
+ */
 object CarouselScrollStateStore {
-    private val scrollPositions = mutableMapOf<String, Int>()
 
-    fun savePosition(id: String, position: Int) {
-        scrollPositions[id] = position
+    private val states = mutableMapOf<String, Parcelable>()
+
+    /**
+     * Saves the layout manager state for a carousel identified by [key].
+     * Pass the value returned by [LinearLayoutManager.onSaveInstanceState].
+     */
+    fun saveState(key: String, state: Parcelable) {
+        states[key] = state
     }
 
-    fun RecyclerView.savePosition(id: String) {
-        savePosition(id, scrollX)
-    }
+    /**
+     * Returns the previously saved layout manager state for [key], or null
+     * if nothing has been saved yet.
+     */
+    fun getState(key: String): Parcelable? = states[key]
 
-    fun getPosition(id: String): Int = scrollPositions[id] ?: 0
+    /** Removes the saved state for [key], if any. */
+    fun clearState(key: String) {
+        states.remove(key)
+    }
 }
