@@ -85,8 +85,15 @@ internal object BaseCoverLoader {
     fun loadExternalArtwork(directory: File, customNames: List<String> = emptyList()): Bitmap? {
         val cacheKey = directory.absolutePath
 
-        // Return cached result immediately — no disk I/O needed for tracks in the same folder.
-        externalArtworkCache[cacheKey]?.let { return it.getOrNull() }
+        // Return a fresh copy of the cached bitmap so Glide can freely recycle the
+        // copy it receives without corrupting the master we're holding in the cache.
+        // If the cached bitmap was already recycled (Glide put it back in its pool),
+        // we evict the stale entry and fall through to re-scan the folder.
+        externalArtworkCache[cacheKey]?.let { cached ->
+            val bitmap = cached.getOrNull() ?: return null
+            if (!bitmap.isRecycled) return bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, false)
+            externalArtworkCache.remove(cacheKey)
+        }
 
         val allNames = COMMON_ARTWORK_NAMES + customNames
 
@@ -166,8 +173,14 @@ internal object BaseCoverLoader {
      * @return Bitmap from the first matching image, or null if the folder has no artwork.
      */
     fun loadExternalArtworkSAFByDocId(context: Context, parentDocId: String, customNames: List<String> = emptyList()): Bitmap? {
-        // Return cached result immediately — avoids any I/O for tracks in the same folder.
-        externalArtworkCache[parentDocId]?.let { return it.getOrNull() }
+        // Same recycled-bitmap guard as the file-path variant: return a fresh copy and
+        // evict the entry if Glide already recycled the cached master.
+        externalArtworkCache[parentDocId]?.let { cached ->
+            val bitmap = cached.getOrNull()
+            if (bitmap == null) return null
+            if (!bitmap.isRecycled) return bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, false)
+            externalArtworkCache.remove(parentDocId)
+        }
 
         // Find the tree URI whose root covers our parent document ID.
         val treeUri = SAFPreferences.getTreeUris().firstNotNullOfOrNull { uriStr ->
