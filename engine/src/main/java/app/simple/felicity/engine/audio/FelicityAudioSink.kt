@@ -103,6 +103,19 @@ class FelicityAudioSink(
     private var floatScratchBuffer: FloatArray = FloatArray(0)
 
     /**
+     * Holds a reference to the last buffer that [DefaultAudioSink] refused to consume
+     * (i.e. [handleBuffer] returned false). When ExoPlayer retries the same buffer, we
+     * can detect it by identity and skip re-sending to AAudio or the USB DAC — the
+     * exclusive output already received that audio on the first attempt.
+     *
+     * This is the key fix for the stuttering/gaps that appear when the delegate is running
+     * a float [android.media.AudioTrack]: float buffers are 2× larger in bytes for the same
+     * frame count, so the AudioTrack fills up and returns false more often. Without this
+     * guard, AAudio would be starved every time the delegate needed a retry.
+     */
+    private var pendingDelegateBuffer: ByteBuffer? = null
+
+    /**
      * Registered with [UsbDacManager] so we hear about DAC connect/disconnect events.
      * On attach we immediately re-negotiate the USB DAC format to match whatever ExoPlayer
      * is currently configured for — this handles the case where the DAC is plugged in
@@ -234,17 +247,21 @@ class FelicityAudioSink(
      * The key insight is that we no longer trust [DefaultAudioSink]'s processor chain to
      * run the effects — ExoPlayer can silently bypass the entire array for hi-res float
      * formats. Instead, when USB DAC or AAudio is live, we:
-     *   1. Slice the raw buffer BEFORE calling super so we keep the original unmodified bytes.
-     *   2. Tell [nativeDsp] to act as a transparent passthrough inside [DefaultAudioSink]'s
+     *   1. On the FIRST presentation of a buffer: take a snapshot of the raw bytes, convert
+     *      to float, run the full native DSP chain in-place, and push to the hardware output.
+     *   2. On subsequent RETRIES of the same buffer (when the delegate's [AudioTrack] was
+     *      too busy to accept it): skip the hardware push entirely — the exclusive output
+     *      already received this audio on the first attempt.
+     *   3. Always call super so the delegate eventually consumes the buffer and advances
+     *      ExoPlayer's internal clock, regardless of how many retries it takes.
+     *   4. Tell [nativeDsp] to act as a transparent passthrough inside [DefaultAudioSink]'s
      *      chain ([NativeDspAudioProcessor.isBypassedForDirectOutput] = true) so the same
      *      audio is not processed a second time by the delegate.
-     *   3. Convert the raw slice to a [FloatArray] and call [NativeDspAudioProcessor.processInPlace],
-     *      which runs the full native C++ DSP chain (EQ, bass, treble, widening, balance,
-     *      saturation, reverb, and the visualizer FFT feed) directly on that float array.
-     *   4. Push the processed floats to the hardware (USB ring buffer or AAudio stream),
-     *      passing only the valid sample count so stale data from a previous larger frame
-     *      in [floatScratchBuffer] is never forwarded.
      *   5. Let super consume the original raw buffer for its internal timing bookkeeping.
+     *
+     * The retry-detection is done by reference identity: ExoPlayer re-presents the exact
+     * same [ByteBuffer] object when the previous call returned false. Tracking [pendingDelegateBuffer]
+     * lets us distinguish a genuine retry from a new audio frame.
      *
      * When neither exclusive output is active the delegate is unmuted and runs its own
      * processor chain for the AudioTrack fallback — [nativeDsp] bypass is cleared so the
@@ -270,25 +287,19 @@ class FelicityAudioSink(
         /**
          * Bypass the DSP inside DefaultAudioSink's chain so the same audio is not
          * processed twice — once here and once (silently) by the muted delegate.
-         * The bypass flag makes [NativeDspAudioProcessor.queueInput] a transparent
-         * passthrough, so the AudioTrack receives the raw unprocessed signal that is
-         * immediately discarded because the volume is zero.
          */
         nativeDsp.isBypassedForDirectOutput = true
 
         /**
-         * Snapshot the raw bytes before calling super so we have the original decoder
-         * output to process ourselves. super.handleBuffer advances the buffer's position,
-         * so reading after that call would yield no data.
+         * Only process and push to the hardware on the FIRST time we see this buffer.
+         * [pendingDelegateBuffer] holds a reference to the last buffer the delegate
+         * refused. If the incoming buffer is the same object, it's a retry — the
+         * exclusive output already has this audio, so we skip straight to the delegate
+         * call below. This is what prevents AAudio from being starved when a float
+         * [AudioTrack] needs multiple attempts to accept a large buffer.
          */
-        val snapshot = buffer.slice().order(buffer.order())
-
-        val consumed = super.handleBuffer(buffer, presentationTimeUs, encodedAccessUnitCount)
-
-        if (consumed) {
-            // Fill the reusable scratch buffer and get back how many samples are valid.
-            // We never pass the whole array to downstream — only the live [sampleCount]
-            // slice so we don't accidentally send stale data from a previous larger frame.
+        if (buffer !== pendingDelegateBuffer) {
+            val snapshot = buffer.slice().order(buffer.order())
             val sampleCount = snapshotToFloat(snapshot, currentEncoding)
             if (sampleCount > 0) {
                 nativeDsp.processInPlace(floatScratchBuffer, sampleCount)
@@ -300,6 +311,13 @@ class FelicityAudioSink(
                 }
             }
         }
+
+        val consumed = super.handleBuffer(buffer, presentationTimeUs, encodedAccessUnitCount)
+
+        // When the delegate finally accepts the buffer, clear the pending reference so
+        // the next buffer is treated as fresh. When rejected, record it so retries are
+        // identified correctly.
+        pendingDelegateBuffer = if (consumed) null else buffer
 
         return consumed
     }
@@ -321,21 +339,28 @@ class FelicityAudioSink(
 
     /**
      * Flushes the delegate and restarts the AAudio stream (if active) to clear in-flight
-     * frames on seeks and discontinuities. USB ring buffer is NOT flushed here because the
-     * native isochronous pipeline will drain the stale bytes as silence before new data
-     * arrives — abruptly flushing mid-transfer is more disruptive than letting it drain.
+     * frames on seeks and discontinuities. Also clears [pendingDelegateBuffer] so the
+     * first buffer after the seek is always treated as fresh — without this, a buffer
+     * presented just before the seek and never consumed by the delegate would suppress
+     * the first audio frame after the seek from reaching AAudio.
+     *
+     * USB ring buffer is NOT flushed here because the native isochronous pipeline will
+     * drain the stale bytes as silence before new data arrives — abruptly flushing
+     * mid-transfer is more disruptive than letting it drain.
      */
     override fun flush() {
         super.flush()
+        pendingDelegateBuffer = null
         aaudioStream?.apply {
             stop()
             start()
         }
     }
 
-    /** Resets the delegate and releases the native AAudio stream. */
+    /** Resets the delegate, clears any pending buffer state, and releases the native AAudio stream. */
     override fun reset() {
         super.reset()
+        pendingDelegateBuffer = null
         releaseAaudioStream()
     }
 

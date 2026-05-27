@@ -286,23 +286,8 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 // active effect in the chain.
                 processors.add(audioProcessorManager.visualizerProcessor)
 
-                /**
-                 * Float output is only meaningful when AudioTrack is the real hardware output.
-                 * When AAudio or a USB DAC is active, [DefaultAudioSink] is just a muted clock
-                 * delegate — enabling float output on it changes the AudioTrack's internal timing
-                 * model and can cause ExoPlayer to bypass the processor chain entirely (since
-                 * float-in → float-out requires no conversion, ExoPlayer may skip queueInput).
-                 * This starves the AAudio path (it only receives data when super.handleBuffer
-                 * returns true) and silences the EQ because the DSP context never gets called.
-                 * The AAudio/DAC path converts everything to float internally anyway, so there
-                 * is no quality loss in forcing the delegate to stay on 16-bit PCM.
-                 */
-                val delegateNeedsFloatOutput = hiresEnabled
-                        && !AudioPreferences.isAaudioEnabled()
-                        && !UsbDacManager.isActive
-
                 val audioSink = DefaultAudioSink.Builder(context)
-                    .setEnableFloatOutput(delegateNeedsFloatOutput)
+                    .setEnableFloatOutput(hiresEnabled)
                     // CRITICAL FOR USB DACs: Tell ExoPlayer to read the USB/HDMI capabilities
                     .setAudioCapabilities(AudioCapabilities.getCapabilities(context))
                     .setAudioProcessors(processors.toTypedArray())
@@ -1260,21 +1245,6 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 val hiresEnabled = AudioPreferences.isHiresOutputEnabled()
                 Log.d(TAG, "Hi-Res output preference changed to: $hiresEnabled")
                 switchAudioMode()
-            }
-            AudioPreferences.AAUDIO_ENABLED -> {
-                /**
-                 * When Hi-Res is also on, flipping AAudio changes whether the delegate
-                 * [DefaultAudioSink] should use float output or not. Without a rebuild the
-                 * delegate stays on the wrong AudioTrack format, which destabilizes its clock
-                 * and can starve the new (or removed) AAudio stream.
-                 * When Hi-Res is off there is no float/16-bit mismatch, so the AAudio stream
-                 * is simply created or torn down dynamically inside [FelicityAudioSink] without
-                 * needing to touch the player.
-                 */
-                if (AudioPreferences.isHiresOutputEnabled()) {
-                    Log.d(TAG, "AAudio toggled while Hi-Res is active — rebuilding player to re-negotiate delegate format")
-                    switchAudioMode()
-                }
             }
             AudioPreferences.GAPLESS_PLAYBACK -> {
                 // Reconfigure gapless playback when preference changes
