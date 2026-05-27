@@ -314,7 +314,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                  * low-latency output. The [DefaultAudioSink] (with its [AudioTrack] muted)
                  * is kept alive for clock and state management.
                  */
-                return FelicityAudioSink(audioSink, context, audioProcessorManager.nativeDspProcessor)
+                return FelicityAudioSink(audioSink, context, audioProcessorManager.nativeDspProcessor, audioProcessorManager.visualizerProcessor)
             }
 
             override fun buildAudioRenderers(

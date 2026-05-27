@@ -147,6 +147,16 @@ class VisualizerProcessor : BaseAudioProcessor() {
     private var pcmWindowCallback: PcmWindowCallback? = null
 
     /**
+     * When true, [queueInput] passes audio through without feeding the FFT accumulator.
+     * This is set by [FelicityAudioSink] whenever AAudio or USB DAC is the active output,
+     * because in that case [feedFloat] is used instead — feeding the FFT directly from the
+     * fully-processed hardware-bound float samples so the visualizer always reflects what
+     * the listener actually hears rather than the raw unprocessed delegate-chain audio.
+     */
+    @Volatile
+    var isBypassedForDirectOutput: Boolean = false
+
+    /**
      * Registers a [PcmWindowCallback] that receives each raw mono PCM window before
      * the FFT pass.  Pass null to unregister.
      *
@@ -305,6 +315,19 @@ class VisualizerProcessor : BaseAudioProcessor() {
         val remaining = inputBuffer.remaining()
         if (remaining == 0) return
 
+        if (isBypassedForDirectOutput) {
+            /**
+             * The FFT is being fed by [feedFloat] on this frame, so we just pass the
+             * bytes straight through without touching the sample accumulator.
+             * Skipping the accumulation here prevents a double-feed that would corrupt
+             * the FFT window timing and produce garbage band magnitudes.
+             */
+            val outputBuffer = replaceOutputBuffer(remaining)
+            outputBuffer.put(inputBuffer)
+            outputBuffer.flip()
+            return
+        }
+
         val outputBuffer = replaceOutputBuffer(remaining)
         inputBuffer.mark()
 
@@ -365,9 +388,60 @@ class VisualizerProcessor : BaseAudioProcessor() {
         outputBuffer.flip()
     }
 
+    /**
+     * Feeds interleaved float PCM samples directly into the FFT accumulator, bypassing
+     * the ByteBuffer chain. This is the path used when AAudio or USB DAC is the active
+     * output — we get the fully-processed, hardware-bound float data straight from
+     * [FelicityAudioSink.handleBuffer] rather than reading from the muted delegate chain.
+     *
+     * The samples are expected in the same interleaved layout as the hardware output:
+     * L0 R0 L1 R1 … for stereo, or M0 M1 … for mono. Each frame is downmixed to mono
+     * and fed through the same pre-delay ring buffer and FFT window logic used by
+     * [queueInput], so output-latency compensation still works correctly.
+     *
+     * @param samples      Interleaved float samples from the hardware-bound buffer.
+     * @param sampleCount  Total number of float values (frames × channelCount).
+     * @param channelCount Number of audio channels per frame (1 = mono, 2 = stereo, etc.).
+     */
+    fun feedFloat(samples: FloatArray, sampleCount: Int, channelCount: Int) {
+        if (nativeHandle == 0L || sampleCount == 0 || channelCount == 0) return
+        val frameCount = sampleCount / channelCount
+
+        for (i in 0 until frameCount) {
+            val mono = when (channelCount) {
+                1 -> samples[i]
+                2 -> (samples[i * 2] + samples[i * 2 + 1]) * 0.5f
+                else -> {
+                    var sum = 0f
+                    for (c in 0 until channelCount) sum += samples[i * channelCount + c]
+                    sum / channelCount
+                }
+            }
+
+            val delaySamples = outputLatencySamples
+            val delayedMono: Float
+
+            if (delaySamples > 0) {
+                vizDelayBuf[vizDelayWritePos] = mono
+                val readPos = (vizDelayWritePos - delaySamples + kDelayBufSize) and kDelayBufMask
+                delayedMono = vizDelayBuf[readPos]
+                vizDelayWritePos = (vizDelayWritePos + 1) and kDelayBufMask
+            } else {
+                delayedMono = mono
+            }
+
+            sampleBuffer[bufferIndex] = delayedMono
+            bufferIndex++
+
+            if (bufferIndex >= fftSize) {
+                pcmWindowCallback?.onPcmWindow(sampleBuffer, fftSize)
+                processAndEmit()
+                bufferIndex = 0
+            }
+        }
+    }
+
     override fun onReset() {
-        super.onReset()
-        bufferIndex = 0
 
         /**
          * Clear the pre-delay ring buffer and reset the write cursor so stale samples from

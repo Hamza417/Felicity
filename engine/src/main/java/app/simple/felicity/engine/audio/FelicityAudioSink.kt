@@ -14,6 +14,7 @@ import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.audio.ForwardingAudioSink
 import app.simple.felicity.engine.processors.AaudioOutputProcessor
 import app.simple.felicity.engine.processors.NativeDspAudioProcessor
+import app.simple.felicity.engine.processors.VisualizerProcessor
 import app.simple.felicity.engine.usb.UsbDacDriver
 import app.simple.felicity.engine.usb.UsbDacManager
 import app.simple.felicity.engine.utils.PcmUtils
@@ -60,6 +61,11 @@ import java.nio.ByteBuffer
  *                    [DefaultAudioSink]'s processor list (for the AudioTrack path) and
  *                    driven directly here (for USB/AAudio). [isBypassedForDirectOutput]
  *                    prevents it from processing the same audio twice.
+ * @param visualizer  The shared [VisualizerProcessor]. When AAudio or USB DAC is active
+ *                    its [queueInput] is bypassed (to avoid feeding stale delegate-chain
+ *                    data into the FFT), and [VisualizerProcessor.feedFloat] is called
+ *                    directly with the already-processed hardware-bound float samples so
+ *                    the visualizer always matches what the listener actually hears.
  *
  * @author Hamza417
  */
@@ -67,7 +73,8 @@ import java.nio.ByteBuffer
 class FelicityAudioSink(
         private val delegate: DefaultAudioSink,
         private val context: Context,
-        private val nativeDsp: NativeDspAudioProcessor
+        private val nativeDsp: NativeDspAudioProcessor,
+        private val visualizer: VisualizerProcessor
 ) : ForwardingAudioSink(delegate) {
 
     /** Native AAudio stream; null when AAudio is disabled or not yet configured. */
@@ -293,6 +300,7 @@ class FelicityAudioSink(
         if (!usbActive && !aaudioReady) {
             // AudioTrack path — let [DefaultAudioSink] run the full processor chain as normal.
             nativeDsp.isBypassedForDirectOutput = false
+            visualizer.isBypassedForDirectOutput = false
             unmuteDelegateIfNeeded()
             return super.handleBuffer(buffer, presentationTimeUs, encodedAccessUnitCount)
         }
@@ -300,10 +308,13 @@ class FelicityAudioSink(
         muteDelegateIfNeeded()
 
         /**
-         * Bypass the DSP inside DefaultAudioSink's chain so the same audio is not
-         * processed twice — once here and once (silently) by the muted delegate.
+         * Bypass the DSP and visualizer inside DefaultAudioSink's chain so the same audio
+         * is not processed twice — once here and once (silently) by the muted delegate.
+         * The visualizer will be fed from [feedFloat] below with the hardware-bound float
+         * data, which is the processed signal the listener actually hears.
          */
         nativeDsp.isBypassedForDirectOutput = true
+        visualizer.isBypassedForDirectOutput = true
 
         /**
          * Only process and push to the hardware on the FIRST time we see this buffer.
@@ -318,6 +329,15 @@ class FelicityAudioSink(
             val sampleCount = snapshotToFloat(snapshot, currentEncoding)
             if (sampleCount > 0) {
                 nativeDsp.processInPlace(floatScratchBuffer, sampleCount)
+
+                /**
+                 * Feed the visualizer directly from the processed float data that is about
+                 * to go to hardware. This runs AFTER the DSP pass so the spectrum reflects
+                 * the EQ and other effects the listener actually hears, not the raw decoder
+                 * output. [visualizer.isBypassedForDirectOutput] keeps [queueInput] from
+                 * doing a second conflicting write to the same FFT accumulator.
+                 */
+                visualizer.feedFloat(floatScratchBuffer, sampleCount, currentChannelCount)
 
                 if (usbActive) {
                     UsbDacDriver.getInstance(context).nativePushPcm(floatScratchBuffer, 0, sampleCount)
@@ -387,6 +407,7 @@ class FelicityAudioSink(
      */
     override fun release() {
         nativeDsp.isBypassedForDirectOutput = false
+        visualizer.isBypassedForDirectOutput = false
         UsbDacManager.removeListener(usbDacListener)
         releaseAaudioStream()
         super.release()
