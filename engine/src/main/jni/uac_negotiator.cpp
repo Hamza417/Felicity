@@ -306,7 +306,7 @@ static uint8_t resolve_clock_source(const UacDeviceInfo *info) {
 //  Public API
 // ------------------------------------------------------------------ //
 
-bool uac_negotiate_format(libusb_device_handle *handle,
+int uac_negotiate_format(libusb_device_handle *handle,
                           const UacDeviceInfo *info,
                           const UacFormatRequest &request) {
 
@@ -317,7 +317,7 @@ bool uac_negotiate_format(libusb_device_handle *handle,
     const int bestIdx = select_best_alt_setting(info, request);
     if (bestIdx < 0) {
         LOGE("No usable audio streaming alt-setting found on this device");
-        return false;
+        return -1;
     }
 
     const UacAltSetting &chosen = info->altSettings[bestIdx];
@@ -336,7 +336,7 @@ bool uac_negotiate_format(libusb_device_handle *handle,
         LOGE("libusb_set_interface_alt_setting(%d, %d) failed: %s",
              info->asInterfaceNumber, chosen.bAlternateSetting,
              libusb_strerror((libusb_error) ret));
-        return false;
+        return -1;
     }
     LOGI("Alt-setting %d activated on AS interface %d",
          chosen.bAlternateSetting, info->asInterfaceNumber);
@@ -404,7 +404,11 @@ bool uac_negotiate_format(libusb_device_handle *handle,
 
     LOGI("Format negotiation complete — DAC ready to stream %u Hz / %d-bit / %d ch",
          request.sampleRate, request.bitDepth, request.channels);
-    return true;
+
+    // Return the index of the activated alt-setting so the caller can hand it directly
+    // to the isochronous stream. This is the key piece that lets the stream use the
+    // correct endpoint address and packet size for the negotiated format.
+    return bestIdx;
 }
 
 void uac_set_volume(libusb_device_handle *handle,
@@ -431,4 +435,3 @@ void uac_set_volume(libusb_device_handle *handle,
         break;
     }
 }
-

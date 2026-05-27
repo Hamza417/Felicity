@@ -21,6 +21,16 @@ static bool g_device_info_valid = false;
 static UsbIsoStream *g_iso_stream = nullptr;
 
 /**
+ * Index into g_device_info.altSettings[] of the alt-setting that was last activated by
+ * uac_negotiate_format(). nativeStartStream() uses this to open the isochronous stream
+ * with the exact endpoint address and packet parameters that match the negotiated format.
+ *
+ * Storing -1 here means "no format has been negotiated yet" — nativeStartStream() will
+ * refuse to run in that state rather than silently picking the wrong alt-setting.
+ */
+static int g_active_alt_idx = -1;
+
+/**
  * Attempts to detach a kernel driver from the given interface, if one is attached.
  * On Android, the kernel sometimes binds a dummy driver to USB audio endpoints; we
  * must evict it before libusb can claim the interface for user-space use.
@@ -81,6 +91,7 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeInitUsb(
         g_usb_ctx = nullptr;
     }
     g_device_info_valid = false;
+    g_active_alt_idx = -1;
 
     // 1. Initialize libusb context.
     int ret = libusb_init(&g_usb_ctx);
@@ -165,12 +176,15 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeNegotiateFormat(
     req.bitDepth = static_cast<uint8_t>(bitDepth);
     req.channels = static_cast<uint8_t>(channels);
 
-    const bool ok = uac_negotiate_format(g_usb_handle, &g_device_info, req);
-    if (ok) {
+    const int chosenIdx = uac_negotiate_format(g_usb_handle, &g_device_info, req);
+    if (chosenIdx >= 0) {
+        // Remember which alt-setting is now live so nativeStartStream() can open the
+        // isochronous pipeline with the exact matching endpoint and packet parameters.
+        g_active_alt_idx = chosenIdx;
         // Reset to unity gain so any previous software attenuation is cleared.
         uac_set_volume(g_usb_handle, &g_device_info, /*0 dB in Q8.8 =*/ 0x0000);
     }
-    return ok ? JNI_TRUE : JNI_FALSE;
+    return chosenIdx >= 0 ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT void JNICALL
@@ -211,6 +225,7 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeReleaseUsb(
     }
 
     g_device_info_valid = false;
+    g_active_alt_idx = -1;
 }
 
 JNIEXPORT jboolean JNICALL
@@ -225,6 +240,10 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeStartStream(
         LOGE("nativeStartStream called before format negotiation completed");
         return JNI_FALSE;
     }
+    if (g_active_alt_idx < 0 || g_active_alt_idx >= g_device_info.altSettingCount) {
+        LOGE("nativeStartStream called but no alt-setting has been negotiated yet");
+        return JNI_FALSE;
+    }
 
     // Tear down any previous stream (e.g., after a sample rate change).
     if (g_iso_stream != nullptr) {
@@ -233,29 +252,23 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeStartStream(
         g_iso_stream = nullptr;
     }
 
-    // Find the active alt-setting (the one with a valid endpoint).
-    // The negotiator will have selected the best one; we look for it by scanning
-    // for the first entry with a non-zero endpoint address.
-    const UacAltSetting *chosen = nullptr;
-    for (int i = 0; i < g_device_info.altSettingCount; i++) {
-        if (g_device_info.altSettings[i].endpointAddress != 0) {
-            chosen = &g_device_info.altSettings[i];
-            break;
-        }
-    }
-
-    if (chosen == nullptr) {
-        LOGE("No alt-setting with an endpoint found — cannot start stream");
-        return JNI_FALSE;
-    }
+    // Use the exact alt-setting that uac_negotiate_format() activated. This is the
+    // only alt-setting whose endpoint address and packet parameters match the format
+    // that was programmed on the device — using a different one would cause the DAC
+    // to receive data with the wrong packet size and would prevent the LED from
+    // reflecting the correct sample rate.
+    const UacAltSetting &chosen = g_device_info.altSettings[g_active_alt_idx];
+    LOGI("Starting stream with negotiated alt-setting %d (endpoint=0x%02X, subslot=%d, bits=%d)",
+         chosen.bAlternateSetting, chosen.endpointAddress,
+         chosen.bSubslotSize, chosen.bBitResolution);
 
     g_iso_stream = new UsbIsoStream();
     const bool ok = g_iso_stream->start(
             g_usb_ctx,
             g_usb_handle,
-            *chosen,
-            chosen->bSubslotSize,
-            chosen->bBitResolution
+            chosen,
+            chosen.bSubslotSize,
+            chosen.bBitResolution
     );
 
     if (!ok) {

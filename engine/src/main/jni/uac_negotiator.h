@@ -11,13 +11,16 @@
  *   2. Program the DAC's internal clock to run at exactly the requested sample rate.
  *   3. Confirm the clock has locked and turn off the mute on the output path.
  *
- * Returns true when all three steps succeed and the DAC is ready to receive audio.
+ * Returns the index (into [UacDeviceInfo::altSettings]) of the alt-setting that was
+ * activated, or -1 on failure. The caller should store this index and pass the
+ * corresponding [UacAltSetting] to the isochronous stream so it uses the exact
+ * endpoint address and packet parameters for the negotiated format.
  *
  * @author Hamza417
  */
-bool uac_negotiate_format(libusb_device_handle *handle,
-                          const UacDeviceInfo *info,
-                          const UacFormatRequest &request);
+int uac_negotiate_format(libusb_device_handle *handle,
+                         const UacDeviceInfo *info,
+                         const UacFormatRequest &request);
 
 /**
  * Attempts to set the volume on the first Feature Unit that reports volume control
@@ -30,4 +33,3 @@ bool uac_negotiate_format(libusb_device_handle *handle,
 void uac_set_volume(libusb_device_handle *handle,
                     const UacDeviceInfo *info,
                     int16_t volumeDb256);
-
