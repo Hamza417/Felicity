@@ -38,9 +38,7 @@ class UsbDacDriver private constructor(private val context: Context) {
      */
     private val permissionReceiver = object : BroadcastReceiver() {
         override fun onReceive(ctx: Context, intent: Intent) {
-            if (intent.action != ACTION_USB_PERMISSION) {
-                throw IllegalStateException("Unexpected intent action: ${intent.action}")
-            }
+            if (intent.action != ACTION_USB_PERMISSION) return
 
             val device: UsbDevice? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
@@ -48,9 +46,7 @@ class UsbDacDriver private constructor(private val context: Context) {
                 @Suppress("DEPRECATION")
                 intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
             }
-
-            device ?: throw IllegalStateException("USB permission result missing device extra")
-
+            device ?: return
             val granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
 
             if (granted) {
