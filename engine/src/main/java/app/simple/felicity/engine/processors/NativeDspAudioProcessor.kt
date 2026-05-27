@@ -84,9 +84,17 @@ class NativeDspAudioProcessor(
     private var tagReplayGainLinearGain: Float = 1f
 
     /**
-     * Whether the EQ stage is enabled inside the native engine.
-     * Mirrored to [DspProcessor] immediately on write.
+     * When set to `true`, [queueInput] becomes a transparent passthrough — the buffer is
+     * returned from [getOutput] unchanged and no DSP is applied. This lets [FelicityAudioSink]
+     * own the DSP execution when USB or AAudio is the active output, while still keeping this
+     * processor in [DefaultAudioSink]'s chain so the AudioTrack fallback path is unaffected.
+     *
+     * [FelicityAudioSink] sets this flag at the top of each [handleBuffer] call based on
+     * which output is currently live, so the correct path is always used for every buffer
+     * without any race conditions.
      */
+    @Volatile
+    var isBypassedForDirectOutput: Boolean = false
     @Volatile
     var eqEnabled: Boolean = true
         set(value) {
@@ -257,7 +265,14 @@ class NativeDspAudioProcessor(
      *                    exactly [ByteBuffer.remaining] bytes on return.
      */
     override fun queueInput(inputBuffer: ByteBuffer) {
-        if (!active) {
+        /**
+         * When [FelicityAudioSink] is driving a USB DAC or AAudio stream, it processes
+         * the audio itself via [processInPlace] and only uses [DefaultAudioSink] as a
+         * silent timekeeper. In that scenario we turn this into a transparent passthrough
+         * so [DefaultAudioSink]'s chain doesn't process (and waste CPU on) the same
+         * audio that the intercept branch already processed.
+         */
+        if (!active || isBypassedForDirectOutput) {
             outputBuffer = inputBuffer
             return
         }
@@ -388,6 +403,47 @@ class NativeDspAudioProcessor(
         inputFormat = AudioProcessor.AudioFormat.NOT_SET
         workBuf = FloatArray(0)
         releaseNativeContext()
+    }
+
+    /**
+     * Processes a float array in-place using the full native DSP chain (EQ, bass, treble,
+     * stereo widening, balance, saturation, reverb) plus pre-amplification.
+     *
+     * This is the direct-output hot path called by [FelicityAudioSink] when USB or AAudio
+     * is active. Because [isBypassedForDirectOutput] makes [queueInput] a passthrough in
+     * that mode, the same [DspProcessor] context is used exclusively by this call — there
+     * is no risk of processing the same audio twice.
+     *
+     * The native engine also updates the shared [FFTContext] on every call, so the
+     * spectrum visualizer keeps working even when [DefaultAudioSink]'s chain is bypassed.
+     *
+     * @param samples Interleaved stereo (or mono) float PCM samples, modified in-place.
+     *                The array must contain exactly the frame count × channel count samples.
+     */
+    fun processInPlace(samples: FloatArray) {
+        processInPlace(samples, samples.size)
+    }
+
+    /**
+     * Same as [processInPlace] but only treats the first [length] elements of [samples]
+     * as valid audio. If [samples] is exactly [length] elements long the array is used
+     * as-is (zero allocation). If it is larger, a trimmed copy is made — this only
+     * happens on the very first few frames before the scratch buffer size stabilizes,
+     * so the steady-state hot path stays allocation-free.
+     *
+     * @param samples  Buffer that holds the audio data (may be larger than [length]).
+     * @param length   How many samples at the start of [samples] are actually valid.
+     */
+    fun processInPlace(samples: FloatArray, length: Int) {
+        val dsp = dspProcessor ?: return
+        val preamp = preampLinearGain * replayGainLinearGain * tagReplayGainLinearGain
+        val effectiveSamples = if (samples.size == length) samples else samples.copyOf(length)
+        if (preamp != 1f) {
+            for (i in effectiveSamples.indices) {
+                effectiveSamples[i] *= preamp
+            }
+        }
+        dsp.processAudio(effectiveSamples)
     }
 
     /**

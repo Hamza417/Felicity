@@ -286,6 +286,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 // active effect in the chain.
                 processors.add(audioProcessorManager.visualizerProcessor)
 
+
                 val audioSink = DefaultAudioSink.Builder(context)
                     .setEnableFloatOutput(hiresEnabled)
                     // CRITICAL FOR USB DACs: Tell ExoPlayer to read the USB/HDMI capabilities
@@ -314,7 +315,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                  * low-latency output. The [DefaultAudioSink] (with its [AudioTrack] muted)
                  * is kept alive for clock and state management.
                  */
-                return FelicityAudioSink(audioSink, context)
+                return FelicityAudioSink(audioSink, context, audioProcessorManager.nativeDspProcessor)
             }
 
             override fun buildAudioRenderers(

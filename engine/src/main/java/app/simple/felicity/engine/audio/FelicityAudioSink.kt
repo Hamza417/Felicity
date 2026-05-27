@@ -12,6 +12,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.audio.ForwardingAudioSink
 import app.simple.felicity.engine.processors.AaudioOutputProcessor
+import app.simple.felicity.engine.processors.NativeDspAudioProcessor
 import app.simple.felicity.engine.usb.UsbDacDriver
 import app.simple.felicity.engine.usb.UsbDacManager
 import app.simple.felicity.engine.utils.PcmUtils
@@ -36,22 +37,36 @@ import java.nio.ByteBuffer
  *   2. AAudio direct-to-HAL (when [AudioPreferences.isAaudioEnabled] and USB DAC not active)
  *   3. DefaultAudioSink / AudioTrack (fallback)
  *
+ * **DSP execution model**: [DefaultAudioSink]'s processor chain owns the effects for the
+ * AudioTrack fallback. When USB DAC or AAudio is the active output, [nativeDsp] is put
+ * into bypass mode inside [DefaultAudioSink]'s chain ([NativeDspAudioProcessor.isBypassedForDirectOutput]
+ * = true), and this sink slices the raw buffer, converts it to float, and calls
+ * [NativeDspAudioProcessor.processInPlace] directly before pushing the result to the
+ * hardware. This way the DAC always hears the fully processed signal regardless of whether
+ * ExoPlayer's internal hi-res toggle disables the processor array, because we are no
+ * longer relying on [DefaultAudioSink] to run the effects — we run them ourselves.
+ *
  * **Format sync**: [configure] is the source of truth for the current ExoPlayer format.
  * When a USB DAC attaches mid-session, the [UsbDacManager.Listener] receives the attach
  * event and immediately re-negotiates the DAC to match the live ExoPlayer sample rate,
  * bit depth, and channel count so there is never a rate mismatch between what the DSP
  * outputs and what the DAC expects.
  *
- * @param delegate  The [DefaultAudioSink] owned by the ExoPlayer renderer.
- * @param context   Application context used to query [AudioManager] (Bluetooth detection)
- *                  and to reach [UsbDacDriver] for PCM push calls.
+ * @param delegate    The [DefaultAudioSink] owned by the ExoPlayer renderer.
+ * @param context     Application context used to query [AudioManager] (Bluetooth detection)
+ *                    and to reach [UsbDacDriver] for PCM push calls.
+ * @param nativeDsp   The shared [NativeDspAudioProcessor]. It is both present in
+ *                    [DefaultAudioSink]'s processor list (for the AudioTrack path) and
+ *                    driven directly here (for USB/AAudio). [isBypassedForDirectOutput]
+ *                    prevents it from processing the same audio twice.
  *
  * @author Hamza417
  */
 @OptIn(UnstableApi::class)
 class FelicityAudioSink(
         private val delegate: DefaultAudioSink,
-        private val context: Context
+        private val context: Context,
+        private val nativeDsp: NativeDspAudioProcessor
 ) : ForwardingAudioSink(delegate) {
 
     /** Native AAudio stream; null when AAudio is disabled or not yet configured. */
@@ -77,6 +92,15 @@ class FelicityAudioSink(
      * because AAudio or the USB DAC is producing the audible output.
      */
     private var delegateMuted: Boolean = false
+
+    /**
+     * A pre-allocated float buffer that gets reused across every call to [handleBuffer].
+     * Since this hot path runs dozens to hundreds of times per second, allocating a new
+     * array each time would constantly feed the garbage collector — potentially causing
+     * brief GC pauses that show up as audio dropouts. Instead, we keep one array and only
+     * grow it when an incoming frame is larger than anything we've seen before.
+     */
+    private var floatScratchBuffer: FloatArray = FloatArray(0)
 
     /**
      * Registered with [UsbDacManager] so we hear about DAC connect/disconnect events.
@@ -204,19 +228,27 @@ class FelicityAudioSink(
     }
 
     /**
-     * Routes the PCM buffer through [DefaultAudioSink] (for clock / state management) and
-     * — depending on the active output path — also pushes the same data to either the
-     * native AAudio stream or the USB DAC ring buffer.
+     * Routes PCM through [DefaultAudioSink] (for clock / state management) and simultaneously
+     * pushes fully-processed audio to the active exclusive output.
      *
-     * Only one external output is active at a time:
-     *   - USB DAC active   → push to USB ring buffer; AAudio bypassed; delegate muted.
-     *   - AAudio active    → push to AAudio stream; delegate muted.
-     *   - Neither active   → delegate drives AudioTrack output directly (unmuted).
+     * The key insight is that we no longer trust [DefaultAudioSink]'s processor chain to
+     * run the effects — ExoPlayer can silently bypass the entire array for hi-res float
+     * formats. Instead, when USB DAC or AAudio is live, we:
+     *   1. Slice the raw buffer BEFORE calling super so we keep the original unmodified bytes.
+     *   2. Tell [nativeDsp] to act as a transparent passthrough inside [DefaultAudioSink]'s
+     *      chain ([NativeDspAudioProcessor.isBypassedForDirectOutput] = true) so the same
+     *      audio is not processed a second time by the delegate.
+     *   3. Convert the raw slice to a [FloatArray] and call [NativeDspAudioProcessor.processInPlace],
+     *      which runs the full native C++ DSP chain (EQ, bass, treble, widening, balance,
+     *      saturation, reverb, and the visualizer FFT feed) directly on that float array.
+     *   4. Push the processed floats to the hardware (USB ring buffer or AAudio stream),
+     *      passing only the valid sample count so stale data from a previous larger frame
+     *      in [floatScratchBuffer] is never forwarded.
+     *   5. Let super consume the original raw buffer for its internal timing bookkeeping.
      *
-     * The buffer snapshot is taken BEFORE delegation to preserve the readable region
-     * regardless of how [DefaultAudioSink] advances the position internally.
-     * Its byte order is restored to match ExoPlayer's little-endian convention so
-     * float / short / int reads in the conversion path are always correct.
+     * When neither exclusive output is active the delegate is unmuted and runs its own
+     * processor chain for the AudioTrack fallback — [nativeDsp] bypass is cleared so the
+     * DSP effects reach the AudioTrack output as usual.
      */
     override fun handleBuffer(
             buffer: ByteBuffer,
@@ -227,23 +259,45 @@ class FelicityAudioSink(
         val aaudioReady = AudioPreferences.isAaudioEnabled() && aaudioStream?.isReady == true
 
         if (!usbActive && !aaudioReady) {
+            // AudioTrack path — let [DefaultAudioSink] run the full processor chain as normal.
+            nativeDsp.isBypassedForDirectOutput = false
             unmuteDelegateIfNeeded()
             return super.handleBuffer(buffer, presentationTimeUs, encodedAccessUnitCount)
         }
 
         muteDelegateIfNeeded()
 
-        // Preserve the readable slice — same byte-order fix as before.
-        val snapshot: ByteBuffer = buffer.slice().order(buffer.order())
+        /**
+         * Bypass the DSP inside DefaultAudioSink's chain so the same audio is not
+         * processed twice — once here and once (silently) by the muted delegate.
+         * The bypass flag makes [NativeDspAudioProcessor.queueInput] a transparent
+         * passthrough, so the AudioTrack receives the raw unprocessed signal that is
+         * immediately discarded because the volume is zero.
+         */
+        nativeDsp.isBypassedForDirectOutput = true
+
+        /**
+         * Snapshot the raw bytes before calling super so we have the original decoder
+         * output to process ourselves. super.handleBuffer advances the buffer's position,
+         * so reading after that call would yield no data.
+         */
+        val snapshot = buffer.slice().order(buffer.order())
+
         val consumed = super.handleBuffer(buffer, presentationTimeUs, encodedAccessUnitCount)
 
         if (consumed) {
-            // Convert once; push to whichever output is live.
-            val floatBuf = snapshotToFloat(snapshot)
-            if (usbActive) {
-                UsbDacDriver.getInstance(context).nativePushPcm(floatBuf, 0, floatBuf.size)
-            } else {
-                aaudioStream?.write(floatBuf)
+            // Fill the reusable scratch buffer and get back how many samples are valid.
+            // We never pass the whole array to downstream — only the live [sampleCount]
+            // slice so we don't accidentally send stale data from a previous larger frame.
+            val sampleCount = snapshotToFloat(snapshot, currentEncoding)
+            if (sampleCount > 0) {
+                nativeDsp.processInPlace(floatScratchBuffer, sampleCount)
+
+                if (usbActive) {
+                    UsbDacDriver.getInstance(context).nativePushPcm(floatScratchBuffer, 0, sampleCount)
+                } else {
+                    aaudioStream?.write(floatScratchBuffer, sampleCount)
+                }
             }
         }
 
@@ -287,35 +341,52 @@ class FelicityAudioSink(
 
     /**
      * Releases all resources. Unregisters from [UsbDacManager] so this instance does not
-     * receive callbacks after the ExoPlayer session ends.
+     * receive callbacks after the ExoPlayer session ends. Also clears the bypass flag so
+     * if a new [FelicityAudioSink] is created with the same [nativeDsp] instance, it starts
+     * in the correct unmodified state.
      */
     override fun release() {
+        nativeDsp.isBypassedForDirectOutput = false
         UsbDacManager.removeListener(usbDacListener)
         releaseAaudioStream()
         super.release()
     }
 
     /**
-     * Converts the PCM content of [snapshot] to an interleaved [FloatArray].
+     * Converts the PCM content of [snapshot] to an interleaved [FloatArray] using the given
+     * [encoding]. Both the raw decoder output encoding and the float fast path are handled:
+     *   - [C.ENCODING_PCM_FLOAT]: bulk copy via [java.nio.FloatBuffer.get], zero per-sample cost.
+     *   - All other encodings: per-sample conversion through [PcmUtils.readFloat].
      *
-     * For [C.ENCODING_PCM_FLOAT] input, uses a single bulk [java.nio.FloatBuffer.get] call.
-     * For all other encodings, [PcmUtils.readFloat] converts each sample individually.
-     * Both paths produce values nominally in [-1.0, 1.0] (float PCM may exceed this with headroom).
+     * @param snapshot  A read-only view of the raw PCM bytes for the current render cycle.
+     * @param encoding  The Media3 encoding constant that describes the sample layout.
      */
-    private fun snapshotToFloat(snapshot: ByteBuffer): FloatArray {
-        val bps = PcmUtils.bytesPerSample(currentEncoding)
+    /**
+     * Fills the reusable [floatScratchBuffer] with the PCM content of [snapshot] and
+     * returns how many samples were written. The array is only reallocated when the current
+     * frame needs more capacity than what we have — so the common steady-state case
+     * (same buffer size every frame) does zero heap allocation.
+     *
+     * @return The number of valid samples written into [floatScratchBuffer], or 0 if the
+     *         snapshot was empty.
+     */
+    private fun snapshotToFloat(snapshot: ByteBuffer, encoding: Int): Int {
+        val bps = PcmUtils.bytesPerSample(encoding)
         val totalSamples = snapshot.remaining() / bps
-        if (totalSamples <= 0) return FloatArray(0)
+        if (totalSamples <= 0) return 0
 
-        val floatBuf = FloatArray(totalSamples)
-        if (currentEncoding == C.ENCODING_PCM_FLOAT) {
-            snapshot.asFloatBuffer().get(floatBuf)
+        if (floatScratchBuffer.size < totalSamples) {
+            floatScratchBuffer = FloatArray(totalSamples)
+        }
+
+        if (encoding == C.ENCODING_PCM_FLOAT) {
+            snapshot.asFloatBuffer().get(floatScratchBuffer, 0, totalSamples)
         } else {
             for (i in 0 until totalSamples) {
-                floatBuf[i] = PcmUtils.readFloat(snapshot, currentEncoding)
+                floatScratchBuffer[i] = PcmUtils.readFloat(snapshot, encoding)
             }
         }
-        return floatBuf
+        return totalSamples
     }
 
     /**

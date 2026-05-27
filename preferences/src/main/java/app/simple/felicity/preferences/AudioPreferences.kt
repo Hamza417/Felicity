@@ -107,4 +107,8 @@ object AudioPreferences {
     fun isAaudioEnabled(): Boolean {
         return SharedPreferences.getSharedPreferences().getBoolean(AAUDIO_ENABLED, false)
     }
+
+    fun shouldShowProcessors(): Boolean {
+        return isHiresOutputEnabled().not() || isAaudioEnabled()
+    }
 }

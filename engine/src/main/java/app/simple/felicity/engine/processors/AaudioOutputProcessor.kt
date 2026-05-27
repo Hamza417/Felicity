@@ -1,6 +1,8 @@
 package app.simple.felicity.engine.processors
 
 import android.util.Log
+import app.simple.felicity.engine.processors.AaudioOutputProcessor.Companion.AAUDIO_FORMAT_PCM_FLOAT
+import app.simple.felicity.engine.processors.AaudioOutputProcessor.Companion.AAUDIO_FORMAT_PCM_I16
 
 /**
  * JNI handle for a native AAudio output stream.
@@ -75,6 +77,21 @@ class AaudioOutputProcessor(
     fun write(pcmBuffer: FloatArray) {
         if (nativeHandle == 0L) return
         nativeAaudioWrite(nativeHandle, pcmBuffer)
+    }
+
+    /**
+     * Same as [write] but only sends the first [length] samples to the hardware.
+     * When [pcmBuffer] is exactly [length] elements the array goes straight to native
+     * with no allocation. A trimmed copy is made only when the buffer is oversized,
+     * which at steady state (same frame size every call) never happens.
+     *
+     * @param pcmBuffer  The scratch buffer holding valid audio in its first [length] slots.
+     * @param length     Number of valid samples to write.
+     */
+    fun write(pcmBuffer: FloatArray, length: Int) {
+        if (nativeHandle == 0L) return
+        val buf = if (pcmBuffer.size == length) pcmBuffer else pcmBuffer.copyOf(length)
+        nativeAaudioWrite(nativeHandle, buf)
     }
 
     /**

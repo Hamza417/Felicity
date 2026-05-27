@@ -299,7 +299,7 @@ abstract class BasePlayerFragment : MediaFragment() {
 
         pcmInfo.setOnClickListener {
             // TODO - remove this when we have audio processor support on 32bit mode
-            if (AudioPreferences.isHiresOutputEnabled().not()) {
+            if (AudioPreferences.shouldShowProcessors()) {
                 showAudioPipeline(anchorView = pcmInfo)
             } else {
                 showWarning("All processors are disabled. PCM info is not available in 32-bit output mode.")
@@ -359,7 +359,7 @@ abstract class BasePlayerFragment : MediaFragment() {
         }
 
         equalizer.setOnClickListener {
-            if (AudioPreferences.isHiresOutputEnabled().not()) {
+            if (AudioPreferences.shouldShowProcessors()) {
                 openFragment(Equalizer.newInstance(), Equalizer.TAG)
             } else {
                 showWarning("All processors are disabled. EQ is not available in 32-bit output mode.")
@@ -367,7 +367,7 @@ abstract class BasePlayerFragment : MediaFragment() {
         }
 
         visualizerButton.setOnClickListener {
-            if (AudioPreferences.isHiresOutputEnabled().not()) {
+            if (AudioPreferences.shouldShowProcessors()) {
                 childFragmentManager.showVisualizerConfig()
             } else {
                 showWarning("All processors are disabled. Visualizers are not available in 32-bit output mode.")
