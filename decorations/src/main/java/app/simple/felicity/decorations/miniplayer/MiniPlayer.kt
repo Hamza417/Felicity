@@ -2699,8 +2699,13 @@ class MiniPlayer @JvmOverloads constructor(
     fun attachToScrollView(scrollView: NestedScrollView) {
         if (attachedScrollViews.containsKey(scrollView)) return
 
-        // Record the original padding before we modify it.
-        scrollViewOriginalPaddings[scrollView] = scrollView.paddingBottom
+        // If we still have the original padding recorded it means the scroll view was detached
+        // without its padding being restored (intentionally, to prevent a layout jump on exit).
+        // In that case the spacing is already applied, so we just skip re-applying it.
+        val alreadyPadded = scrollViewOriginalPaddings.containsKey(scrollView)
+        if (!alreadyPadded) {
+            scrollViewOriginalPaddings[scrollView] = scrollView.paddingBottom
+        }
 
         val snapRunnable = Runnable {
             if (!isManuallyControlled) {
@@ -2742,13 +2747,21 @@ class MiniPlayer @JvmOverloads constructor(
 
         scrollView.setOnScrollChangeListener(listener)
         attachedScrollViews[scrollView] = listener
-        applyScrollViewPadding(scrollView)
+        if (!alreadyPadded) {
+            applyScrollViewPadding(scrollView)
+        }
         suppressAutoFromRecyclerUntilIdle = false
     }
 
     /**
-     * Detaches from a previously attached [NestedScrollView], removing its scroll listener
-     * and restoring the original bottom padding.
+     * Detaches from a previously attached [NestedScrollView] by removing its scroll listener.
+     * The bottom padding is intentionally left in place so the content does not jump during
+     * the fragment exit transition — the same reason [detachFromRecyclerView] uses
+     * [FooterSpacingItemDecoration.release] instead of removing the decoration outright.
+     *
+     * The original padding value stays in [scrollViewOriginalPaddings] so that a subsequent
+     * [attachToScrollView] call (e.g. after a predictive-back cancel) knows the spacing is
+     * already applied and avoids doubling it.
      *
      * @param scrollView The [NestedScrollView] to detach from.
      * @author Hamza417
@@ -2758,20 +2771,8 @@ class MiniPlayer @JvmOverloads constructor(
         attachedScrollViews.remove(scrollView)?.let {
             scrollView.setOnScrollChangeListener(null as NestedScrollView.OnScrollChangeListener?)
         }
-        // Clear our extra bottom padding so the scroll view returns to its natural size.
-        if (scrollView is PaddingAwareNestedScrollView) {
-            scrollView.setExtraBottomPadding(0)
-        } else {
-            scrollViewOriginalPaddings.remove(scrollView)?.let { orig ->
-                scrollView.setPadding(
-                        scrollView.paddingLeft,
-                        scrollView.paddingTop,
-                        scrollView.paddingRight,
-                        orig
-                )
-            }
-        }
-        scrollViewOriginalPaddings.remove(scrollView)
+        // Padding is intentionally left in place — scrollViewOriginalPaddings keeps its entry
+        // so attachToScrollView can detect that spacing is already applied on re-attach.
     }
 
     override fun onThemeChanged(theme: Theme, animate: Boolean) {
