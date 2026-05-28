@@ -1623,7 +1623,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         // instead of falsely advertising a low-latency path that isn't actually running.
         val audioOutputMode = when {
             UsbDacManager.isActive -> "USB DAC (Direct)"
-            FelicityAudioSink.isAAudioStreamActive -> "AAudio (Low Latency)"
+            FelicityAudioSink.isAAudioStreamActive -> "AAudio"
             else -> "AudioTrack"
         }
 
