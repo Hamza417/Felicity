@@ -4,6 +4,7 @@
     <string name="crash_report">Crash Report</string>
     <string name="close">Close</string>
     <string name="send">Send</string>
+    <string name="pick_artist_image">Pick Artist Image</string>
     <string name="the_app_has_crashed">The app has crashed</string>
     <string name="desc_not_available">Description not available</string>
     <string name="songs">Songs</string>

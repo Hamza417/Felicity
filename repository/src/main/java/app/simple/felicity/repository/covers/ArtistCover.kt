@@ -122,6 +122,19 @@ object ArtistCover {
      * @param artistName The display name of the artist, used as the filename.
      * @param bitmap The image to save.
      */
+    /**
+     * Saves a user-chosen image for an artist, overwriting any previously stored one.
+     * This is the public entry point used when the user manually picks an image from
+     * their gallery. Under the hood it behaves exactly like the automatic MusicBrainz save.
+     *
+     * @param context Used to locate the app's private files directory.
+     * @param artistName The display name of the artist, used as the filename.
+     * @param bitmap The image picked by the user.
+     */
+    fun saveUserPickedImage(context: Context, artistName: String, bitmap: Bitmap) {
+        saveToFilesDir(context, artistName, bitmap)
+    }
+
     private fun saveToFilesDir(context: Context, artistName: String, bitmap: Bitmap) {
         try {
             val dir = File(context.filesDir, ARTIST_IMAGES_DIR)

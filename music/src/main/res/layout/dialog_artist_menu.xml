@@ -169,6 +169,26 @@
                     app:drawableTintStyle="regular"
                     app:textColorStyle="primary" />
 
+                <app.simple.felicity.decorations.theme.ThemeDivider
+                    android:layout_width="match_parent"
+                    android:layout_height="1px"
+                    android:layout_marginVertical="@dimen/padding_5" />
+
+                <!-- Lets the user replace the artist cover with a photo from their gallery -->
+                <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+                    android:id="@+id/pick_artist_image"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:padding="@dimen/padding_10"
+                    android:text="@string/pick_artist_image"
+                    android:textSize="@dimen/text_size_14"
+                    android:drawablePadding="@dimen/padding_10"
+                    app:appFontStyle="bold"
+                    app:drawableStartCompat="@drawable/ic_image_16dp"
+                    app:drawableTintStyle="regular"
+                    app:textColorStyle="primary" />
+
             </LinearLayout>
 
         </androidx.core.widget.NestedScrollView>
