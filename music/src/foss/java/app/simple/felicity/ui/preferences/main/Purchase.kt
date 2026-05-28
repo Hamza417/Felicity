@@ -89,11 +89,35 @@ class Purchase : PreferenceFragment() {
                 }
         )
 
+        val playstoreHeader = Preference(
+                title = R.string.play_store,
+                type = PreferenceType.SUB_HEADER
+        )
+
+        val playStoreInfo = Preference(
+                title = R.string.play_store_foss_purchase_info,
+                type = PreferenceType.WARN
+        )
+
+        val playStoreLink = Preference(
+                title = R.string.playstore_link,
+                summary = R.string.playstore_link_summary,
+                icon = R.drawable.ic_play_store,
+                type = PreferenceType.LINK,
+                onPreferenceAction = { view, callback ->
+                    val intent = Intent(Intent.ACTION_VIEW, "https://play.google.com/store/apps/details?id=app.simple.felicity".toUri())
+                    startActivity(intent)
+                }
+        )
+
         preferences.add(trialHeader)
         preferences.add(trialPeriod)
         preferences.add(gumroadHeader)
         preferences.add(purchaseHeader)
         preferences.add(purchase)
+        preferences.add(playstoreHeader)
+        preferences.add(playStoreInfo)
+        preferences.add(playStoreLink)
 
         return preferences
     }
