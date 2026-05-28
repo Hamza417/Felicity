@@ -46,25 +46,8 @@ body:
             required: true
 
     -   type: textarea
-        id: alternatives
-        attributes:
-            label: Describe Alternatives (if applicable)
-            description: A clear and concise description of any alternative solutions or features you've considered.
-            placeholder: Describe alternatives here
-
-    -   type: textarea
         id: additional_context
         attributes:
             label: Additional Context (if applicable)
             description: Add any other context or screenshots about the feature request here.
             placeholder: Provide additional context here
-
-    -   type: checkboxes
-        id: confirmation_2
-        attributes:
-            label: Confirmation
-            description: |
-                Please confirm the following:
-            options:
-                -   label: I have provided all the information requested above and deemed sufficient for the developer to address the issue.
-                    required: true

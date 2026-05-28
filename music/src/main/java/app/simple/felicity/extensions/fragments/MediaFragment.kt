@@ -13,6 +13,9 @@ import android.text.style.StyleSpan
 import android.util.Log
 import android.view.View
 import android.widget.ImageView
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.app.ShareCompat
 import androidx.core.net.toUri
@@ -50,6 +53,7 @@ import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.interfaces.MiniPlayerPolicy
 import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
+import app.simple.felicity.repository.covers.ArtistCover
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.managers.SelectionManager
 import app.simple.felicity.repository.models.Album
@@ -62,6 +66,7 @@ import app.simple.felicity.repository.shuffle.Shuffle.smartShuffle
 import app.simple.felicity.repository.utils.AudioUtils.getProperAlbum
 import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
 import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
+import app.simple.felicity.shared.utils.BitmapUtils
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
 import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.shared.utils.ViewUtils.visible
@@ -85,6 +90,41 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
     private var lastSavedSeekPosition = 0L
 
     private var shuffleButton: HighlightTextView? = null
+
+    /**
+     * Holds the artist whose image we're waiting on while the photo picker is open.
+     * We keep it here so the result callback can reach it after the picker returns.
+     */
+    private var pendingArtistForImagePick: Artist? = null
+
+    /**
+     * The photo picker launcher. We register it once here and reuse it whenever
+     * the user taps "Pick Artist Image" from the artist menu. The result comes back
+     * as a content URI which we decode into a Bitmap and hand off to [ArtistCover].
+     */
+    private val artistImagePickerLauncher: ActivityResultLauncher<PickVisualMediaRequest> =
+        registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+            val artist = pendingArtistForImagePick ?: return@registerForActivityResult
+            pendingArtistForImagePick = null
+            if (uri == null) return@registerForActivityResult
+            val artistName = artist.name ?: return@registerForActivityResult
+
+            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                try {
+                    val bitmap = BitmapUtils.decodeBitmapFromUri(uri, requireContext())
+                    if (bitmap != null) {
+                        ArtistCover.saveUserPickedImage(requireContext(), artistName, bitmap)
+                        Log.d("MediaFragment", "Saved user-picked image for artist: $artistName")
+
+                        withContext(Dispatchers.Main) {
+                            showWarning(getString(R.string.done))
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w("MediaFragment", "Failed to save picked image for artist: $artistName", e)
+                }
+            }
+        }
 
     private val miniPlayerCallbacks: MiniPlayerCallbacks?
         get() = requireActivity() as? MiniPlayerCallbacks
@@ -1104,6 +1144,15 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                     val songs = fetchAudiosByPaths(artist.songPaths)
                     if (songs.isNotEmpty()) shareAudioList(songs)
                 }
+            }
+
+            binding.pickArtistImage.setOnClickListener {
+                // Store the artist so the picker result callback knows whose image to save.
+                pendingArtistForImagePick = artist
+                artistImagePickerLauncher.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                )
+                dismiss()
             }
         }
 

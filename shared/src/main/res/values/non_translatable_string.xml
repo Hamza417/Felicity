@@ -43,4 +43,5 @@
     <string name="_5x" translatable="false">5x</string>
     <string name="_6x" translatable="false">6x</string>
     <string name="uri" translatable="false">URI</string>
+    <string name="play_store">Play Store</string>
 </resources>

@@ -7,6 +7,7 @@ import android.graphics.BlurMaskFilter.Blur
 import android.graphics.Canvas
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
+import android.graphics.ImageDecoder
 import android.graphics.LinearGradient
 import android.graphics.Matrix
 import android.graphics.Matrix.ScaleToFit
@@ -18,6 +19,8 @@ import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.PictureDrawable
+import android.net.Uri
+import android.util.Log
 import androidx.core.content.ContextCompat
 
 object BitmapUtils {
@@ -159,6 +162,27 @@ object BitmapUtils {
                 val newWidth = (maxSize * aspectRatio).toInt()
                 Bitmap.createScaledBitmap(this, newWidth, maxSize, true)
             }
+        }
+    }
+
+    /**
+     * Turns a content [Uri] (from the photo picker) into a [Bitmap].
+     *
+     * On Android 9 (Pie) and above we use [ImageDecoder] which handles all modern formats.
+     * On older versions we fall back to the older [MediaStore.Images.Media.getBitmap] API.
+     *
+     * @param uri The content URI returned by the photo picker.
+     * @return The decoded [Bitmap], or null if decoding fails.
+     */
+    fun decodeBitmapFromUri(uri: Uri, context: Context): Bitmap? {
+        return try {
+            val source = ImageDecoder.createSource(context.contentResolver, uri)
+            ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
+                decoder.isMutableRequired = true
+            }
+        } catch (e: Exception) {
+            Log.w("MediaFragment", "Could not decode bitmap from URI: $uri", e)
+            null
         }
     }
 }

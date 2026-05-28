@@ -4,6 +4,7 @@
     <string name="crash_report">Crash Report</string>
     <string name="close">Close</string>
     <string name="send">Send</string>
+    <string name="pick_artist_image">Pick Artist Image</string>
     <string name="the_app_has_crashed">The app has crashed</string>
     <string name="desc_not_available">Description not available</string>
     <string name="songs">Songs</string>
@@ -509,4 +510,7 @@
     <string name="bookmark_too_close">A bookmark already exists nearby</string>
     <string name="bookmark_at">Bookmark at %1$s</string>
     <string name="clear_bookmarks">Clear All Bookmarks</string>
+    <string name="play_store_foss_purchase_info">The FOSS version of this app does not support Google Play purchases. To make a purchase, please install the version available on the Google Play Store.</string>
+    <string name="playstore_link">Play Store Link</string>
+    <string name="playstore_link_summary">Open the app\'s Play Store page.</string>
 </resources>

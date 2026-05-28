@@ -21,7 +21,7 @@ class GumroadLicenseKey : ScopedBottomSheetFragment() {
 
     private lateinit var binding: DialogLicenseKeyBinding
     private lateinit var inputFilter: InputFilter
-    private val pattern = "0123456789ABCDEF-" // The pattern for the licence key
+    private val pattern = "0123456789ABCDEF-" // The pattern for the license key
 
     private val gumroadLicenceAuthenticatorViewModel: GumroadLicenceAuthenticatorViewModel by viewModels()
 
