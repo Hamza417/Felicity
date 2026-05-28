@@ -102,6 +102,14 @@ class FelicityAudioSink(
     private var delegateMuted: Boolean = false
 
     /**
+     * Remembers whether the player is currently in the paused state. We need this
+     * inside [flush] so we don't accidentally restart the AAudio stream while the
+     * user has the player paused — doing so would cause a brief audio blip at the
+     * start of every song change while paused.
+     */
+    private var isPaused: Boolean = false
+
+    /**
      * A pre-allocated float buffer that gets reused across every call to [handleBuffer].
      * Since this hot path runs dozens to hundreds of times per second, allocating a new
      * array each time would constantly feed the garbage collector — potentially causing
@@ -245,6 +253,7 @@ class FelicityAudioSink(
 
     /** Starts the delegate and, when AAudio is enabled (and USB DAC is not active), starts the native stream. */
     override fun play() {
+        isPaused = false
         super.play()
         if (UsbDacManager.isActive) {
             muteDelegateIfNeeded()
@@ -258,6 +267,7 @@ class FelicityAudioSink(
 
     /** Pauses the delegate and stops the native stream. */
     override fun pause() {
+        isPaused = true
         super.pause()
         aaudioStream?.stop()
     }
@@ -379,6 +389,11 @@ class FelicityAudioSink(
      * presented just before the seek and never consumed by the delegate would suppress
      * the first audio frame after the seek from reaching AAudio.
      *
+     * When the player is currently paused (e.g. the user changed songs without resuming
+     * playback), the AAudio stream is stopped but NOT restarted. Restarting it here while
+     * paused would let the very first decoded frames of the new song slip through to the
+     * hardware before [play] is called, producing a brief audible blip on every song change.
+     *
      * USB ring buffer is NOT flushed here because the native isochronous pipeline will
      * drain the stale bytes as silence before new data arrives — abruptly flushing
      * mid-transfer is more disruptive than letting it drain.
@@ -386,9 +401,9 @@ class FelicityAudioSink(
     override fun flush() {
         super.flush()
         pendingDelegateBuffer = null
-        aaudioStream?.apply {
-            stop()
-            start()
+        aaudioStream?.stop()
+        if (!isPaused) {
+            aaudioStream?.start()
         }
     }
 
