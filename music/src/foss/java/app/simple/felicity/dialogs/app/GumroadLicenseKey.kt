@@ -34,7 +34,6 @@ class GumroadLicenseKey : ScopedBottomSheetFragment() {
         val transition = LayoutTransition()
         transition.setAnimateParentHierarchy(false)
         (binding.dialogPurchase).layoutTransition = transition
-        (binding.licenseKeyContainer).layoutTransition = transition
 
         return binding.root
     }
