@@ -137,7 +137,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         private const val PEQ_KNOB_DIAMETER_DP = 96f
 
         /** Horizontal inset on both sides of each section, in dp. */
-        private const val PEQ_SECTION_H_PADDING_DP = 16f
+        private const val PEQ_SECTION_H_PADDING_DP = 24f
 
         /** Radius of the delete button circle drawn at the top-right corner of each section. */
         private const val PEQ_DELETE_BTN_RADIUS_DP = 10f
