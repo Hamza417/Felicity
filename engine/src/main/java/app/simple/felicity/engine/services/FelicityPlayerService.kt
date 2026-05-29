@@ -1262,6 +1262,15 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 // and re-assembles the processor chain with or without the downmix processor.
                 switchAudioMode()
             }
+            AudioPreferences.AAUDIO_ENABLED -> {
+                val enabled = AudioPreferences.isAaudioEnabled()
+                Log.d(TAG, "AAudio preference changed to: $enabled — rebuilding audio pipeline...")
+                // Rebuilding the player creates a fresh FelicityAudioSink, which will open the
+                // AAudio stream immediately if enabled, or stay on AudioTrack if disabled.
+                // Without this, the change only takes effect the next time a song starts —
+                // the existing sink never learns about the preference flip mid-session.
+                switchAudioMode()
+            }
             PlayerPreferences.REPEAT_MODE -> {
                 val repeatMode = PlayerPreferences.getRepeatMode()
                 Log.d(TAG, "Repeat mode preference changed to: $repeatMode")
