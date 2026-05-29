@@ -20,6 +20,9 @@ import app.simple.felicity.preferences.EqualizerPreferences
  *  4. [NativeDspAudioProcessor]     Unified native DSP: 10-band EQ, bass/treble shelves,
  *                                   stereo widening (M/S), constant-power balance,
  *                                   and tape-style saturation — all in one JNI call.
+ *                                   When USB or AAudio is the active output, this processor
+ *                                   acts as a passthrough here; [FelicityAudioSink] drives
+ *                                   it directly via [NativeDspAudioProcessor.processInPlace].
  *  5. [NightModeProcessor]          Dynamic compressor/limiter for late-night listening.
  *  6. [VisualizerProcessor]         Hann-windowed FFT spectrum capture on the final signal.
  *
@@ -71,7 +74,7 @@ class AudioProcessorManager {
     val nativeDspProcessor: NativeDspAudioProcessor = NativeDspAudioProcessor(visualizerProcessor)
 
     /**
-     * Dynamic compressor/limiter for comfortable late-night listening. Starts in bypass state.
+     * Dynamic range compressor/limiter for comfortable late-night listening. Starts in bypass state.
      * Squashes loud peaks and applies makeup gain so quiet passages are more audible.
      */
     val nightModeProcessor: NightModeProcessor = NightModeProcessor()

@@ -595,7 +595,7 @@ abstract class PreferenceFragment : MediaFragment() {
         val decoderHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.decoder)
 
         val currentDecoder = Preference(
-                title = R.string.audio_pipeline,
+                title = R.string.decoder,
                 summary = R.string.audio_pipeline_summary,
                 icon = R.drawable.ic_memory,
                 type = PreferenceType.POPUP,
@@ -646,6 +646,55 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val outputHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.output)
+
+        /**
+         * Popup that lets the user choose which low-level audio API writes the final PCM
+         * to the hardware. AudioTrack is the safe default; AAudio bypasses the mixer for
+         * lower latency; Oboe picks the best available API automatically at runtime.
+         */
+        val sinkPopup = Preference(
+                title = R.string.output_sink,
+                summary = R.string.output_sink_summary,
+                icon = R.drawable.ic_speaker,
+                type = PreferenceType.POPUP,
+                valueProvider = {
+                    when (AudioPreferences.getOutputSink()) {
+                        AudioPreferences.SINK_AAUDIO -> getString(R.string.aaudio_enabled)
+                        AudioPreferences.SINK_OBOE -> getString(R.string.oboe)
+                        else -> getString(R.string.audiotrack)
+                    }
+                },
+                onPreferenceAction = { view, _ ->
+                    SharedScrollViewPopup(
+                            container = requireContainerView(),
+                            anchorView = view,
+                            menuItems = listOf(
+                                    PopupMenuItem(title = R.string.audiotrack, summary = getString(R.string.audiotrack_desc)),
+                                    PopupMenuItem(title = R.string.aaudio_enabled, summary = getString(R.string.aaudio_desc)),
+                                    PopupMenuItem(title = R.string.oboe, summary = getString(R.string.oboe_desc))
+                            ),
+                            onMenuItemClick = {
+                                when (it) {
+                                    R.string.aaudio_enabled -> {
+                                        AudioPreferences.setOutputSink(AudioPreferences.SINK_AAUDIO)
+                                        (view as TextView).text = getString(R.string.aaudio_enabled)
+                                    }
+                                    R.string.oboe -> {
+                                        AudioPreferences.setOutputSink(AudioPreferences.SINK_OBOE)
+                                        (view as TextView).text = getString(R.string.oboe)
+                                    }
+                                    else -> {
+                                        AudioPreferences.setOutputSink(AudioPreferences.SINK_AUDIO_TRACK)
+                                        (view as TextView).text = getString(R.string.audiotrack)
+                                    }
+                                }
+                            },
+                            onDismiss = {}
+                    ).show()
+                }
+        )
+
         val playbackHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.playback)
 
         val hiresToggle = Preference(
@@ -669,7 +718,7 @@ abstract class PreferenceFragment : MediaFragment() {
         val stereoDownmixing = Preference(
                 title = R.string.force_stereo_downmixing,
                 summary = R.string.force_stereo_downmixing_summary,
-                icon = R.drawable.ic_speaker,
+                icon = R.drawable.ic_headset,
                 type = PreferenceType.SWITCH,
                 onPreferenceAction = { view, callback ->
                     AudioPreferences.setIsStereoDownmixForced((view as FelicitySwitch).isChecked)
@@ -703,31 +752,6 @@ abstract class PreferenceFragment : MediaFragment() {
                 valueProvider = Supplier {
                     AudioPreferences.isSkipSilenceEnabled()
                 }
-        )
-
-        val outputHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.output)
-
-        /**
-         * Toggle that routes the post-DSP float32 PCM stream through the AAudio
-         * direct-to-HAL path instead of the standard AudioTrack pipeline.
-         * Requires API 26 (Android 8.0) or higher.
-         */
-        val aaudioToggle = Preference(
-                title = R.string.aaudio_enabled,
-                summary = R.string.aaudio_enabled_summary,
-                icon = R.drawable.ic_timer,
-                type = PreferenceType.SWITCH,
-                onPreferenceAction = { view, callback ->
-                    AudioPreferences.setAaudioEnabled((view as FelicitySwitch).isChecked)
-                },
-                valueProvider = Supplier {
-                    AudioPreferences.isAaudioEnabled()
-                }
-        )
-
-        val aaudioWarning = Preference(
-                title = R.string.aaudio_warning,
-                type = PreferenceType.WARN
         )
 
         val replayGainHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.replay_gain)
@@ -797,10 +821,9 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(currentDecoder)
         preferences.add(fallbackToSWToggle)
         preferences.add(outputHeader)
-        preferences.add(aaudioToggle)
-        preferences.add(aaudioWarning)
-        preferences.add(playbackHeader)
+        preferences.add(sinkPopup)
         preferences.add(hiresToggle)
+        preferences.add(playbackHeader)
         preferences.add(hiresWarning)
         preferences.add(stereoDownmixing)
         preferences.add(gaplessToggle)

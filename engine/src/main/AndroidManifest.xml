@@ -8,6 +8,12 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!-- Declare that this app can act as a USB host, meaning it can talk directly
+         to USB accessories (like DACs) plugged into the device's USB port. -->
+    <uses-feature
+        android:name="android.hardware.usb.host"
+        android:required="false" />
+
     <application>
 
         <receiver
@@ -16,6 +22,23 @@
             <intent-filter>
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
+        </receiver>
+
+        <!--
+            Android wakes this receiver the moment a USB device is physically plugged in.
+            The device filter XML lets Android pre-screen candidates before our code even
+            runs — we use a catch-all filter and then check the audio class ourselves.
+        -->
+        <receiver
+            android:name="app.simple.felicity.engine.usb.UsbDacReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+                <action android:name="android.hardware.usb.action.USB_DEVICE_DETACHED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+                android:resource="@xml/usb_device_filter" />
         </receiver>
 
         <service

@@ -2,6 +2,9 @@ package app.simple.felicity.preferences
 
 import androidx.core.content.edit
 import app.simple.felicity.manager.SharedPreferences
+import app.simple.felicity.preferences.AudioPreferences.SINK_AAUDIO
+import app.simple.felicity.preferences.AudioPreferences.SINK_AUDIO_TRACK
+import app.simple.felicity.preferences.AudioPreferences.SINK_OBOE
 
 object AudioPreferences {
 
@@ -12,20 +15,30 @@ object AudioPreferences {
     const val IS_STEREO_DOWNMIX_FORCED = "is_stereo_downmix_forced"
 
     /**
-     * Boolean flag that enables the AAudio low-latency output path.
-     *
-     * When true the audio engine writes processed PCM directly to an [AAudioStream] opened
-     * with [AAUDIO_PERFORMANCE_MODE_LOW_LATENCY], bypassing the standard
-     * AudioTrack / AudioFlinger mixer pipeline. This reduces output latency at the cost of
-     * exclusive hardware access (shared mode is used as a fallback when exclusive mode is
-     * unavailable). Defaults to false so the standard AudioTrack path remains active by default.
+     * The key used to store the user's chosen audio output sink.
+     * The value is one of [SINK_AUDIO_TRACK], [SINK_AAUDIO], or [SINK_OBOE].
      */
-    const val AAUDIO_ENABLED = "aaudio_enabled"
+    const val OUTPUT_SINK = "output_sink"
 
     private const val FALLBACK_TO_SW_DECODER = "fallback_to_sw_decoder"
 
     const val LOCAL_DECODER = 0
     const val FFMPEG = 1
+
+    /** Standard Android AudioTrack pipeline — the safest and most compatible option. */
+    const val SINK_AUDIO_TRACK = 0
+
+    /**
+     * AAudio direct-to-HAL path. Bypasses the AudioFlinger mixer for lower latency.
+     * Requires API 26 (Android 8.0) or higher.
+     */
+    const val SINK_AAUDIO = 1
+
+    /**
+     * Oboe output path. Google's C++ audio library that automatically picks
+     * AAudio on supported devices and falls back to OpenSL ES on older ones.
+     */
+    const val SINK_OBOE = 2
 
     // --------------------------------------------------------------------------------------------- //
 
@@ -88,23 +101,31 @@ object AudioPreferences {
     }
 
     /**
-     * Persists whether the AAudio low-latency output path is enabled.
+     * Saves the user's chosen audio output sink.
      *
-     * When enabled, processed PCM is written to an [AAudioStream] with
-     * [AAUDIO_PERFORMANCE_MODE_LOW_LATENCY] instead of going through the standard
-     * AudioTrack pipeline. Defaults to false.
-     *
-     * @param enabled True to route audio through the AAudio direct-to-HAL path.
+     * @param sink One of [SINK_AUDIO_TRACK], [SINK_AAUDIO], or [SINK_OBOE].
      */
-    fun setAaudioEnabled(enabled: Boolean) {
-        SharedPreferences.getSharedPreferences().edit { putBoolean(AAUDIO_ENABLED, enabled) }
+    fun setOutputSink(sink: Int) {
+        SharedPreferences.getSharedPreferences().edit { putInt(OUTPUT_SINK, sink) }
     }
 
     /**
-     * Returns whether the AAudio low-latency output path is currently enabled.
-     * Defaults to false (standard AudioTrack path).
+     * Returns the currently selected audio output sink.
+     * Defaults to [SINK_AUDIO_TRACK] (the standard Android pipeline).
      */
-    fun isAaudioEnabled(): Boolean {
-        return SharedPreferences.getSharedPreferences().getBoolean(AAUDIO_ENABLED, false)
+    fun getOutputSink(): Int {
+        return SharedPreferences.getSharedPreferences().getInt(OUTPUT_SINK, SINK_AUDIO_TRACK)
+    }
+
+    /** Convenience check — true when the user chose the AAudio output path. */
+    fun isAaudioEnabled(): Boolean = getOutputSink() == SINK_AAUDIO
+
+    /** Convenience check — true when the user chose the Oboe output path. */
+    fun isOboeEnabled(): Boolean = getOutputSink() == SINK_OBOE
+
+    fun shouldShowProcessors(): Boolean {
+        return isHiresOutputEnabled().not()
+                || getOutputSink() == SINK_AUDIO_TRACK
+                || getOutputSink() == SINK_OBOE
     }
 }
