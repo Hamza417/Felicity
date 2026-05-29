@@ -326,7 +326,6 @@
     <string name="resampler_type">Type</string>
     <string name="resampler_cutoff">Cutoff</string>
     <string name="quality">Quality</string>
-    <string name="dsp">DSP</string>
     <string name="pcm_format">PCM Format</string>
     <string name="eq_preset">EQ Preset</string>
     <string name="stereo_expand">Stereo Expand</string>
@@ -463,18 +462,6 @@
     <string name="reshuffle">No Reshuffle</string>
     <string name="reshuffle_summary">Do not shuffle the list again if the current list is already shuffled when a new song is selected.</string>
 
-
-    <string name="year_hint">YYYY</string>
-    <string name="track_number_hint">e.g. 1</string>
-    <string name="num_tracks_hint">e.g. 12</string>
-    <string name="disc_number_hint">1</string>
-    <string name="disc_total_hint">1</string>
-    <string name="of">of</string>
-    <string name="rg_db_hint">e.g. +1.23 dB</string>
-    <string name="rg_peak_hint">e.g. 0.9876</string>
-    <string name="rg_track_peak">Track Peak</string>
-    <string name="rg_album_peak">Album Peak</string>
-
     <string name="label">Label</string>
     <string name="portrait">Portrait</string>
     <string name="span_type">Span Type</string>
@@ -499,7 +486,7 @@
     <string name="read_more">Read more</string>
     <string name="read_less">Read less</string>
     <string name="active_since">Active since %1$s</string>
-    <string name="active_years">%1$s – %2$s</string>
+
     <string name="active_since_present">%1$s – present</string>
     <string name="released_in">Released %1$s</string>
     <string name="label_on">On %1$s</string>
