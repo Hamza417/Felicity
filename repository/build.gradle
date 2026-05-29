@@ -41,8 +41,8 @@ dependencies {
     implementation "com.google.dagger:hilt-android:2.59.2"
     ksp "com.google.dagger:hilt-android-compiler:2.59.2"
 
-    implementation "androidx.media3:media3-common:1.10.0"
-    implementation 'androidx.media3:media3-session:1.10.0'
+    implementation "androidx.media3:media3-common:1.10.1"
+    implementation 'androidx.media3:media3-session:1.10.1'
 
     implementation 'com.google.code.gson:gson:2.14.0'
     implementation 'com.squareup.okhttp3:okhttp:5.3.2'
