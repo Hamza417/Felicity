@@ -122,9 +122,9 @@ This feature list is not exhaustive and only main features are listed.
 Features that are planned but will not be a priority.
 
 - [ ] Cue sheet support
-- [ ] Native USB DAC support
-- [ ] Oboe
-- [ ] AAudio _(added but experimental)_
+- [x] Native USB DAC support (more tests needed)
+- [x] Oboe
+- [x] AAudio
 
 ... and more features will be updated here as development progresses.
 

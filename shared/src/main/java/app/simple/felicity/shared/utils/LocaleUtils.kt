@@ -25,6 +25,8 @@ object LocaleUtils {
             Lang("English (US)", "en-US"),
             // Russian
             Lang("Русский (Russian)", "ru-RU"),
+            // German
+            Lang("Deutsch (German)", "de-DE"),
     )
 
     fun getAppLocale(): Locale {

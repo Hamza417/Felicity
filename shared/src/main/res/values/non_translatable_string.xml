@@ -20,6 +20,10 @@
     <string name="fisher_yates" translatable="false">Fisher-Yates</string>
     <string name="miller" translatable="false">Miller</string>
     <string name="lrc_timestamp_hint" translatable="false">00:00.000</string>
+    <string name="aaudio_enabled" translatable="false">AAudio</string>
+    <string name="gumroad" translatable="false">Gumroad</string>
+    <string name="oboe" translatable="false">Oboe</string>
+    <string name="audiotrack" translatable="false">AudioTrack</string>
 
     <!-- Audio Pipeline Dialog — channel display values -->
     <string name="channel_mono" translatable="false">1 (Mono)</string>
@@ -35,6 +39,7 @@
     <string name="format_io_rate" translatable="false">%1$s ➔ %2$s</string>
     <string name="format_bit_depth_io" translatable="false">In: %1$d-bit  Out: %2$d-bit</string>
     <string name="telegram_channel" translatable="false">Telegram Channel</string>
+    <string name="dsp" translatable="false">DSP</string>
 
     <!-- GRID -->
     <string name="_2x" translatable="false">2x</string>
@@ -43,5 +48,17 @@
     <string name="_5x" translatable="false">5x</string>
     <string name="_6x" translatable="false">6x</string>
     <string name="uri" translatable="false">URI</string>
-    <string name="play_store">Play Store</string>
+    <string name="play_store" translatable="false">Play Store</string>
+
+    <string name="year_hint" translatable="false">YYYY</string>
+    <string name="track_number_hint" translatable="false">e.g. 1</string>
+    <string name="num_tracks_hint" translatable="false">e.g. 12</string>
+    <string name="disc_number_hint" translatable="false">1</string>
+    <string name="disc_total_hint" translatable="false">1</string>
+    <string name="of" translatable="false">of</string>
+    <string name="rg_db_hint" translatable="false">e.g. +1.23 dB</string>
+    <string name="rg_peak_hint" translatable="false">e.g. 0.9876</string>
+    <string name="rg_track_peak" translatable="false">Track Peak</string>
+    <string name="rg_album_peak" translatable="false">Album Peak</string>
+    <string name="active_years">%1$s – %2$s</string>
 </resources>

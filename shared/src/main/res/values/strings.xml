@@ -326,7 +326,6 @@
     <string name="resampler_type">Type</string>
     <string name="resampler_cutoff">Cutoff</string>
     <string name="quality">Quality</string>
-    <string name="dsp">DSP</string>
     <string name="pcm_format">PCM Format</string>
     <string name="eq_preset">EQ Preset</string>
     <string name="stereo_expand">Stereo Expand</string>
@@ -336,16 +335,12 @@
     <string name="disabled">Disabled</string>
     <string name="insert_and_play">Insert in Queue and Play</string>
 
-    <!-- AAudio low-latency output -->
     <string name="output">Output</string>
-    <string name="aaudio_enabled">AAudio</string>
     <string name="aaudio_desc">Bypasses the Android audio mixer and writes directly to the hardware for lower latency.</string>
     <string name="audio_output_mode">Output API</string>
     <string name="output_sink">Output Sink</string>
     <string name="output_sink_summary">Choose the audio API used to send processed audio to the hardware.</string>
-    <string name="audiotrack">AudioTrack</string>
     <string name="audiotrack_desc">The standard Android audio pipeline. Compatible with all devices and the safest choice.</string>
-    <string name="oboe">Oboe</string>
     <string name="oboe_desc">Google\'s audio library that automatically picks AAudio on modern devices and falls back to OpenSL ES on older ones.</string>
     <string name="prefer_media_store_art">Prefer MediaStore Album Arts</string>
     <string name="prefer_media_store_art_summary">Use album arts from MediaStore when available instead of scanning album arts from audio files. This may cause a delay in showing album arts for newly added songs until the MediaStore is updated.</string>
@@ -369,7 +364,6 @@
     <string name="version">Version</string>
     <string name="socials">Socials</string>
     <string name="telegram_channel_summary">Join app\'s Telegram Channel for all app related updates.</string>
-    <string name="gumroad">Gumroad</string>
     <string name="enter_license_key">Enter License Key</string>
     <string name="enter_license_key_summary">Enter license key purchased from Gumroad here.</string>
     <string name="purchase">Purchase</string>
@@ -463,18 +457,6 @@
     <string name="reshuffle">No Reshuffle</string>
     <string name="reshuffle_summary">Do not shuffle the list again if the current list is already shuffled when a new song is selected.</string>
 
-
-    <string name="year_hint">YYYY</string>
-    <string name="track_number_hint">e.g. 1</string>
-    <string name="num_tracks_hint">e.g. 12</string>
-    <string name="disc_number_hint">1</string>
-    <string name="disc_total_hint">1</string>
-    <string name="of">of</string>
-    <string name="rg_db_hint">e.g. +1.23 dB</string>
-    <string name="rg_peak_hint">e.g. 0.9876</string>
-    <string name="rg_track_peak">Track Peak</string>
-    <string name="rg_album_peak">Album Peak</string>
-
     <string name="label">Label</string>
     <string name="portrait">Portrait</string>
     <string name="span_type">Span Type</string>
@@ -499,7 +481,7 @@
     <string name="read_more">Read more</string>
     <string name="read_less">Read less</string>
     <string name="active_since">Active since %1$s</string>
-    <string name="active_years">%1$s – %2$s</string>
+
     <string name="active_since_present">%1$s – present</string>
     <string name="released_in">Released %1$s</string>
     <string name="label_on">On %1$s</string>
