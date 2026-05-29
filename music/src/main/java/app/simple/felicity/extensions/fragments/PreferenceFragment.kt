@@ -708,20 +708,49 @@ abstract class PreferenceFragment : MediaFragment() {
         val outputHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.output)
 
         /**
-         * Toggle that routes the post-DSP float32 PCM stream through the AAudio
-         * direct-to-HAL path instead of the standard AudioTrack pipeline.
-         * Requires API 26 (Android 8.0) or higher.
+         * Popup that lets the user choose which low-level audio API writes the final PCM
+         * to the hardware. AudioTrack is the safe default; AAudio bypasses the mixer for
+         * lower latency; Oboe picks the best available API automatically at runtime.
          */
         val aaudioToggle = Preference(
-                title = R.string.aaudio_enabled,
-                summary = R.string.aaudio_enabled_summary,
+                title = R.string.output_sink,
+                summary = R.string.output_sink_summary,
                 icon = R.drawable.ic_timer,
-                type = PreferenceType.SWITCH,
-                onPreferenceAction = { view, callback ->
-                    AudioPreferences.setAaudioEnabled((view as FelicitySwitch).isChecked)
+                type = PreferenceType.POPUP,
+                valueProvider = {
+                    when (AudioPreferences.getOutputSink()) {
+                        AudioPreferences.SINK_AAUDIO -> getString(R.string.aaudio_enabled)
+                        AudioPreferences.SINK_OBOE -> getString(R.string.oboe)
+                        else -> getString(R.string.audiotrack)
+                    }
                 },
-                valueProvider = Supplier {
-                    AudioPreferences.isAaudioEnabled()
+                onPreferenceAction = { view, _ ->
+                    SharedScrollViewPopup(
+                            container = requireContainerView(),
+                            anchorView = view,
+                            menuItems = listOf(
+                                    PopupMenuItem(title = R.string.audiotrack, summary = getString(R.string.audiotrack_desc)),
+                                    PopupMenuItem(title = R.string.aaudio_enabled, summary = getString(R.string.aaudio_desc)),
+                                    PopupMenuItem(title = R.string.oboe, summary = getString(R.string.oboe_desc))
+                            ),
+                            onMenuItemClick = {
+                                when (it) {
+                                    R.string.aaudio_enabled -> {
+                                        AudioPreferences.setOutputSink(AudioPreferences.SINK_AAUDIO)
+                                        (view as TextView).text = getString(R.string.aaudio_enabled)
+                                    }
+                                    R.string.oboe -> {
+                                        AudioPreferences.setOutputSink(AudioPreferences.SINK_OBOE)
+                                        (view as TextView).text = getString(R.string.oboe)
+                                    }
+                                    else -> {
+                                        AudioPreferences.setOutputSink(AudioPreferences.SINK_AUDIO_TRACK)
+                                        (view as TextView).text = getString(R.string.audiotrack)
+                                    }
+                                }
+                            },
+                            onDismiss = {}
+                    ).show()
                 }
         )
 

@@ -340,7 +340,14 @@
     <string name="output">Output</string>
     <string name="aaudio_enabled">AAudio</string>
     <string name="aaudio_enabled_summary">Use the AAudio API for a direct-to-HAL output path with significantly reduced latency.</string>
+    <string name="aaudio_desc">Bypasses the Android audio mixer and writes directly to the hardware for lower latency. Requires Android 8.0 or higher.</string>
     <string name="audio_output_mode">Output API</string>
+    <string name="output_sink">Output Sink</string>
+    <string name="output_sink_summary">Choose the audio API used to send processed audio to the hardware.</string>
+    <string name="audiotrack">AudioTrack</string>
+    <string name="audiotrack_desc">The standard Android audio pipeline. Compatible with all devices and the safest choice.</string>
+    <string name="oboe">Oboe</string>
+    <string name="oboe_desc">Google\'s audio library that automatically picks AAudio on modern devices and falls back to OpenSL ES on older ones.</string>
     <string name="prefer_media_store_art">Prefer MediaStore Album Arts</string>
     <string name="prefer_media_store_art_summary">Use album arts from MediaStore when available instead of scanning album arts from audio files. This may cause a delay in showing album arts for newly added songs until the MediaStore is updated.</string>
     <string name="aaudio_warning">AAudio is highly experimental at the moment and there is no guarantee it will work on all devices and perform as expected.</string>

@@ -14,6 +14,7 @@ import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.audio.ForwardingAudioSink
 import app.simple.felicity.engine.processors.AaudioOutputProcessor
 import app.simple.felicity.engine.processors.NativeDspAudioProcessor
+import app.simple.felicity.engine.processors.OboeOutputProcessor
 import app.simple.felicity.engine.processors.VisualizerProcessor
 import app.simple.felicity.engine.usb.UsbDacDriver
 import app.simple.felicity.engine.usb.UsbDacManager
@@ -23,30 +24,30 @@ import java.nio.ByteBuffer
 
 /**
  * An [androidx.media3.exoplayer.audio.AudioSink] that routes fully-processed float PCM
- * through the Android AAudio direct-to-HAL path when [AudioPreferences.AAUDIO_ENABLED]
- * is on, while keeping the inner [DefaultAudioSink] alive (muted) for ExoPlayer's clock
- * and state machine.
+ * through either the AAudio direct-to-HAL path or the Oboe output path depending on the
+ * user's choice in [AudioPreferences.OUTPUT_SINK], while keeping the inner [DefaultAudioSink]
+ * alive (muted) for ExoPlayer's clock and state machine.
  *
  * **USB DAC direct output**: When a USB audio DAC is connected and [UsbDacManager.isActive]
  * is true, this sink acts as an exclusive splitter: the [DefaultAudioSink] is kept muted
- * (for clock), AAudio is bypassed entirely, and all float PCM is pushed directly into the
+ * (for clock), AAudio/Oboe are bypassed entirely, and all float PCM is pushed directly into the
  * USB isochronous ring buffer via [UsbDacDriver.nativePushPcm]. This avoids double-output
  * to the DAC that would otherwise happen because Android's audio routing also directs
  * AudioTrack data to the USB device.
  *
  * **Output priority (exclusive):**
  *   1. USB DAC direct (when [UsbDacManager.isActive] — highest fidelity, bypasses Android mixer)
- *   2. AAudio direct-to-HAL (when [AudioPreferences.isAaudioEnabled] and USB DAC not active)
- *   3. DefaultAudioSink / AudioTrack (fallback)
+ *   2. AAudio direct-to-HAL (when [AudioPreferences.SINK_AAUDIO] and USB DAC not active)
+ *   3. Oboe (when [AudioPreferences.SINK_OBOE] and USB DAC not active)
+ *   4. DefaultAudioSink / AudioTrack (fallback)
  *
  * **DSP execution model**: [DefaultAudioSink]'s processor chain owns the effects for the
- * AudioTrack fallback. When USB DAC or AAudio is the active output, [nativeDsp] is put
+ * AudioTrack fallback. When USB DAC, AAudio, or Oboe is the active output, [nativeDsp] is put
  * into bypass mode inside [DefaultAudioSink]'s chain ([NativeDspAudioProcessor.isBypassedForDirectOutput]
  * = true), and this sink slices the raw buffer, converts it to float, and calls
  * [NativeDspAudioProcessor.processInPlace] directly before pushing the result to the
  * hardware. This way the DAC always hears the fully processed signal regardless of whether
- * ExoPlayer's internal hi-res toggle disables the processor array, because we are no
- * longer relying on [DefaultAudioSink] to run the effects — we run them ourselves.
+ * ExoPlayer's internal hi-res toggle disables the processor array.
  *
  * **Format sync**: [configure] is the source of truth for the current ExoPlayer format.
  * When a USB DAC attaches mid-session, the [UsbDacManager.Listener] receives the attach
@@ -57,15 +58,8 @@ import java.nio.ByteBuffer
  * @param delegate    The [DefaultAudioSink] owned by the ExoPlayer renderer.
  * @param context     Application context used to query [AudioManager] (Bluetooth detection)
  *                    and to reach [UsbDacDriver] for PCM push calls.
- * @param nativeDsp   The shared [NativeDspAudioProcessor]. It is both present in
- *                    [DefaultAudioSink]'s processor list (for the AudioTrack path) and
- *                    driven directly here (for USB/AAudio). [isBypassedForDirectOutput]
- *                    prevents it from processing the same audio twice.
- * @param visualizer  The shared [VisualizerProcessor]. When AAudio or USB DAC is active
- *                    its [queueInput] is bypassed (to avoid feeding stale delegate-chain
- *                    data into the FFT), and [VisualizerProcessor.feedFloat] is called
- *                    directly with the already-processed hardware-bound float samples so
- *                    the visualizer always matches what the listener actually hears.
+ * @param nativeDsp   The shared [NativeDspAudioProcessor].
+ * @param visualizer  The shared [VisualizerProcessor].
  *
  * @author Hamza417
  */
@@ -77,8 +71,11 @@ class FelicityAudioSink(
         private val visualizer: VisualizerProcessor
 ) : ForwardingAudioSink(delegate) {
 
-    /** Native AAudio stream; null when AAudio is disabled or not yet configured. */
+    /** Native AAudio stream; null when AAudio is not the selected sink or not yet configured. */
     private var aaudioStream: AaudioOutputProcessor? = null
+
+    /** Native Oboe stream; null when Oboe is not the selected sink or not yet configured. */
+    private var oboeStream: OboeOutputProcessor? = null
 
     /** PCM encoding of the most recently configured format. */
     private var currentEncoding: Int = C.ENCODING_PCM_16BIT
@@ -140,8 +137,6 @@ class FelicityAudioSink(
      */
     private val usbDacListener = object : UsbDacManager.Listener {
         override fun onUsbDacAttached(sampleRate: Int, channelCount: Int) {
-            // If ExoPlayer has already configured us with a valid format, sync the
-            // USB DAC to it immediately so there is no sample-rate mismatch.
             if (currentSampleRate > 0 && currentChannelCount > 0) {
                 val bitDepth = encodingToBitDepth(currentEncoding)
                 Log.i(TAG, "USB DAC attached mid-stream — re-negotiating to " +
@@ -149,20 +144,25 @@ class FelicityAudioSink(
                 UsbDacDriver.getInstance(context)
                     .negotiateFormat(currentSampleRate, bitDepth, currentChannelCount)
             }
-            // Mute the delegate so Android's AudioTrack → USB routing path produces silence
-            // while our direct USB pipeline carries the real audio.
             muteDelegateIfNeeded()
         }
 
         override fun onUsbDacDetached() {
-            // Restore normal delegate output now that the direct USB path is gone.
-            // If AAudio is still enabled and its stream is ready, keep the delegate muted
-            // so we don't accidentally unmute while AAudio is still driving output.
-            val aaudioStillActive = AudioPreferences.isAaudioEnabled() && aaudioStream?.isReady == true
-            if (!aaudioStillActive) {
+            val sink = AudioPreferences.getOutputSink()
+            val exclusiveStillActive = when (sink) {
+                AudioPreferences.SINK_AAUDIO -> aaudioStream?.isReady == true
+                AudioPreferences.SINK_OBOE -> oboeStream?.isReady == true
+                else -> false
+            }
+            if (!exclusiveStillActive) {
                 unmuteDelegateIfNeeded()
             }
-            Log.i(TAG, "USB DAC detached — reverted to ${if (aaudioStillActive) "AAudio" else "AudioTrack"} output")
+            val sinkName = when (sink) {
+                AudioPreferences.SINK_AAUDIO -> "AAudio"
+                AudioPreferences.SINK_OBOE -> "Oboe"
+                else -> "AudioTrack"
+            }
+            Log.i(TAG, "USB DAC detached — reverted to $sinkName output")
         }
     }
 
@@ -188,8 +188,6 @@ class FelicityAudioSink(
         val sr = inputFormat.sampleRate.takeIf { it > 0 } ?: return
         val ch = inputFormat.channelCount.takeIf { it > 0 } ?: return
 
-        // Capture old values before we overwrite them so the format-change check below
-        // can detect whether a new AAudio stream or DAC re-negotiation is actually needed.
         val prevSampleRate = currentSampleRate
         val prevChannelCount = currentChannelCount
         currentSampleRate = sr
@@ -197,22 +195,16 @@ class FelicityAudioSink(
 
         /**
          * Explicitly drive the NativeDsp lifecycle here instead of relying on ExoPlayer's
-         * internal chain forwarding. When Hi-Res float output is active and
-         * [isBypassedForDirectOutput] is true, ExoPlayer can detect the chain as a no-op
-         * passthrough and skip forwarding flush() to individual processors — which means
-         * neither the DspProcessor retry block nor pushAllParameters() ever fire.
-         * By calling configure() + flush() ourselves we guarantee [dspProcessor] is always
-         * live and fully loaded with the user's saved EQ / preamp / bass / treble settings
-         * before the very first [handleBuffer] call, regardless of ExoPlayer's optimizations.
+         * internal chain forwarding. This guarantees the DSP is always live and fully loaded
+         * with the user's EQ / preamp settings before the very first [handleBuffer] call.
          */
         val audioFormat = AudioProcessor.AudioFormat(sr, ch, currentEncoding)
         nativeDsp.configure(audioFormat)
         nativeDsp.flush()
 
-        // When USB DAC is active, keep AAudio dormant to avoid double output.
-        // Re-negotiate the DAC format if ExoPlayer switched to a new sample rate.
         if (UsbDacManager.isActive) {
             if (aaudioStream != null) releaseAaudioStream()
+            if (oboeStream != null) releaseOboeStream()
             val bitDepth = encodingToBitDepth(currentEncoding)
             Log.i(TAG, "USB DAC active — syncing DAC format to $sr Hz / ${bitDepth}-bit / $ch ch")
             UsbDacDriver.getInstance(context).negotiateFormat(sr, bitDepth, ch)
@@ -220,33 +212,58 @@ class FelicityAudioSink(
             return
         }
 
-        if (!AudioPreferences.isAaudioEnabled()) {
-            if (aaudioStream != null) {
-                releaseAaudioStream()
+        val sink = AudioPreferences.getOutputSink()
+
+        when (sink) {
+            AudioPreferences.SINK_AAUDIO -> {
+                if (oboeStream != null) releaseOboeStream()
+                if (sr != prevSampleRate || ch != prevChannelCount || aaudioStream?.isReady != true) {
+                    releaseAaudioStream()
+                    val useSafeBuffers = isBluetoothOutputActive()
+                    if (useSafeBuffers) {
+                        Log.i(TAG, "Bluetooth output detected — opening AAudio stream in safe-buffer mode")
+                    }
+                    val stream = AaudioOutputProcessor(sr, ch, useSafeBuffers)
+                    if (stream.isReady) {
+                        aaudioStream = stream
+                        isAAudioStreamActive = true
+                        muteDelegateIfNeeded()
+                        Log.i(TAG, "AAudio stream configured — sampleRate=$sr, channels=$ch, " +
+                                "encoding=$enc, actualFormat=${stream.getActualFormatName()}, " +
+                                "safeBuffers=$useSafeBuffers")
+                    } else {
+                        Log.e(TAG, "AAudio stream creation failed for sampleRate=$sr, channels=$ch")
+                        isAAudioStreamActive = false
+                        unmuteDelegateIfNeeded()
+                    }
+                }
             }
-            return
-        }
-
-        if (sr != prevSampleRate || ch != prevChannelCount || aaudioStream?.isReady != true) {
-            releaseAaudioStream()
-
-            val useSafeBuffers = isBluetoothOutputActive()
-            if (useSafeBuffers) {
-                Log.i(TAG, "Bluetooth output detected — opening AAudio stream in safe-buffer mode")
+            AudioPreferences.SINK_OBOE -> {
+                if (aaudioStream != null) releaseAaudioStream()
+                if (sr != prevSampleRate || ch != prevChannelCount || oboeStream?.isReady != true) {
+                    releaseOboeStream()
+                    val useSafeBuffers = isBluetoothOutputActive()
+                    if (useSafeBuffers) {
+                        Log.i(TAG, "Bluetooth output detected — opening Oboe stream in safe-buffer mode")
+                    }
+                    val stream = OboeOutputProcessor(sr, ch, useSafeBuffers)
+                    if (stream.isReady) {
+                        oboeStream = stream
+                        isOboeStreamActive = true
+                        muteDelegateIfNeeded()
+                        Log.i(TAG, "Oboe stream configured — sampleRate=$sr, channels=$ch, " +
+                                "api=${stream.getActualApiName()}, safeBuffers=$useSafeBuffers")
+                    } else {
+                        Log.e(TAG, "Oboe stream creation failed for sampleRate=$sr, channels=$ch")
+                        isOboeStreamActive = false
+                        unmuteDelegateIfNeeded()
+                    }
+                }
             }
-
-            val stream = AaudioOutputProcessor(sr, ch, useSafeBuffers)
-            if (stream.isReady) {
-                aaudioStream = stream
-                isAAudioStreamActive = true
-                muteDelegateIfNeeded()
-                Log.i(TAG, "AAudio stream configured — sampleRate=$sr, channels=$ch, " +
-                        "encoding=$enc, actualFormat=${stream.getActualFormatName()}, " +
-                        "safeBuffers=$useSafeBuffers")
-            } else {
-                Log.e(TAG, "AAudio stream creation failed for sampleRate=$sr, channels=$ch")
-                isAAudioStreamActive = false
-                unmuteDelegateIfNeeded()
+            else -> {
+                // AudioTrack path — release any exclusive streams that may have been active.
+                if (aaudioStream != null) releaseAaudioStream()
+                if (oboeStream != null) releaseOboeStream()
             }
         }
     }
@@ -259,9 +276,15 @@ class FelicityAudioSink(
             muteDelegateIfNeeded()
             return
         }
-        if (AudioPreferences.isAaudioEnabled()) {
-            muteDelegateIfNeeded()
-            aaudioStream?.start()
+        when (AudioPreferences.getOutputSink()) {
+            AudioPreferences.SINK_AAUDIO -> {
+                muteDelegateIfNeeded()
+                aaudioStream?.start()
+            }
+            AudioPreferences.SINK_OBOE -> {
+                muteDelegateIfNeeded()
+                oboeStream?.start()
+            }
         }
     }
 
@@ -270,6 +293,7 @@ class FelicityAudioSink(
         isPaused = true
         super.pause()
         aaudioStream?.stop()
+        oboeStream?.stop()
     }
 
     /**
@@ -278,7 +302,7 @@ class FelicityAudioSink(
      *
      * The key insight is that we no longer trust [DefaultAudioSink]'s processor chain to
      * run the effects — ExoPlayer can silently bypass the entire array for hi-res float
-     * formats. Instead, when USB DAC or AAudio is live, we:
+     * formats. Instead, when USB DAC, AAudio, or Oboe is live, we:
      *   1. On the FIRST presentation of a buffer: take a snapshot of the raw bytes, convert
      *      to float, run the full native DSP chain in-place, and push to the hardware output.
      *   2. On subsequent RETRIES of the same buffer (when the delegate's [AudioTrack] was
@@ -306,8 +330,9 @@ class FelicityAudioSink(
     ): Boolean {
         val usbActive = UsbDacManager.isActive
         val aaudioReady = AudioPreferences.isAaudioEnabled() && aaudioStream?.isReady == true
+        val oboeReady = AudioPreferences.isOboeEnabled() && oboeStream?.isReady == true
 
-        if (!usbActive && !aaudioReady) {
+        if (!usbActive && !aaudioReady && !oboeReady) {
             // AudioTrack path — let [DefaultAudioSink] run the full processor chain as normal.
             nativeDsp.isBypassedForDirectOutput = false
             visualizer.isBypassedForDirectOutput = false
@@ -316,13 +341,6 @@ class FelicityAudioSink(
         }
 
         muteDelegateIfNeeded()
-
-        /**
-         * Bypass the DSP and visualizer inside DefaultAudioSink's chain so the same audio
-         * is not processed twice — once here and once (silently) by the muted delegate.
-         * The visualizer will be fed from [feedFloat] below with the hardware-bound float
-         * data, which is the processed signal the listener actually hears.
-         */
         nativeDsp.isBypassedForDirectOutput = true
         visualizer.isBypassedForDirectOutput = true
 
@@ -339,31 +357,18 @@ class FelicityAudioSink(
             val sampleCount = snapshotToFloat(snapshot, currentEncoding)
             if (sampleCount > 0) {
                 nativeDsp.processInPlace(floatScratchBuffer, sampleCount)
-
-                /**
-                 * Feed the visualizer directly from the processed float data that is about
-                 * to go to hardware. This runs AFTER the DSP pass so the spectrum reflects
-                 * the EQ and other effects the listener actually hears, not the raw decoder
-                 * output. [visualizer.isBypassedForDirectOutput] keeps [queueInput] from
-                 * doing a second conflicting write to the same FFT accumulator.
-                 */
                 visualizer.feedFloat(floatScratchBuffer, sampleCount, currentChannelCount)
 
-                if (usbActive) {
-                    UsbDacDriver.getInstance(context).nativePushPcm(floatScratchBuffer, 0, sampleCount)
-                } else {
-                    aaudioStream?.write(floatScratchBuffer, sampleCount)
+                when {
+                    usbActive -> UsbDacDriver.getInstance(context).nativePushPcm(floatScratchBuffer, 0, sampleCount)
+                    aaudioReady -> aaudioStream?.write(floatScratchBuffer, sampleCount)
+                    oboeReady -> oboeStream?.write(floatScratchBuffer, sampleCount)
                 }
             }
         }
 
         val consumed = super.handleBuffer(buffer, presentationTimeUs, encodedAccessUnitCount)
-
-        // When the delegate finally accepts the buffer, clear the pending reference so
-        // the next buffer is treated as fresh. When rejected, record it so retries are
-        // identified correctly.
         pendingDelegateBuffer = if (consumed) null else buffer
-
         return consumed
     }
 
@@ -374,7 +379,8 @@ class FelicityAudioSink(
     override fun setVolume(volume: Float) {
         pendingVolume = volume
         val exclusiveOutputActive = UsbDacManager.isActive ||
-                (AudioPreferences.isAaudioEnabled() && aaudioStream?.isReady == true)
+                (AudioPreferences.isAaudioEnabled() && aaudioStream?.isReady == true) ||
+                (AudioPreferences.isOboeEnabled() && oboeStream?.isReady == true)
         if (exclusiveOutputActive) {
             muteDelegateIfNeeded()
         } else {
@@ -402,8 +408,10 @@ class FelicityAudioSink(
         super.flush()
         pendingDelegateBuffer = null
         aaudioStream?.stop()
+        oboeStream?.stop()
         if (!isPaused) {
             aaudioStream?.start()
+            oboeStream?.start()
         }
     }
 
@@ -412,6 +420,7 @@ class FelicityAudioSink(
         super.reset()
         pendingDelegateBuffer = null
         releaseAaudioStream()
+        releaseOboeStream()
     }
 
     /**
@@ -425,6 +434,7 @@ class FelicityAudioSink(
         visualizer.isBypassedForDirectOutput = false
         UsbDacManager.removeListener(usbDacListener)
         releaseAaudioStream()
+        releaseOboeStream()
         super.release()
     }
 
@@ -492,7 +502,7 @@ class FelicityAudioSink(
         }
     }
 
-    /** Releases the native [AaudioOutputProcessor] and resets format tracking state. */
+    /** Releases the native [AaudioOutputProcessor] and resets related state. */
     private fun releaseAaudioStream() {
         aaudioStream?.release()
         aaudioStream = null
@@ -501,6 +511,17 @@ class FelicityAudioSink(
             unmuteDelegateIfNeeded()
         }
         Log.i(TAG, "AAudio stream released")
+    }
+
+    /** Releases the native [OboeOutputProcessor] and resets related state. */
+    private fun releaseOboeStream() {
+        oboeStream?.release()
+        oboeStream = null
+        isOboeStreamActive = false
+        if (!UsbDacManager.isActive) {
+            unmuteDelegateIfNeeded()
+        }
+        Log.i(TAG, "Oboe stream released")
     }
 
     /** Mutes the delegate [DefaultAudioSink] so only the active exclusive output is audible. */
@@ -531,5 +552,12 @@ class FelicityAudioSink(
          */
         @Volatile
         var isAAudioStreamActive: Boolean = false
+
+        /**
+         * Reflects whether the native Oboe stream is currently open and running.
+         * The snapshot builder reads this to show the true hardware state.
+         */
+        @Volatile
+        var isOboeStreamActive: Boolean = false
     }
 }
