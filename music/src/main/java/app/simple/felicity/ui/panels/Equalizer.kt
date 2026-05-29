@@ -65,6 +65,8 @@ class Equalizer : MediaFragment() {
 
         setupViewFlipper(savedInstanceState)
 
+        binding.equalizerScreen.equalizerSliders.mode = FelicityEqualizerSliders.Companion.Mode.PARAMETRIC
+
         // Wire up the EQ switch eagerly — it has no preference read on the hot path
         // because the ViewModel will deliver the real value via initialState below.
         binding.equalizerScreen.equalizerSwitch.setOnCheckedChangeListener { _, isChecked ->

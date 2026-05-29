@@ -35,7 +35,11 @@ import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
 import app.simple.felicity.theme.models.Theme
 import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.cos
 import kotlin.math.exp
+import kotlin.math.ln
+import kotlin.math.sin
 
 /**
  * A 10-band graphic equalizer slider view plus a dedicated pre-amplifier slider,
@@ -114,6 +118,43 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         private const val OVERSCROLL_DECAY_FACTOR = 400f
         private const val MAX_OVERSCROLL_DP = 128f
         private const val TAG = "FelicityEqualizerSliders"
+
+        /** The total angular sweep of a knob in degrees (from min to max). */
+        private const val KNOB_SWEEP_DEG = 270f
+
+        /** Where the knob arc begins, in canvas-angle degrees (clockwise from 3 o'clock). */
+        private const val KNOB_ARC_START_DEG = 135f
+
+        /** Width of each parametric EQ section in dp. */
+        private const val PEQ_SECTION_WIDTH_DP = 192f
+
+        /** Horizontal inset from each section edge to its nearest interactive element. */
+        private const val PEQ_SECTION_H_PADDING_DP = 25f
+
+        /** Minimum Q value exposed by the frequency knob. */
+        const val PEQ_Q_MIN = 0.1f
+
+        /** Maximum Q value exposed by the frequency knob. */
+        const val PEQ_Q_MAX = 10f
+
+        /** Minimum frequency in Hz for the freq knob (log scale). */
+        const val PEQ_FREQ_MIN_HZ = 20f
+
+        /** Maximum frequency in Hz for the freq knob (log scale). */
+        const val PEQ_FREQ_MAX_HZ = 20000f
+
+        /**
+         * Holds the gain, Q, and center frequency for a single parametric EQ band.
+         * All values are in their real units — normalization only happens during drawing.
+         */
+        data class PeqBand(
+                var gain: Float = 0f,
+                var q: Float = 1.0f,
+                var frequencyHz: Float = 1000f
+        )
+
+        /** The available display modes for this equalizer widget. */
+        enum class Mode { GRAPHIC, PARAMETRIC }
     }
 
     // -------------------------------------------------------------------------
@@ -142,6 +183,61 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
     private var maxScroll = 0f
     private var centeredMode = false
     private var centeringOffset = 0f
+
+    // -------------------------------------------------------------------------
+    // Mode and PEQ state
+    // -------------------------------------------------------------------------
+
+    /**
+     * Switches between the 10-band graphic EQ and the parametric EQ.
+     * Changing this triggers a full layout recalculation and redraw.
+     */
+    var mode: Mode = Mode.GRAPHIC
+        set(value) {
+            field = value
+            if (width > 0 && height > 0) recalculateLayout(width, height)
+            invalidate()
+        }
+
+    /** The list of parametric bands the user has added. Starts with two default bands. */
+    private val peqBands = mutableListOf(
+            PeqBand(gain = 0f, q = 1f, frequencyHz = 200f),
+            PeqBand(gain = 0f, q = 1f, frequencyHz = 2000f)
+    )
+
+    /** Which element in a PEQ section is currently being dragged. */
+    private enum class PeqTarget { NONE, GAIN_SLIDER, Q_KNOB, FREQ_KNOB, ADD_BUTTON }
+
+    private var peqTouchTarget = PeqTarget.NONE
+    private var peqTouchBandIndex = -1
+
+    /**
+     * The finger angle captured on the previous MOVE event, used to compute incremental
+     * rotation deltas so the knob always follows the finger direction and never jumps
+     * when the gesture crosses the dead zone at the bottom of the arc.
+     */
+    private var peqKnobPrevAngle = 0f
+
+    /**
+     * Running normalized value (0..1) for the knob that is currently being dragged.
+     * Updated incrementally each frame so small movements accumulate smoothly.
+     */
+    private var peqKnobCurrentNorm = 0f
+
+    /** The band value (gain/q/freq normalized) when a knob drag started. */
+    private var peqKnobValueAtDown = 0f
+
+    /** The gain value of the touched PEQ band at the time the drag started. */
+    private var peqGainAtDown = 0f
+
+    /** Pre-computed section width in pixels for PEQ mode. */
+    private var peqSectionWidthPx = 0f
+
+    /** Pre-computed knob radius in pixels for PEQ mode. */
+    private var peqKnobRadiusPx = 0f
+
+    /** X position of the "Add Band" button center in content space (not view space). */
+    private var peqAddButtonContentX = 0f
 
     // -------------------------------------------------------------------------
     // Overscroll spring / fling
@@ -333,6 +429,58 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
     private val bezierFillPath = Path()
     private val pressRingRect = RectF()
 
+    /** Background arc track drawn behind each PEQ knob's progress arc. */
+    private val knobArcTrackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+    }
+
+    /** Filled arc showing how far a knob has been turned. */
+    private val knobArcProgressPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+    }
+
+    /** Body fill of each PEQ knob circle. */
+    private val knobBodyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+    }
+
+    /** Outer ring stroke on each PEQ knob. */
+    private val knobRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+    }
+
+    /** The small indicator dot inside each knob that shows its rotational position. */
+    private val knobIndicatorPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+    }
+
+    /** Label text drawn below each knob (e.g., "Q" or "FREQ"). */
+    private val knobLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textAlign = Paint.Align.CENTER
+    }
+
+    /**
+     * Tinted background drawn behind each PEQ section so the gain slider and its
+     * two knobs read as a single grouped unit.
+     */
+    private val peqSectionBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+    }
+
+    /** "ADD BAND" button background. */
+    private val addBandButtonPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+    }
+
+    /** Text drawn inside the "ADD BAND" button. */
+    private val addBandTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textAlign = Paint.Align.CENTER
+    }
+
+    private val knobArcRect = RectF()
+
     // -------------------------------------------------------------------------
     // Init
     // -------------------------------------------------------------------------
@@ -401,6 +549,24 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         separatorPaint.strokeWidth = 1f * d
         separatorPaint.alpha = 90
 
+        // PEQ knob paints
+        knobArcTrackPaint.color = trackColor
+        knobArcTrackPaint.strokeWidth = 3f * d
+        knobArcProgressPaint.color = accentColor
+        knobArcProgressPaint.strokeWidth = 3f * d
+        knobBodyPaint.color = trackColor
+        knobRingPaint.color = centerLineColor
+        knobRingPaint.strokeWidth = 1.5f * d
+        knobIndicatorPaint.color = accentColor
+        knobLabelPaint.color = secondaryTextColor
+        knobLabelPaint.textSize = 8.5f * d
+        peqSectionBgPaint.color = accentColor
+        peqSectionBgPaint.alpha = 12
+        addBandButtonPaint.color = accentColor
+        addBandButtonPaint.alpha = 30
+        addBandTextPaint.color = accentColor
+        addBandTextPaint.textSize = 10f * d
+
         // Re-apply shadow layers so the glow color tracks accent/theme changes.
         applyShadowLayers()
     }
@@ -410,6 +576,8 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
             val tf = TypeFace.getBoldTypeFace(context)
             freqTextPaint.typeface = tf
             valueTextPaint.typeface = tf
+            knobLabelPaint.typeface = tf
+            addBandTextPaint.typeface = tf
         }
     }
 
@@ -475,11 +643,25 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         trackBottom = textRegionTop - textGapPx
         trackLength = trackBottom - trackTop
 
-        centeredMode = contentWidth <= availableWidth
-        // centeringOffset includes paddingStart so all column positions automatically
-        // respect horizontal padding without any additional adjustments in the draw methods.
-        centeringOffset = paddingStart.toFloat() + if (centeredMode) (availableWidth - contentWidth) / 2f else 0f
-        maxScroll = if (centeredMode) 0f else (contentWidth - availableWidth).coerceAtLeast(0f)
+        // PEQ geometry: section width and knob sizing.
+        peqSectionWidthPx = PEQ_SECTION_WIDTH_DP * d
+        // The knob lives in the right portion of the section, inset from both horizontal edges.
+        // Allow knobs to be bigger by giving them a larger share of the available zone height.
+        val knobZoneHeight = trackLength * 0.46f
+        val knobZoneWidth = (peqSectionWidthPx * 0.5f - PEQ_SECTION_H_PADDING_DP * d) * 0.9f
+        peqKnobRadiusPx = minOf(knobZoneWidth, knobZoneHeight) * 0.52f
+        knobArcTrackPaint.strokeWidth = peqKnobRadiusPx * 0.18f
+        knobArcProgressPaint.strokeWidth = peqKnobRadiusPx * 0.18f
+        knobRingPaint.strokeWidth = peqKnobRadiusPx * 0.06f
+
+        // Content width for PEQ mode: preamp column + N sections + add-button column.
+        val peqContentWidth = columnWidth + peqSectionWidthPx * peqBands.size + peqSectionWidthPx
+        peqAddButtonContentX = columnWidth + peqSectionWidthPx * peqBands.size + peqSectionWidthPx * 0.5f
+
+        val effectiveContentWidth = if (mode == Mode.PARAMETRIC) peqContentWidth else contentWidth
+        centeredMode = effectiveContentWidth <= availableWidth
+        centeringOffset = paddingStart.toFloat() + if (centeredMode) (availableWidth - effectiveContentWidth) / 2f else 0f
+        maxScroll = if (centeredMode) 0f else (effectiveContentWidth - availableWidth).coerceAtLeast(0f)
         scrollOffset = scrollOffset.coerceIn(0f, maxScroll)
     }
 
@@ -560,6 +742,24 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         }
     }
 
+    /** Returns a snapshot of all parametric bands in their current state. */
+    fun getPeqBands(): List<PeqBand> = peqBands.toList()
+
+    /** Replaces the PEQ band list with the given bands and refreshes the layout. */
+    fun setPeqBands(bands: List<PeqBand>) {
+        peqBands.clear()
+        peqBands.addAll(bands)
+        if (width > 0 && height > 0) recalculateLayout(width, height)
+        invalidate()
+    }
+
+    /** Appends a new PEQ band with default values and scrolls to show it. */
+    fun addPeqBand(band: PeqBand = PeqBand()) {
+        peqBands.add(band)
+        if (width > 0 && height > 0) recalculateLayout(width, height)
+        invalidate()
+    }
+
     // -------------------------------------------------------------------------
     // Geometry helpers
     // -------------------------------------------------------------------------
@@ -602,6 +802,14 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         if (trackLength <= 0f) return
+
+        when (mode) {
+            Mode.GRAPHIC -> drawGraphicMode(canvas)
+            Mode.PARAMETRIC -> drawParametricMode(canvas)
+        }
+    }
+
+    private fun drawGraphicMode(canvas: Canvas) {
         val visibleLeft = -columnWidth
         val visibleRight = width.toFloat() + columnWidth
 
@@ -819,6 +1027,181 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         canvas.drawText(formatGain(preampDisplayGain), cx, valueY, valueTextPaint)
     }
 
+    // -------------------------------------------------------------------------
+    // Parametric EQ drawing
+    // -------------------------------------------------------------------------
+
+    /**
+     * Draws the entire parametric EQ layout: the shared preamp slider on the left,
+     * then one section per PEQ band, then an "Add Band" button at the end.
+     */
+    private fun drawParametricMode(canvas: Canvas) {
+        val viewLeft = -peqSectionWidthPx
+        val viewRight = width.toFloat() + peqSectionWidthPx
+
+        // Preamp column is shared with graphic mode and stays on the left.
+        drawPreampBackground(canvas)
+        drawPreampSeparator(canvas)
+        drawPreampTrackAndThumb(canvas)
+        drawPreampLabel(canvas)
+
+        // Draw each parametric band section.
+        for (i in peqBands.indices) {
+            val cx = peqBandSectionCenterX(i)
+            if (cx < viewLeft || cx > viewRight) continue
+            drawPeqSection(canvas, i, cx)
+        }
+
+        // "Add Band" button appears after the last section.
+        val addX = centeringOffset + peqAddButtonContentX - scrollOffset
+        if (addX in viewLeft..viewRight) {
+            drawAddBandButton(canvas, addX)
+        }
+    }
+
+    /**
+     * Returns the horizontal center of a PEQ band section in view coordinates.
+     * Sections start right after the preamp column.
+     */
+    private fun peqBandSectionCenterX(bandIndex: Int): Float =
+        centeringOffset + columnWidth + bandIndex * peqSectionWidthPx + peqSectionWidthPx * 0.5f - scrollOffset
+
+    /**
+     * Draws one PEQ band section: a tinted background, a gain slider on the left side,
+     * and two stacked knobs (Q on top, frequency on bottom) on the right side.
+     */
+    private fun drawPeqSection(canvas: Canvas, bandIndex: Int, cx: Float) {
+        val band = peqBands[bandIndex]
+        val halfSection = peqSectionWidthPx * 0.5f
+        val hPad = PEQ_SECTION_H_PADDING_DP * d
+
+        // Tinted background for this section.
+        val bgLeft = cx - halfSection + 3f * d
+        val bgRight = cx + halfSection - 3f * d
+        canvas.drawRoundRect(bgLeft, trackTop - sliderVerticalPaddingPx * 0.5f,
+                             bgRight, (height - paddingBottom).toFloat(),
+                             8f * d, 8f * d, peqSectionBgPaint)
+
+        // Gain slider sits in the left half of the section, inset from the left edge.
+        val sliderCx = cx - halfSection + hPad + thumbHalfWidthPx
+        val zeroY = gainToThumbY(0f)
+        val thumbY = gainToThumbY(band.gain.coerceIn(MIN_DB, MAX_DB))
+        drawColumnTrackAndThumb(canvas, sliderCx, thumbY, zeroY, 1f)
+
+        // Draw the gain value label below the slider.
+        val freqY = textRegionTop + freqTextPaint.fontSpacing * 0.85f
+        val valueY = freqY + freqTextPaint.fontSpacing
+        valueTextPaint.color = if (abs(band.gain) < 0.05f) secondaryTextColor else accentColor
+        canvas.drawText(formatGain(band.gain), sliderCx, valueY, valueTextPaint)
+        val savedFreqColor = freqTextPaint.color
+        freqTextPaint.color = secondaryTextColor
+        canvas.drawText("GAIN", sliderCx, freqY, freqTextPaint)
+        freqTextPaint.color = savedFreqColor
+
+        // Knobs are centered in the right half, inset from the right edge.
+        val knobCx = cx + halfSection - hPad - peqKnobRadiusPx
+        val qKnobCy = trackTop + trackLength * 0.28f
+        val freqKnobCy = trackTop + trackLength * 0.72f
+
+        val qNorm = qToNormalized(band.q)
+        drawPeqKnob(canvas, knobCx, qKnobCy, qNorm, "Q")
+
+        val freqNorm = freqToNormalized(band.frequencyHz)
+        drawPeqKnob(canvas, knobCx, freqKnobCy, freqNorm, formatFreqLabel(band.frequencyHz))
+    }
+
+    /**
+     * Draws a single round knob at ([cx], [cy]) with a progress arc and a label below it.
+     * The [normalizedValue] (0..1) controls how much of the 270-degree arc is filled.
+     */
+    private fun drawPeqKnob(canvas: Canvas, cx: Float, cy: Float, normalizedValue: Float, label: String) {
+        val r = peqKnobRadiusPx
+        val arcInset = r * 0.22f
+        val arcR = r + arcInset
+
+        // Background arc track.
+        knobArcRect.set(cx - arcR, cy - arcR, cx + arcR, cy + arcR)
+        canvas.drawArc(knobArcRect, KNOB_ARC_START_DEG, KNOB_SWEEP_DEG, false, knobArcTrackPaint)
+
+        // Progress arc (accent color, swept from start up to current value).
+        val sweepAngle = normalizedValue * KNOB_SWEEP_DEG
+        if (sweepAngle > 0f) {
+            canvas.drawArc(knobArcRect, KNOB_ARC_START_DEG, sweepAngle, false, knobArcProgressPaint)
+        }
+
+        // Knob body circle.
+        knobBodyPaint.color = trackColor
+        canvas.drawCircle(cx, cy, r, knobBodyPaint)
+
+        // Ring outline.
+        canvas.drawCircle(cx, cy, r, knobRingPaint)
+
+        // Indicator dot: rotates from 7 o'clock (min) to 5 o'clock (max) clockwise.
+        val indicatorAngleDeg = KNOB_ARC_START_DEG + normalizedValue * KNOB_SWEEP_DEG
+        val indicatorAngleRad = Math.toRadians(indicatorAngleDeg.toDouble())
+        val indicatorDist = r * 0.6f
+        val dotX = cx + indicatorDist * cos(indicatorAngleRad).toFloat()
+        val dotY = cy + indicatorDist * sin(indicatorAngleRad).toFloat()
+        knobIndicatorPaint.color = accentColor
+        canvas.drawCircle(dotX, dotY, r * 0.12f, knobIndicatorPaint)
+
+        // Label below the knob + arc.
+        val labelY = cy + arcR + knobLabelPaint.fontSpacing * 0.9f
+        canvas.drawText(label, cx, labelY, knobLabelPaint)
+    }
+
+    /**
+     * Draws the "ADD BAND" button as a rounded rectangle with a plus label,
+     * centered at ([cx], mid-track).
+     */
+    private fun drawAddBandButton(canvas: Canvas, cx: Float) {
+        val hPad = PEQ_SECTION_H_PADDING_DP * d
+        // Width fills the section minus the same horizontal padding used by the other sections.
+        val btnW = peqSectionWidthPx - hPad * 2f
+        // Height is just enough to be comfortably tappable — one text line with padding.
+        val btnH = addBandTextPaint.fontSpacing + 14f * d
+        val btnCy = trackTop + trackLength * 0.5f
+        val left = cx - btnW * 0.5f
+        val top = btnCy - btnH * 0.5f
+        canvas.drawRoundRect(left, top, left + btnW, top + btnH, 10f * d, 10f * d, addBandButtonPaint)
+        addBandTextPaint.color = accentColor
+        canvas.drawText("＋ ADD BAND", cx, btnCy + addBandTextPaint.fontSpacing * 0.36f, addBandTextPaint)
+    }
+
+    /** Maps Q factor (0.1..10) to a normalized 0..1 value on a log scale. */
+    private fun qToNormalized(q: Float): Float {
+        val clamped = q.coerceIn(PEQ_Q_MIN, PEQ_Q_MAX)
+        return (ln(clamped.toDouble()) - ln(PEQ_Q_MIN.toDouble())).toFloat() /
+                (ln(PEQ_Q_MAX.toDouble()) - ln(PEQ_Q_MIN.toDouble())).toFloat()
+    }
+
+    /** Converts a normalized 0..1 value back to a Q factor on a log scale. */
+    private fun normalizedToQ(norm: Float): Float {
+        val logMin = ln(PEQ_Q_MIN.toDouble())
+        val logMax = ln(PEQ_Q_MAX.toDouble())
+        return exp(logMin + norm.coerceIn(0f, 1f) * (logMax - logMin)).toFloat()
+    }
+
+    /** Maps a frequency in Hz (20..20000) to a normalized 0..1 value on a log scale. */
+    private fun freqToNormalized(hz: Float): Float {
+        val clamped = hz.coerceIn(PEQ_FREQ_MIN_HZ, PEQ_FREQ_MAX_HZ)
+        return (ln(clamped.toDouble()) - ln(PEQ_FREQ_MIN_HZ.toDouble())).toFloat() /
+                (ln(PEQ_FREQ_MAX_HZ.toDouble()) - ln(PEQ_FREQ_MIN_HZ.toDouble())).toFloat()
+    }
+
+    /** Converts a normalized 0..1 value back to a frequency in Hz on a log scale. */
+    private fun normalizedToFreq(norm: Float): Float {
+        val logMin = ln(PEQ_FREQ_MIN_HZ.toDouble())
+        val logMax = ln(PEQ_FREQ_MAX_HZ.toDouble())
+        return exp(logMin + norm.coerceIn(0f, 1f) * (logMax - logMin)).toFloat()
+    }
+
+    /** Returns a short human-readable frequency string (e.g., "1.2k", "250"). */
+    private fun formatFreqLabel(hz: Float): String = when {
+        hz >= 1000f -> "${"%.1f".format(hz / 1000f)}k"
+        else -> "${hz.toInt()}"
+    }
+
     private fun formatGain(gain: Float): String = when {
         abs(gain) < 0.05f -> "0"
         gain > 0f -> "+${"%.1f".format(gain)}"
@@ -830,6 +1213,8 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
     // -------------------------------------------------------------------------
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (mode == Mode.PARAMETRIC) return handlePeqTouchEvent(event)
+
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 // Only claim the event when the finger lands inside the slider content area.
@@ -976,6 +1361,258 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
     }
 
     // -------------------------------------------------------------------------
+    // Parametric EQ touch handling
+    // -------------------------------------------------------------------------
+
+    /**
+     * Handles all touch events when in [Mode.PARAMETRIC]. Identifies whether the user
+     * is touching a gain slider, one of the two knobs, or the "Add Band" button, and
+     * routes the gesture accordingly.
+     */
+    private fun handlePeqTouchEvent(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                if (!isTouchWithinPeqContentBounds(event.x)) return false
+                peqHandleDown(event)
+            }
+            MotionEvent.ACTION_MOVE -> peqHandleMove(event)
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> peqHandleUp(event)
+        }
+        performClick()
+        return true
+    }
+
+    /**
+     * Returns true when [x] falls within the PEQ content area
+     * (preamp column + all band sections + add button).
+     */
+    private fun isTouchWithinPeqContentBounds(x: Float): Boolean {
+        val contentLeft = centeringOffset - scrollOffset
+        val contentRight = contentLeft + columnWidth + peqSectionWidthPx * peqBands.size + peqSectionWidthPx
+        return x >= contentLeft && x <= contentRight
+    }
+
+    private fun peqHandleDown(event: MotionEvent) {
+        touchStartX = event.x
+        touchStartY = event.y
+        scrollOffsetAtDown = scrollOffset
+        isScrollGesture = false
+        isBandGesture = false
+        peqTouchTarget = PeqTarget.NONE
+        peqTouchBandIndex = -1
+        activeBandIndex = NO_ACTIVE_BAND
+
+        if (scrollSpring.isRunning) scrollSpring.cancel()
+        if (scrollFling.isRunning) scrollFling.cancel()
+
+        velocityTracker?.recycle()
+        velocityTracker = VelocityTracker.obtain()
+        velocityTracker?.addMovement(event)
+
+        val contentX = event.x - centeringOffset + scrollOffset
+
+        // Preamp slider column.
+        if (contentX >= 0f && contentX < columnWidth) {
+            activeBandIndex = PREAMP_BAND_INDEX
+            thumbYAtDown = gainToThumbY(preampDisplayGain)
+            startBandPressAnimation(PREAMP_BAND_INDEX, true)
+            context.vibrateEffect(VibrationEffect.EFFECT_TICK, TAG)
+            parent?.requestDisallowInterceptTouchEvent(true)
+            return
+        }
+
+        // One of the PEQ band sections.
+        val sectionIndex = ((contentX - columnWidth) / peqSectionWidthPx).toInt()
+        if (sectionIndex in peqBands.indices) {
+            val cx = peqBandSectionCenterX(sectionIndex)
+            val halfSection = peqSectionWidthPx * 0.5f
+            val hPad = PEQ_SECTION_H_PADDING_DP * d
+            val sliderCx = cx - halfSection + hPad + thumbHalfWidthPx
+            val knobCx = cx + halfSection - hPad - peqKnobRadiusPx
+            val qKnobCy = trackTop + trackLength * 0.28f
+            val freqKnobCy = trackTop + trackLength * 0.72f
+            val hitRadius = peqKnobRadiusPx * 1.4f
+
+            when {
+                dist(event.x, event.y, knobCx, qKnobCy) <= hitRadius -> {
+                    peqTouchTarget = PeqTarget.Q_KNOB
+                    peqTouchBandIndex = sectionIndex
+                    peqKnobPrevAngle = angleDeg(event.x - knobCx, event.y - qKnobCy)
+                    peqKnobCurrentNorm = qToNormalized(peqBands[sectionIndex].q)
+                    peqKnobValueAtDown = peqKnobCurrentNorm
+                    context.vibrateEffect(VibrationEffect.EFFECT_TICK, TAG)
+                }
+                dist(event.x, event.y, knobCx, freqKnobCy) <= hitRadius -> {
+                    peqTouchTarget = PeqTarget.FREQ_KNOB
+                    peqTouchBandIndex = sectionIndex
+                    peqKnobPrevAngle = angleDeg(event.x - knobCx, event.y - freqKnobCy)
+                    peqKnobCurrentNorm = freqToNormalized(peqBands[sectionIndex].frequencyHz)
+                    peqKnobValueAtDown = peqKnobCurrentNorm
+                    context.vibrateEffect(VibrationEffect.EFFECT_TICK, TAG)
+                }
+                abs(event.x - sliderCx) <= thumbHalfWidthPx * 2.5f -> {
+                    peqTouchTarget = PeqTarget.GAIN_SLIDER
+                    peqTouchBandIndex = sectionIndex
+                    peqGainAtDown = peqBands[sectionIndex].gain
+                    thumbYAtDown = gainToThumbY(peqGainAtDown)
+                    context.vibrateEffect(VibrationEffect.EFFECT_TICK, TAG)
+                }
+            }
+            parent?.requestDisallowInterceptTouchEvent(true)
+            return
+        }
+
+        // "Add Band" button.
+        val addBtnViewX = centeringOffset + peqAddButtonContentX - scrollOffset
+        if (abs(event.x - addBtnViewX) <= peqSectionWidthPx * 0.4f &&
+                abs(event.y - (trackTop + trackLength * 0.5f)) <= peqKnobRadiusPx * 1.5f) {
+            peqTouchTarget = PeqTarget.ADD_BUTTON
+        }
+
+        parent?.requestDisallowInterceptTouchEvent(true)
+    }
+
+    private fun peqHandleMove(event: MotionEvent) {
+        velocityTracker?.addMovement(event)
+        val dx = event.x - touchStartX
+        val dy = event.y - touchStartY
+
+        // Preamp slider drag.
+        if (activeBandIndex == PREAMP_BAND_INDEX) {
+            if (!isBandGesture && !isScrollGesture) {
+                if (abs(dy) > touchSlop) isBandGesture = true
+                else if (abs(dx) > touchSlop) isScrollGesture = true
+            }
+            if (isBandGesture) {
+                val newGain = thumbYToGain(thumbYAtDown + dy).coerceIn(MIN_DB, MAX_DB)
+                if (newGain != preampGain) {
+                    if (preampGain.toInt() != newGain.toInt()) context.vibrateEffect(VibrationEffect.EFFECT_CLICK, TAG)
+                    preampGain = newGain; preampDisplayGain = newGain
+                    bandChangedListener?.onBandChanged(PREAMP_BAND_INDEX, newGain, true)
+                    invalidate()
+                }
+            } else if (isScrollGesture && !centeredMode) {
+                startBandPressAnimation(PREAMP_BAND_INDEX, false)
+                scrollOffset = applyOverscrollResistance(scrollOffsetAtDown - dx)
+                invalidate()
+            }
+            return
+        }
+
+        when (peqTouchTarget) {
+            PeqTarget.GAIN_SLIDER -> {
+                if (!isBandGesture && !isScrollGesture) {
+                    if (abs(dy) > touchSlop) isBandGesture = true
+                    else if (abs(dx) > touchSlop) isScrollGesture = true
+                }
+                if (isBandGesture && peqTouchBandIndex >= 0) {
+                    val newGain = thumbYToGain(thumbYAtDown + dy).coerceIn(MIN_DB, MAX_DB)
+                    val band = peqBands[peqTouchBandIndex]
+                    if (newGain != band.gain) {
+                        if (band.gain.toInt() != newGain.toInt()) context.vibrateEffect(VibrationEffect.EFFECT_CLICK, TAG)
+                        band.gain = newGain
+                        bandChangedListener?.onBandChanged(peqTouchBandIndex, newGain, true)
+                        invalidate()
+                    }
+                } else if (isScrollGesture && !centeredMode) {
+                    scrollOffset = applyOverscrollResistance(scrollOffsetAtDown - dx)
+                    invalidate()
+                }
+            }
+            PeqTarget.Q_KNOB, PeqTarget.FREQ_KNOB -> {
+                if (peqTouchBandIndex < 0) return
+                val cx = peqBandSectionCenterX(peqTouchBandIndex)
+                val halfSection = peqSectionWidthPx * 0.5f
+                val hPad = PEQ_SECTION_H_PADDING_DP * d
+                val knobCx = cx + halfSection - hPad - peqKnobRadiusPx
+                val knobCy = if (peqTouchTarget == PeqTarget.Q_KNOB)
+                    trackTop + trackLength * 0.28f else trackTop + trackLength * 0.72f
+
+                // Compute the angle delta from the previous frame rather than from the
+                // initial touch-down position. This means the knob always moves in the
+                // direction the finger is rotating, and crossing the dead zone at the
+                // bottom of the arc never causes a sudden value jump.
+                val currentAngle = angleDeg(event.x - knobCx, event.y - knobCy)
+                var delta = currentAngle - peqKnobPrevAngle
+                // Wrap delta to the nearest direction so a slow pass through 0°/360° is smooth.
+                if (delta > 180f) delta -= 360f
+                if (delta < -180f) delta += 360f
+                peqKnobPrevAngle = currentAngle
+
+                peqKnobCurrentNorm = (peqKnobCurrentNorm + delta / KNOB_SWEEP_DEG).coerceIn(0f, 1f)
+                val band = peqBands[peqTouchBandIndex]
+                if (peqTouchTarget == PeqTarget.Q_KNOB) {
+                    val newQ = normalizedToQ(peqKnobCurrentNorm)
+                    if (abs(newQ - band.q) > 0.01f) {
+                        band.q = newQ; invalidate()
+                    }
+                } else {
+                    val newFreq = normalizedToFreq(peqKnobCurrentNorm)
+                    if (abs(newFreq - band.frequencyHz) > 0.5f) {
+                        band.frequencyHz = newFreq; invalidate()
+                    }
+                }
+            }
+            PeqTarget.NONE, PeqTarget.ADD_BUTTON -> {
+                // Treat as a plain horizontal scroll when no specific element was hit.
+                if (!isScrollGesture && abs(dx) > touchSlop) isScrollGesture = true
+                if (isScrollGesture && !centeredMode) {
+                    scrollOffset = applyOverscrollResistance(scrollOffsetAtDown - dx)
+                    invalidate()
+                }
+            }
+        }
+    }
+
+    private fun peqHandleUp(event: MotionEvent) {
+        if (activeBandIndex == PREAMP_BAND_INDEX) startBandPressAnimation(PREAMP_BAND_INDEX, false)
+
+        if (peqTouchTarget == PeqTarget.ADD_BUTTON) {
+            val dx = event.x - touchStartX
+            val dy = event.y - touchStartY
+            if (abs(dx) < touchSlop * 2 && abs(dy) < touchSlop * 2) {
+                addPeqBand()
+                context.vibrateEffect(VibrationEffect.EFFECT_TICK, TAG)
+            }
+        }
+
+        if (isScrollGesture && !centeredMode) {
+            velocityTracker?.computeCurrentVelocity(1000)
+            val flingVelocity = -(velocityTracker?.xVelocity ?: 0f)
+            if (abs(flingVelocity) > 50f) {
+                if (scrollFling.isRunning) scrollFling.cancel()
+                scrollFling.setMinValue(-maxOverscrollPx)
+                scrollFling.setMaxValue(maxScroll + maxOverscrollPx)
+                scrollFling.setStartVelocity(flingVelocity)
+                scrollFling.setStartValue(scrollOffset)
+                scrollFling.start()
+            } else {
+                snapScrollToBounds()
+            }
+        }
+
+        velocityTracker?.recycle(); velocityTracker = null
+        activeBandIndex = NO_ACTIVE_BAND
+        peqTouchTarget = PeqTarget.NONE
+        peqTouchBandIndex = -1
+        isScrollGesture = false; isBandGesture = false
+        parent?.requestDisallowInterceptTouchEvent(false)
+    }
+
+    /** Returns the angle in degrees (canvas convention: 0° = right, clockwise) for the vector (dx, dy). */
+    private fun angleDeg(dx: Float, dy: Float): Float {
+        val deg = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())).toFloat()
+        return if (deg < 0f) deg + 360f else deg
+    }
+
+    /** Returns the Euclidean distance between two points. */
+    private fun dist(x1: Float, y1: Float, x2: Float, y2: Float): Float {
+        val dx = x1 - x2;
+        val dy = y1 - y2
+        return kotlin.math.sqrt((dx * dx + dy * dy).toDouble()).toFloat()
+    }
+
+    // -------------------------------------------------------------------------
     // Overscroll
     // -------------------------------------------------------------------------
 
@@ -1115,3 +1752,4 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         setMeasuredDimension(resolvedWidth, resolvedHeight)
     }
 }
+
