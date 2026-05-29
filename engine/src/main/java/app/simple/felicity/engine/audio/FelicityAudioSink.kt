@@ -436,8 +436,7 @@ class FelicityAudioSink(
      *
      * @param snapshot  A read-only view of the raw PCM bytes for the current render cycle.
      * @param encoding  The Media3 encoding constant that describes the sample layout.
-     */
-    /**
+     *
      * Fills the reusable [floatScratchBuffer] with the PCM content of [snapshot] and
      * returns how many samples were written. The array is only reallocated when the current
      * frame needs more capacity than what we have — so the common steady-state case
