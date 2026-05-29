@@ -16,4 +16,8 @@
         <item quantity="one">%d Volta</item>
         <item quantity="other">%d Volte</item>
     </plurals>
+    <plurals name="number_of_bookmarks">
+        <item quantity="one">%d Preferito</item>
+        <item quantity="other">%d Preferiti</item>
+    </plurals>
 </resources>
