@@ -23,6 +23,8 @@ object LocaleUtils {
             Lang("autoSystemLanguageString" /* Placeholder */, "default"),
             // English (United States)
             Lang("English (US)", "en-US"),
+            // Russian
+            Lang("Русский (Russian)", "ru-RU"),
     )
 
     fun getAppLocale(): Locale {
