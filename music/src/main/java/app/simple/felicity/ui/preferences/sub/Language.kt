@@ -36,7 +36,7 @@ class Language : MediaFragment() {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
             ConfigurationPreferences.LANGUAGE -> {
-                (binding.recyclerView.adapter as? AdapterLanguage)?.notifyDataSetChanged()
+                requireActivity().recreate()
             }
         }
     }
