@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="number_of_songs">
+        <item quantity="one">%d Şarkı</item>
+        <item quantity="other">%d Şarkı</item>
+    </plurals>
+    <plurals name="songs_selected">
+        <item quantity="one">%d Şarkı Seçildi</item>
+        <item quantity="other">%d Şarkı Seçildi</item>
+    </plurals>
+    <plurals name="number_of_albums">
+        <item quantity="one">%d Albüm</item>
+        <item quantity="other">%d Albüm</item>
+    </plurals>
+    <plurals name="total_times">
+        <item quantity="one">%d Kez</item>
+        <item quantity="other">%d Kez</item>
+    </plurals>
+    <plurals name="number_of_bookmarks">
+        <item quantity="one">%d Yer İşareti</item>
+        <item quantity="other">%d Yer İşareti</item>
+    </plurals>
+</resources>
