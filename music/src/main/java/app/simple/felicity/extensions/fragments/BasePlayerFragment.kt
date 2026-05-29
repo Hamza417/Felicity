@@ -29,6 +29,7 @@ import app.simple.felicity.dialogs.app.AudioPipelineDialog.Companion.showAudioPi
 import app.simple.felicity.dialogs.player.VisualizerConfig.Companion.showVisualizerConfig
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.engine.managers.VisualizerManager
+import app.simple.felicity.engine.usb.UsbDacManager
 import app.simple.felicity.engine.utils.PcmInfoFormatter
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.preferences.AlbumArtPreferences
@@ -299,7 +300,7 @@ abstract class BasePlayerFragment : MediaFragment() {
 
         pcmInfo.setOnClickListener {
             // TODO - remove this when we have audio processor support on 32bit mode
-            if (AudioPreferences.shouldShowProcessors()) {
+            if (AudioPreferences.shouldShowProcessors() || UsbDacManager.isActive) {
                 showAudioPipeline(anchorView = pcmInfo)
             } else {
                 showWarning("All processors are disabled. PCM info is not available in 32-bit output mode.")
@@ -359,7 +360,7 @@ abstract class BasePlayerFragment : MediaFragment() {
         }
 
         equalizer.setOnClickListener {
-            if (AudioPreferences.shouldShowProcessors()) {
+            if (AudioPreferences.shouldShowProcessors() || UsbDacManager.isActive) {
                 openFragment(Equalizer.newInstance(), Equalizer.TAG)
             } else {
                 showWarning("All processors are disabled. EQ is not available in 32-bit output mode.")
@@ -367,7 +368,7 @@ abstract class BasePlayerFragment : MediaFragment() {
         }
 
         visualizerButton.setOnClickListener {
-            if (AudioPreferences.shouldShowProcessors()) {
+            if (AudioPreferences.shouldShowProcessors() || UsbDacManager.isActive) {
                 childFragmentManager.showVisualizerConfig()
             } else {
                 showWarning("All processors are disabled. Visualizers are not available in 32-bit output mode.")

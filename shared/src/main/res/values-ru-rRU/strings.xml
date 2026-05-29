@@ -336,7 +336,6 @@
     <!-- AAudio low-latency output -->
     <string name="output">Вывод</string>
     <string name="aaudio_enabled">AAudio (малая задержка)</string>
-    <string name="aaudio_enabled_summary">Использует API AAudio для прямого вывода через HAL с значительно сниженной задержкой.</string>
     <string name="audio_output_mode">API аудиовывода</string>
     <string name="prefer_media_store_art">Обложки альбомов из MediaStore</string>
     <string name="prefer_media_store_art_summary">Использует обложки альбомов из MediaStore, если они доступны, вместо сканирования аудиофайлов. Для новых треков обложка может отобразиться с задержкой до обновления MediaStore.</string>
