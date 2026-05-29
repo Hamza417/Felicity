@@ -339,7 +339,6 @@
     <string name="audio_output_mode">API аудиовывода</string>
     <string name="prefer_media_store_art">Обложки альбомов из MediaStore</string>
     <string name="prefer_media_store_art_summary">Использует обложки альбомов из MediaStore, если они доступны, вместо сканирования аудиофайлов. Для новых треков обложка может отобразиться с задержкой до обновления MediaStore.</string>
-    <string name="aaudio_warning">AAudio в данный момент является экспериментальной функцией. Корректная работа на всех устройствах не гарантируется.</string>
     <string name="album_art_light">Обложка альбома (светлая)</string>
     <string name="album_art_dark">Обложка альбома (темная)</string>
     <string name="visualizer_latency">Визуализатор Milkdrop</string>

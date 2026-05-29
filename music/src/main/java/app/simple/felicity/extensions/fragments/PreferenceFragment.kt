@@ -595,7 +595,7 @@ abstract class PreferenceFragment : MediaFragment() {
         val decoderHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.decoder)
 
         val currentDecoder = Preference(
-                title = R.string.audio_pipeline,
+                title = R.string.decoder,
                 summary = R.string.audio_pipeline_summary,
                 icon = R.drawable.ic_memory,
                 type = PreferenceType.POPUP,
@@ -646,65 +646,6 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
-        val playbackHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.playback)
-
-        val hiresToggle = Preference(
-                title = R.string.high_resolution_output,
-                summary = R.string.high_resolution_output_summary,
-                icon = R.drawable.ic_hires_12dp,
-                type = PreferenceType.SWITCH,
-                onPreferenceAction = { view, callback ->
-                    AudioPreferences.setHiresOutput((view as FelicitySwitch).isChecked)
-                },
-                valueProvider = Supplier {
-                    AudioPreferences.isHiresOutputEnabled()
-                }
-        )
-
-        val hiresWarning = Preference(
-                title = R.string.hires_warning,
-                type = PreferenceType.WARN
-        )
-
-        val stereoDownmixing = Preference(
-                title = R.string.force_stereo_downmixing,
-                summary = R.string.force_stereo_downmixing_summary,
-                icon = R.drawable.ic_speaker,
-                type = PreferenceType.SWITCH,
-                onPreferenceAction = { view, callback ->
-                    AudioPreferences.setIsStereoDownmixForced((view as FelicitySwitch).isChecked)
-                },
-                valueProvider = Supplier {
-                    AudioPreferences.isStereoDownmixForced()
-                }
-        )
-
-        val gaplessToggle = Preference(
-                title = R.string.gapless_playback,
-                summary = R.string.gapless_playback_summary,
-                icon = R.drawable.ic_join,
-                type = PreferenceType.SWITCH,
-                onPreferenceAction = { view, callback ->
-                    AudioPreferences.setGaplessPlayback((view as FelicitySwitch).isChecked)
-                },
-                valueProvider = Supplier {
-                    AudioPreferences.isGaplessPlaybackEnabled()
-                }
-        )
-
-        val skipSilenceToggle = Preference(
-                title = R.string.skip_silence,
-                summary = R.string.skip_silence_summary,
-                icon = R.drawable.ic_skip,
-                type = PreferenceType.SWITCH,
-                onPreferenceAction = { view, callback ->
-                    AudioPreferences.setSkipSilence((view as FelicitySwitch).isChecked)
-                },
-                valueProvider = Supplier {
-                    AudioPreferences.isSkipSilenceEnabled()
-                }
-        )
-
         val outputHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.output)
 
         /**
@@ -712,10 +653,10 @@ abstract class PreferenceFragment : MediaFragment() {
          * to the hardware. AudioTrack is the safe default; AAudio bypasses the mixer for
          * lower latency; Oboe picks the best available API automatically at runtime.
          */
-        val aaudioToggle = Preference(
+        val sinkPopup = Preference(
                 title = R.string.output_sink,
                 summary = R.string.output_sink_summary,
-                icon = R.drawable.ic_timer,
+                icon = R.drawable.ic_speaker,
                 type = PreferenceType.POPUP,
                 valueProvider = {
                     when (AudioPreferences.getOutputSink()) {
@@ -754,9 +695,63 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
-        val aaudioWarning = Preference(
-                title = R.string.aaudio_warning,
+        val playbackHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.playback)
+
+        val hiresToggle = Preference(
+                title = R.string.high_resolution_output,
+                summary = R.string.high_resolution_output_summary,
+                icon = R.drawable.ic_hires_12dp,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    AudioPreferences.setHiresOutput((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    AudioPreferences.isHiresOutputEnabled()
+                }
+        )
+
+        val hiresWarning = Preference(
+                title = R.string.hires_warning,
                 type = PreferenceType.WARN
+        )
+
+        val stereoDownmixing = Preference(
+                title = R.string.force_stereo_downmixing,
+                summary = R.string.force_stereo_downmixing_summary,
+                icon = R.drawable.ic_headset,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    AudioPreferences.setIsStereoDownmixForced((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    AudioPreferences.isStereoDownmixForced()
+                }
+        )
+
+        val gaplessToggle = Preference(
+                title = R.string.gapless_playback,
+                summary = R.string.gapless_playback_summary,
+                icon = R.drawable.ic_join,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    AudioPreferences.setGaplessPlayback((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    AudioPreferences.isGaplessPlaybackEnabled()
+                }
+        )
+
+        val skipSilenceToggle = Preference(
+                title = R.string.skip_silence,
+                summary = R.string.skip_silence_summary,
+                icon = R.drawable.ic_skip,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    AudioPreferences.setSkipSilence((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    AudioPreferences.isSkipSilenceEnabled()
+                }
         )
 
         val replayGainHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.replay_gain)
@@ -826,10 +821,9 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(currentDecoder)
         preferences.add(fallbackToSWToggle)
         preferences.add(outputHeader)
-        preferences.add(aaudioToggle)
-        preferences.add(aaudioWarning)
-        preferences.add(playbackHeader)
+        preferences.add(sinkPopup)
         preferences.add(hiresToggle)
+        preferences.add(playbackHeader)
         preferences.add(hiresWarning)
         preferences.add(stereoDownmixing)
         preferences.add(gaplessToggle)

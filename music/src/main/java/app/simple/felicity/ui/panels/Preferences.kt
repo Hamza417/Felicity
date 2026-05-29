@@ -14,9 +14,9 @@ import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.ui.preferences.main.About
 import app.simple.felicity.ui.preferences.main.Accessibility
 import app.simple.felicity.ui.preferences.main.Appearance
+import app.simple.felicity.ui.preferences.main.AudioEngine
 import app.simple.felicity.ui.preferences.main.Behavior
 import app.simple.felicity.ui.preferences.main.Configuration
-import app.simple.felicity.ui.preferences.main.Engine
 import app.simple.felicity.ui.preferences.main.Library
 import app.simple.felicity.ui.preferences.main.Purchase
 import app.simple.felicity.ui.preferences.main.UserInterface
@@ -73,7 +73,7 @@ class Preferences : MediaFragment() {
                             openFragment(Behavior.newInstance(), Behavior.TAG)
                         }
                         R.string.audio -> {
-                            openFragment(Engine.newInstance(), Engine.TAG)
+                            openFragment(AudioEngine.newInstance(), AudioEngine.TAG)
                         }
                         R.string.library -> {
                             openFragment(Library.newInstance(), Library.TAG)

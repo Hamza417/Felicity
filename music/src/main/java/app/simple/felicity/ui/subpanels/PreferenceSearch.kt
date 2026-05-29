@@ -25,7 +25,7 @@ import kotlinx.coroutines.launch
  * A dedicated panel that allows users to search across all application preferences in real time.
  *
  * On opening, the panel merges the preference items from every category panel (Appearance,
- * User Interface, Behavior, Engine, Library, Accessibility, and About) into a single flat list.
+ * User Interface, Behavior, AudioEngine, Library, Accessibility, and About) into a single flat list.
  * Structural items such as [app.simple.felicity.enums.PreferenceType.HEADER] and [app.simple.felicity.enums.PreferenceType.SUB_HEADER] are excluded
  * because they carry no actionable content of their own.
  *
