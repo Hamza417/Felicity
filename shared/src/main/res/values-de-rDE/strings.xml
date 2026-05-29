@@ -338,7 +338,7 @@
 
     <!-- AAudio low-latency output -->
     <string name="output">Ausgabe</string>
-    <string name="aaudio_enabled">AAudio</string>
+
     <string name="aaudio_desc">Umgeht den Android-Audiomixer und schreibt für geringere Latenz direkt auf die Hardware.</string>
     <string name="audio_output_mode">Ausgabe-API</string>
     <string name="output_sink">Ausgabe-Sink</string>

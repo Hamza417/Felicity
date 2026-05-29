@@ -20,6 +20,10 @@
     <string name="fisher_yates" translatable="false">Fisher-Yates</string>
     <string name="miller" translatable="false">Miller</string>
     <string name="lrc_timestamp_hint" translatable="false">00:00.000</string>
+    <string name="aaudio_enabled" translatable="false">AAudio</string>
+    <string name="gumroad" translatable="false">Gumroad</string>
+    <string name="oboe" translatable="false">Oboe</string>
+    <string name="audiotrack" translatable="false">AudioTrack</string>
 
     <!-- Audio Pipeline Dialog — channel display values -->
     <string name="channel_mono" translatable="false">1 (Mono)</string>
