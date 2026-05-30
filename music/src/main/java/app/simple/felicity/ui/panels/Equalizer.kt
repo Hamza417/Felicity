@@ -129,7 +129,14 @@ class Equalizer : MediaFragment() {
                             }
                             R.string.reset -> withSureDialog { sure ->
                                 if (sure) {
-                                    EqualizerManager.resetAllBands()
+                                    if (EqualizerPreferences.isParametricEqMode()) {
+                                        // In PEQ mode we keep the band layout (frequency + Q)
+                                        // and only zero the gains — the user's carefully placed
+                                        // nodes stay where they are, just silenced.
+                                        EqualizerManager.resetPeqGains()
+                                    } else {
+                                        EqualizerManager.resetAllBands()
+                                    }
                                     EqualizerPreferences.setPreampDb(0f)
                                 }
                             }

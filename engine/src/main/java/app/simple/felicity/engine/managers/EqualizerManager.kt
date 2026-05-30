@@ -195,7 +195,7 @@ object EqualizerManager {
     fun getAllGains(): FloatArray = _bandGainsFlow.value.copyOf()
 
     /**
-     * Resets all 10 bands to 0 dB (flat EQ), persists the flat state, resets the
+     * Resets all 10 graphic EQ bands to 0 dB (flat), persists the flat state, resets the
      * processor, and updates [bandGainsFlow].
      */
     fun resetAllBands() {
@@ -203,6 +203,19 @@ object EqualizerManager {
         EqualizerPreferences.setAllBandGains(flat)
         processor?.resetEqBands()
         _bandGainsFlow.value = flat
+    }
+
+    /**
+     * Resets the parametric EQ by zeroing the gain on every band while keeping each
+     * band's center frequency and Q factor exactly as the user set them.
+     *
+     * This is the correct "reset" for PEQ mode — the user spent time positioning the
+     * bands on the frequency axis, so we only silence them rather than wiping out their
+     * layout. The updated bands are persisted and pushed to the DSP engine immediately.
+     */
+    fun resetPeqGains() {
+        val zeroed = _peqBandsFlow.value.map { (_, q, freq) -> Triple(0f, q, freq) }
+        setPeqBands(zeroed)
     }
 
     // -------------------------------------------------------------------------
