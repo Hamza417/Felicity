@@ -115,15 +115,18 @@ class EqualizerPresets : MediaFragment() {
         if (preset.isPeq()) {
             // Switch to parametric mode and store the bands in preferences so the EQ
             // screen can load them the moment it becomes visible again.
-            EqualizerPreferences.setEqMode(EqualizerPreferences.EQ_MODE_PARAMETRIC)
+            EqualizerManager.setEqMode(EqualizerPreferences.EQ_MODE_PARAMETRIC)
             EqualizerPreferences.setPeqBandsRaw(preset.peqBandsRaw)
+            // Push the PEQ bands into the audio engine and update the flow so the
+            // EQ screen's knobs snap to the preset values when it comes back into view.
+            EqualizerManager.setPeqBands(preset.getPeqBands())
             EqualizerManager.setPreamp(preset.preampDb)
         } else {
             val gains = preset.getBandGains()
 
             // Write all gains to SharedPreferences first, then push them to the audio engine.
             // Doing it in this order means the values are safe even if the app is killed mid-update.
-            EqualizerPreferences.setEqMode(EqualizerPreferences.EQ_MODE_GRAPHIC)
+            EqualizerManager.setEqMode(EqualizerPreferences.EQ_MODE_GRAPHIC)
             EqualizerPreferences.setAllBandGains(gains)
             for (i in gains.indices) {
                 EqualizerManager.setBandGain(i, gains[i], persist = false)

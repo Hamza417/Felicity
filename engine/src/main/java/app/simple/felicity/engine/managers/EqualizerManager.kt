@@ -2,6 +2,7 @@ package app.simple.felicity.engine.managers
 
 import app.simple.felicity.engine.managers.EqualizerManager.attachProcessor
 import app.simple.felicity.engine.managers.EqualizerManager.bandGainsFlow
+import app.simple.felicity.engine.managers.EqualizerManager.eqModeFlow
 import app.simple.felicity.engine.managers.EqualizerManager.peqBandsFlow
 import app.simple.felicity.engine.managers.EqualizerManager.preampFlow
 import app.simple.felicity.engine.managers.EqualizerManager.resetAllBands
@@ -88,6 +89,21 @@ object EqualizerManager {
      * The equalizer UI should collect this to keep all three PEQ knobs per band in sync.
      */
     val peqBandsFlow: StateFlow<List<Triple<Float, Float, Float>>> = _peqBandsFlow.asStateFlow()
+
+    /**
+     * Backing mutable flow that tracks the currently active EQ mode string.
+     * Initialized from [EqualizerPreferences] so the UI sees the correct mode immediately
+     * on first launch, and automatically switches when a preset changes it.
+     */
+    private val _eqModeFlow = MutableStateFlow(EqualizerPreferences.getEqMode())
+
+    /**
+     * Read-only [StateFlow] of the current EQ mode string — either
+     * [EqualizerPreferences.EQ_MODE_GRAPHIC] or [EqualizerPreferences.EQ_MODE_PARAMETRIC].
+     * The equalizer UI should collect this to switch between the graphic sliders and
+     * the parametric knobs whenever a preset or the user changes the mode.
+     */
+    val eqModeFlow: StateFlow<String> = _eqModeFlow.asStateFlow()
 
     // -------------------------------------------------------------------------
     // Lifecycle
@@ -242,6 +258,21 @@ object EqualizerManager {
 
     /** Returns the current pre-amplifier gain in dB from [preampFlow]. */
     fun getPreamp(): Float = _preampFlow.value
+
+    // -------------------------------------------------------------------------
+    // EQ mode
+    // -------------------------------------------------------------------------
+
+    /**
+     * Switches the active EQ mode, persists it, and updates [eqModeFlow] so any
+     * observing UI immediately switches between the graphic sliders and the PEQ knobs.
+     *
+     * @param mode Either [EqualizerPreferences.EQ_MODE_GRAPHIC] or [EqualizerPreferences.EQ_MODE_PARAMETRIC].
+     */
+    fun setEqMode(mode: String) {
+        EqualizerPreferences.setEqMode(mode)
+        _eqModeFlow.value = mode
+    }
 
     // -------------------------------------------------------------------------
     // Parametric EQ

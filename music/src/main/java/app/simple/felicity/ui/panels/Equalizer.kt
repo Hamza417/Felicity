@@ -206,13 +206,13 @@ class Equalizer : MediaFragment() {
      */
     private fun switchEqMode(parametric: Boolean) {
         if (parametric) {
-            EqualizerPreferences.setEqMode(EqualizerPreferences.EQ_MODE_PARAMETRIC)
+            EqualizerManager.setEqMode(EqualizerPreferences.EQ_MODE_PARAMETRIC)
             binding.equalizerScreen.equalizerSliders.mode =
                 FelicityEqualizerSliders.Companion.Mode.PARAMETRIC
         } else {
             // Persist the current PEQ bands before leaving so the user can come back.
             savePeqBandsToPreferences()
-            EqualizerPreferences.setEqMode(EqualizerPreferences.EQ_MODE_GRAPHIC)
+            EqualizerManager.setEqMode(EqualizerPreferences.EQ_MODE_GRAPHIC)
             binding.equalizerScreen.equalizerSliders.mode =
                 FelicityEqualizerSliders.Companion.Mode.GRAPHIC
         }
@@ -311,6 +311,39 @@ class Equalizer : MediaFragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 EqualizerManager.preampFlow.collect { db ->
                     binding.equalizerScreen.equalizerSliders.setPreampGain(db, animate = true)
+                }
+            }
+        }
+
+        // Watch for mode switches triggered by preset loading so the slider layout
+        // flips between graphic and parametric automatically when the user comes back.
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                EqualizerManager.eqModeFlow.collect { mode ->
+                    val targetMode = if (mode == EqualizerPreferences.EQ_MODE_PARAMETRIC) {
+                        FelicityEqualizerSliders.Companion.Mode.PARAMETRIC
+                    } else {
+                        FelicityEqualizerSliders.Companion.Mode.GRAPHIC
+                    }
+                    if (binding.equalizerScreen.equalizerSliders.mode != targetMode) {
+                        binding.equalizerScreen.equalizerSliders.mode = targetMode
+                    }
+                }
+            }
+        }
+
+        // Watch for PEQ band updates pushed by a preset and feed them straight into
+        // the slider so the knobs snap to the new values without any manual interaction.
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                EqualizerManager.peqBandsFlow.collect { bands ->
+                    if (bands.isNotEmpty()) {
+                        val peqBands = bands.map { (gain, q, freq) ->
+                            FelicityEqualizerSliders.Companion.PeqBand(
+                                    gain = gain, q = q, frequencyHz = freq)
+                        }
+                        binding.equalizerScreen.equalizerSliders.setPeqBands(peqBands)
+                    }
                 }
             }
         }
