@@ -25,6 +25,7 @@ import androidx.dynamicanimation.animation.SpringAnimation
 import androidx.dynamicanimation.animation.SpringForce
 import app.simple.felicity.decorations.drawables.ThumbPillDrawable
 import app.simple.felicity.decorations.knobs.SimpleBaseKnobDrawable
+import app.simple.felicity.decorations.ripple.FelicityRippleDrawable
 import app.simple.felicity.decorations.seekbars.FelicityEqualizerSliders.Companion.NO_ACTIVE_BAND
 import app.simple.felicity.decorations.seekbars.FelicityEqualizerSliders.Companion.PEQ_DELETE_BTN_RADIUS_DP
 import app.simple.felicity.decorations.seekbars.FelicityEqualizerSliders.Companion.PEQ_KNOB_DIAMETER_DP
@@ -343,6 +344,21 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
 
     /** X position of the "Add Band" button center in content space (not view space). */
     private var peqAddButtonContentX = 0f
+
+    /**
+     * Index of the most recently added PEQ band while its scale-in animation is still
+     * running. Set to -1 once the animation finishes so the band draws normally.
+     */
+    private var newBandAnimIndex = -1
+    private var newBandAnimScale = 1f
+    private var newBandAnimAlpha = 255
+    private var newBandAnimator: ValueAnimator? = null
+
+    /**
+     * Ripple drawable that plays on the "ADD BAND" button. Its [android.graphics.drawable.Drawable.Callback]
+     * is wired to this view so animation frames reach [onDraw] via [invalidateDrawable].
+     */
+    private var addBandRipple: FelicityRippleDrawable? = null
 
     // -------------------------------------------------------------------------
     // Overscroll spring / fling
@@ -733,6 +749,15 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
 
         // Re-apply shadow layers so the glow color tracks accent/theme changes.
         applyShadowLayers()
+
+        // Recreate the add-band ripple whenever the accent color changes so it always
+        // matches the current theme. The callback is wired to this view so each animation
+        // frame reaches onDraw via invalidateDrawable.
+        addBandRipple = FelicityRippleDrawable(accentColor).apply {
+            setStartColor(trackColor)
+            setCornerRadius(10f * d)
+            callback = this@FelicityEqualizerSliders
+        }
     }
 
     private fun setupTextPaints() {
@@ -797,6 +822,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
     override fun verifyDrawable(who: android.graphics.drawable.Drawable): Boolean {
         if (peqQKnobDrawables.any { it === who }) return true
         if (peqFreqKnobDrawables.any { it === who }) return true
+        if (who === addBandRipple) return true
         return super.verifyDrawable(who)
     }
 
@@ -957,6 +983,32 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         peqGainPressScales.add(1f)
         peqGainPressAnimators.add(null)
         if (width > 0 && height > 0) recalculateLayout(width, height)
+
+        // Animate the new section scaling in so it doesn't just pop into existence.
+        newBandAnimIndex = peqBands.lastIndex
+        newBandAnimScale = 0.6f
+        newBandAnimAlpha = 0
+        newBandAnimator?.cancel()
+        newBandAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 280L
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { anim ->
+                val t = anim.animatedValue as Float
+                newBandAnimScale = 0.6f + 0.4f * t
+                newBandAnimAlpha = (255 * t).toInt()
+                invalidate()
+            }
+            addListener(object : android.animation.AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: android.animation.Animator) {
+                    newBandAnimIndex = -1
+                    newBandAnimScale = 1f
+                    newBandAnimAlpha = 255
+                    invalidate()
+                }
+            })
+            start()
+        }
+
         invalidate()
     }
 
@@ -1256,7 +1308,17 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         for (i in peqBands.indices) {
             val cx = peqBandSectionCenterX(i)
             if (cx < viewLeft || cx > viewRight) continue
-            drawPeqSection(canvas, i, cx)
+
+            // When this band was just added, play a scale-in + fade-in so it doesn't pop.
+            if (i == newBandAnimIndex) {
+                val sectionCy = trackTop + trackLength * 0.5f
+                val saveCount = canvas.saveLayerAlpha(0f, 0f, width.toFloat(), height.toFloat(), newBandAnimAlpha)
+                canvas.scale(newBandAnimScale, newBandAnimScale, cx, sectionCy)
+                drawPeqSection(canvas, i, cx)
+                canvas.restoreToCount(saveCount)
+            } else {
+                drawPeqSection(canvas, i, cx)
+            }
         }
 
         // "Add Band" button appears after the last section.
@@ -1417,17 +1479,30 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
     }
 
     /**
-     * Draws the "ADD BAND" button as a rounded rectangle with a plus label,
-     * centered at ([cx], mid-track).
+     * Draws the "ADD BAND" button as a rounded rectangle with a plus label and a
+     * [FelicityRippleDrawable] overlay, centered at ([cx], mid-track).
+     * The button is intentionally narrower than the full section width so it reads
+     * as a compact action target rather than a wide filler block.
      */
     private fun drawAddBandButton(canvas: Canvas, cx: Float) {
         val hPad = PEQ_SECTION_H_PADDING_DP * d
-        val btnW = peqSectionWidthPx - hPad * 2f
+        // Shrink to ~60 % of the available section width so the button feels compact.
+        val btnW = (peqSectionWidthPx - hPad * 2f) * 0.60f
         val btnH = addBandTextPaint.fontSpacing + 14f * d
         val btnCy = trackTop + trackLength * 0.5f
         val left = cx - btnW * 0.5f
         val top = btnCy - btnH * 0.5f
-        canvas.drawRoundRect(left, top, left + btnW, top + btnH, 10f * d, 10f * d, addBandButtonPaint)
+        val cornerR = 10f * d
+
+        canvas.drawRoundRect(left, top, left + btnW, top + btnH, cornerR, cornerR, addBandButtonPaint)
+
+        // Ripple overlay — bounds match the button rect so the clip stays inside the pill.
+        addBandRipple?.let { ripple ->
+            ripple.setCornerRadius(cornerR)
+            ripple.setBounds(left.toInt(), top.toInt(), (left + btnW).toInt(), (top + btnH).toInt())
+            ripple.draw(canvas)
+        }
+
         addBandTextPaint.color = accentColor
         canvas.drawText("＋ ADD BAND", cx, btnCy + addBandTextPaint.fontSpacing * 0.36f, addBandTextPaint)
     }
@@ -1778,6 +1853,18 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         if (abs(event.x - addBtnViewX) <= peqSectionWidthPx * 0.4f &&
                 abs(event.y - (trackTop + trackLength * 0.5f)) <= peqKnobRadiusPx * 1.5f) {
             peqTouchTarget = PeqTarget.ADD_BUTTON
+            // Arm the ripple from the exact finger position so it grows from the tap point.
+            addBandRipple?.let { ripple ->
+                val hPad = PEQ_SECTION_H_PADDING_DP * d
+                val btnW = (peqSectionWidthPx - hPad * 2f) * 0.60f
+                val btnH = addBandTextPaint.fontSpacing + 14f * d
+                val btnCy = trackTop + trackLength * 0.5f
+                val left = addBtnViewX - btnW * 0.5f
+                val top = btnCy - btnH * 0.5f
+                ripple.setBounds(left.toInt(), top.toInt(), (left + btnW).toInt(), (top + btnH).toInt())
+                ripple.setHotspot(event.x, event.y)
+                ripple.state = intArrayOf(android.R.attr.state_pressed)
+            }
         }
 
         parent?.requestDisallowInterceptTouchEvent(true)
@@ -1910,6 +1997,8 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         }
 
         if (peqTouchTarget == PeqTarget.ADD_BUTTON) {
+            // Always release the ripple so it plays the expand-fade animation.
+            addBandRipple?.state = intArrayOf()
             val dx = event.x - touchStartX
             val dy = event.y - touchStartY
             if (abs(dx) < touchSlop * 2 && abs(dy) < touchSlop * 2) {
