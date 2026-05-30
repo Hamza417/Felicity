@@ -114,6 +114,15 @@ class AdapterArtists(initial: List<Artist>) : FastScrollAdapter<VerticalListView
         differ.submitList(newArtists.toList())
     }
 
+    /**
+     * Tells the recycler view to rebind only the item that matches the given artist,
+     * which causes it to reload its cover image without touching the rest of the list.
+     */
+    fun notifyArtistChanged(artist: Artist) {
+        val position = artists.indexOfFirst { it.id == artist.id }
+        if (position >= 0) notifyItemChanged(position)
+    }
+
     inner class ListHolder(val binding: AdapterStyleListBinding) : VerticalListViewHolder(binding.root) {
         fun bind(artist: Artist, isLightBind: Boolean) {
             binding.title.setTextOrUnknown(artist.name)

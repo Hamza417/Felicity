@@ -118,6 +118,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
 
                         withContext(Dispatchers.Main) {
                             showWarning(getString(R.string.done))
+                            onArtistImagePicked(artist)
                         }
                     }
                 } catch (e: Exception) {
@@ -125,6 +126,15 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 }
             }
         }
+
+    /**
+     * Called on the main thread right after a user-picked artist image has been saved to disk.
+     * Subclasses that show an artist list (e.g. the Artists panel) should override this to
+     * refresh the specific item in their adapter so the new image shows up without a full reload.
+     *
+     * @param artist The artist whose cover image was just updated.
+     */
+    protected open fun onArtistImagePicked(artist: Artist) = Unit
 
     private val miniPlayerCallbacks: MiniPlayerCallbacks?
         get() = requireActivity() as? MiniPlayerCallbacks

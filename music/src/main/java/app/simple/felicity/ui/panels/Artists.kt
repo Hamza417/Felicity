@@ -69,6 +69,10 @@ class Artists : BasePanelFragment() {
         super.onDestroyView()
     }
 
+    override fun onArtistImagePicked(artist: Artist) {
+        adapterArtists?.notifyArtistChanged(artist)
+    }
+
     private fun setupClickListeners() {
         headerBinding.sortStyle.setOnClickListener {
             childFragmentManager.showArtistsSort()
