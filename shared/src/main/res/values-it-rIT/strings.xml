@@ -403,6 +403,10 @@
     <string name="preset_name_hint">Nome preset…</string>
     <string name="built_in">Integrato</string>
     <string name="custom">Personalizzato</string>
+    <string name="switch_to_peq">Passa al PEQ</string>
+    <string name="switch_to_graphic_eq">Passa all\'EQ Grafico</string>
+    <string name="peq_mode">EQ Parametrico</string>
+    <string name="graphic_eq_mode">EQ Grafico</string>
     <!-- LRC Editor -->
     <string name="lrc_lyric_hint">Riga di testo…</string>
     <string name="lrc_stamp_timestamp">Imposta la posizione corrente come timestamp</string>
@@ -486,4 +490,7 @@
     <string name="play_store_foss_purchase_info">La versione FOSS di questa app non supporta gli acquisti su Google Play. Per effettuare un acquisto, installa la versione disponibile sul Google Play Store.</string>
     <string name="playstore_link">Link al Play Store</string>
     <string name="playstore_link_summary">Apri la pagina del Play Store dell\'app.</string>
+    <string name="disable_equalizer">Disabilita Equalizzatore</string>
+    <string name="enable_equalizer">Abilita Equalizzatore</string>
+    <string name="show_lyrics_summary">Mostra i testi a riga singola sullo schermo del giocatore.</string>
 </resources>
