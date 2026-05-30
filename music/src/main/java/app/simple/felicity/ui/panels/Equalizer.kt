@@ -292,6 +292,13 @@ class Equalizer : MediaFragment() {
             }
         }
 
+        // When any PEQ band property changes (gain, Q, or frequency), push the full
+        // band list to the DSP immediately so the sound updates in real-time.
+        binding.equalizerScreen.equalizerSliders.setOnPeqBandChangedListener { bands ->
+            val triples = bands.map { Triple(it.gain, it.q, it.frequencyHz) }
+            EqualizerManager.setPeqBands(triples)
+        }
+
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 EqualizerManager.bandGainsFlow.collect { gains ->

@@ -84,10 +84,27 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         fun onBandChanged(bandIndex: Int, gain: Float, fromUser: Boolean)
     }
 
+    /**
+     * Callback fired in real-time whenever any parametric EQ band changes — whether
+     * the user is dragging the gain slider, turning the Q knob, or turning the
+     * frequency knob. The full band list is provided so the listener can push a
+     * complete snapshot to the DSP without having to query the view again.
+     *
+     * @param bands A snapshot of all PEQ bands in their updated state.
+     */
+    fun interface OnPeqBandChangedListener {
+        fun onPeqBandsChanged(bands: List<PeqBand>)
+    }
+
     private var bandChangedListener: OnBandChangedListener? = null
+    private var peqBandChangedListener: OnPeqBandChangedListener? = null
 
     fun setOnBandChangedListener(listener: OnBandChangedListener?) {
         bandChangedListener = listener
+    }
+
+    fun setOnPeqBandChangedListener(listener: OnPeqBandChangedListener?) {
+        peqBandChangedListener = listener
     }
 
     // -------------------------------------------------------------------------
@@ -1765,7 +1782,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
                     if (newGain != band.gain) {
                         if (band.gain.toInt() != newGain.toInt()) context.vibrateEffect(VibrationEffect.EFFECT_CLICK, TAG)
                         band.gain = newGain
-                        bandChangedListener?.onBandChanged(peqTouchBandIndex, newGain, true)
+                        peqBandChangedListener?.onPeqBandsChanged(peqBands.toList())
                         invalidate()
                     }
                 } else if (isScrollGesture && !centeredMode) {
@@ -1811,12 +1828,16 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
                 if (peqTouchTarget == PeqTarget.Q_KNOB) {
                     val newQ = normalizedToQ(peqKnobCurrentNorm)
                     if (abs(newQ - band.q) > 0.01f) {
-                        band.q = newQ; invalidate()
+                        band.q = newQ
+                        peqBandChangedListener?.onPeqBandsChanged(peqBands.toList())
+                        invalidate()
                     }
                 } else {
                     val newFreq = normalizedToFreq(peqKnobCurrentNorm)
                     if (abs(newFreq - band.frequencyHz) > 0.5f) {
-                        band.frequencyHz = newFreq; invalidate()
+                        band.frequencyHz = newFreq
+                        peqBandChangedListener?.onPeqBandsChanged(peqBands.toList())
+                        invalidate()
                     }
                 }
             }
