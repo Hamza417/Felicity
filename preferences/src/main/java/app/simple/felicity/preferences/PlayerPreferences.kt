@@ -11,6 +11,8 @@ import app.simple.felicity.manager.SharedPreferences
  */
 object PlayerPreferences {
 
+    private const val SHOW_LYRICS = "show_lyrics"
+
     const val REPEAT_MODE = "repeat_mode"
 
     /** SharedPreferences key for the visualizer enabled/disabled toggle. */
@@ -74,5 +76,13 @@ object PlayerPreferences {
 
     fun getPcmInfoMode(): Int {
         return SharedPreferences.getSharedPreferences().getInt(PCM_INFO_MODE, PCM_INFO_MODE_QUALITY)
+    }
+
+    fun setShowLyrics(value: Boolean) {
+        SharedPreferences.getSharedPreferences().edit { putBoolean(SHOW_LYRICS, value) }
+    }
+
+    fun isShowLyrics(): Boolean {
+        return SharedPreferences.getSharedPreferences().getBoolean(SHOW_LYRICS, true)
     }
 }

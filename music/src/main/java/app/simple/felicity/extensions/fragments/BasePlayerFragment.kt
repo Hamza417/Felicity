@@ -162,6 +162,7 @@ abstract class BasePlayerFragment : MediaFragment() {
         requireImmersiveMode()
         updateState()
         setVisualizerState()
+        setLyricsState()
 
         // Mirror swipe-down-to-close behavior on the album art pager so that a downward
         // swipe on the cover image dismisses the player, exactly like swiping on any other
@@ -379,12 +380,17 @@ abstract class BasePlayerFragment : MediaFragment() {
         // are both open, they both read from the exact same StateFlow so they always agree.
         viewLifecycleOwner.lifecycleScope.launch {
             lyricsViewModel.lrcData.collect { lrcData ->
-                if (lrcData == null || lrcData.isEmpty) {
-                    Log.d(TAG, "No lyrics found for the current song.")
+                if (PlayerPreferences.isShowLyrics()) {
+                    if (lrcData == null || lrcData.isEmpty) {
+                        Log.d(TAG, "No lyrics found for the current song.")
+                    } else {
+                        Log.d(TAG, "Loaded lyrics with ${lrcData.size()} lines.")
+                        lrc.setLrcData(
+                                lrcData, MediaPlaybackManager.getSeekPosition() + lyricsViewModel.syncOffset)
+                    }
                 } else {
-                    Log.d(TAG, "Loaded lyrics with ${lrcData.size()} lines.")
-                    lrc.setLrcData(
-                            lrcData, MediaPlaybackManager.getSeekPosition() + lyricsViewModel.syncOffset)
+                    lrc.clear()
+                    Log.d(TAG, "Lyrics are disabled in preferences; skipping LRC update.")
                 }
             }
         }
@@ -424,6 +430,10 @@ abstract class BasePlayerFragment : MediaFragment() {
         }
 
         visualizer.visibility = if (PlayerPreferences.isVisualizerEnabled()) View.VISIBLE else View.GONE
+    }
+
+    private fun setLyricsState() {
+        lrc.visibility = if (PlayerPreferences.isShowLyrics()) View.VISIBLE else View.GONE
     }
 
     private fun updateState() {

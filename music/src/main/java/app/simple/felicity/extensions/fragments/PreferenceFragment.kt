@@ -28,6 +28,7 @@ import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.preferences.ConfigurationPreferences
 import app.simple.felicity.preferences.EqualizerPreferences
 import app.simple.felicity.preferences.LibraryPreferences
+import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.repositories.SongStatRepository
 import app.simple.felicity.repository.services.AudioDatabaseService
@@ -348,6 +349,19 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val lyricsToggle = Preference(
+                title = R.string.lyrics,
+                summary = R.string.show_lyrics_summary,
+                icon = R.drawable.ic_lyrics,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    PlayerPreferences.setShowLyrics((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    PlayerPreferences.isShowLyrics()
+                }
+        )
+
         val applicationHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.application)
 
         val likeButton = Preference(
@@ -381,6 +395,7 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(homeInterface)
         preferences.add(playerHeader)
         preferences.add(playerInterface)
+        preferences.add(lyricsToggle)
         preferences.add(miniPlayerHeader)
         preferences.add(marginAroundMiniplayerToggle)
         preferences.add(applicationHeader)
