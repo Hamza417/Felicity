@@ -403,6 +403,10 @@
     <string name="preset_name_hint">Ön ayar adı…</string>
     <string name="built_in">Yerleşik</string>
     <string name="custom">Özel</string>
+    <string name="switch_to_peq">PEQ\'ye Geç</string>
+    <string name="switch_to_graphic_eq">Grafik EQ\'ya Geç</string>
+    <string name="peq_mode">Parametrik EQ</string>
+    <string name="graphic_eq_mode">Grafik EQ</string>
     <!-- LRC Editor -->
     <string name="lrc_lyric_hint">Şarkı sözü satırı…</string>
     <string name="lrc_stamp_timestamp">Geçerli konumu zaman damgası olarak ekle</string>
@@ -486,4 +490,7 @@
     <string name="play_store_foss_purchase_info">Bu uygulamanın FOSS sürümü Google Play satın alımlarını desteklemez. Satın alma işlemi yapmak için lütfen Google Play Store\'da bulunan sürümü yükleyin.</string>
     <string name="playstore_link">Play Store Bağlantısı</string>
     <string name="playstore_link_summary">Uygulamanın Play Store sayfasını açın.</string>
+    <string name="disable_equalizer">Ekolayzırı Devre Dışı Bırak</string>
+    <string name="enable_equalizer">Ekolayzırı Etkinleştir</string>
+    <string name="show_lyrics_summary">Oynatıcı ekranında tek satır sözleri göster.</string>
 </resources>

@@ -403,6 +403,10 @@
     <string name="preset_name_hint">Name der Voreinstellung…</string>
     <string name="built_in">Integriert</string>
     <string name="custom">Benutzerdefiniert</string>
+    <string name="switch_to_peq">Zu PEQ Wechseln</string>
+    <string name="switch_to_graphic_eq">Zu Grafik-EQ wechseln</string>
+    <string name="peq_mode">Parametrischer EQ</string>
+    <string name="graphic_eq_mode">Grafischer EQ</string>
     <!-- LRC Editor -->
     <string name="lrc_lyric_hint">Textzeile…</string>
     <string name="lrc_stamp_timestamp">Aktuelle Position als Zeitstempel stempeln</string>
@@ -486,4 +490,7 @@
     <string name="play_store_foss_purchase_info">Die FOSS-Version dieser App unterstützt keine Käufe über Google Play. Um einen Kauf zu tätigen, installiere bitte die im Google Play Store verfügbare Version.</string>
     <string name="playstore_link">Link zum Play Store</string>
     <string name="playstore_link_summary">Öffne die Play Store-Seite der App.</string>
+    <string name="disable_equalizer">Deaktiviere Equalizer</string>
+    <string name="enable_equalizer">Aktiviere Equalizer</string>
+    <string name="show_lyrics_summary">Zeige Songtexte auf dem Player-Bildschirm.</string>
 </resources>

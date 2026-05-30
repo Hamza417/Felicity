@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="number_of_songs">
+        <item quantity="other">%d 首歌曲</item>
+    </plurals>
+    <plurals name="songs_selected">
+        <item quantity="other">已选择 %d 首歌曲</item>
+    </plurals>
+    <plurals name="number_of_albums">
+        <item quantity="other">%d 张专辑</item>
+    </plurals>
+    <plurals name="total_times">
+        <item quantity="other">%d 次</item>
+    </plurals>
+    <plurals name="number_of_bookmarks">
+        <item quantity="other">%d 个书签</item>
+    </plurals>
+</resources>
