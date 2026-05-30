@@ -155,14 +155,10 @@
     <string name="not_granted">Nicht gewährt</string>
     <string name="post_notifications">Benachrichtigungen senden</string>
     <string name="desc_post_notifications">Erforderlich, um den Mediaplayer und andere notwendige Benachrichtigungen anzuzeigen.</string>
-    <string name="manage_all_files">Alle Dateien verwalten</string>
-    <string name="desc_manage_all_files">Erforderlich zum Löschen, Umbenennen oder Bearbeiten von Audiodateien und deren Metadaten. Wird auch für den Zugriff auf Begleitdateien wie Untertitel (.srt), Songtexte (.lrc) und Cue-Sheets (.cue) benötigt. Ohne diese Berechtigung sind die Bearbeitungsfunktionen eingeschränkt.</string>
     <string name="storage_folder_access">Zugriff auf Speicherordner</string>
     <string name="desc_storage_folder_access">Tippen, um die Musikordner auszuwählen, die Felicity scannen soll. Du kannst später in den Bibliothekseinstellungen weitere Ordner hinzufügen. Es ist keine umfassende Speicherberechtigung erforderlich, sondern nur für die ausgewählten Ordner.</string>
     <string name="read_media_audio">Audio-Medien lesen</string>
     <string name="desc_read_media_audio">Erlaubt Felicity, Audiodateien aus dem MediaStore zu lesen.</string>
-    <string name="add_folder">Ordner hinzufügen</string>
-    <string name="granted_folders">Gewährte Ordner</string>
     <string name="no_folders_granted">Noch keine Ordner hinzugefügt. Tippe oben, um einen Musikordner auszuwählen.</string>
     <string name="start_app_now">App jetzt starten</string>
     <string name="audio">Audio</string>
@@ -314,7 +310,6 @@
     <string name="edit_metadata">Metadaten bearbeiten</string>
     <string name="metadata_saved">Metadaten erfolgreich gespeichert.</string>
     <string name="comment">Kommentar</string>
-    <string name="change">Ändern</string>
     <!-- Audio Pipeline Dialog — section labels -->
     <string name="track_info">Titel-Info</string>
     <string name="channels">Kanäle</string>
@@ -352,7 +347,6 @@
     <string name="playlist_description">Beschreibung (optional)</string>
     <string name="edit_playlist">Playlist bearbeiten</string>
     <string name="add_all_to_queue">Alle zur Warteschlange hinzufügen</string>
-    <string name="manual">Manuell</string>
     <string name="as_added">Wie hinzugefügt</string>
     <string name="filter_categories">Filterkategorien</string>
     <string name="about">Über</string>
@@ -402,11 +396,8 @@
     <string name="save_preset">Voreinstellung speichern</string>
     <string name="preset_name_hint">Name der Voreinstellung…</string>
     <string name="built_in">Integriert</string>
-    <string name="custom">Benutzerdefiniert</string>
     <string name="switch_to_peq">Zu PEQ Wechseln</string>
     <string name="switch_to_graphic_eq">Zu Grafik-EQ wechseln</string>
-    <string name="peq_mode">Parametrischer EQ</string>
-    <string name="graphic_eq_mode">Grafischer EQ</string>
     <!-- LRC Editor -->
     <string name="lrc_lyric_hint">Textzeile…</string>
     <string name="lrc_stamp_timestamp">Aktuelle Position als Zeitstempel stempeln</string>
@@ -416,15 +407,10 @@
     <string name="rewind">Zurückspulen</string>
     <string name="forward">Vorspulen</string>
     <string name="add_lyrics">Liedtext hinzufügen</string>
-    <string name="no_folders_added">Noch keine Ordner hinzugefügt. Tippe auf die +-Schaltfläche, um einen hinzuzufügen.</string>
-    <string name="path_added">Pfad erfolgreich hinzugefügt.</string>
-    <string name="path_removed">Pfad entfernt.</string>
-    <string name="storage_root">Speicher-Stammverzeichnis</string>
     <string name="dividers">Trennlinien</string>
     <string name="dividers_summary">Füge Trennlinien in den Listen hinzu.</string>
     <string name="like_icon">Gefällt-mir-Symbol</string>
     <string name="like_icon_summary">Ersetze das Herz-Symbol für Favoriten durch ein Daumen-hoch-Symbol in der App.</string>
-    <string name="buy_full_version">Vollversion kaufen</string>
     <string name="trial_period">Testzeitraum</string>
     <string name="cache">Cache</string>
     <string name="clear_image_cache">Bild-Cache löschen</string>
@@ -449,9 +435,6 @@
     <string name="reshuffle">Nicht neu mischen</string>
     <string name="reshuffle_summary">Die Liste nicht erneut mischen, falls die aktuelle Liste bereits gemischt ist, wenn ein neuer Song ausgewählt wird.</string>
     <string name="label">Kategorie</string>
-    <string name="portrait">Hochformat</string>
-    <string name="span_type">Spannweite</string>
-    <string name="landscape">Querformat</string>
     <string name="relaxed">Entspannt</string>
     <string name="compact">Kompakt</string>
     <string name="single">Einfach</string>
@@ -468,13 +451,11 @@
     <string name="about_album">Über das Album</string>
     <string name="search_metadata">Suchen</string>
     <string name="synced">Synchronisiert</string>
-    <string name="metadata_synced_lyrics_saved">Synchronisierter Liedtext gespeichert</string>
     <string name="read_more">Mehr lesen</string>
     <string name="read_less">Weniger lesen</string>
     <string name="active_since">Aktiv seit %1$s</string>
     <string name="active_since_present">%1$s – heute</string>
     <string name="released_in">Veröffentlicht %1$s</string>
-    <string name="label_on">Auf %1$s</string>
     <string name="pause_activity">Aktivität pausieren</string>
     <string name="pause_activity_summary">Verhindere, dass die App Wiedergabeaktivitäten aufzeichnet.</string>
     <string name="clear_playback_stats">Wiedergabestatistiken löschen</string>
@@ -486,7 +467,6 @@
     <string name="no_bookmarks">Noch keine Lesezeichen</string>
     <string name="bookmark_too_close">Es existiert bereits ein Lesezeichen in der Nähe</string>
     <string name="bookmark_at">Lesezeichen bei %1$s</string>
-    <string name="clear_bookmarks">Alle Lesezeichen löschen</string>
     <string name="play_store_foss_purchase_info">Die FOSS-Version dieser App unterstützt keine Käufe über Google Play. Um einen Kauf zu tätigen, installiere bitte die im Google Play Store verfügbare Version.</string>
     <string name="playstore_link">Link zum Play Store</string>
     <string name="playstore_link_summary">Öffne die Play Store-Seite der App.</string>
