@@ -21,6 +21,12 @@ android {
         versionName "0.0.21_alpha"
     }
 
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
+
     signingConfigs {
         release {
             def properties = loadProperties(rootProject.file('local.properties').absolutePath)
