@@ -152,19 +152,29 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
          * Knob body diameter in dp. Section width is derived from this so the layout
          * always wraps its contents rather than relying on a hard-coded section size.
          */
-        private const val PEQ_KNOB_DIAMETER_DP = 96f
+        private const val PEQ_KNOB_DIAMETER_DP = 112f
 
         /** Horizontal inset on both sides of each section, in dp. */
-        private const val PEQ_SECTION_H_PADDING_DP = 24f
+        private const val PEQ_SECTION_H_PADDING_DP = 32F
 
         /** Radius of the delete button circle drawn at the top-right corner of each section. */
-        private const val PEQ_DELETE_BTN_RADIUS_DP = 10f
+        private const val PEQ_DELETE_BTN_RADIUS_DP = 12f
+
+        /** Padding between the delete button circle edge and the section background edge, in dp. */
+        private const val PEQ_DELETE_BTN_MARGIN_DP = 6f
 
         /**
          * Gap in dp between the outer edge of a knob's arc and the nearest label (pill above
          * and value text below). Increase this to prevent text from touching the arc.
          */
         private const val PEQ_KNOB_LABEL_GAP_DP = 12f
+
+        /**
+         * Extra vertical breathing room inserted between the Q knob's value label and the
+         * FREQ knob's type pill. Without this the two knobs press against each other when
+         * the track height is tight.
+         */
+        private const val PEQ_KNOB_INTER_GAP_DP = 14f
 
         /** Stroke width of the arc track and progress arc around each knob, in dp. */
         private const val PEQ_ARC_STROKE_DP = 1.5f
@@ -608,6 +618,15 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
     }
 
     /**
+     * Translucent background circle drawn behind the delete icon so the button
+     * has a clear visual boundary and the icon doesn't float directly on the
+     * section background.
+     */
+    private val deleteBtnBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+    }
+
+    /**
      * The trash/delete icon loaded from ic_delete.xml, tinted red so it reads clearly
      * against the translucent button background. Loaded once and reused each frame.
      */
@@ -710,6 +729,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         knobTypeLabelTextPaint.textSize = 8f * d
         deleteBtnXPaint.color = Color.argb(200, 25, 25, 25)
         deleteBtnXPaint.strokeWidth = 1.8f * d
+        deleteBtnBgPaint.color = Color.argb(60, 220, 60, 60)
 
         // Re-apply shadow layers so the glow color tracks accent/theme changes.
         applyShadowLayers()
@@ -1297,9 +1317,10 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         // rather than using fixed fractions. This prevents the Q value label from
         // overlapping the FREQ pill label when the knobs are close together.
         val labelGap = PEQ_KNOB_LABEL_GAP_DP * d
-        val pillH = knobTypeLabelTextPaint.fontSpacing * 0.9f + 4f * d
-        // Vertical space occupied by one knob's visual chrome (pill above + arc + label below).
-        val knobTotalHeight = pillH + labelGap + 2f * arcR + labelGap + knobLabelPaint.fontSpacing
+        val pillH = knobTypeLabelTextPaint.fontSpacing * 0.9f + 8f * d
+        // Vertical space occupied by one knob's visual chrome (pill above + arc + label below)
+        // plus the inter-knob gap that keeps the Q value label from touching the FREQ pill.
+        val knobTotalHeight = pillH + labelGap + 2f * arcR + labelGap + knobLabelPaint.fontSpacing + PEQ_KNOB_INTER_GAP_DP * d
         val trackMid = trackTop + trackLength * 0.5f
         val qKnobCy = trackMid - knobTotalHeight * 0.5f - arcR - labelGap - pillH * 0.5f + knobTotalHeight * 0.5f
         val freqKnobCy = qKnobCy + knobTotalHeight
@@ -1311,8 +1332,9 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
 
         // Delete button: small circle in the top-right corner of the section background.
         val delR = PEQ_DELETE_BTN_RADIUS_DP * d
-        val delCx = bgRight - delR - 2f * d
-        val delCy = bgTop + delR + 2f * d
+        val delMargin = PEQ_DELETE_BTN_MARGIN_DP * d
+        val delCx = bgRight - delR - delMargin
+        val delCy = bgTop + delR + delMargin
         drawDeleteButton(canvas, delCx, delCy, delR)
     }
 
@@ -1391,7 +1413,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
 
         // Current value label below the arc.
         val labelY = cy + arcR + labelGap + knobLabelPaint.fontSpacing * 0.9f
-        canvas.drawText(valueLabel, cx, labelY, knobLabelPaint)
+        canvas.drawText(valueLabel, cx, labelY.minus(42F), knobLabelPaint)
     }
 
     /**
@@ -1411,15 +1433,15 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
     }
 
     /**
-     * Draws the delete button — a small translucent circle with the trash-bin icon — at ([cx], [cy]).
-     * The [radius] matches [PEQ_DELETE_BTN_RADIUS_DP] converted to pixels.
-     * The icon color is set when the drawable is initialized so it always reads well on
-     * the semi-transparent red background circle.
+     * Draws the delete button — a translucent red background circle with the trash-bin icon
+     * centered inside it — at ([cx], [cy]). The [radius] matches [PEQ_DELETE_BTN_RADIUS_DP]
+     * converted to pixels. The background gives the button clear visual padding so the icon
+     * never sits flush against the section edge.
      */
     private fun drawDeleteButton(canvas: Canvas, cx: Float, cy: Float, radius: Float) {
         val icon = deleteIconDrawable
         if (icon != null) {
-            val iconHalf = (radius * 0.72f).toInt()
+            val iconHalf = (radius * 0.62f).toInt()
             icon.setBounds((cx - iconHalf).toInt(), (cy - iconHalf).toInt(),
                            (cx + iconHalf).toInt(), (cy + iconHalf).toInt())
             icon.draw(canvas)
@@ -1464,8 +1486,8 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
 
     /** Returns a short human-readable frequency string (e.g., "1.2k", "250"). */
     private fun formatFreqLabel(hz: Float): String = when {
-        hz >= 1000f -> "${"%.1f".format(hz / 1000f)}k"
-        else -> "${hz.toInt()}"
+        hz >= 1000f -> "${"%.1f".format(hz / 1000f)}k Hz"
+        else -> "${hz.toInt()} Hz"
     }
 
     private fun formatGain(gain: Float): String = when {
@@ -1701,14 +1723,15 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
             val sliderCx = bgLeft + 3f * d + hPad + thumbHalfWidthPx
             val knobCx = sliderCx + thumbHalfWidthPx + innerGap + arcR
             val delR = PEQ_DELETE_BTN_RADIUS_DP * d
-            val delCx = bgRight - delR - 2f * d
-            val delCy = bgTop + delR + 2f * d
+            val delMargin = PEQ_DELETE_BTN_MARGIN_DP * d
+            val delCx = bgRight - delR - delMargin
+            val delCy = bgTop + delR + delMargin
 
             // Mirror the knob center calculation from drawPeqSection so hit-test positions
             // always match what's actually drawn on screen.
             val labelGap = PEQ_KNOB_LABEL_GAP_DP * d
             val pillH = knobTypeLabelTextPaint.fontSpacing * 0.9f + 4f * d
-            val knobTotalHeight = pillH + labelGap + 2f * arcR + labelGap + knobLabelPaint.fontSpacing
+            val knobTotalHeight = pillH + labelGap + 2f * arcR + labelGap + knobLabelPaint.fontSpacing + PEQ_KNOB_INTER_GAP_DP * d
             val trackMid = trackTop + trackLength * 0.5f
             val qKnobCyActual = trackMid - knobTotalHeight * 0.5f - arcR - labelGap - pillH * 0.5f + knobTotalHeight * 0.5f
             val freqKnobCyActual = qKnobCyActual + knobTotalHeight
@@ -1827,7 +1850,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
                 // Mirror the knob center calculation from drawPeqSection.
                 val labelGap = PEQ_KNOB_LABEL_GAP_DP * d
                 val pillH = knobTypeLabelTextPaint.fontSpacing * 0.9f + 4f * d
-                val knobTotalHeight = pillH + labelGap + 2f * peqKnobArcRadiusPx + labelGap + knobLabelPaint.fontSpacing
+                val knobTotalHeight = pillH + labelGap + 2f * peqKnobArcRadiusPx + labelGap + knobLabelPaint.fontSpacing + PEQ_KNOB_INTER_GAP_DP * d
                 val trackMid = trackTop + trackLength * 0.5f
                 val qKnobCy = trackMid - knobTotalHeight * 0.5f - peqKnobArcRadiusPx - labelGap - pillH * 0.5f + knobTotalHeight * 0.5f
                 val freqKnobCy = qKnobCy + knobTotalHeight
