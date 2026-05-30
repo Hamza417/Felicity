@@ -53,7 +53,7 @@ object BehaviourPreferences {
 
     fun isPredictiveBackEnabled(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            SharedPreferences.getSharedPreferences().getBoolean(PREDICTIVE_BACK, true)
+            SharedPreferences.getSharedPreferences().getBoolean(PREDICTIVE_BACK, false)
         } else {
             false
         }
