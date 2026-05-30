@@ -412,7 +412,6 @@
     <string name="preset_name_hint">Preset name…</string>
     <string name="built_in">Built-in</string>
     <string name="custom">Custom</string>
-    <string name="peq">PEQ</string>
     <string name="switch_to_peq">Switch to PEQ</string>
     <string name="switch_to_graphic_eq">Switch to Graphic EQ</string>
     <string name="peq_mode">Parametric EQ</string>

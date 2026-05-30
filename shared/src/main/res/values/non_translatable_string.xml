@@ -24,6 +24,7 @@
     <string name="gumroad" translatable="false">Gumroad</string>
     <string name="oboe" translatable="false">Oboe</string>
     <string name="audiotrack" translatable="false">AudioTrack</string>
+    <string name="peq" translatable="false">PEQ</string>
 
     <!-- Audio Pipeline Dialog — channel display values -->
     <string name="channel_mono" translatable="false">1 (Mono)</string>
