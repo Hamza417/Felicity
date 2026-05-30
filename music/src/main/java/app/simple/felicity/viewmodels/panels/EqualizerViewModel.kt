@@ -102,7 +102,9 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
                     pitch = EqualizerPreferences.getPitch(),
                     playbackSpeed = EqualizerPreferences.getPlaybackSpeed(),
                     replayGainDb = EqualizerPreferences.getReplayGainDb(),
-                    pitchSpeedLocked = EqualizerPreferences.isPitchSpeedLocked()
+                    pitchSpeedLocked = EqualizerPreferences.isPitchSpeedLocked(),
+                    isParametricMode = EqualizerPreferences.isParametricEqMode(),
+                    peqBandsRaw = EqualizerPreferences.getPeqBandsRaw()
             )
         }
     }
@@ -139,6 +141,40 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
                     gains = gains,
                     preampDb = preampDb,
                     isBuiltIn = false
+            )
+            db.equalizerPresetDao().insertPreset(preset)
+            withContext(Dispatchers.Main) { onSuccess() }
+        }
+    }
+
+    /**
+     * Saves the current PEQ band configuration as a new preset. Parametric presets store
+     * the gain/Q/frequency of each band rather than the 10-band graphic EQ values.
+     *
+     * @param name        The name the user typed in. Leading/trailing spaces are trimmed.
+     * @param bands       List of (gainDb, qFactor, frequencyHz) triples — one per PEQ band.
+     * @param preampDb    The current preamp level in dB.
+     * @param onDuplicate Called on the main thread when a preset with this name already exists.
+     * @param onSuccess   Called on the main thread after the preset is successfully saved.
+     */
+    fun savePeqPreset(
+            name: String,
+            bands: List<Triple<Float, Float, Float>>,
+            preampDb: Float,
+            onDuplicate: () -> Unit,
+            onSuccess: () -> Unit
+    ) {
+        val trimmedName = name.trim()
+        viewModelScope.launch(Dispatchers.IO) {
+            val existing = db.equalizerPresetDao().getPresetByName(trimmedName)
+            if (existing != null) {
+                withContext(Dispatchers.Main) { onDuplicate() }
+                return@launch
+            }
+            val preset = EqualizerPreset.fromPeqBands(
+                    name = trimmedName,
+                    bands = bands,
+                    preampDb = preampDb
             )
             db.equalizerPresetDao().insertPreset(preset)
             withContext(Dispatchers.Main) { onSuccess() }
@@ -188,6 +224,8 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
      * @property playbackSpeed Playback speed multiplier in [0.5 .. 2.0]. 1.0 = normal.
      * @property replayGainDb Manual replay gain offset in dB [-15 .. +15]. 0.0 = unity.
      * @property pitchSpeedLocked Whether the pitch and speed knobs are linked together.
+     * @property isParametricMode Whether the EQ is currently in parametric mode.
+     * @property peqBandsRaw Previously saved PEQ band configuration, null if never used.
      */
     data class EqualizerInitialState(
             val isEqEnabled: Boolean,
@@ -205,7 +243,9 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
             val pitch: Float,
             val playbackSpeed: Float,
             val replayGainDb: Float = 0f,
-            val pitchSpeedLocked: Boolean = false
+            val pitchSpeedLocked: Boolean = false,
+            val isParametricMode: Boolean = false,
+            val peqBandsRaw: String? = null
     ) {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
@@ -226,6 +266,8 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
                     && playbackSpeed == other.playbackSpeed
                     && replayGainDb == other.replayGainDb
                     && pitchSpeedLocked == other.pitchSpeedLocked
+                    && isParametricMode == other.isParametricMode
+                    && peqBandsRaw == other.peqBandsRaw
         }
 
         override fun hashCode(): Int {
@@ -245,6 +287,8 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
             result = 31 * result + playbackSpeed.hashCode()
             result = 31 * result + replayGainDb.hashCode()
             result = 31 * result + pitchSpeedLocked.hashCode()
+            result = 31 * result + isParametricMode.hashCode()
+            result = 31 * result + peqBandsRaw.hashCode()
             return result
         }
     }

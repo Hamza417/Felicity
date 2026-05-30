@@ -3,6 +3,8 @@
 import androidx.core.content.edit
 import app.simple.felicity.manager.SharedPreferences
 import app.simple.felicity.preferences.EqualizerPreferences.EQ_BAND_KEY_PREFIX
+import app.simple.felicity.preferences.EqualizerPreferences.EQ_MODE_GRAPHIC
+import app.simple.felicity.preferences.EqualizerPreferences.EQ_MODE_PARAMETRIC
 import app.simple.felicity.preferences.EqualizerPreferences.REPLAY_GAIN_MODE
 import app.simple.felicity.preferences.EqualizerPreferences.REPLAY_GAIN_MODE_ALBUM
 import app.simple.felicity.preferences.EqualizerPreferences.REPLAY_GAIN_MODE_TRACK
@@ -157,6 +159,22 @@ object EqualizerPreferences {
     const val REPLAY_GAIN_MODE = "eq_replay_gain_mode"
     const val REPLAY_GAIN_MODE_TRACK = "track"
     const val REPLAY_GAIN_MODE_ALBUM = "album"
+
+    /**
+     * Which equalizer UI mode is currently active: the classic 10-band graphic EQ or
+     * the fully parametric EQ where the user controls each filter's frequency and Q.
+     * Stored as a string — use [EQ_MODE_GRAPHIC] or [EQ_MODE_PARAMETRIC] as values.
+     */
+    const val EQ_MODE = "eq_mode"
+    const val EQ_MODE_GRAPHIC = "graphic"
+    const val EQ_MODE_PARAMETRIC = "parametric"
+
+    /**
+     * The current parametric EQ band configuration serialized as a pipe-separated string.
+     * Format matches [EqualizerPreset.peqBandsRaw]: "gain:q:freq|gain:q:freq|..."
+     * Stored here so the PEQ state survives app restarts just like the graphic EQ gains do.
+     */
+    const val PEQ_BANDS_RAW = "eq_peq_bands_raw"
 
     fun setBalance(pan: Float) {
         SharedPreferences.getSharedPreferences().edit { putFloat(BALANCE, pan.coerceIn(-1f, 1f)) }
@@ -476,5 +494,44 @@ object EqualizerPreferences {
     fun getReplayGainMode(): String {
         return SharedPreferences.getSharedPreferences().getString(REPLAY_GAIN_MODE, REPLAY_GAIN_MODE_TRACK)
             ?: REPLAY_GAIN_MODE_TRACK
+    }
+
+    /**
+     * Persists the current equalizer mode — graphic (10-band) or parametric.
+     *
+     * @param mode Either [EQ_MODE_GRAPHIC] or [EQ_MODE_PARAMETRIC].
+     */
+    fun setEqMode(mode: String) {
+        SharedPreferences.getSharedPreferences().edit { putString(EQ_MODE, mode) }
+    }
+
+    /**
+     * Returns the current equalizer mode.
+     * Defaults to [EQ_MODE_GRAPHIC] so new installs start on the classic 10-band view.
+     */
+    fun getEqMode(): String {
+        return SharedPreferences.getSharedPreferences().getString(EQ_MODE, EQ_MODE_GRAPHIC)
+            ?: EQ_MODE_GRAPHIC
+    }
+
+    /** Returns true when the app is currently in parametric EQ mode. */
+    fun isParametricEqMode(): Boolean = getEqMode() == EQ_MODE_PARAMETRIC
+
+    /**
+     * Persists the current PEQ band configuration so the user's knob positions survive
+     * app restarts. Stores the same "gain:q:freq|..." format used in [EqualizerPreset].
+     *
+     * @param raw Serialized PEQ bands string, or null to clear.
+     */
+    fun setPeqBandsRaw(raw: String?) {
+        SharedPreferences.getSharedPreferences().edit { putString(PEQ_BANDS_RAW, raw) }
+    }
+
+    /**
+     * Returns the previously saved PEQ band configuration, or null if the user has
+     * never used parametric mode (in which case the view's defaults kick in).
+     */
+    fun getPeqBandsRaw(): String? {
+        return SharedPreferences.getSharedPreferences().getString(PEQ_BANDS_RAW, null)
     }
 }

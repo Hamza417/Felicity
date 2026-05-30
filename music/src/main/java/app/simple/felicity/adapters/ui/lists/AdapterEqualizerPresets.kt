@@ -19,11 +19,15 @@ import app.simple.felicity.shared.utils.ViewUtils.visible
  * an instant visual preview of the EQ curve shape before they commit to applying it.
  * Think of it as a "try before you apply" experience — in glanceable waveform form.
  *
+ * Parametric EQ presets show a "PEQ" badge instead of the wave to indicate their type,
+ * since a proper frequency-response curve would need full biquad math per band — a nice
+ * future addition, but not required for the preset list to be functional and clear.
+ *
  * The currently active preset (identified by [selectedPresetId]) shows an accent-colored
  * indicator so users always know which preset is in effect, even after scrolling around.
  *
  * @param onPresetClicked      Called when the user taps a row to apply that preset.
- * @param onOptionClicked  Called when the user long-presses a row; receives both the
+ * @param onOptionClicked  Called when the user taps the options button; receives both the
  *                             preset and the view so the caller can anchor a popup near it.
  *
  * @author Hamza417
@@ -80,6 +84,16 @@ class AdapterEqualizerPresets(
                 binding.presetBuiltInLabel.gone()
             }
 
+            // Show the "PEQ" badge for parametric presets and hide it for graphic ones.
+            // This gives the user a quick way to know which EQ mode the preset uses.
+            if (preset.isPeq()) {
+                binding.presetTypeLabel.text = binding.root.context.getString(
+                        app.simple.felicity.R.string.peq)
+                binding.presetTypeLabel.visible()
+            } else {
+                binding.presetTypeLabel.gone()
+            }
+
             // Highlight the row whose preset is currently applied — handy for orientation.
             if (preset.id == selectedPresetId) {
                 binding.presetSelectedIndicator.text = "●"
@@ -88,8 +102,14 @@ class AdapterEqualizerPresets(
                 binding.presetSelectedIndicator.gone()
             }
 
-            // Feed the wave view the band gains so it renders the correct EQ curve shape.
-            binding.equalizerWave.setGains(preset.getBandGains())
+            // For graphic presets, feed the wave view the band gains so it renders the
+            // correct EQ curve shape. For parametric presets, show a flat line as a
+            // placeholder — the user can apply the preset to see its effect.
+            if (preset.isPeq()) {
+                binding.equalizerWave.setGains(FloatArray(10))
+            } else {
+                binding.equalizerWave.setGains(preset.getBandGains())
+            }
 
             binding.container.setOnClickListener {
                 onPresetClicked(preset)
@@ -114,4 +134,3 @@ class AdapterEqualizerPresets(
         }
     }
 }
-
