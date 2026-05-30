@@ -916,13 +916,16 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspCreate(
     /** Initialize all EQ bands to flat (identity coefficients). */
     for (int b = 0; b < kDspEqBandCount; ++b) {
         ctx->eqCoeffs[b] = identityBiquad();
+        ctx->eqTargetCoeffs[b] = identityBiquad();
     }
     ctx->eqEnabled = true;
     ctx->eqFlat = true;
 
     ctx->bassCoeffs = identityBiquad();
+    ctx->bassTargetCoeffs = identityBiquad();
     ctx->bassFlat = true;
     ctx->trebleCoeffs = identityBiquad();
+    ctx->trebleTargetCoeffs = identityBiquad();
     ctx->trebleFlat = true;
 
     /** Neutral stereo width (width = 1.0 → direct = 1.0, cross = 0.0). */
@@ -990,12 +993,18 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspConfigure(
 
     /** Recompute every band at the new sample rate. */
     for (int b = 0; b < kDspEqBandCount; ++b) {
-        ctx->eqCoeffs[b] = ctx->eqFlat
-                           ? identityBiquad()
-                           : computePeakingEq(kDspEqCenterHz[b], 0.f, ctx->sampleRate);
+        const BiquadCoeffs c = ctx->eqFlat
+                               ? identityBiquad()
+                               : computePeakingEq(kDspEqCenterHz[b], 0.f, ctx->sampleRate);
+        ctx->eqCoeffs[b] = c;
+        ctx->eqTargetCoeffs[b] = c;
     }
-    ctx->bassCoeffs = computeLowShelf(kDspBassShelfHz, 0.f, ctx->sampleRate);
-    ctx->trebleCoeffs = computeHighShelf(kDspTrebleShelfHz, 0.f, ctx->sampleRate);
+    const BiquadCoeffs bass = computeLowShelf(kDspBassShelfHz, 0.f, ctx->sampleRate);
+    ctx->bassCoeffs = bass;
+    ctx->bassTargetCoeffs = bass;
+    const BiquadCoeffs treble = computeHighShelf(kDspTrebleShelfHz, 0.f, ctx->sampleRate);
+    ctx->trebleCoeffs = treble;
+    ctx->trebleTargetCoeffs = treble;
 
     clearAllBiquadState(ctx);
     ctx->vizBufPos = 0;
@@ -1055,18 +1064,19 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspSetEqBands(
     bool anyActive = false;
     for (int b = 0; b < kDspEqBandCount; ++b) {
         const float db = gains[b];
-        ctx->eqCoeffs[b] = computePeakingEq(kDspEqCenterHz[b], db, ctx->sampleRate);
+        ctx->eqTargetCoeffs[b] = computePeakingEq(kDspEqCenterHz[b], db, ctx->sampleRate);
         if (fabsf(db) >= kDspFlatThresholdDb) anyActive = true;
     }
     env->ReleaseFloatArrayElements(bandGains, gains, JNI_ABORT);
 
     ctx->eqFlat = !anyActive;
 
-    ctx->bassCoeffs = computeLowShelf(kDspBassShelfHz, static_cast<float>(bassDb), ctx->sampleRate);
+    ctx->bassTargetCoeffs = computeLowShelf(kDspBassShelfHz, static_cast<float>(bassDb),
+                                            ctx->sampleRate);
     ctx->bassFlat = fabsf(static_cast<float>(bassDb)) < kDspFlatThresholdDb;
 
-    ctx->trebleCoeffs = computeHighShelf(kDspTrebleShelfHz, static_cast<float>(trebleDb),
-                                         ctx->sampleRate);
+    ctx->trebleTargetCoeffs = computeHighShelf(kDspTrebleShelfHz, static_cast<float>(trebleDb),
+                                               ctx->sampleRate);
     ctx->trebleFlat = fabsf(static_cast<float>(trebleDb)) < kDspFlatThresholdDb;
 }
 
@@ -1113,11 +1123,12 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspSetBassAndTrebl
     auto *ctx = reinterpret_cast<DspContext *>(handle);
     if (!ctx) return;
 
-    ctx->bassCoeffs = computeLowShelf(kDspBassShelfHz, static_cast<float>(bassDb), ctx->sampleRate);
+    ctx->bassTargetCoeffs = computeLowShelf(kDspBassShelfHz, static_cast<float>(bassDb),
+                                            ctx->sampleRate);
     ctx->bassFlat = fabsf(static_cast<float>(bassDb)) < kDspFlatThresholdDb;
 
-    ctx->trebleCoeffs = computeHighShelf(kDspTrebleShelfHz, static_cast<float>(trebleDb),
-                                         ctx->sampleRate);
+    ctx->trebleTargetCoeffs = computeHighShelf(kDspTrebleShelfHz, static_cast<float>(trebleDb),
+                                               ctx->sampleRate);
     ctx->trebleFlat = fabsf(static_cast<float>(trebleDb)) < kDspFlatThresholdDb;
 }
 
@@ -1158,13 +1169,13 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspSetPeqBands(
         const float db = gPtr[b];
         const float freq = fPtr[b];
         const float q = qPtr[b];
-        ctx->eqCoeffs[b] = computePeakingEqWithQ(freq, db, q, ctx->sampleRate);
+        ctx->eqTargetCoeffs[b] = computePeakingEqWithQ(freq, db, q, ctx->sampleRate);
         if (fabsf(db) >= kDspFlatThresholdDb) anyActive = true;
     }
     /* Silence any bands beyond the supplied count so stale graphic-EQ coefficients
        from a previous setEqBands call don't bleed through. */
     for (int b = bandCount; b < kDspEqBandCount; ++b) {
-        ctx->eqCoeffs[b] = identityBiquad();
+        ctx->eqTargetCoeffs[b] = identityBiquad();
     }
     ctx->eqFlat = !anyActive;
 
@@ -1299,6 +1310,46 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspProcessAudio(
     const float satDrive = ctx->satDrive;
     const float satComp = ctx->satCompensation;
     const bool reverbActive = ctx->reverbEnabled;
+
+    /**
+     * Coefficient smoothing — runs once per buffer callback before any audio is processed.
+     *
+     * Instead of snapping to new EQ/bass/treble values instantly (which can cause a faint
+     * crackling sound when the user drags a node quickly), we nudge the active coefficients
+     * a fixed fraction of the way toward the target values. After a few callbacks the active
+     * and target values are indistinguishable, but the transition is completely click-free.
+     *
+     * The smoothing constant [kCoeffSmoothAlpha] controls how fast the convergence happens.
+     * 0.3 means each callback closes 30 % of the remaining gap, which settles in about
+     * 10 callbacks (~100 ms at typical buffer sizes) — imperceptible to the human ear.
+     */
+    for (int b = 0; b < kDspEqBandCount; ++b) {
+        BiquadCoeffs &a = ctx->eqCoeffs[b];
+        const BiquadCoeffs &t = ctx->eqTargetCoeffs[b];
+        a.b0 += kCoeffSmoothAlpha * (t.b0 - a.b0);
+        a.b1 += kCoeffSmoothAlpha * (t.b1 - a.b1);
+        a.b2 += kCoeffSmoothAlpha * (t.b2 - a.b2);
+        a.a1 += kCoeffSmoothAlpha * (t.a1 - a.a1);
+        a.a2 += kCoeffSmoothAlpha * (t.a2 - a.a2);
+    }
+    {
+        BiquadCoeffs &a = ctx->bassCoeffs;
+        const BiquadCoeffs &t = ctx->bassTargetCoeffs;
+        a.b0 += kCoeffSmoothAlpha * (t.b0 - a.b0);
+        a.b1 += kCoeffSmoothAlpha * (t.b1 - a.b1);
+        a.b2 += kCoeffSmoothAlpha * (t.b2 - a.b2);
+        a.a1 += kCoeffSmoothAlpha * (t.a1 - a.a1);
+        a.a2 += kCoeffSmoothAlpha * (t.a2 - a.a2);
+    }
+    {
+        BiquadCoeffs &a = ctx->trebleCoeffs;
+        const BiquadCoeffs &t = ctx->trebleTargetCoeffs;
+        a.b0 += kCoeffSmoothAlpha * (t.b0 - a.b0);
+        a.b1 += kCoeffSmoothAlpha * (t.b1 - a.b1);
+        a.b2 += kCoeffSmoothAlpha * (t.b2 - a.b2);
+        a.a1 += kCoeffSmoothAlpha * (t.a1 - a.a1);
+        a.a2 += kCoeffSmoothAlpha * (t.a2 - a.a2);
+    }
 
     /**
      * Stage 1: 10-Band peaking EQ.

@@ -43,6 +43,17 @@ static constexpr float kDspBandQ = 1.4142135f;
 /** Threshold below which a gain value is treated as 0 dB flat, skipping the biquad math. */
 static constexpr float kDspFlatThresholdDb = 0.001f;
 
+/**
+ * How much of the gap between the current (active) and desired (target) biquad coefficients
+ * is closed on each audio buffer callback. A value of 0.3 means 30% of the remaining
+ * distance is covered per callback, so the coefficients settle smoothly over a handful
+ * of buffers (~30–60 ms at typical buffer sizes) instead of jumping instantly.
+ *
+ * Keeping this below 1.0 is what prevents the faint crackling sound you'd otherwise
+ * hear when dragging an EQ node quickly across the screen.
+ */
+static constexpr float kCoeffSmoothAlpha = 0.3f;
+
 /** Shelf frequency for the bass low-shelf filter in Hz. */
 static constexpr float kDspBassShelfHz = 250.0f;
 
@@ -152,8 +163,20 @@ struct BiquadState {
  */
 struct DspContext {
 
-    /** Biquad coefficients for each of the 10 peaking EQ bands. */
+    /**
+     * Active (currently used) biquad coefficients for each of the 10 peaking EQ bands.
+     * These are what the sample-processing loop actually reads. They are smoothly nudged
+     * toward [eqTargetCoeffs] at the start of every audio callback so changes from the
+     * UI land gradually rather than as a hard jump.
+     */
     BiquadCoeffs eqCoeffs[kDspEqBandCount];
+
+    /**
+     * Desired biquad coefficients written by the Kotlin layer via JNI setters.
+     * The audio callback interpolates [eqCoeffs] toward these values each frame using
+     * [kCoeffSmoothAlpha], which is what prevents the zipper crackling on rapid drags.
+     */
+    BiquadCoeffs eqTargetCoeffs[kDspEqBandCount];
 
     /**
      * Per-channel per-band biquad state.
@@ -167,8 +190,11 @@ struct DspContext {
     /** True when every EQ band gain is within +/-[kDspFlatThresholdDb] of 0 dB. */
     bool eqFlat;
 
-    /** Biquad coefficients for the bass low-shelf filter (250 Hz). */
+    /** Active biquad coefficients for the bass low-shelf filter (250 Hz). */
     BiquadCoeffs bassCoeffs;
+
+    /** Desired bass coefficients; the audio callback smoothly moves [bassCoeffs] toward these. */
+    BiquadCoeffs bassTargetCoeffs;
 
     /** Per-channel biquad state for the bass filter. */
     BiquadState bassState[kDspMaxChannels];
@@ -176,8 +202,11 @@ struct DspContext {
     /** True when the bass gain is effectively 0 dB. */
     bool bassFlat;
 
-    /** Biquad coefficients for the treble high-shelf filter (4000 Hz). */
+    /** Active biquad coefficients for the treble high-shelf filter (4000 Hz). */
     BiquadCoeffs trebleCoeffs;
+
+    /** Desired treble coefficients; the audio callback smoothly moves [trebleCoeffs] toward these. */
+    BiquadCoeffs trebleTargetCoeffs;
 
     /** Per-channel biquad state for the treble filter. */
     BiquadState trebleState[kDspMaxChannels];
