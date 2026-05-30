@@ -58,7 +58,8 @@ import app.simple.felicity.decoration.R as DecoR
  *
  * The text-gap calculation is restructured so [textGapPx] exclusively controls the gap
  * between the track and the label row without accumulating extra space at the bottom of
- * the view when the value is changed.
+ * the view when the value is changed. [verticalPaddingDp] controls the top padding above
+ * the slider track and the bottom padding below the label row simultaneously.
  *
  * @author Hamza417
  */
@@ -427,11 +428,28 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
     private val pressRingOutsetPx = 5f * d
 
     /**
-     * Gap between the bottom of the track (plus its thumb area) and the top of the
-     * label row. Affects only this visual gap; it does not accumulate extra space at
-     * the bottom of the view.
+     * Gap between the bottom of the track and the top of the label row.
+     * Changing this moves the labels closer to or farther from the sliders
+     * without touching the bottom edge of the view.
      */
-    private val textGapPx = 10f * d
+    private val textGapPx = 30f * d
+
+    /**
+     * Uniform vertical padding applied to both the top of the slider track and the
+     * bottom of the label row. Increase this to add breathing room above the sliders
+     * and below the frequency/value text; decrease it to make the widget more compact.
+     *
+     * Defaults to 8 dp, which avoids the excessive bottom gap that `sliderVerticalPaddingPx`
+     * used to produce when it was reused for both ends of the layout.
+     */
+    var verticalPaddingDp: Float = 16f
+        set(value) {
+            field = value.coerceAtLeast(0f)
+            if (width > 0 && height > 0) {
+                recalculateLayout(width, height)
+                invalidate()
+            }
+        }
 
     // -------------------------------------------------------------------------
     // Shadow / glow state
@@ -479,7 +497,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
     }
 
     /**
-     * Filled gradient paint used to draw the translucent fade below the bezier curve.
+     * Filled gradient paint used to draw the translucent fade below the Bézier curve.
      * The [LinearGradient] shader is rebuilt dynamically in [drawBezierFill] each frame
      * because the gradient bounds change as the user drags the band thumbs.
      */
@@ -772,11 +790,14 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         columnWidth = bandSpacingDp * d
         contentWidth = columnWidth * TOTAL_COLUMNS
 
-        // The label row sits at a fixed position anchored from the view bottom.
-        // sliderVerticalPaddingPx below the track provides space for the thumb cap.
-        // textGapPx exclusively controls the gap from trackBottom to textRegionTop.
+        // The label row is anchored from the view bottom using verticalPaddingDp so the
+        // bottom edge of the text block sits exactly that many dp above the view edge.
+        // textGapPx exclusively controls the gap between trackBottom and textRegionTop.
+        // trackTop still uses sliderVerticalPaddingPx so the pill thumb never clips
+        // against the top of the view even at its pressed scale.
         val twoLineTextHeight = freqTextPaint.fontSpacing + valueTextPaint.fontSpacing
-        textRegionTop = (h - paddingBottom).toFloat() - twoLineTextHeight - sliderVerticalPaddingPx
+        val bottomPaddingPx = verticalPaddingDp * d
+        textRegionTop = (h - paddingBottom).toFloat() - twoLineTextHeight - bottomPaddingPx
 
         trackTop = paddingTop + sliderVerticalPaddingPx
         trackBottom = textRegionTop - textGapPx
