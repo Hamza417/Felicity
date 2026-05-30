@@ -154,14 +154,10 @@
     <string name="not_granted">Not Granted</string>
     <string name="post_notifications">Post Notifications</string>
     <string name="desc_post_notifications">Required to show media player and other necessary notifications.</string>
-    <string name="manage_all_files">Manage All Files</string>
-    <string name="desc_manage_all_files">Required to delete, rename, or modify audio files and their metadata. Also needed to access sidecar files like subtitles (.srt), lyrics (.lrc), and cue sheets (.cue). Without this, modification features will be limited.</string>
     <string name="storage_folder_access">Storage Folder Access</string>
     <string name="desc_storage_folder_access">Tap to pick the music folder(s) you want Felicity to scan. You can add more folders later from Library settings. No broad storage permission is required, only the folders you choose.</string>
     <string name="read_media_audio">Read Media Audio</string>
     <string name="desc_read_media_audio">Allows Felicity to read audio files from MediaStore.</string>
-    <string name="add_folder">Add Folder</string>
-    <string name="granted_folders">Granted Folders</string>
     <string name="no_folders_granted">No folders added yet. Tap above to pick a music folder.</string>
     <string name="start_app_now">Start App Now</string>
     <string name="audio">Audio</string>
@@ -315,7 +311,6 @@
     <string name="edit_metadata">Edit Metadata</string>
     <string name="metadata_saved">Metadata saved successfully.</string>
     <string name="comment">Comment</string>
-    <string name="change">Change</string>
 
     <!-- Audio Pipeline Dialog — section labels -->
     <string name="track_info">Track Info</string>
@@ -356,7 +351,6 @@
     <string name="playlist_description">Description (optional)</string>
     <string name="edit_playlist">Edit Playlist</string>
     <string name="add_all_to_queue">Add All to Queue</string>
-    <string name="manual">Manual</string>
     <string name="as_added">As Added</string>
     <string name="filter_categories">Filter Categories</string>
     <string name="about">About</string>
@@ -411,11 +405,8 @@
     <string name="save_preset">Save Preset</string>
     <string name="preset_name_hint">Preset name…</string>
     <string name="built_in">Built-in</string>
-    <string name="custom">Custom</string>
     <string name="switch_to_peq">Switch to PEQ</string>
     <string name="switch_to_graphic_eq">Switch to Graphic EQ</string>
-    <string name="peq_mode">Parametric EQ</string>
-    <string name="graphic_eq_mode">Graphic EQ</string>
 
     <!-- LRC Editor -->
     <string name="lrc_lyric_hint">Lyric line…</string>
@@ -426,15 +417,10 @@
     <string name="rewind">Rewind</string>
     <string name="forward">Forward</string>
     <string name="add_lyrics">Add Lyrics</string>
-    <string name="no_folders_added">No folders added yet. Tap the + button to add one.</string>
-    <string name="path_added">Path added successfully.</string>
-    <string name="path_removed">Path removed.</string>
-    <string name="storage_root">Storage Root</string>
     <string name="dividers">Dividers</string>
     <string name="dividers_summary">Add divider lines in the lists.</string>
     <string name="like_icon">Like Icon</string>
     <string name="like_icon_summary">Replace the heart icon for favorites with a thumbs up icon in the app.</string>
-    <string name="buy_full_version">Buy Full Version</string>
     <string name="trial_period">Trial Period</string>
     <string name="cache">Cache</string>
     <string name="clear_image_cache">Clear Image Cache</string>
@@ -462,9 +448,6 @@
     <string name="reshuffle_summary">Do not shuffle the list again if the current list is already shuffled when a new song is selected.</string>
 
     <string name="label">Label</string>
-    <string name="portrait">Portrait</string>
-    <string name="span_type">Span Type</string>
-    <string name="landscape">Landscape</string>
     <string name="relaxed">Relaxed</string>
     <string name="compact">Compact</string>
     <string name="single">Single</string>
@@ -481,14 +464,12 @@
     <string name="about_album">About the Album</string>
     <string name="search_metadata">Search</string>
     <string name="synced">Synced</string>
-    <string name="metadata_synced_lyrics_saved">Synced lyrics saved</string>
     <string name="read_more">Read more</string>
     <string name="read_less">Read less</string>
     <string name="active_since">Active since %1$s</string>
 
     <string name="active_since_present">%1$s – present</string>
     <string name="released_in">Released %1$s</string>
-    <string name="label_on">On %1$s</string>
     <string name="pause_activity">Pause Activity</string>
     <string name="pause_activity_summary">Prevent app from keeping the playback activity records.</string>
     <string name="clear_playback_stats">Clear Playback Stats</string>
@@ -500,7 +481,6 @@
     <string name="no_bookmarks">No bookmarks yet</string>
     <string name="bookmark_too_close">A bookmark already exists nearby</string>
     <string name="bookmark_at">Bookmark at %1$s</string>
-    <string name="clear_bookmarks">Clear All Bookmarks</string>
     <string name="play_store_foss_purchase_info">The FOSS version of this app does not support Google Play purchases. To make a purchase, please install the version available on the Google Play Store.</string>
     <string name="playstore_link">Play Store Link</string>
     <string name="playstore_link_summary">Open the app\'s Play Store page.</string>
