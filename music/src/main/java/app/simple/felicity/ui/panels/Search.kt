@@ -82,6 +82,8 @@ class Search : PanelFragment() {
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
         binding.recyclerView.attachSlideFastScroller()
 
+        headerBinding.editText.showInput()
+
         gridLayoutManager = GridLayoutManager(
                 requireContext(), SearchPreferences.getGridSize().spanCount
         )
