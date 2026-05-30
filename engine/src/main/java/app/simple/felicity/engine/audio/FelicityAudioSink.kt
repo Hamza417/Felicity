@@ -1,9 +1,12 @@
 package app.simple.felicity.engine.audio
 
 import android.content.Context
+import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.C
@@ -21,6 +24,7 @@ import app.simple.felicity.engine.usb.UsbDacManager
 import app.simple.felicity.engine.utils.PcmUtils
 import app.simple.felicity.preferences.AudioPreferences
 import java.nio.ByteBuffer
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * An [androidx.media3.exoplayer.audio.AudioSink] that routes fully-processed float PCM
@@ -116,6 +120,49 @@ class FelicityAudioSink(
     private var floatScratchBuffer: FloatArray = FloatArray(0)
 
     /**
+     * Tracks whether the stream that is currently open was created with Bluetooth-safe
+     * settings. We use this to avoid unnecessary teardown/recreate cycles — if the mode
+     * hasn't actually changed we leave the stream alone.
+     */
+    private var currentStreamSafeBufferMode: Boolean = false
+
+    /**
+     * Set to true by [audioDeviceCallback] when a Bluetooth device is added or removed.
+     * Checked at the start of [handleBuffer] so the reroute happens on the audio thread,
+     * which already owns all the stream references — no extra locking needed.
+     */
+    private val rerouteNeeded = AtomicBoolean(false)
+
+    /**
+     * Posted to the main thread by [audioDeviceCallback] as a guard so we never schedule
+     * more than one back-to-back reroute for a single device-change event.
+     */
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    /**
+     * Listens for audio output device additions and removals.
+     *
+     * When a Bluetooth device comes or goes we flag [rerouteNeeded]. The actual
+     * stream teardown and recreation then happens inside [handleBuffer] on the audio
+     * thread, where it is safe to touch the stream references without any extra locking.
+     */
+    private val audioDeviceCallback = object : AudioDeviceCallback() {
+        override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>) {
+            if (addedDevices.any { it.isBluetoothType() }) {
+                Log.i(TAG, "Bluetooth output device added — scheduling stream reroute")
+                rerouteNeeded.set(true)
+            }
+        }
+
+        override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>) {
+            if (removedDevices.any { it.isBluetoothType() }) {
+                Log.i(TAG, "Bluetooth output device removed — scheduling stream reroute")
+                rerouteNeeded.set(true)
+            }
+        }
+    }
+
+    /**
      * Holds a reference to the last buffer that [DefaultAudioSink] refused to consume
      * (i.e. [handleBuffer] returned false). When ExoPlayer retries the same buffer, we
      * can detect it by identity and skip re-sending to AAudio or the USB DAC — the
@@ -168,6 +215,8 @@ class FelicityAudioSink(
 
     init {
         UsbDacManager.addListener(usbDacListener)
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+        audioManager?.registerAudioDeviceCallback(audioDeviceCallback, mainHandler)
     }
 
     /**
@@ -226,6 +275,7 @@ class FelicityAudioSink(
                     val stream = AaudioOutputProcessor(sr, ch, useSafeBuffers)
                     if (stream.isReady) {
                         aaudioStream = stream
+                        currentStreamSafeBufferMode = useSafeBuffers
                         isAAudioStreamActive = true
                         muteDelegateIfNeeded()
                         Log.i(TAG, "AAudio stream configured — sampleRate=$sr, channels=$ch, " +
@@ -249,6 +299,7 @@ class FelicityAudioSink(
                     val stream = OboeOutputProcessor(sr, ch, useSafeBuffers)
                     if (stream.isReady) {
                         oboeStream = stream
+                        currentStreamSafeBufferMode = useSafeBuffers
                         isOboeStreamActive = true
                         muteDelegateIfNeeded()
                         Log.i(TAG, "Oboe stream configured — sampleRate=$sr, channels=$ch, " +
@@ -328,6 +379,16 @@ class FelicityAudioSink(
             presentationTimeUs: Long,
             encodedAccessUnitCount: Int
     ): Boolean {
+        /**
+         * If a Bluetooth device was just added or removed, tear down the current stream
+         * and open a new one here, on the audio thread, before doing anything else.
+         * This is the earliest safe moment to touch the stream references — ExoPlayer
+         * serialises all render-thread calls so there is no race with configure/play/pause.
+         */
+        if (rerouteNeeded.compareAndSet(true, false)) {
+            rerouteStreamForDeviceChange()
+        }
+
         val usbActive = UsbDacManager.isActive
         val aaudioReady = AudioPreferences.isAaudioEnabled() && aaudioStream?.isReady == true
         val oboeReady = AudioPreferences.isOboeEnabled() && oboeStream?.isReady == true
@@ -433,6 +494,8 @@ class FelicityAudioSink(
         nativeDsp.isBypassedForDirectOutput = false
         visualizer.isBypassedForDirectOutput = false
         UsbDacManager.removeListener(usbDacListener)
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+        audioManager?.unregisterAudioDeviceCallback(audioDeviceCallback)
         releaseAaudioStream()
         releaseOboeStream()
         super.release()
@@ -494,11 +557,95 @@ class FelicityAudioSink(
         val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
                 ?: return false
         return audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).any { device ->
-            device.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
-                    device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
-                    (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                            (device.type == AudioDeviceInfo.TYPE_BLE_HEADSET ||
-                                    device.type == AudioDeviceInfo.TYPE_BLE_SPEAKER))
+            device.isBluetoothType()
+        }
+    }
+
+    /**
+     * Returns true if this device is any flavor of Bluetooth audio output
+     * (A2DP classic, SCO, or the newer BLE audio types added in Android 12).
+     */
+    private fun AudioDeviceInfo.isBluetoothType(): Boolean {
+        return type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+                type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+                (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                        (type == AudioDeviceInfo.TYPE_BLE_HEADSET ||
+                                type == AudioDeviceInfo.TYPE_BLE_SPEAKER))
+    }
+
+    /**
+     * Tears down the currently open native stream and immediately opens a fresh one with
+     * the correct [useSafeBuffers] setting for the new audio route.
+     *
+     * Called from [handleBuffer] on the ExoPlayer audio thread whenever [rerouteNeeded]
+     * is raised by [audioDeviceCallback]. Running here means we don't need any extra
+     * synchronization — ExoPlayer never overlaps render-thread calls.
+     *
+     * If the new route happens to require the exact same stream configuration we already
+     * have (e.g. a non-audio BT device was added), we skip the teardown entirely so
+     * playback is not interrupted needlessly.
+     */
+    private fun rerouteStreamForDeviceChange() {
+        // Nothing to reroute if we haven't been configured yet, or USB DAC owns the output.
+        if (currentSampleRate <= 0 || currentChannelCount <= 0) return
+        if (UsbDacManager.isActive) return
+
+        val sink = AudioPreferences.getOutputSink()
+        if (sink != AudioPreferences.SINK_AAUDIO && sink != AudioPreferences.SINK_OBOE) return
+
+        val needSafeBuffers = isBluetoothOutputActive()
+
+        // Skip the teardown if the current stream is already using the right mode.
+        if (needSafeBuffers == currentStreamSafeBufferMode &&
+                (sink == AudioPreferences.SINK_AAUDIO && aaudioStream?.isReady == true ||
+                        sink == AudioPreferences.SINK_OBOE && oboeStream?.isReady == true)) {
+            Log.d(TAG, "Audio route changed but stream mode is already correct (safeBuffers=$needSafeBuffers), skipping reroute")
+            return
+        }
+
+        Log.i(TAG, "Rerouting audio stream — safeBuffers: $currentStreamSafeBufferMode → $needSafeBuffers")
+
+        when (sink) {
+            AudioPreferences.SINK_AAUDIO -> {
+                releaseAaudioStream()
+                val stream = AaudioOutputProcessor(currentSampleRate, currentChannelCount, needSafeBuffers)
+                if (stream.isReady) {
+                    aaudioStream = stream
+                    currentStreamSafeBufferMode = needSafeBuffers
+                    isAAudioStreamActive = true
+                    muteDelegateIfNeeded()
+                    if (!isPaused) {
+                        stream.start()
+                    }
+                    Log.i(TAG, "AAudio stream reopened after route change — " +
+                            "sampleRate=$currentSampleRate, channels=$currentChannelCount, " +
+                            "safeBuffers=$needSafeBuffers")
+                } else {
+                    Log.e(TAG, "AAudio stream creation failed after route change")
+                    isAAudioStreamActive = false
+                    unmuteDelegateIfNeeded()
+                }
+            }
+            AudioPreferences.SINK_OBOE -> {
+                releaseOboeStream()
+                val stream = OboeOutputProcessor(currentSampleRate, currentChannelCount, needSafeBuffers)
+                if (stream.isReady) {
+                    oboeStream = stream
+                    currentStreamSafeBufferMode = needSafeBuffers
+                    isOboeStreamActive = true
+                    muteDelegateIfNeeded()
+                    if (!isPaused) {
+                        stream.start()
+                    }
+                    Log.i(TAG, "Oboe stream reopened after route change — " +
+                            "sampleRate=$currentSampleRate, channels=$currentChannelCount, " +
+                            "safeBuffers=$needSafeBuffers")
+                } else {
+                    Log.e(TAG, "Oboe stream creation failed after route change")
+                    isOboeStreamActive = false
+                    unmuteDelegateIfNeeded()
+                }
+            }
         }
     }
 
