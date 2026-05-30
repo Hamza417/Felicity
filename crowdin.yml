@@ -6,3 +6,5 @@ files:
         translation: /shared/src/main/res/values-%android_code%/%original_file_name%
     -   source: /shared/src/main/res/values/plurals.xml
         translation: /shared/src/main/res/values-%android_code%/%original_file_name%
+    -   source: /shared/src/main/res/values/play_strings.xml
+        translation: /shared/src/main/res/values-%android_code%/%original_file_name%

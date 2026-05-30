@@ -27,6 +27,10 @@ object LocaleUtils {
             Lang("Русский (Russian)", "ru-RU"),
             // German
             Lang("Deutsch (German)", "de-DE"),
+            // Turkish
+            Lang("Türkçe (Turkish)", "tr-TR"),
+            // Italian
+            Lang("Italiano (Italian)", "it-IT"),
     )
 
     fun getAppLocale(): Locale {
