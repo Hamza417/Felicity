@@ -15,6 +15,8 @@ import app.simple.felicity.decorations.knobs.FelicityKnobListener
 import app.simple.felicity.decorations.seekbars.FelicityEqualizerSliders
 import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithFade
+import app.simple.felicity.decorations.views.PopupMenuItem
+import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.player.SaveEqualizerPreset.Companion.showSaveEqualizerPreset
 import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.extensions.fragments.MediaFragment
@@ -67,39 +69,57 @@ class Equalizer : MediaFragment() {
 
         binding.equalizerScreen.equalizerSliders.mode = FelicityEqualizerSliders.Companion.Mode.PARAMETRIC
 
-        // Wire up the EQ switch eagerly — it has no preference read on the hot path
-        // because the ViewModel will deliver the real value via initialState below.
-        binding.equalizerScreen.equalizerSwitch.setOnCheckedChangeListener { _, isChecked ->
-            EqualizerPreferences.setEqEnabled(isChecked)
-            updateEqualizerEnabledState(isChecked)
-        }
-
-        binding.equalizerScreen.reset.setOnClickListener {
-            withSureDialog { sure ->
-                if (sure) {
-                    EqualizerManager.resetAllBands()
-                    EqualizerPreferences.setPreampDb(0f)
-                }
-            }
-        }
-
-        // Show the save dialog, then let the ViewModel handle the actual DB work —
-        // including the duplicate check that guards against accidental overwrites.
-        binding.equalizerScreen.savePreset.setOnClickListener {
-            childFragmentManager.showSaveEqualizerPreset { name ->
-                viewModel.savePreset(
-                        name = name,
-                        gains = EqualizerManager.getAllGains(),
-                        preampDb = EqualizerManager.getPreamp(),
-                        onDuplicate = { /* show warning */ },
-                        onSuccess = { /* the preset list updates automatically via Room */ }
-                )
-            }
+        binding.equalizerScreen.eqMenu.setOnClickListener { button ->
+            SharedScrollViewPopup(
+                    container = requireContainerView(),
+                    anchorView = button,
+                    menuItems = listOf(
+                            if (EqualizerPreferences.isEqEnabled()) {
+                                PopupMenuItem(title = R.string.disable_equalizer)
+                            } else {
+                                PopupMenuItem(title = R.string.enable_equalizer)
+                            },
+                            PopupMenuItem(title = R.string.save_preset),
+                            PopupMenuItem(title = R.string.reset),
+                    ),
+                    onMenuItemClick = {
+                        when (it) {
+                            R.string.enable_equalizer -> {
+                                EqualizerPreferences.setEqEnabled(true)
+                                updateEqualizerEnabledState(true)
+                            }
+                            R.string.disable_equalizer -> {
+                                EqualizerPreferences.setEqEnabled(false)
+                                updateEqualizerEnabledState(false)
+                            }
+                            R.string.save_preset -> {
+                                // Show the save dialog, then let the ViewModel handle the actual DB work —
+                                // including the duplicate check that guards against accidental overwrites.
+                                childFragmentManager.showSaveEqualizerPreset { name ->
+                                    viewModel.savePreset(
+                                            name = name,
+                                            gains = EqualizerManager.getAllGains(),
+                                            preampDb = EqualizerManager.getPreamp(),
+                                            onDuplicate = { /* show warning */ },
+                                            onSuccess = { /* the preset list updates automatically via Room */ }
+                                    )
+                                }
+                            }
+                            R.string.reset -> withSureDialog { sure ->
+                                if (sure) {
+                                    EqualizerManager.resetAllBands()
+                                    EqualizerPreferences.setPreampDb(0f)
+                                }
+                            }
+                        }
+                    },
+                    onDismiss = {}
+            ).show()
         }
 
         // Open the presets panel so the user can browse, apply, or save EQ snapshots.
         // It's a full-screen panel pushed onto the back stack — clean and simple.
-        binding.equalizerScreen.presetsButton.setOnClickListener {
+        binding.equalizerScreen.presetName.setOnClickListener {
             openFragment(EqualizerPresets.newInstance(), EqualizerPresets.TAG)
         }
 
@@ -127,7 +147,6 @@ class Equalizer : MediaFragment() {
      * deferred until the first swipe via the ViewFlipper listener.
      */
     private fun applyInitialState(state: EqualizerViewModel.EqualizerInitialState) {
-        binding.equalizerScreen.equalizerSwitch.isChecked = state.isEqEnabled
         updateEqualizerEnabledState(state.isEqEnabled, animate = false)
         setupEqualizerSliders(state)
         setupEqKnobs(state)

@@ -500,4 +500,6 @@
     <string name="play_store_foss_purchase_info">The FOSS version of this app does not support Google Play purchases. To make a purchase, please install the version available on the Google Play Store.</string>
     <string name="playstore_link">Play Store Link</string>
     <string name="playstore_link_summary">Open the app\'s Play Store page.</string>
+    <string name="disable_equalizer">Disable Equalizer</string>
+    <string name="enable_equalizer">Enable Equalizer</string>
 </resources>
