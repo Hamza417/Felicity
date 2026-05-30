@@ -412,6 +412,11 @@
     <string name="preset_name_hint">Preset name…</string>
     <string name="built_in">Built-in</string>
     <string name="custom">Custom</string>
+    <string name="peq">PEQ</string>
+    <string name="switch_to_peq">Switch to PEQ</string>
+    <string name="switch_to_graphic_eq">Switch to Graphic EQ</string>
+    <string name="peq_mode">Parametric EQ</string>
+    <string name="graphic_eq_mode">Graphic EQ</string>
 
     <!-- LRC Editor -->
     <string name="lrc_lyric_hint">Lyric line…</string>
@@ -500,4 +505,6 @@
     <string name="play_store_foss_purchase_info">The FOSS version of this app does not support Google Play purchases. To make a purchase, please install the version available on the Google Play Store.</string>
     <string name="playstore_link">Play Store Link</string>
     <string name="playstore_link_summary">Open the app\'s Play Store page.</string>
+    <string name="disable_equalizer">Disable Equalizer</string>
+    <string name="enable_equalizer">Enable Equalizer</string>
 </resources>

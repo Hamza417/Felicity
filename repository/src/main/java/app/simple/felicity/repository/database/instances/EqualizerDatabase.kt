@@ -4,8 +4,11 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import app.simple.felicity.repository.database.dao.EqualizerPresetDao
 import app.simple.felicity.repository.models.EqualizerPreset
+import app.simple.felicity.repository.models.EqualizerPreset.Companion.PRESET_TYPE_GRAPHIC
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -26,7 +29,7 @@ import kotlinx.coroutines.launch
  */
 @Database(
         entities = [EqualizerPreset::class],
-        version = 1,
+        version = 2,
         exportSchema = true
 )
 abstract class EqualizerDatabase : RoomDatabase() {
@@ -60,8 +63,9 @@ abstract class EqualizerDatabase : RoomDatabase() {
 
         private fun buildDatabase(context: Context): EqualizerDatabase {
             return Room.databaseBuilder(context, EqualizerDatabase::class.java, DB_NAME)
+                .addMigrations(MIGRATION_1_2)
                 .addCallback(object : Callback() {
-                    override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                    override fun onCreate(db: SupportSQLiteDatabase) {
                         super.onCreate(db)
                         // Seed the built-in presets the first time the database is created.
                         // We launch on IO so we don't block the database-open callback.
@@ -71,6 +75,23 @@ abstract class EqualizerDatabase : RoomDatabase() {
                     }
                 })
                 .build()
+        }
+
+        /**
+         * Adds the two new columns introduced in version 2: [preset_type] for distinguishing
+         * between graphic and parametric presets, and [peq_bands_raw] for storing the
+         * parametric band data. Existing rows keep [PRESET_TYPE_GRAPHIC] as their type,
+         * which is correct — all presets saved before this migration are graphic presets.
+         */
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                        "ALTER TABLE equalizer_presets ADD COLUMN preset_type TEXT NOT NULL DEFAULT '$PRESET_TYPE_GRAPHIC'"
+                )
+                database.execSQL(
+                        "ALTER TABLE equalizer_presets ADD COLUMN peq_bands_raw TEXT"
+                )
+            }
         }
 
         /**

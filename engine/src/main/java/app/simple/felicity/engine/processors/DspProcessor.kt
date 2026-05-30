@@ -263,6 +263,27 @@ class DspProcessor(
     }
 
     /**
+     * Pushes a parametric EQ band configuration to the native engine.
+     *
+     * Unlike [setEqBands] (which locks all bands to ISO standard center frequencies),
+     * this lets the user dial each band's center frequency and resonance width (Q) freely —
+     * exactly what a parametric EQ is all about. The native engine recomputes all biquad
+     * coefficients from the supplied values immediately.
+     *
+     * All three arrays must have the same length, which becomes the active band count.
+     * Any previous graphic-EQ band configuration is replaced until [setEqBands] is called
+     * again to switch back to fixed-frequency mode.
+     *
+     * @param gains    Gain for each band in dB; values outside [-15, +15] are clamped natively.
+     * @param freqs    Center frequency for each band in Hz (e.g. 80f, 1000f).
+     * @param qValues  Resonance width for each band; higher Q = narrower peak.
+     */
+    fun setPeqBands(gains: FloatArray, freqs: FloatArray, qValues: FloatArray) {
+        if (nativeHandle == 0L) return
+        nativeDspSetPeqBands(nativeHandle, gains, freqs, qValues, gains.size)
+    }
+
+    /**
      * Returns true when all 10 band gains plus bass and treble gains are all within
      * the flat threshold, i.e., no EQ coloration would be applied regardless of the
      * [eqEnabled] flag. Useful for optimizing UI state display.
@@ -400,6 +421,26 @@ class DspProcessor(
      * @return True if a fresh FFT frame was copied; false otherwise.
      */
     private external fun nativeDspReadBandMagnitudes(handle: Long, outBuffer: FloatArray): Boolean
+
+    /**
+     * Pushes a full parametric EQ configuration (arbitrary frequency and Q per band) to
+     * the native engine, replacing the fixed-frequency ISO-band configuration set by
+     * [nativeDspSetEqBands]. The native engine recomputes the biquad coefficients
+     * immediately using the supplied frequency and Q values.
+     *
+     * @param handle    Opaque pointer from [nativeDspCreate].
+     * @param gains     Per-band gain in dB; same length as [freqs] and [qValues].
+     * @param freqs     Per-band center frequency in Hz.
+     * @param qValues   Per-band resonance Q factor.
+     * @param count     Number of active bands (length of all three arrays).
+     */
+    private external fun nativeDspSetPeqBands(
+            handle: Long,
+            gains: FloatArray,
+            freqs: FloatArray,
+            qValues: FloatArray,
+            count: Int
+    )
 
     /**
      * Frees all resources owned by the native [DspContext]. The bound [FFTContext] is

@@ -1316,6 +1316,21 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 Log.d(TAG, "Equalizer enabled preference changed to: $enabled")
                 EqualizerManager.setEnabled(enabled)
             }
+            EqualizerPreferences.EQ_MODE -> {
+                // When the user flips between graphic and parametric mode, reload the
+                // appropriate EQ state so the transition is seamless with no dead silence.
+                val mode = EqualizerPreferences.getEqMode()
+                Log.d(TAG, "EQ mode changed to: $mode")
+                if (EqualizerPreferences.isParametricEqMode()) {
+                    EqualizerManager.applyPeqBandsFromPreference()
+                } else {
+                    audioProcessorManager.applyEqualizerState()
+                }
+            }
+            EqualizerPreferences.PEQ_BANDS_RAW -> {
+                Log.d(TAG, "Parametric EQ bands preference changed")
+                EqualizerManager.applyPeqBandsFromPreference()
+            }
             EqualizerPreferences.PREAMP_DB -> {
                 Log.d(TAG, "EQ preamp preference changed")
                 EqualizerManager.applyPreampFromPreference()

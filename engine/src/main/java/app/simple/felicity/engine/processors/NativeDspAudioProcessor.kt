@@ -148,6 +148,26 @@ class NativeDspAudioProcessor(
     private var reverbSize: Float = 0.5f
 
     /**
+     * Stores the most recent PEQ (parametric EQ) gain array so it can be re-pushed to the
+     * native engine whenever a new [DspProcessor] context is created after a format change.
+     * Empty when the app is in graphic EQ mode.
+     */
+    private var peqGains: FloatArray = FloatArray(0)
+
+    /**
+     * Stores the most recent PEQ center-frequency array — one entry per parametric band, in Hz.
+     * Empty when the app is in graphic EQ mode.
+     */
+    private var peqFreqs: FloatArray = FloatArray(0)
+
+    /**
+     * Stores the most recent PEQ Q-factor array — one entry per parametric band.
+     * Higher Q means a narrower peak; lower Q affects a wider frequency range.
+     * Empty when the app is in graphic EQ mode.
+     */
+    private var peqQValues: FloatArray = FloatArray(0)
+
+    /**
      * Hardware audio output latency in milliseconds last reported by the service layer.
      *
      * Stored here so that [pushAllParameters] can re-apply the correct delay when a new
@@ -553,7 +573,26 @@ class NativeDspAudioProcessor(
     }
 
     /**
-     * Sets the treble high-shelf gain. Internally passes the full band state so the
+     * Pushes a parametric EQ configuration to the native engine, overriding the current
+     * fixed-frequency 10-band state. Each band can have its own center frequency and Q,
+     * giving the user full control over the filter shape — ideal for surgical corrections
+     * that the fixed graphic bands can't target precisely.
+     *
+     * Calling this while in graphic mode is safe but won't take audible effect until
+     * [eqEnabled] is true and the DSP engine applies the bands.
+     *
+     * @param gains    Per-band gain in dB.
+     * @param freqs    Per-band center frequency in Hz.
+     * @param qValues  Per-band Q factor.
+     */
+    fun setPeqBands(gains: FloatArray, freqs: FloatArray, qValues: FloatArray) {
+        peqGains = gains.copyOf()
+        peqFreqs = freqs.copyOf()
+        peqQValues = qValues.copyOf()
+        dspProcessor?.setPeqBands(peqGains, peqFreqs, peqQValues)
+    }
+
+    /** Sets the treble high-shelf gain. Internally passes the full band state so the
      * native engine always has a consistent coefficient set.
      *
      * @param db Gain in dB, clamped to [-12, +12].
@@ -633,7 +672,13 @@ class NativeDspAudioProcessor(
     /** Pushes all stored parameter fields to the native [DspProcessor] after (re)creation. */
     private fun pushAllParameters() {
         val dsp = dspProcessor ?: return
-        dsp.setEqBands(bandGains, bassDb, trebleDb)
+        // Re-apply the appropriate EQ state: if PEQ bands are loaded, push them; otherwise
+        // push the standard 10-band graphic EQ so the two modes don't step on each other.
+        if (peqGains.isNotEmpty()) {
+            dsp.setPeqBands(peqGains, peqFreqs, peqQValues)
+        } else {
+            dsp.setEqBands(bandGains, bassDb, trebleDb)
+        }
         dsp.setEqEnabled(eqEnabled)
         dsp.setStereoWidth(stereoWidth)
         dsp.setBalance(pan)

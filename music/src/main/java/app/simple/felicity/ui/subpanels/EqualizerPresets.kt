@@ -101,22 +101,38 @@ class EqualizerPresets : MediaFragment() {
     }
 
     /**
-     * Applies [preset] to the live audio engine, persists all band gains and the preamp
-     * to [app.simple.felicity.preferences.EqualizerPreferences], and then navigates back to the EQ screen so the user
-     * can immediately see the sliders jump to the preset positions. One tap, done.
+     * Applies [preset] to the live audio engine and switches the EQ mode to match the
+     * preset type, then navigates back so the user can immediately see the changes.
+     *
+     * For graphic presets: all 10 band gains and the preamp are written to preferences
+     * and pushed to the audio engine. For parametric presets: the PEQ bands are stored
+     * in preferences and the EQ mode is flipped to parametric. Either way, the mode
+     * switch is persisted so the equalizer screen opens in the right mode on the way back.
      *
      * @param preset The preset to apply.
      */
     private fun applyPreset(preset: EqualizerPreset) {
-        val gains = preset.getBandGains()
+        if (preset.isPeq()) {
+            // Switch to parametric mode and store the bands in preferences so the EQ
+            // screen can load them the moment it becomes visible again.
+            EqualizerManager.setEqMode(EqualizerPreferences.EQ_MODE_PARAMETRIC)
+            EqualizerPreferences.setPeqBandsRaw(preset.peqBandsRaw)
+            // Push the PEQ bands into the audio engine and update the flow so the
+            // EQ screen's knobs snap to the preset values when it comes back into view.
+            EqualizerManager.setPeqBands(preset.getPeqBands())
+            EqualizerManager.setPreamp(preset.preampDb)
+        } else {
+            val gains = preset.getBandGains()
 
-        // Write all gains to SharedPreferences first, then push them to the audio engine.
-        // Doing it in this order means the values are safe even if the app is killed mid-update.
-        EqualizerPreferences.setAllBandGains(gains)
-        for (i in gains.indices) {
-            EqualizerManager.setBandGain(i, gains[i], persist = false)
+            // Write all gains to SharedPreferences first, then push them to the audio engine.
+            // Doing it in this order means the values are safe even if the app is killed mid-update.
+            EqualizerManager.setEqMode(EqualizerPreferences.EQ_MODE_GRAPHIC)
+            EqualizerPreferences.setAllBandGains(gains)
+            for (i in gains.indices) {
+                EqualizerManager.setBandGain(i, gains[i], persist = false)
+            }
+            EqualizerManager.setPreamp(preset.preampDb)
         }
-        EqualizerManager.setPreamp(preset.preampDb)
 
         goBack()
     }

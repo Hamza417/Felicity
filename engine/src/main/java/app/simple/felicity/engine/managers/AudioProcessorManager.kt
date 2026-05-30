@@ -215,17 +215,77 @@ class AudioProcessorManager {
      * Applies the persisted 10-band EQ state (all band gains, preamp, and the enabled flag)
      * plus bass and treble shelf gains to [nativeDspProcessor].
      *
+     * When the app is in parametric EQ mode, the PEQ band configuration is applied instead
+     * of the fixed-frequency graphic EQ bands. Both paths respect the same enabled flag and
+     * preamp setting.
+     *
      * Called once from [FelicityPlayerService] when the audio pipeline is (re)built so the
      * saved settings are honored from the very first decoded frame.
      */
     fun applyEqualizerState() {
-        nativeDspProcessor.setEqBands(
-                EqualizerPreferences.getAllBandGains(),
-                EqualizerPreferences.getBassDb(),
-                EqualizerPreferences.getTrebleDb()
-        )
+        if (EqualizerPreferences.isParametricEqMode()) {
+            applyPeqStateFromPreferences()
+        } else {
+            nativeDspProcessor.setEqBands(
+                    EqualizerPreferences.getAllBandGains(),
+                    EqualizerPreferences.getBassDb(),
+                    EqualizerPreferences.getTrebleDb()
+            )
+        }
         nativeDspProcessor.setPreamp(EqualizerPreferences.getPreampDb())
         nativeDspProcessor.eqEnabled = EqualizerPreferences.isEqEnabled()
         nativeDspProcessor.setReplayGainDb(EqualizerPreferences.getReplayGainDb())
+    }
+
+    /**
+     * Reads the saved PEQ bands string from [EqualizerPreferences] and pushes the parsed
+     * band configuration to [nativeDspProcessor]. Does nothing if no PEQ data has been saved.
+     *
+     * The raw string follows the "gain:q:freq|gain:q:freq|..." format used across the rest
+     * of the codebase. Each segment maps to one peaking filter in the native DSP engine.
+     */
+    fun applyPeqStateFromPreferences() {
+        val raw = EqualizerPreferences.getPeqBandsRaw() ?: return
+        val bands = parsePeqBandsRaw(raw)
+        if (bands.isNotEmpty()) {
+            applyPeqState(bands)
+        }
+    }
+
+    /**
+     * Pushes a list of parametric EQ bands to [nativeDspProcessor].
+     *
+     * Each entry is a triple of (gainDb, qFactor, frequencyHz). The list can contain any
+     * number of bands — the native engine handles the count dynamically.
+     *
+     * @param bands The PEQ band configuration to apply.
+     */
+    fun applyPeqState(bands: List<Triple<Float, Float, Float>>) {
+        if (bands.isEmpty()) return
+        val gains = FloatArray(bands.size) { bands[it].first }
+        val qValues = FloatArray(bands.size) { bands[it].second }
+        val freqs = FloatArray(bands.size) { bands[it].third }
+        nativeDspProcessor.setPeqBands(gains, freqs, qValues)
+    }
+
+    /**
+     * Parses a "gain:q:freq|gain:q:freq|..." string into a list of (gainDb, qFactor, freqHz)
+     * triples that can be passed directly to [applyPeqState].
+     *
+     * Segments that are malformed (wrong number of parts, or non-numeric values) are silently
+     * skipped so a single bad entry doesn't discard the whole band set.
+     *
+     * @param raw The serialized PEQ band string from [EqualizerPreferences].
+     * @return A list of (gainDb, qFactor, freqHz) triples, possibly empty.
+     */
+    private fun parsePeqBandsRaw(raw: String): List<Triple<Float, Float, Float>> {
+        return raw.split("|").mapNotNull { segment ->
+            val parts = segment.split(":")
+            if (parts.size < 3) return@mapNotNull null
+            val gain = parts[0].toFloatOrNull() ?: return@mapNotNull null
+            val q = parts[1].toFloatOrNull() ?: return@mapNotNull null
+            val freq = parts[2].toFloatOrNull() ?: return@mapNotNull null
+            Triple(gain, q, freq)
+        }
     }
 }
