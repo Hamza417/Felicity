@@ -155,14 +155,10 @@
     <string name="not_granted">İzin Verilmedi</string>
     <string name="post_notifications">Bildirim Gönder</string>
     <string name="desc_post_notifications">Medya oynatıcıyı ve diğer gerekli bildirimleri göstermek için gereklidir.</string>
-    <string name="manage_all_files">Tüm Dosyaları Yönet</string>
-    <string name="desc_manage_all_files">Ses dosyalarını ve meta verilerini silmek, yeniden adlandırmak veya değiştirmek için gereklidir. Ayrıca altyazılar (.srt), şarkı sözleri (.lrc) ve işaret sayfaları (.cue) gibi ek dosyalara erişmek için gereklidir. Bu olmadan değiştirme özellikleri sınırlı olacaktır.</string>
     <string name="storage_folder_access">Depolama Klasörü Erişimi</string>
     <string name="desc_storage_folder_access">Felicity\'nin taramasını istediğiniz müzik klasör(ler)ini seçmek için dokunun. Kitaplık ayarlarından daha sonra başka klasörler ekleyebilirsiniz. Geniş depolama izni gerekmez, yalnızca seçtiğiniz klasörlere erişilir.</string>
     <string name="read_media_audio">Medya Seslerini Oku</string>
     <string name="desc_read_media_audio">Felicity\'nin MediaStore\'dan ses dosyalarını okumasını sağlar.</string>
-    <string name="add_folder">Klasör Ekle</string>
-    <string name="granted_folders">İzin Verilen Klasörler</string>
     <string name="no_folders_granted">Henüz klasör eklenmedi. Müzik klasörü seçmek için yukarıya dokunun.</string>
     <string name="start_app_now">Uygulamayı Şimdi Başlat</string>
     <string name="audio">Ses</string>
@@ -314,7 +310,6 @@
     <string name="edit_metadata">Meta Verileri Düzenle</string>
     <string name="metadata_saved">Meta veriler başarıyla kaydedildi.</string>
     <string name="comment">Yorum</string>
-    <string name="change">Değiştir</string>
     <!-- Audio Pipeline Dialog — section labels -->
     <string name="track_info">Parça Bilgisi</string>
     <string name="channels">Kanallar</string>
@@ -352,7 +347,6 @@
     <string name="playlist_description">Açıklama (isteğe bağlı)</string>
     <string name="edit_playlist">Çalma Listesini Düzenle</string>
     <string name="add_all_to_queue">Tümünü Sıraya Ekle</string>
-    <string name="manual">Manuel</string>
     <string name="as_added">Eklendiği Gibi</string>
     <string name="filter_categories">Kategorileri Filtrele</string>
     <string name="about">Hakkında</string>
@@ -402,11 +396,8 @@
     <string name="save_preset">Ön Ayarı Kaydet</string>
     <string name="preset_name_hint">Ön ayar adı…</string>
     <string name="built_in">Yerleşik</string>
-    <string name="custom">Özel</string>
     <string name="switch_to_peq">PEQ\'ye Geç</string>
     <string name="switch_to_graphic_eq">Grafik EQ\'ya Geç</string>
-    <string name="peq_mode">Parametrik EQ</string>
-    <string name="graphic_eq_mode">Grafik EQ</string>
     <!-- LRC Editor -->
     <string name="lrc_lyric_hint">Şarkı sözü satırı…</string>
     <string name="lrc_stamp_timestamp">Geçerli konumu zaman damgası olarak ekle</string>
@@ -416,15 +407,10 @@
     <string name="rewind">Geri Sar</string>
     <string name="forward">İleri Sar</string>
     <string name="add_lyrics">Şarkı Sözü Ekle</string>
-    <string name="no_folders_added">Henüz klasör eklenmedi. Eklemek için + düğmesine dokunun.</string>
-    <string name="path_added">Yol başarıyla eklendi.</string>
-    <string name="path_removed">Yol kaldırıldı.</string>
-    <string name="storage_root">Depolama Kökü</string>
     <string name="dividers">Ayırıcılar</string>
     <string name="dividers_summary">Listelere ayırıcı çizgiler ekleyin.</string>
     <string name="like_icon">Beğeni Simgesi</string>
     <string name="like_icon_summary">Uygulamadaki favoriler için olan kalp simgesini başparmak yukarı (beğeni) simgesiyle değiştirin.</string>
-    <string name="buy_full_version">Tam Sürümü Satın Al</string>
     <string name="trial_period">Deneme Süresi</string>
     <string name="cache">Önbellek</string>
     <string name="clear_image_cache">Görüntü Önbelleğini Temizle</string>
@@ -449,9 +435,6 @@
     <string name="reshuffle">Yeniden Karıştırma Yok</string>
     <string name="reshuffle_summary">Yeni bir şarkı seçildiğinde mevcut liste zaten karıştırılmışsa listeyi tekrar karıştırmayın.</string>
     <string name="label">Etiket</string>
-    <string name="portrait">Dikey</string>
-    <string name="span_type">Yayılım Türü</string>
-    <string name="landscape">Yatay</string>
     <string name="relaxed">Rahat</string>
     <string name="compact">Kompakt</string>
     <string name="single">Tekli</string>
@@ -468,13 +451,11 @@
     <string name="about_album">Albüm Hakkında</string>
     <string name="search_metadata">Ara</string>
     <string name="synced">Senkronize</string>
-    <string name="metadata_synced_lyrics_saved">Senkronize şarkı sözleri kaydedildi</string>
     <string name="read_more">Devamını oku</string>
     <string name="read_less">Daha az göster</string>
     <string name="active_since">%1$s yılından beri aktif</string>
     <string name="active_since_present">%1$s – günümüz</string>
     <string name="released_in">%1$s tarihinde yayınlandı</string>
-    <string name="label_on">%1$s etiketiyle</string>
     <string name="pause_activity">Etkinliği Duraklat</string>
     <string name="pause_activity_summary">Uygulamanın oynatma etkinliği kayıtlarını tutmasını engelleyin.</string>
     <string name="clear_playback_stats">Oynatma İstatistiklerini Temizle</string>
@@ -486,7 +467,6 @@
     <string name="no_bookmarks">Henüz yer işareti yok</string>
     <string name="bookmark_too_close">Yakında zaten bir yer işareti var</string>
     <string name="bookmark_at">%1$s konumunda yer işareti</string>
-    <string name="clear_bookmarks">Tüm Yer İşaretlerini Temizle</string>
     <string name="play_store_foss_purchase_info">Bu uygulamanın FOSS sürümü Google Play satın alımlarını desteklemez. Satın alma işlemi yapmak için lütfen Google Play Store\'da bulunan sürümü yükleyin.</string>
     <string name="playstore_link">Play Store Bağlantısı</string>
     <string name="playstore_link_summary">Uygulamanın Play Store sayfasını açın.</string>

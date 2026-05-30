@@ -155,14 +155,10 @@
     <string name="not_granted">未授权</string>
     <string name="post_notifications">发送通知</string>
     <string name="desc_post_notifications">显示媒体播放器和其他必要通知所必需。</string>
-    <string name="manage_all_files">管理所有文件</string>
-    <string name="desc_manage_all_files">用于删除、重命名或修改音频文件及其元数据。访问外挂文件（如字幕 .srt、歌词 .lrc 和 cue 表 .cue）也需要此权限。如果没有此权限，修改功能将受到限制。</string>
     <string name="storage_folder_access">存储文件夹访问权限</string>
     <string name="desc_storage_folder_access">点击以选择您希望 Felicity 扫描的音乐文件夹。您稍后可以在媒体库设置中添加更多文件夹。不需要宽泛的存储权限，只需要您选择的文件夹即可。</string>
     <string name="read_media_audio">读取媒体音频</string>
     <string name="desc_read_media_audio">允许 Felicity 从媒体存储 (MediaStore) 中读取音频文件。</string>
-    <string name="add_folder">添加文件夹</string>
-    <string name="granted_folders">已授权的文件夹</string>
     <string name="no_folders_granted">暂未添加文件夹。请点击上方选择音乐文件夹。</string>
     <string name="start_app_now">立即开始使用</string>
     <string name="audio">音频</string>
@@ -314,7 +310,6 @@
     <string name="edit_metadata">编辑元数据</string>
     <string name="metadata_saved">元数据已成功保存。</string>
     <string name="comment">备注</string>
-    <string name="change">更改</string>
     <!-- Audio Pipeline Dialog — section labels -->
     <string name="track_info">音轨信息</string>
     <string name="channels">声道</string>
@@ -352,7 +347,6 @@
     <string name="playlist_description">描述 (可选)</string>
     <string name="edit_playlist">编辑播放列表</string>
     <string name="add_all_to_queue">全部添加到队列</string>
-    <string name="manual">手动</string>
     <string name="as_added">按添加时间</string>
     <string name="filter_categories">筛选类别</string>
     <string name="about">关于</string>
@@ -402,11 +396,8 @@
     <string name="save_preset">保存预设</string>
     <string name="preset_name_hint">预设名称…</string>
     <string name="built_in">内置</string>
-    <string name="custom">自定义</string>
     <string name="switch_to_peq">切换至参量均衡器 (PEQ)</string>
     <string name="switch_to_graphic_eq">切换至图示均衡器</string>
-    <string name="peq_mode">参量均衡器</string>
-    <string name="graphic_eq_mode">图示均衡器</string>
     <!-- LRC Editor -->
     <string name="lrc_lyric_hint">歌词行…</string>
     <string name="lrc_stamp_timestamp">将当前位置标记为时间戳</string>
@@ -416,15 +407,10 @@
     <string name="rewind">快退</string>
     <string name="forward">快进</string>
     <string name="add_lyrics">添加歌词</string>
-    <string name="no_folders_added">暂未添加文件夹。点击 + 按钮添加一个。</string>
-    <string name="path_added">路径添加成功。</string>
-    <string name="path_removed">路径已移除。</string>
-    <string name="storage_root">存储根目录</string>
     <string name="dividers">分隔线</string>
     <string name="dividers_summary">在列表中添加分隔线。</string>
     <string name="like_icon">喜欢图标</string>
     <string name="like_icon_summary">将应用中收藏的心形图标替换为大拇指点赞图标。</string>
-    <string name="buy_full_version">购买完整版</string>
     <string name="trial_period">试用期</string>
     <string name="cache">缓存</string>
     <string name="clear_image_cache">清除图片缓存</string>
@@ -449,9 +435,6 @@
     <string name="reshuffle">不重新打乱</string>
     <string name="reshuffle_summary">选择新歌曲时，如果当前列表已打乱，则不再重新打乱该列表。</string>
     <string name="label">厂牌</string>
-    <string name="portrait">竖屏</string>
-    <string name="span_type">跨度类型</string>
-    <string name="landscape">横屏</string>
     <string name="relaxed">宽松</string>
     <string name="compact">紧凑</string>
     <string name="single">单列</string>
@@ -468,13 +451,11 @@
     <string name="about_album">关于专辑</string>
     <string name="search_metadata">搜索</string>
     <string name="synced">已同步</string>
-    <string name="metadata_synced_lyrics_saved">同步歌词已保存</string>
     <string name="read_more">展开阅读</string>
     <string name="read_less">收起</string>
     <string name="active_since">活跃自 %1$s</string>
     <string name="active_since_present">%1$s – 至今</string>
     <string name="released_in">发行于 %1$s</string>
-    <string name="label_on">厂牌：%1$s</string>
     <string name="pause_activity">暂停活动记录</string>
     <string name="pause_activity_summary">阻止应用保留播放活动记录。</string>
     <string name="clear_playback_stats">清除播放统计</string>
@@ -486,7 +467,6 @@
     <string name="no_bookmarks">暂无书签</string>
     <string name="bookmark_too_close">附近已存在书签</string>
     <string name="bookmark_at">%1$s 处的书签</string>
-    <string name="clear_bookmarks">清除所有书签</string>
     <string name="play_store_foss_purchase_info">此应用的开源 (FOSS) 版本不支持 Google Play 购买。如需购买，请安装在 Google Play 商店中提供的版本。</string>
     <string name="playstore_link">Play 商店链接</string>
     <string name="playstore_link_summary">打开应用的 Play 商店页面。</string>
