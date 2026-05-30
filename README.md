@@ -110,7 +110,7 @@ This feature list is not exhaustive and only main features are listed.
 - [x] Local server for centralized music access across multiple devices.
 - [x] Selection support for library management and playlist creation.
 - [x] Reproducible build
-- [ ] Parametric Equalizer
+- [x] Parametric Equalizer
 - [ ] Sleep Timer
 - [ ] Global Search Provider
 - [ ] More widgets
