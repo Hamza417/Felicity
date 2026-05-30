@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Billing screen strings for the Play Store flavor -->
+    <string name="play_store_purchase_summary">通过 Google Play 安全地完成购买。</string>
+    <string name="billing_connecting">正在连接到 Google Play\u2026</string>
+    <string name="billing_unavailable">此设备上无法使用 Google Play 结算服务。</string>
+    <string name="billing_error">出现错误：%1$s</string>
+    <string name="purchase_complete">一切就绪！欢迎使用 Felicity 完整版。</string>
+    <string name="already_purchased">您已拥有此项目 — 尽情享受完整版吧！</string>
+    <string name="purchase_restored">您的购买已恢复。欢迎回来！</string>
+    <string name="days_left">剩余 %1$d 天</string>
+    <string name="trial_expired_short">试用期已结束</string>
+    <string name="full_version_active">完整版已激活</string>
+    <!-- Feature list shown on the purchase screen — sell it! -->
+    <string name="feature_unlimited_playback">无限制且无中断的播放体验。</string>
+    <string name="feature_equalizer">内置均衡器及多种预设。</string>
+    <string name="feature_milkdrop">MilkDrop 可视化工具。</string>
+    <string name="feature_themes">精美主题及各种自定义选项。</string>
+    <string name="feature_lyrics">收听时实时显示同步歌词。</string>
+    <string name="feature_wifi_server">本地 Wi-Fi 服务器，可将您的媒体库串流至局域网内的任意浏览器。</string>
+    <string name="feature_no_subscription">一次性购买。买断制，无循环收费。</string>
+    <string name="feature_updates">包含所有未来更新，无需额外费用。</string>
+    <string name="all_features_summary">获取无任何限制的完整应用体验。</string>
+    <!-- Restore purchase button and result messages -->
+    <string name="restore_purchase">恢复购买</string>
+    <string name="restore_purchase_failed">未在此账号中找到购买记录。\n\n如果您使用其他 Google 账号购买了 Felicity，请在 Play 商店中切换至该账号后重试。如果您认为这是一个错误，请联系支持人员。</string>
+    <string name="restore_purchase_restoring">正在恢复\u2026</string>
+</resources>
