@@ -115,6 +115,38 @@ static BiquadCoeffs computePeakingEq(float f0, float gainDb, int sampleHz) {
 }
 
 /**
+ * Same as [computePeakingEq] but accepts an explicit Q factor instead of using the
+ * fixed [kDspBandQ] constant. Used exclusively by the parametric EQ path where the user
+ * can dial both frequency and bandwidth independently for each band.
+ *
+ * @param f0       Center frequency in Hz.
+ * @param gainDb   Gain in dB, range [-15, +15].
+ * @param q        Q (resonance) factor — higher values produce a narrower peak.
+ * @param sampleHz Sample rate in Hz.
+ * @return Normalized BiquadCoeffs for the requested band.
+ */
+static BiquadCoeffs computePeakingEqWithQ(float f0, float gainDb, float q, int sampleHz) {
+    if (fabsf(gainDb) < kDspFlatThresholdDb) {
+        return identityBiquad();
+    }
+    const float safeQ = (q < 0.01f) ? 0.01f : q;
+    const float A = powf(10.f, gainDb / 40.f);
+    const float omega = 2.f * static_cast<float>(M_PI) * f0 / static_cast<float>(sampleHz);
+    const float sinOmega = sinf(omega);
+    const float cosOmega = cosf(omega);
+    const float alpha = sinOmega / (2.f * safeQ);
+    const float a0_inv = 1.f / (1.f + alpha / A);
+
+    BiquadCoeffs c;
+    c.b0 = (1.f + alpha * A) * a0_inv;
+    c.b1 = (-2.f * cosOmega) * a0_inv;
+    c.b2 = (1.f - alpha * A) * a0_inv;
+    c.a1 = (-2.f * cosOmega) * a0_inv;
+    c.a2 = (1.f - alpha / A) * a0_inv;
+    return c;
+}
+
+/**
  * Computes normalized RBJ low-shelf biquad coefficients (shelf slope S = 1).
  *
  * @param f0       Shelf frequency in Hz.
@@ -1087,6 +1119,58 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspSetBassAndTrebl
     ctx->trebleCoeffs = computeHighShelf(kDspTrebleShelfHz, static_cast<float>(trebleDb),
                                          ctx->sampleRate);
     ctx->trebleFlat = fabsf(static_cast<float>(trebleDb)) < kDspFlatThresholdDb;
+}
+
+/**
+ * Applies a fully parametric EQ configuration where each band has its own user-defined
+ * center frequency and Q factor, replacing the fixed-frequency ISO-band setup from
+ * [nativeDspSetEqBands]. This is what makes the parametric EQ different from the graphic
+ * one — the user gets surgical control over each filter rather than just its gain.
+ *
+ * The same [DspContext::eqCoeffs] array is reused, so switching between graphic and
+ * parametric mode is simply a matter of calling one function or the other. The band
+ * count is limited to [kDspEqBandCount]; any extra entries in the arrays are ignored.
+ *
+ * @param env      JNI environment pointer.
+ * @param thiz     Calling Java/Kotlin object (unused).
+ * @param handle   Opaque pointer returned by [nativeDspCreate].
+ * @param gains    Float array of per-band gain values in dB.
+ * @param freqs    Float array of per-band center frequencies in Hz.
+ * @param qValues  Float array of per-band Q (resonance) factors.
+ * @param count    Number of active bands (length of all three arrays).
+ */
+JNIEXPORT void JNICALL
+Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspSetPeqBands(
+        JNIEnv *env, jobject /*thiz*/,
+        jlong handle, jfloatArray gains, jfloatArray freqs, jfloatArray qValues, jint count) {
+
+    auto *ctx = reinterpret_cast<DspContext *>(handle);
+    if (!ctx) return;
+
+    const int bandCount = (count < kDspEqBandCount) ? count : kDspEqBandCount;
+
+    jfloat *gPtr = env->GetFloatArrayElements(gains, nullptr);
+    jfloat *fPtr = env->GetFloatArrayElements(freqs, nullptr);
+    jfloat *qPtr = env->GetFloatArrayElements(qValues, nullptr);
+
+    bool anyActive = false;
+    for (int b = 0; b < bandCount; ++b) {
+        const float db = gPtr[b];
+        const float freq = fPtr[b];
+        const float q = qPtr[b];
+        ctx->eqCoeffs[b] = computePeakingEqWithQ(freq, db, q, ctx->sampleRate);
+        if (fabsf(db) >= kDspFlatThresholdDb) anyActive = true;
+    }
+    /* Silence any bands beyond the supplied count so stale graphic-EQ coefficients
+       from a previous setEqBands call don't bleed through. */
+    for (int b = bandCount; b < kDspEqBandCount; ++b) {
+        ctx->eqCoeffs[b] = identityBiquad();
+    }
+    ctx->eqFlat = !anyActive;
+
+    env->ReleaseFloatArrayElements(gains, gPtr, JNI_ABORT);
+    env->ReleaseFloatArrayElements(freqs, fPtr, JNI_ABORT);
+    env->ReleaseFloatArrayElements(qValues, qPtr, JNI_ABORT);
 }
 
 /**

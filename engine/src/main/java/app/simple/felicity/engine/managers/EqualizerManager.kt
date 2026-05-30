@@ -2,6 +2,7 @@ package app.simple.felicity.engine.managers
 
 import app.simple.felicity.engine.managers.EqualizerManager.attachProcessor
 import app.simple.felicity.engine.managers.EqualizerManager.bandGainsFlow
+import app.simple.felicity.engine.managers.EqualizerManager.peqBandsFlow
 import app.simple.felicity.engine.managers.EqualizerManager.preampFlow
 import app.simple.felicity.engine.managers.EqualizerManager.resetAllBands
 import app.simple.felicity.engine.processors.NativeDspAudioProcessor
@@ -73,6 +74,20 @@ object EqualizerManager {
      * externally driven change.
      */
     val preampFlow: StateFlow<Float> = _preampFlow.asStateFlow()
+
+    /**
+     * Backing mutable flow that always holds the current parametric EQ band list.
+     * Initialized from [EqualizerPreferences] at startup so any UI that collects this
+     * immediately sees the last saved PEQ curve without having to wait for a user action.
+     */
+    private val _peqBandsFlow = MutableStateFlow(loadPeqBandsFromPreferences())
+
+    /**
+     * Read-only [StateFlow] exposing the active parametric EQ configuration.
+     * Each entry is a (gainDb, qFactor, centerFreqHz) triple representing one biquad filter.
+     * The equalizer UI should collect this to keep all three PEQ knobs per band in sync.
+     */
+    val peqBandsFlow: StateFlow<List<Triple<Float, Float, Float>>> = _peqBandsFlow.asStateFlow()
 
     // -------------------------------------------------------------------------
     // Lifecycle
@@ -227,4 +242,71 @@ object EqualizerManager {
 
     /** Returns the current pre-amplifier gain in dB from [preampFlow]. */
     fun getPreamp(): Float = _preampFlow.value
+
+    // -------------------------------------------------------------------------
+    // Parametric EQ
+    // -------------------------------------------------------------------------
+
+    /**
+     * Applies a new set of parametric EQ bands, optionally persists them to
+     * [EqualizerPreferences], pushes them to the live [NativeDspAudioProcessor], and
+     * updates [peqBandsFlow] so any observing UI rebuilds itself automatically.
+     *
+     * @param bands   List of (gainDb, qFactor, centerFreqHz) triples, one per filter.
+     * @param persist Pass false when the caller has already serialized and saved the value,
+     *                to avoid a redundant SharedPreferences write.
+     */
+    fun setPeqBands(bands: List<Triple<Float, Float, Float>>, persist: Boolean = true) {
+        if (persist) {
+            EqualizerPreferences.setPeqBandsRaw(serializePeqBands(bands))
+        }
+        val gains = FloatArray(bands.size) { bands[it].first }
+        val qValues = FloatArray(bands.size) { bands[it].second }
+        val freqs = FloatArray(bands.size) { bands[it].third }
+        processor?.setPeqBands(gains, freqs, qValues)
+        _peqBandsFlow.value = bands
+    }
+
+    /**
+     * Reads the saved PEQ bands from [EqualizerPreferences] and applies them to the
+     * processor. Called by the player service's preference listener when the UI saves a
+     * new PEQ configuration.
+     */
+    fun applyPeqBandsFromPreference() {
+        val bands = loadPeqBandsFromPreferences()
+        setPeqBands(bands, persist = false)
+    }
+
+    /** Returns a snapshot of the current parametric EQ band list from [peqBandsFlow]. */
+    fun getPeqBands(): List<Triple<Float, Float, Float>> = _peqBandsFlow.value
+
+    /**
+     * Serializes a list of PEQ bands into the "gain:q:freq|..." pipe-separated format that
+     * [EqualizerPreferences] and [EqualizerPreset] both use for storage.
+     *
+     * @param bands The bands to serialize.
+     * @return The compact string representation, or null when [bands] is empty.
+     */
+    fun serializePeqBands(bands: List<Triple<Float, Float, Float>>): String? {
+        if (bands.isEmpty()) return null
+        return bands.joinToString("|") { (gain, q, freq) ->
+            "%.2f:%.2f:%.2f".format(gain, q, freq)
+        }
+    }
+
+    /**
+     * Parses the "gain:q:freq|..." string from [EqualizerPreferences] into a list of triples.
+     * Malformed segments are silently skipped.
+     */
+    private fun loadPeqBandsFromPreferences(): List<Triple<Float, Float, Float>> {
+        val raw = EqualizerPreferences.getPeqBandsRaw() ?: return emptyList()
+        return raw.split("|").mapNotNull { segment ->
+            val parts = segment.split(":")
+            if (parts.size < 3) return@mapNotNull null
+            val gain = parts[0].toFloatOrNull() ?: return@mapNotNull null
+            val q = parts[1].toFloatOrNull() ?: return@mapNotNull null
+            val freq = parts[2].toFloatOrNull() ?: return@mapNotNull null
+            Triple(gain, q, freq)
+        }
+    }
 }
