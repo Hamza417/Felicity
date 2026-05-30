@@ -8,7 +8,6 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
-import android.util.Log
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
@@ -18,6 +17,7 @@ import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.databinding.DialogVolumeKnobBinding
 import app.simple.felicity.decorations.knobs.FelicityKnobListener
+import app.simple.felicity.dialogs.app.VolumeKnob.Companion.VOLUME_REPEAT_DELAY_MS
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,6 +43,19 @@ class VolumeKnob : ScopedBottomSheetFragment() {
     private val volumeFlow = MutableStateFlow(-1)
 
     private var volumeListener: VolumeListener? = null
+
+    private var isEventConsumed = false
+
+    /**
+     * When the user holds down a volume button, this runnable keeps firing at a fixed interval,
+     * nudging the volume up or down one step at a time so the change feels gradual rather than
+     * jumping straight to the maximum or minimum.
+     *
+     * It reschedules itself every [VOLUME_REPEAT_DELAY_MS] milliseconds until the key is released.
+     */
+    private var volumeRepeatRunnable: Runnable? = null
+
+    private val volumeRepeatHandler = Handler(Looper.getMainLooper())
 
     /** Cached stream maximum so it is not queried inside every rotation callback. */
     private val maxVolume: Int by lazy {
@@ -88,7 +101,7 @@ class VolumeKnob : ScopedBottomSheetFragment() {
         binding.volumeKnob.setTickTexts("0", "100")
         binding.volumeKnob.setListener(object : FelicityKnobListener {
             override fun onIncrement(value: Float) {
-                Log.d(TAG, "Increment: $value")
+
             }
 
             override fun onRotate(value: Float) {
@@ -119,15 +132,38 @@ class VolumeKnob : ScopedBottomSheetFragment() {
         dialog?.setOnKeyListener { _, keyCode, event ->
             when (keyCode) {
                 KeyEvent.KEYCODE_VOLUME_UP -> {
-                    if (event.action == KeyEvent.ACTION_DOWN) {
-                        raiseByFivePercent()
+                    when (event.action) {
+                        KeyEvent.ACTION_DOWN -> {
+                            /**
+                             * Only kick off the repeating runnable on the very first down event
+                             * (repeatCount == 0). Subsequent hardware repeats are ignored here
+                             * because our own handler takes over the pacing from that point on.
+                             */
+                            if (event.repeatCount == 0 && isEventConsumed.not()) {
+                                isEventConsumed = true
+                                startVolumeRepeat(raising = true)
+                            }
+                        }
+                        KeyEvent.ACTION_UP -> {
+                            isEventConsumed = false
+                            stopVolumeRepeat()
+                        }
                     }
 
                     true
                 }
                 KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                    if (event.action == KeyEvent.ACTION_DOWN) {
-                        lowerByFivePercent()
+                    when (event.action) {
+                        KeyEvent.ACTION_DOWN -> {
+                            if (event.repeatCount == 0 && isEventConsumed.not()) {
+                                isEventConsumed = true
+                                startVolumeRepeat(raising = false)
+                            }
+                        }
+                        KeyEvent.ACTION_UP -> {
+                            isEventConsumed = false
+                            stopVolumeRepeat()
+                        }
                     }
 
                     true
@@ -148,6 +184,27 @@ class VolumeKnob : ScopedBottomSheetFragment() {
                         Settings.System.CONTENT_URI, true, volumeObserver)
             }
         }
+    }
+
+    /**
+     * Fires the appropriate step function immediately, then re-posts itself every
+     * [VOLUME_REPEAT_DELAY_MS] ms so the volume climbs (or falls) one step at a time
+     * for as long as the hardware button stays pressed.
+     */
+    private fun startVolumeRepeat(raising: Boolean) {
+        stopVolumeRepeat()
+        volumeRepeatRunnable = object : Runnable {
+            override fun run() {
+                if (raising) raiseByFivePercent() else lowerByFivePercent()
+                volumeRepeatHandler.postDelayed(this, VOLUME_REPEAT_DELAY_MS)
+            }
+        }
+        volumeRepeatRunnable?.run()
+    }
+
+    private fun stopVolumeRepeat() {
+        volumeRepeatRunnable?.let { volumeRepeatHandler.removeCallbacks(it) }
+        volumeRepeatRunnable = null
     }
 
     private fun raiseByFivePercent() {
@@ -188,6 +245,7 @@ class VolumeKnob : ScopedBottomSheetFragment() {
     }
 
     override fun onDestroy() {
+        stopVolumeRepeat()
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
@@ -221,5 +279,8 @@ class VolumeKnob : ScopedBottomSheetFragment() {
         }
 
         const val TAG = "VolumeKnob"
+
+        /** How long to wait between each automatic volume step while the button is held down. */
+        private const val VOLUME_REPEAT_DELAY_MS = 250L
     }
 }
