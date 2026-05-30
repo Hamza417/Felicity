@@ -155,14 +155,10 @@
     <string name="not_granted">Отказано</string>
     <string name="post_notifications">Отправлять уведомления</string>
     <string name="desc_post_notifications">Необходимо для отображения медиаплеера и важных уведомлений.</string>
-    <string name="manage_all_files">Управление всеми файлами</string>
-    <string name="desc_manage_all_files">Требуется для удаления, переименования или изменения аудиофайлов и их метаданных. Также необходим для доступа к файлам с текстами и cue-листам. Без этого возможности редактирования будут ограничены.</string>
     <string name="storage_folder_access">Доступ к папкам хранилища</string>
     <string name="desc_storage_folder_access">Нажмите, чтобы выбрать папку (или папки) с музыкой для сканирования. Вы сможете добавить другие папки позже в настройках медиатеки. Общий доступ к хранилищу не требуется — только к выбранным вами папкам.</string>
     <string name="read_media_audio">Чтение аудиофайлов</string>
     <string name="desc_read_media_audio">Позволяет приложению считывать аудиофайлы из MediaStore.</string>
-    <string name="add_folder">Добавить папку</string>
-    <string name="granted_folders">Добавленные папки</string>
     <string name="no_folders_granted">Папки пока не добавлены. Нажмите выше, чтобы выбрать папку с музыкой.</string>
     <string name="start_app_now">Начать использование</string>
     <string name="audio">Аудио</string>
@@ -314,7 +310,6 @@
     <string name="edit_metadata">Редактировать метаданные</string>
     <string name="metadata_saved">Метаданные успешно сохранены.</string>
     <string name="comment">Комментарий</string>
-    <string name="change">Изменить</string>
     <!-- Audio Pipeline Dialog — section labels -->
     <string name="track_info">Информация о трекеИнформация о треке</string>
     <string name="channels">Резамплинг</string>
@@ -352,7 +347,6 @@
     <string name="playlist_description">Описание (необязательно)</string>
     <string name="edit_playlist">Редактировать плейлист</string>
     <string name="add_all_to_queue">Добавить все в очередь</string>
-    <string name="manual">Вручную</string>
     <string name="as_added">По дате добавления</string>
     <string name="filter_categories">Фильтр категорий</string>
     <string name="about">О приложении</string>
@@ -402,11 +396,8 @@
     <string name="save_preset">Сохранить пресет</string>
     <string name="preset_name_hint">Название пресета…</string>
     <string name="built_in">Встроенный</string>
-    <string name="custom">Пользовательский</string>
     <string name="switch_to_peq">Переключить на PEQ</string>
     <string name="switch_to_graphic_eq">Перейти на графический EQ</string>
-    <string name="peq_mode">Параметр EQ</string>
-    <string name="graphic_eq_mode">Графический EQ</string>
     <!-- LRC Editor -->
     <string name="lrc_lyric_hint">Lyric line…</string>
     <string name="lrc_stamp_timestamp">Поставить временную метку</string>
@@ -416,15 +407,10 @@
     <string name="rewind">Назад</string>
     <string name="forward">Вперёд</string>
     <string name="add_lyrics">Добавить текст песни</string>
-    <string name="no_folders_added">Папки ещё не добавлены. Нажмите +, чтобы добавить.</string>
-    <string name="path_added">Путь успешно добавлен.</string>
-    <string name="path_removed">Путь удалён.</string>
-    <string name="storage_root">Корень хранилища</string>
     <string name="dividers">Разделители</string>
     <string name="dividers_summary">Добавить линии-разделители в списках.</string>
     <string name="like_icon">Иконка лайка</string>
     <string name="like_icon_summary">Заменить значок сердца для избранного на значок большого пальца.</string>
-    <string name="buy_full_version">Купить полную версию</string>
     <string name="trial_period">Пробный период</string>
     <string name="cache">Очистить кэш изображений</string>
     <string name="clear_image_cache">Очистить кэш изображений</string>
@@ -449,9 +435,6 @@
     <string name="reshuffle">Без повторного перемешивания</string>
     <string name="reshuffle_summary">Не перемешивать список повторно, если он уже перемешан при выборе новой песни.</string>
     <string name="label">Лейбл</string>
-    <string name="portrait">Портретный</string>
-    <string name="span_type">Тип расположения</string>
-    <string name="landscape">Альбомный</string>
     <string name="relaxed">Свободный</string>
     <string name="compact">Компактный</string>
     <string name="single">Одинарный</string>
@@ -468,13 +451,11 @@
     <string name="about_album">Об альбоме</string>
     <string name="search_metadata">Поиск</string>
     <string name="synced">Синхронизировано</string>
-    <string name="metadata_synced_lyrics_saved">Синхронизированный текст сохранён</string>
     <string name="read_more">Подробнее</string>
     <string name="read_less">Скрыть</string>
     <string name="active_since">Активно с %1$s</string>
     <string name="active_since_present">%1$s – настоящее время</string>
     <string name="released_in">Выпущен %1$s</string>
-    <string name="label_on">На %1$s</string>
     <string name="pause_activity">Приостановить активность</string>
     <string name="pause_activity_summary">Не вести записи активности воспроизведения.</string>
     <string name="clear_playback_stats">Очистить статистику воспроизведения</string>
@@ -486,7 +467,6 @@
     <string name="no_bookmarks">Закладок пока нет</string>
     <string name="bookmark_too_close">Рядом уже есть закладка</string>
     <string name="bookmark_at">Закладка на %1$s</string>
-    <string name="clear_bookmarks">Очистить все закладки</string>
     <string name="play_store_foss_purchase_info">Версия FOSS этого приложения не поддерживает покупки через Google Play. Для покупки установите версию из Google Play Store.</string>
     <string name="playstore_link">Ссылка на Play Store</string>
     <string name="playstore_link_summary">Открыть страницу приложения в Play Store.</string>
