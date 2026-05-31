@@ -11,7 +11,7 @@ class SwipeDownToCloseListener(
 ) : View.OnTouchListener {
 
     private var initialY = 0f
-    private val dismissThreshold = 300f // How far down they need to swipe
+    private val dismissThreshold = 100f // How far down they need to swipe
     private var isDragging = false
 
     @SuppressLint("ClickableViewAccessibility")
