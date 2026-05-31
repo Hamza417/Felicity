@@ -605,10 +605,12 @@ class FelicityPager @JvmOverloads constructor(
         // Measure and lay out the new child immediately so translationX is meaningful.
         if (width > 0 && height > 0) {
             val cardW = if (pagerMode == PagerMode.CAROUSEL) resolvedCarouselCardWidth() else width
+            val cardH = if (pagerMode == PagerMode.CAROUSEL) cardW else height
+            val topOffset = if (pagerMode == PagerMode.CAROUSEL) (height - cardH) / 2 else 0
             val cw = MeasureSpec.makeMeasureSpec(cardW, MeasureSpec.EXACTLY)
-            val ch = MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY)
+            val ch = MeasureSpec.makeMeasureSpec(cardH, MeasureSpec.EXACTLY)
             v.measure(cw, ch)
-            v.layout(0, 0, cardW, height)
+            v.layout(0, topOffset, cardW, topOffset + cardH)
         }
         applyTranslationTo(v, position)
     }
@@ -740,14 +742,16 @@ class FelicityPager @JvmOverloads constructor(
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
-        // In carousel mode each child is a square card, not the full pager width.
+        // In carousel mode each child is a square card — width and height are both cardW.
+        // In normal mode each child fills the entire pager.
         val cardW = if (pagerMode == PagerMode.CAROUSEL) {
             resolvedCarouselCardWidth(measuredWidth, measuredHeight)
         } else {
             measuredWidth
         }
+        val cardH = if (pagerMode == PagerMode.CAROUSEL) cardW else measuredHeight
         val cw = MeasureSpec.makeMeasureSpec(cardW, MeasureSpec.EXACTLY)
-        val ch = MeasureSpec.makeMeasureSpec(measuredHeight, MeasureSpec.EXACTLY)
+        val ch = MeasureSpec.makeMeasureSpec(cardH, MeasureSpec.EXACTLY)
         for (i in 0 until childCount) getChildAt(i).measure(cw, ch)
     }
 
@@ -755,7 +759,10 @@ class FelicityPager @JvmOverloads constructor(
         val w = r - l
         val h = b - t
         val cardW = if (pagerMode == PagerMode.CAROUSEL) resolvedCarouselCardWidth(w, h) else w
-        for (i in 0 until childCount) getChildAt(i).layout(0, 0, cardW, h)
+        val cardH = if (pagerMode == PagerMode.CAROUSEL) cardW else h
+        // Vertically center square cards inside the pager bounds.
+        val topOffset = if (pagerMode == PagerMode.CAROUSEL) (h - cardH) / 2 else 0
+        for (i in 0 until childCount) getChildAt(i).layout(0, topOffset, cardW, topOffset + cardH)
         if (w > 0) {
             if (changed) {
                 // Re-anchor scroll so the current page stays centred after a size change.
@@ -1345,10 +1352,12 @@ class FelicityPager @JvmOverloads constructor(
                 addView(v)
                 if (width > 0 && height > 0) {
                     val cardW = if (pagerMode == PagerMode.CAROUSEL) resolvedCarouselCardWidth() else width
+                    val cardH = if (pagerMode == PagerMode.CAROUSEL) cardW else height
+                    val topOffset = if (pagerMode == PagerMode.CAROUSEL) (height - cardH) / 2 else 0
                     val cw = MeasureSpec.makeMeasureSpec(cardW, MeasureSpec.EXACTLY)
-                    val ch = MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY)
+                    val ch = MeasureSpec.makeMeasureSpec(cardH, MeasureSpec.EXACTLY)
                     v.measure(cw, ch)
-                    v.layout(0, 0, cardW, height)
+                    v.layout(0, topOffset, cardW, topOffset + cardH)
                 }
                 v.translationX = wrapPx - scrollPx + carouselInsetPx()
             }
