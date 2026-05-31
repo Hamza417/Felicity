@@ -39,7 +39,8 @@ open class ImagePageAdapter(
         private var count: Int,
         private val provider: ImageBitmapProvider,
         private val canceller: ImageBitmapCanceller,
-        private val scaleType: ImageView.ScaleType = ImageView.ScaleType.CENTER_CROP
+        private val scaleType: ImageView.ScaleType = ImageView.ScaleType.CENTER_CROP,
+        private val onLongClick: ((position: Int, view: ImageView) -> Boolean)? = null
 ) : FelicityPager.PageAdapter {
 
     /** Update the total page count before calling [FelicityPager.notifyDataSetChanged]. */
@@ -59,6 +60,8 @@ open class ImagePageAdapter(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT
             )
+
+            onLongClick?.let { setOnLongClickListener { onLongClick(position, this) } }
         }
 
     override fun onBindView(position: Int, view: View) {

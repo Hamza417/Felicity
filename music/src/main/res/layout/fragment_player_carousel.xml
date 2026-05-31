@@ -29,7 +29,7 @@
             android:layout_weight="1"
             app:carouselPageSpacing="4dp"
             app:carouselShowSidePages="true"
-            app:carouselSideScaleDp="8dp"
+            app:carouselSideScaleDp="0dp"
             app:fadeEnabled="false"
             app:pagerMode="carousel" />
 

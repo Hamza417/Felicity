@@ -211,6 +211,10 @@ abstract class BasePlayerFragment : MediaFragment() {
                         },
                         canceller = { iv ->
                             Glide.with(iv).clear(iv)
+                        },
+                        onLongClick = { pos, iv ->
+                            openMenu()
+                            true
                         }
                 ).also { imagePageAdapter = it },
         )
@@ -280,25 +284,7 @@ abstract class BasePlayerFragment : MediaFragment() {
         }
 
         menu.setOnClickListener {
-            when (UserInterfacePreferences.getPlayerInterface()) {
-                UserInterfacePreferences.PLAYER_INTERFACE_DEFAULT,
-                UserInterfacePreferences.PLAYER_INTERFACE_CAROUSEL -> {
-                    openSongsMenu(
-                            audios = MediaPlaybackManager.getSongs(),
-                            position = MediaPlaybackManager.getCurrentSongPosition(),
-                            imageView = pager.getCurrentImageView(),
-                            showBookmarks = true
-                    )
-                }
-                UserInterfacePreferences.PLAYER_INTERFACE_FADED -> {
-                    openSongsMenu(
-                            audios = MediaPlaybackManager.getSongs(),
-                            position = MediaPlaybackManager.getCurrentSongPosition(),
-                            showBookmarks = true,
-                            imageView = null // No shared element transition on the faded player variant
-                    )
-                }
-            }
+            openMenu()
         }
 
         repeat.setOnClickListener {
@@ -451,6 +437,28 @@ abstract class BasePlayerFragment : MediaFragment() {
 
     private fun setLyricsState() {
         lrc.visibility = if (PlayerPreferences.isShowLyrics()) View.VISIBLE else View.GONE
+    }
+
+    private fun openMenu() {
+        when (UserInterfacePreferences.getPlayerInterface()) {
+            UserInterfacePreferences.PLAYER_INTERFACE_DEFAULT,
+            UserInterfacePreferences.PLAYER_INTERFACE_CAROUSEL -> {
+                openSongsMenu(
+                        audios = MediaPlaybackManager.getSongs(),
+                        position = MediaPlaybackManager.getCurrentSongPosition(),
+                        imageView = pager.getCurrentImageView(),
+                        showBookmarks = true
+                )
+            }
+            UserInterfacePreferences.PLAYER_INTERFACE_FADED -> {
+                openSongsMenu(
+                        audios = MediaPlaybackManager.getSongs(),
+                        position = MediaPlaybackManager.getCurrentSongPosition(),
+                        showBookmarks = true,
+                        imageView = null // No shared element transition on the faded player variant
+                )
+            }
+        }
     }
 
     private fun updateState() {

@@ -97,7 +97,7 @@ class CarouselPlayer : BasePlayerFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         binding.pager.setCarouselSidePagesVisible(visible = true)
-        binding.pager.carouselPageTransformer = CarouselTransformers.zoomOut
+        binding.pager.carouselPageTransformer = CarouselTransformers.depth
     }
 
     companion object {
