@@ -249,6 +249,31 @@
         <attr name="fadeStartFraction" />
         <!-- Direction the fade gradient travels (same values as FelicitySlider). -->
         <attr name="fadeDirection" />
+        <!--
+            Pager display mode.
+            normal   (0) – each page fills the full pager width (default).
+            carousel (1) – a square card is centered with neighbor pages peeking in from both sides.
+        -->
+        <attr name="pagerMode" format="enum">
+            <enum name="normal" value="0" />
+            <enum name="carousel" value="1" />
+        </attr>
+        <!--
+            Fixed pixel size of the square carousel card. When absent (or 0) the card size is
+            auto-computed as min(pagerWidth, pagerHeight) to guarantee a perfect square.
+            Only used in carousel mode.
+        -->
+        <attr name="carouselCardSize" format="dimension" />
+        <!--
+            Pixel gap between adjacent cards in carousel mode.
+            When absent the pager defaults to 16 dp. Set to 0 for edge-to-edge cards.
+        -->
+        <attr name="carouselPageSpacing" format="dimension" />
+        <!--
+            Whether the left and right neighbor cards are visible in carousel mode.
+            true = neighbors peek in from the sides (default); false = only the center card is shown.
+        -->
+        <attr name="carouselShowSidePages" format="boolean" />
     </declare-styleable>
 
     <!-- WaveformSeekView: scrollable equalizer-bar waveform with seek overlay -->
