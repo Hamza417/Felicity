@@ -1077,7 +1077,13 @@ class FelicityPager @JvmOverloads constructor(
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        gestureDetector.onTouchEvent(event)
+        // When the user is already doing a vertical drag to close the panel, we don't want
+        // the gesture detector to secretly build up fling velocity on the horizontal axis.
+        // If we let it run, it fires onFling() on finger-up and flips the page at the same
+        // time the panel is sliding away — which is exactly the skip-song bug.
+        if (!isVerticalDrag) {
+            gestureDetector.onTouchEvent(event)
+        }
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 cancelAnimation()
@@ -1258,6 +1264,9 @@ class FelicityPager @JvmOverloads constructor(
 
     override fun onFling(e1: MotionEvent?, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
         if (scrollState == SCROLL_STATE_DRAGGING) return false
+        // If the user was swiping vertically (e.g. to close the panel), ignore any residual
+        // horizontal velocity entirely — we never want a page flip to sneak in here.
+        if (isVerticalDrag) return false
         if (width <= 0) return false
         // Pick the velocity component that matches the paging axis.
         val velocity = if (slideDirection == SlideDirection.VERTICAL) velocityY else velocityX
