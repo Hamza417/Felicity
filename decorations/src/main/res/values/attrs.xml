@@ -290,6 +290,15 @@
             Good starting values: 24 dp (subtle) to 64 dp (strong).
         -->
         <attr name="carouselSideScaleDp" format="dimension" />
+        <!--
+            Which axis the pager scrolls along.
+            horizontal (0) – pages slide left and right (default).
+            vertical   (1) – pages slide up and down.
+        -->
+        <attr name="slideDirection" format="enum">
+            <enum name="horizontal" value="0" />
+            <enum name="vertical" value="1" />
+        </attr>
     </declare-styleable>
 
     <!-- WaveformSeekView: scrollable equalizer-bar waveform with seek overlay -->

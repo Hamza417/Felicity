@@ -279,7 +279,8 @@ abstract class BasePlayerFragment : MediaFragment() {
 
         menu.setOnClickListener {
             when (UserInterfacePreferences.getPlayerInterface()) {
-                UserInterfacePreferences.PLAYER_INTERFACE_DEFAULT -> {
+                UserInterfacePreferences.PLAYER_INTERFACE_DEFAULT,
+                UserInterfacePreferences.PLAYER_INTERFACE_CAROUSEL -> {
                     openSongsMenu(
                             audios = MediaPlaybackManager.getSongs(),
                             position = MediaPlaybackManager.getCurrentSongPosition(),

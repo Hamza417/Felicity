@@ -28,8 +28,8 @@
             android:layout_height="0dp"
             android:layout_weight="1"
             app:carouselShowSidePages="true"
-            app:carouselSideScaleDp="32dp"
-            app:fadeDirection="top_to_bottom"
+            app:carouselPageSpacing="8dp"
+            app:carouselSideScaleDp="16dp"
             app:fadeEnabled="false"
             app:pagerMode="carousel" />
 
