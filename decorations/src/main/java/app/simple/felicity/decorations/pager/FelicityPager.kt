@@ -962,6 +962,9 @@ class FelicityPager @JvmOverloads constructor(
     /** X coordinate of the last processed [MotionEvent], updated every [MotionEvent.ACTION_MOVE]. */
     private var lastMotionX = 0f
 
+    /** Y coordinate of the last processed [MotionEvent] — used as the delta baseline in vertical mode. */
+    private var lastMotionY = 0f
+
     /**
      * X coordinate recorded at [MotionEvent.ACTION_DOWN]. Used to measure cumulative
      * displacement so that slow drags (whose per-event delta never exceeds the touch slop)
@@ -1019,6 +1022,7 @@ class FelicityPager @JvmOverloads constructor(
                 initialMotionX = ev.x
                 initialMotionY = ev.y
                 lastMotionX = ev.x
+                lastMotionY = ev.y
                 isBeingDragged = false
                 isVerticalDrag = false
 
@@ -1032,24 +1036,33 @@ class FelicityPager @JvmOverloads constructor(
                 velocityTracker?.recycle()
                 velocityTracker = VelocityTracker.obtain().apply { addMovement(ev) }
 
-                // Lock parent intercept immediately on DOWN so a vertical RecyclerView
-                // ancestor cannot steal horizontal swipes before direction is confirmed.
-                // The lock is re-opened below if the gesture turns out to be vertical.
+                // Lock parent intercept right away so an ancestor cannot steal the gesture
+                // before the dominant direction is confirmed. The lock is released below if
+                // the cross-axis is stronger.
                 parent?.requestDisallowInterceptTouchEvent(true)
             }
             MotionEvent.ACTION_MOVE -> {
                 velocityTracker?.addMovement(ev)
                 val dx = abs(ev.x - initialMotionX)
                 val dy = abs(ev.y - initialMotionY)
-                // If the gesture is clearly vertical, re-allow the parent (e.g., a vertical
-                // RecyclerView) to intercept and scroll normally.
-                if (dy > touchSlop * 0.6f && dy > dx) {
-                    parent?.requestDisallowInterceptTouchEvent(false)
-                    return false
+
+                if (slideDirection == SlideDirection.VERTICAL) {
+                    // Vertical paging mode: a horizontal cross-swipe should pass through to
+                    // an ancestor (e.g., a horizontal ViewPager). A vertical swipe is ours.
+                    if (dx > touchSlop * 0.6f && dx > dy) {
+                        parent?.requestDisallowInterceptTouchEvent(false)
+                        return false
+                    }
+                    if (dy > touchSlop * 0.6f && dy > dx) return true
+                } else {
+                    // Horizontal paging mode (default): a vertical cross-swipe should pass
+                    // through to ancestors such as a swipe-to-close handler or RecyclerView.
+                    if (dy > touchSlop * 0.6f && dy > dx) {
+                        parent?.requestDisallowInterceptTouchEvent(false)
+                        return false
+                    }
+                    if (dx > touchSlop * 0.6f && dx > dy) return true
                 }
-                // Only intercept when the gesture is clearly horizontal, so that a
-                // primarily-vertical swipe is never stolen from a parent swipe-to-close handler.
-                if (dx > touchSlop * 0.6f && dx > dy) return true
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 // If the child handled the full touch sequence (pager never intercepted),
@@ -1071,6 +1084,7 @@ class FelicityPager @JvmOverloads constructor(
                 initialMotionX = event.x
                 initialMotionY = event.y
                 lastMotionX = event.x
+                lastMotionY = event.y
                 dragStartScrollPx = scrollPx
                 isVerticalDrag = false
                 // onInterceptTouchEvent(DOWN) may have already allocated the tracker for
@@ -1078,44 +1092,75 @@ class FelicityPager @JvmOverloads constructor(
                 // clean baseline (adding the same DOWN event once is sufficient).
                 velocityTracker?.recycle()
                 velocityTracker = VelocityTracker.obtain().apply { addMovement(event) }
-                // Lock parent intercept immediately so a vertical ancestor (e.g., RecyclerView)
-                // cannot steal this gesture before the direction has been confirmed as horizontal.
-                // If the gesture turns out to be vertical, requestDisallowInterceptTouchEvent(false)
-                // is called in the MOVE handler to re-open parent interception.
                 parent?.requestDisallowInterceptTouchEvent(true)
             }
             MotionEvent.ACTION_MOVE -> {
                 velocityTracker?.addMovement(event)
-                val dx = event.x - lastMotionX
-                val totalDx = abs(event.x - initialMotionX)
-                val totalDy = event.y - initialMotionY // signed: positive = downward
 
-                if (!isBeingDragged && !isVerticalDrag) {
-                    when {
-                        // Primarily vertical — delegate to the vertical drag listener.
-                        abs(totalDy) > touchSlop * 0.6f && abs(totalDy) > totalDx -> {
-                            isVerticalDrag = true
-                            // Allow ancestors to intercept this gesture sequence.
-                            parent?.requestDisallowInterceptTouchEvent(false)
-                            verticalDragListener?.onVerticalDragBegin()
-                            verticalDragListener?.onVerticalDrag(totalDy, event)
+                if (slideDirection == SlideDirection.VERTICAL) {
+                    // In vertical paging mode, vertical swipes page through content.
+                    // Horizontal swipes (cross-axis) are passed up to the parent unchanged.
+                    val dy = event.y - lastMotionY
+                    val totalDy = abs(event.y - initialMotionY)
+                    val totalDx = abs(event.x - initialMotionX)
+
+                    if (!isBeingDragged && !isVerticalDrag) {
+                        when {
+                            // Horizontal cross-swipe — let the parent handle it.
+                            totalDx > touchSlop * 0.6f && totalDx > totalDy -> {
+                                // Reuse isVerticalDrag as a "cross-axis, ignore" flag so we
+                                // don't flip back to paging mid-gesture.
+                                isVerticalDrag = true
+                                parent?.requestDisallowInterceptTouchEvent(false)
+                            }
+                            // Vertical swipe — take ownership and start paging.
+                            totalDy > touchSlop * 0.6f -> {
+                                isBeingDragged = true
+                                dispatchStateChanged(SCROLL_STATE_DRAGGING)
+                                parent?.requestDisallowInterceptTouchEvent(true)
+                                performDrag(-dy)
+                            }
                         }
-                        // Primarily horizontal — commit to paging and lock the event.
-                        totalDx > touchSlop * 0.6f -> {
-                            isBeingDragged = true
-                            dispatchStateChanged(SCROLL_STATE_DRAGGING)
-                            parent?.requestDisallowInterceptTouchEvent(true)
-                            performDrag(-dx)
-                        }
+                    } else if (isVerticalDrag) {
+                        // Cross-axis gesture in progress — keep passing to parent.
+                        parent?.requestDisallowInterceptTouchEvent(false)
+                    } else if (isBeingDragged) {
+                        performDrag(-dy)
                     }
-                } else if (isVerticalDrag) {
-                    // Keep notifying while the finger is still moving vertically.
-                    verticalDragListener?.onVerticalDrag(totalDy, event)
-                    parent?.requestDisallowInterceptTouchEvent(false)
-                } else if (isBeingDragged) {
-                    performDrag(-dx)
+                    lastMotionY = event.y
+                } else {
+                    // Horizontal paging mode — original behavior.
+                    val dx = event.x - lastMotionX
+                    val totalDx = abs(event.x - initialMotionX)
+                    val totalDy = event.y - initialMotionY // signed: positive = downward
+
+                    if (!isBeingDragged && !isVerticalDrag) {
+                        when {
+                            // Primarily vertical — delegate to the vertical drag listener.
+                            abs(totalDy) > touchSlop * 0.6f && abs(totalDy) > totalDx -> {
+                                isVerticalDrag = true
+                                // Allow ancestors to intercept this gesture sequence.
+                                parent?.requestDisallowInterceptTouchEvent(false)
+                                verticalDragListener?.onVerticalDragBegin()
+                                verticalDragListener?.onVerticalDrag(totalDy, event)
+                            }
+                            // Primarily horizontal — commit to paging and lock the event.
+                            totalDx > touchSlop * 0.6f -> {
+                                isBeingDragged = true
+                                dispatchStateChanged(SCROLL_STATE_DRAGGING)
+                                parent?.requestDisallowInterceptTouchEvent(true)
+                                performDrag(-dx)
+                            }
+                        }
+                    } else if (isVerticalDrag) {
+                        // Keep notifying while the finger is still moving vertically.
+                        verticalDragListener?.onVerticalDrag(totalDy, event)
+                        parent?.requestDisallowInterceptTouchEvent(false)
+                    } else if (isBeingDragged) {
+                        performDrag(-dx)
+                    }
+                    lastMotionX = event.x
                 }
-                lastMotionX = event.x
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 velocityTracker?.addMovement(event)
@@ -1124,12 +1169,21 @@ class FelicityPager @JvmOverloads constructor(
                 val vy = velocityTracker?.yVelocity ?: 0f
                 val totalDy = event.y - initialMotionY
 
-                if (isVerticalDrag) {
-                    verticalDragListener?.onVerticalDragEnd(totalDy, vy, event)
-                } else if (isBeingDragged) {
-                    finishDrag(vx)
-                } else if (event.actionMasked == MotionEvent.ACTION_UP) {
-                    performClick()
+                if (slideDirection == SlideDirection.VERTICAL) {
+                    if (isBeingDragged) {
+                        // Use Y velocity for vertical paging snap / fling decision.
+                        finishDrag(vy)
+                    } else if (event.actionMasked == MotionEvent.ACTION_UP && !isVerticalDrag) {
+                        performClick()
+                    }
+                } else {
+                    if (isVerticalDrag) {
+                        verticalDragListener?.onVerticalDragEnd(totalDy, vy, event)
+                    } else if (isBeingDragged) {
+                        finishDrag(vx)
+                    } else if (event.actionMasked == MotionEvent.ACTION_UP) {
+                        performClick()
+                    }
                 }
                 velocityTracker?.recycle()
                 velocityTracker = null
@@ -1155,20 +1209,24 @@ class FelicityPager @JvmOverloads constructor(
 
     /**
      * Called when the user lifts their finger. Decides whether to fling to a distant page
-     * (when [velocityX] exceeds [minFlingVelocity]) or to snap to the nearest page using
+     * (when [velocity] exceeds [minFlingVelocity]) or to snap to the nearest page using
      * the [advanceThreshold] rule, then kicks off a settle animation.
+     *
+     * [velocity] is the signed velocity along the paging axis — X in horizontal mode, Y in
+     * vertical mode. The caller is responsible for passing the correct component so this
+     * method stays axis-agnostic.
      */
-    private fun finishDrag(velocityX: Float) {
+    private fun finishDrag(velocity: Float) {
         if (width <= 0) return
         val step = pageStepPx()
         val dragDeltaPages = (scrollPx - dragStartScrollPx) / step
         val forward = dragDeltaPages > 0f
 
-        if (abs(velocityX) > minFlingVelocity) {
-            val vPagesPerSec = abs(velocityX) / step
+        if (abs(velocity) > minFlingVelocity) {
+            val vPagesPerSec = abs(velocity) / step
             val windowSec = 0.18f
             val pages = max(1, (vPagesPerSec * windowSec).roundToInt().coerceAtMost(3))
-            val dir = if (velocityX < 0) +1 else -1
+            val dir = if (velocity < 0) +1 else -1
             val floorPage = (scrollPx / step).toInt().coerceIn(0, maxLastPage())
             val ceilPage = (floorPage + 1).coerceAtMost(maxLastPage())
             val base = if (dir > 0) ceilPage else floorPage
@@ -1201,11 +1259,13 @@ class FelicityPager @JvmOverloads constructor(
     override fun onFling(e1: MotionEvent?, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
         if (scrollState == SCROLL_STATE_DRAGGING) return false
         if (width <= 0) return false
+        // Pick the velocity component that matches the paging axis.
+        val velocity = if (slideDirection == SlideDirection.VERTICAL) velocityY else velocityX
         val step = pageStepPx()
-        val vPagesPerSec = abs(velocityX) / step
+        val vPagesPerSec = abs(velocity) / step
         val windowSec = 0.18f
         val pages = max(1, (vPagesPerSec * windowSec).roundToInt().coerceAtMost(3))
-        val dir = if (velocityX < 0) +1 else -1
+        val dir = if (velocity < 0) +1 else -1
         val floorPage = (scrollPx / step).toInt().coerceIn(0, maxLastPage())
         val ceilPage = (floorPage + 1).coerceAtMost(maxLastPage())
         val base = if (dir > 0) ceilPage else floorPage
@@ -1480,7 +1540,16 @@ class FelicityPager @JvmOverloads constructor(
 
         // Update translations for real pages + the wrap clone.
         applyTranslations()
-        activePages[WRAP_PAGE_KEY]?.translationX = wrapAnimTo - scrollPx + carouselInsetPx()
+        val wrapOffset = wrapAnimTo - scrollPx + carouselInsetPx()
+        activePages[WRAP_PAGE_KEY]?.let { clone ->
+            if (slideDirection == SlideDirection.VERTICAL) {
+                clone.translationY = wrapOffset
+                clone.translationX = 0f
+            } else {
+                clone.translationX = wrapOffset
+                clone.translationY = 0f
+            }
+        }
 
         dispatchScrolled()
 
