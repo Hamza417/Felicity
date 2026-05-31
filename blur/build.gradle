@@ -1,0 +1,38 @@
+plugins {
+    id 'com.android.library'
+}
+
+apply from: rootProject.file('common.gradle')
+
+android {
+    namespace 'app.simple.felicity.blur'
+
+    ndkVersion = libs.versions.ndk.get()
+
+    defaultConfig {
+        externalNativeBuild {
+            cmake {
+                cppFlags "-std=c++17 -O3 -ffast-math"
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+            version "3.22.1+"
+        }
+    }
+
+    buildTypes {
+        release {
+            consumerProguardFiles 'consumer-rules.pro'
+        }
+    }
+}
+
+dependencies {
+    // No extra dependencies — everything needed (EGL, GLES3, jnigraphics)
+    // is part of the Android NDK and linked via CMakeLists.txt.
+}
+

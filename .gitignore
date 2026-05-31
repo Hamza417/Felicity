@@ -28,3 +28,4 @@ local.properties
 /music/release/output-metadata.json
 /music/play/release/*
 /music/foss/release/*
+/blur/build/*

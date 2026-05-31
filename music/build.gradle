@@ -129,6 +129,7 @@ dependencies {
     implementation project(':repository')
     implementation project(':engine')
     implementation project(':milkdrop')
+    implementation project(':blur')
 
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
 
@@ -161,7 +162,6 @@ dependencies {
     // Third party
 
     // My Own
-    implementation 'com.github.Hamza417:renderscript-intrinsics-replacement-toolkit:4ae2409809'
     implementation 'io.github.hamza417:Amplituda:3.3.0'
 
     // NanoHTTPD — lightweight embedded HTTP server for the local WiFi server mode

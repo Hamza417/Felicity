@@ -10,6 +10,7 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/blur" />
             <option value="$PROJECT_DIR$/core" />
             <option value="$PROJECT_DIR$/decorations" />
             <option value="$PROJECT_DIR$/engine" />
