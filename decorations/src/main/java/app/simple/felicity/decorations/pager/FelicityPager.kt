@@ -383,6 +383,27 @@ class FelicityPager @JvmOverloads constructor(
         }
 
     /**
+     * How many pixels of the neighboring card are visible on each side of the pager in
+     * carousel mode. This "peek" margin is subtracted from both sides of the pager width
+     * when auto-sizing the square card, so you always see a sliver of the left and right
+     * neighbors even before a swipe begins.
+     *
+     * A sensible default of 48 dp is applied automatically after construction. Set to 0
+     * to have the card fill as much space as the pager height allows.
+     *
+     * This only has an effect when [carouselCardSizePx] is 0 (auto-size mode).
+     */
+    var carouselPeekPx: Float = 0f
+        set(v) {
+            field = v.coerceAtLeast(0f)
+            if (pagerMode == PagerMode.CAROUSEL && width > 0) {
+                cancelAnimation()
+                scrollPx = currentPage.coerceAtLeast(0) * pageStepPx()
+                requestLayout()
+            }
+        }
+
+    /**
      * Whether the left and right neighbor cards are visible in carousel mode.
      * `true` by default — neighbor cards peek in from both sides. Set to `false`
      * to show only the center card (useful for a spotlight / focus style).
@@ -392,7 +413,9 @@ class FelicityPager @JvmOverloads constructor(
     var carouselShowSidePages: Boolean = true
         set(v) {
             field = v
-            if (pagerMode == PagerMode.CAROUSEL) updateSidePageVisibility()
+            // Guard: width is 0 during construction, which means activePages hasn't been
+            // initialized yet. Skip the update here; applyTranslations handles it after layout.
+            if (pagerMode == PagerMode.CAROUSEL && width > 0) updateSidePageVisibility()
         }
 
     /**
@@ -423,13 +446,20 @@ class FelicityPager @JvmOverloads constructor(
                 if (hasValue(R.styleable.FelicityPager_carouselPageSpacing)) {
                     carouselPageSpacingPx = getDimension(R.styleable.FelicityPager_carouselPageSpacing, 0f)
                 }
+                if (hasValue(R.styleable.FelicityPager_carouselPeekMargin)) {
+                    carouselPeekPx = getDimension(R.styleable.FelicityPager_carouselPeekMargin, 0f)
+                }
                 carouselCardSizePx = getDimensionPixelSize(R.styleable.FelicityPager_carouselCardSize, 0)
                 carouselShowSidePages = getBoolean(R.styleable.FelicityPager_carouselShowSidePages, true)
             }
         }
-        // Fall back to 16 dp if the spacing was not set via an XML attribute.
+        // Fall back to 16 dp spacing if none was given via XML.
         if (carouselPageSpacingPx == 0f) {
             carouselPageSpacingPx = 16f * resources.displayMetrics.density
+        }
+        // Fall back to 48 dp peek margin if none was given via XML.
+        if (carouselPeekPx == 0f) {
+            carouselPeekPx = 48f * resources.displayMetrics.density
         }
     }
 
@@ -643,13 +673,21 @@ class FelicityPager @JvmOverloads constructor(
 
     /**
      * Resolves the actual pixel size for carousel cards. When [carouselCardSizePx] is 0
-     * (the default), the card is made as large as the smaller of the pager's two dimensions
-     * so it always forms a square. You can pass explicit parent dimensions when calling
-     * this from [onMeasure] before the layout pass has finished.
+     * (the default), the card is sized as a square that leaves at least [carouselPeekPx]
+     * pixels of peek space on both sides. The card is then capped at the pager height so
+     * it never exceeds a perfect square that fits vertically.
+     *
+     * You can pass explicit parent dimensions when calling this from [onMeasure] before
+     * the layout pass has finished.
      */
-    private fun resolvedCarouselCardWidth(parentWidth: Int = width, parentHeight: Int = height): Int =
-        if (carouselCardSizePx > 0) carouselCardSizePx
-        else minOf(parentWidth, parentHeight).coerceAtLeast(1)
+    private fun resolvedCarouselCardWidth(parentWidth: Int = width, parentHeight: Int = height): Int {
+        if (carouselCardSizePx > 0) return carouselCardSizePx
+        // Subtract peek space from both sides so neighbors are always partially visible,
+        // then cap at the pager height to keep the card square.
+        val peekEachSide = carouselPeekPx.toInt().coerceAtLeast(0)
+        val maxWidthAfterPeek = (parentWidth - 2 * peekEachSide).coerceAtLeast(1)
+        return minOf(maxWidthAfterPeek, parentHeight).coerceAtLeast(1)
+    }
 
     /**
      * How far to offset each page's left edge from the pager's left edge so that the
@@ -790,18 +828,18 @@ class FelicityPager @JvmOverloads constructor(
      * This is called every frame from [applyTranslations] while in carousel mode.
      */
     private fun updateSidePageVisibility() {
+        // activePages is initialized after the init block in source order, so this can
+        // be called before the backing field is ready during construction. Bail out early;
+        // applyTranslations will call us again once the view is properly laid out.
+        if (width == 0) return
         val centerPage = scrollPageIndex()
-        try {
-            for ((pos, view) in activePages) {
-                if (pos == WRAP_PAGE_KEY) continue
-                view.visibility = if (carouselShowSidePages || pos == centerPage) {
-                    View.VISIBLE
-                } else {
-                    View.INVISIBLE
-                }
+        for ((pos, view) in activePages) {
+            if (pos == WRAP_PAGE_KEY) continue
+            view.visibility = if (carouselShowSidePages || pos == centerPage) {
+                VISIBLE
+            } else {
+                INVISIBLE
             }
-        } catch (e: NullPointerException) {
-            e.printStackTrace()
         }
     }
 

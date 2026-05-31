@@ -259,6 +259,13 @@
             <enum name="carousel" value="1" />
         </attr>
         <!--
+            How many pixels of the neighboring card peek in from each side of the pager in
+            carousel mode. When absent the pager defaults to 48 dp. Larger values mean more
+            of the neighbor is visible; set to 0 for no enforced peek (card fills the height).
+            Only used when carouselCardSize is 0 (auto-size mode).
+        -->
+        <attr name="carouselPeekMargin" format="dimension" />
+        <!--
             Fixed pixel size of the square carousel card. When absent (or 0) the card size is
             auto-computed as min(pagerWidth, pagerHeight) to guarantee a perfect square.
             Only used in carousel mode.
