@@ -32,6 +32,7 @@ import app.simple.felicity.engine.managers.VisualizerManager
 import app.simple.felicity.engine.usb.UsbDacManager
 import app.simple.felicity.engine.utils.PcmInfoFormatter
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
+import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.preferences.AlbumArtPreferences
 import app.simple.felicity.preferences.AudioPreferences
 import app.simple.felicity.preferences.PlayerPreferences
@@ -189,13 +190,22 @@ abstract class BasePlayerFragment : MediaFragment() {
                         count = MediaPlaybackManager.getSongs().size,
                         provider = { pos, iv ->
                             val audio = MediaPlaybackManager.getSongs()[pos]
-                            iv.loadArtCover(audio,
-                                            shadow = false,
-                                            crop = true,
-                                            roundedCorners = false,
-                                            blur = false,
-                                            greyscale = AlbumArtPreferences.isGreyscaleEnabled(),
-                                            darken = false)
+                            if (UserInterfacePreferences.isCarouselInterface()) {
+                                iv.loadArtCoverWithPayload(audio)
+                            } else {
+                                iv.loadArtCover(audio,
+                                                shadow = false,
+                                                crop = true,
+                                                roundedCorners = false,
+                                                blur = false,
+                                                greyscale = AlbumArtPreferences.isGreyscaleEnabled(),
+                                                darken = false)
+                            }
+                        },
+                        scaleType = if (UserInterfacePreferences.isCarouselInterface()) {
+                            ImageView.ScaleType.FIT_CENTER
+                        } else {
+                            ImageView.ScaleType.CENTER_CROP
                         },
                         canceller = { iv ->
                             Glide.with(iv).clear(iv)

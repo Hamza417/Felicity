@@ -67,6 +67,10 @@ object UserInterfacePreferences {
             .getInt(PLAYER_INTERFACE, PLAYER_INTERFACE_DEFAULT)
     }
 
+    fun isCarouselInterface(): Boolean {
+        return getPlayerInterface() == PLAYER_INTERFACE_CAROUSEL
+    }
+
     /**
      * Persists the selected full-screen player interface identifier.
      *
