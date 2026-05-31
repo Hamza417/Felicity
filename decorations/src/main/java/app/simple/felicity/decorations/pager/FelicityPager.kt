@@ -791,13 +791,17 @@ class FelicityPager @JvmOverloads constructor(
      */
     private fun updateSidePageVisibility() {
         val centerPage = scrollPageIndex()
-        for ((pos, view) in activePages) {
-            if (pos == WRAP_PAGE_KEY) continue
-            view.visibility = if (carouselShowSidePages || pos == centerPage) {
-                View.VISIBLE
-            } else {
-                View.INVISIBLE
+        try {
+            for ((pos, view) in activePages) {
+                if (pos == WRAP_PAGE_KEY) continue
+                view.visibility = if (carouselShowSidePages || pos == centerPage) {
+                    View.VISIBLE
+                } else {
+                    View.INVISIBLE
+                }
             }
+        } catch (e: NullPointerException) {
+            e.printStackTrace()
         }
     }
 

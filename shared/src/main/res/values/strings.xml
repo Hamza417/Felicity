@@ -487,4 +487,6 @@
     <string name="disable_equalizer">Disable Equalizer</string>
     <string name="enable_equalizer">Enable Equalizer</string>
     <string name="show_lyrics_summary">Show single line lyrics on player screen.</string>
+    <string name="carousel">Carousel</string>
+    <string name="carousel_ui_desc">Simple player style with carousel type album arts.</string>
 </resources>

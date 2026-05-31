@@ -321,6 +321,7 @@ abstract class PreferenceFragment : MediaFragment() {
                     when (UserInterfacePreferences.getPlayerInterface()) {
                         UserInterfacePreferences.PLAYER_INTERFACE_FADED -> getString(R.string.faded)
                         UserInterfacePreferences.PLAYER_INTERFACE_DEFAULT -> getString(R.string.simple)
+                        UserInterfacePreferences.PLAYER_INTERFACE_CAROUSEL -> getString(R.string.carousel)
                         else -> getString(R.string.simple)
                     }
                 },
@@ -330,7 +331,8 @@ abstract class PreferenceFragment : MediaFragment() {
                             anchorView = view,
                             menuItems = listOf(
                                     PopupMenuItem(title = R.string.simple, summary = getString(R.string.simple_ui_desc)),
-                                    PopupMenuItem(title = R.string.faded, summary = getString(R.string.faded_ui_desc))
+                                    PopupMenuItem(title = R.string.faded, summary = getString(R.string.faded_ui_desc)),
+                                    PopupMenuItem(title = R.string.carousel, summary = getString(R.string.carousel_ui_desc))
                             ),
                             onMenuItemClick = {
                                 when (it) {
@@ -341,6 +343,10 @@ abstract class PreferenceFragment : MediaFragment() {
                                     R.string.faded -> {
                                         UserInterfacePreferences.setPlayerInterface(UserInterfacePreferences.PLAYER_INTERFACE_FADED)
                                         (view as TextView).text = getString(R.string.faded)
+                                    }
+                                    R.string.carousel -> {
+                                        UserInterfacePreferences.setPlayerInterface(UserInterfacePreferences.PLAYER_INTERFACE_CAROUSEL)
+                                        (view as TextView).text = getString(R.string.carousel)
                                     }
                                 }
                             },

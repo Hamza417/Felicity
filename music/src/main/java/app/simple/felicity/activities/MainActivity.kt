@@ -66,6 +66,7 @@ import app.simple.felicity.ui.launcher.Setup
 import app.simple.felicity.ui.launcher.TrialExpired
 import app.simple.felicity.ui.panels.Equalizer
 import app.simple.felicity.ui.panels.Selections
+import app.simple.felicity.ui.player.CarouselPlayer
 import app.simple.felicity.ui.player.DefaultPlayer
 import app.simple.felicity.ui.player.PlayerFaded
 import dagger.hilt.android.AndroidEntryPoint
@@ -318,6 +319,7 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
     private fun openPlayerForCurrentPreference(): BasePlayerFragment {
         return when (UserInterfacePreferences.getPlayerInterface()) {
             UserInterfacePreferences.PLAYER_INTERFACE_FADED -> PlayerFaded.newInstance()
+            UserInterfacePreferences.PLAYER_INTERFACE_CAROUSEL -> CarouselPlayer.newInstance()
             else -> DefaultPlayer.newInstance()
         }
     }

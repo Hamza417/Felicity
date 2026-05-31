@@ -28,6 +28,7 @@ object UserInterfacePreferences {
 
     const val PLAYER_INTERFACE_DEFAULT = 0
     const val PLAYER_INTERFACE_FADED = 1
+    const val PLAYER_INTERFACE_CAROUSEL = 2
 
     fun setLikeIconInsteadOfThumb(value: Boolean) {
         getSharedPreferences().edit { putBoolean(LIKE_ICON_INSTEAD_OF_HEART, value) }
