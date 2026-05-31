@@ -74,6 +74,7 @@ import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.ui.pages.AlbumPage
 import app.simple.felicity.ui.pages.ArtistPage
 import app.simple.felicity.ui.panels.Milkdrop
+import app.simple.felicity.ui.player.CarouselPlayer
 import app.simple.felicity.ui.player.DefaultPlayer
 import app.simple.felicity.ui.player.PlayerFaded
 import app.simple.felicity.ui.subpanels.MetadataEditor
@@ -279,6 +280,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
     protected fun openDefaultPlayer() {
         val player = when (UserInterfacePreferences.getPlayerInterface()) {
             UserInterfacePreferences.PLAYER_INTERFACE_FADED -> PlayerFaded.newInstance()
+            UserInterfacePreferences.PLAYER_INTERFACE_CAROUSEL -> CarouselPlayer.newInstance()
             else -> DefaultPlayer.newInstance()
         }
         openFragment(player, BasePlayerFragment.TAG)

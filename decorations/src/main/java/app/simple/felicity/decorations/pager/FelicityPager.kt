@@ -32,36 +32,6 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
- * The direction in which the [FelicityPager] edge-fade gradient travels.
- *
- * The "transparent" end is the edge described by the name. For example, [TOP_TO_BOTTOM]
- * leaves the top fully opaque and fades the bottom toward 0 % alpha.
- */
-enum class FadeDirection {
-    /** Fade from opaque at the top toward transparent at the bottom. */
-    TOP_TO_BOTTOM,
-
-    /** Fade from opaque at the bottom toward transparent at the top. */
-    BOTTOM_TO_TOP,
-
-    /** Fade from opaque on the left toward transparent on the right. */
-    LEFT_TO_RIGHT,
-
-    /** Fade from opaque on the right toward transparent on the left. */
-    RIGHT_TO_LEFT;
-
-    companion object {
-        /**
-         * Returns the [FadeDirection] whose ordinal matches [value],
-         * or [TOP_TO_BOTTOM] when [value] is out of range.
-         *
-         * @param value Integer ordinal sourced from a typed-array attribute.
-         */
-        fun fromInt(value: Int): FadeDirection = entries.getOrElse(value) { TOP_TO_BOTTOM }
-    }
-}
-
-/**
  * A raw horizontal pager [ViewGroup] that is intentionally free of any image-loading
  * or Glide dependency. It is a pure scroll / layout / touch engine:
  *
@@ -72,17 +42,34 @@ enum class FadeDirection {
  * To display images, use an [ImagePageAdapter] (a ready-made subclass that accepts an
  * `ImageBitmapProvider` + `ImageBitmapCanceller` pair), or write your own [PageAdapter].
  *
- * **Scroll model:** Page N is centred when `scrollPx == N * width`.
+ * **Modes:** Use [pagerMode] to switch between:
+ *  - [PagerMode.NORMAL] — the original behavior; each page fills the full pager size.
+ *  - [PagerMode.CAROUSEL] — a square card is centered in the view; neighboring pages peek
+ *    in from both sides with a gap controlled by [carouselPageSpacingPx]. The natural
+ *    `clipChildren` clipping creates the peek effect automatically.
+ *
+ * **Direction:** Use [slideDirection] to choose the scroll axis:
+ *  - [SlideDirection.HORIZONTAL] — pages slide left/right (default).
+ *  - [SlideDirection.VERTICAL] — pages slide up/down; great for portrait stacks or feed-style
+ *    layouts. In vertical mode the [OnVerticalDragListener] is not used (the vertical axis is
+ *    already owned by paging). Secondary horizontal swipes are simply passed to the parent.
+ *
+ * **Scroll model (NORMAL):** Page N is centred when `scrollPx == N * width` (horizontal) or
+ * `scrollPx == N * height` (vertical).
+ * **Scroll model (CAROUSEL):** Page N is centred when `scrollPx == N * (cardSize + spacing)`.
  *
  * **Drag:** `ACTION_MOVE` shifts `scrollPx` continuously; bounds-clamped to
- * `[0, (count-1) * width]`.
+ * `[0, (count-1) * pageStep]`.
  *
  * **Fling:** velocity → pages-to-advance (`vPagesPerSec × windowSec`, capped at 3).
  *
- * **Slow release:** advance if `|drag| > advanceThreshold (0.25) × width`, else snap back.
+ * **Slow release:** advance if `|drag| > advanceThreshold (0.25) × pageStep`, else snap back.
  *
  * **Settlement:** [Choreographer] + `easeOutCubic`; start-time latched on the first vsync
  * frame to avoid uptime/vsync clock-source jitter.
+ *
+ * **Custom carousel animations:** Assign a [CarouselPageTransformer] to [carouselPageTransformer]
+ * to inject scale, alpha, rotation, or elevation effects per card every frame.
  *
  * **[OnPageChangeListener]:** `DRAGGING → SETTLING → IDLE`; [OnPageChangeListener.onPageScrolled]
  * fires every frame; [OnPageChangeListener.onPageSelected] fires only after a settle completes
@@ -281,6 +268,147 @@ class FelicityPager @JvmOverloads constructor(
      */
     private val GRADIENT_STEPS = 16
 
+    /**
+     * Switches between the standard [PagerMode.NORMAL] mode (every page fills the full width)
+     * and [PagerMode.CAROUSEL] mode (a square card is centered with neighbors peeking in
+     * from the sides). Changing this at runtime cancels any running animation and re-anchors
+     * the scroll position to keep the current page visible.
+     */
+    var pagerMode: PagerMode = PagerMode.NORMAL
+        set(v) {
+            if (field == v) return
+            val leavingCarousel = field == PagerMode.CAROUSEL
+            field = v
+            // When leaving carousel mode, clean up any scale/alpha/rotation that a
+            // transformer may have applied so pages look normal again.
+            if (leavingCarousel) resetAllCardTransforms()
+            cancelAnimation()
+            if (width > 0) {
+                scrollPx = currentPage.coerceAtLeast(0) * pageStepPx()
+                requestLayout()
+            }
+        }
+
+    /**
+     * Fixed size in pixels of each carousel card (both width and height, so it is a square).
+     * When set to 0 (the default) the pager auto-computes the card size as
+     * `min(pagerWidth, pagerHeight)` to guarantee a perfect square that fits the view.
+     */
+    var carouselCardSizePx: Int = 0
+        set(v) {
+            field = v.coerceAtLeast(0)
+            if (pagerMode == PagerMode.CAROUSEL && width > 0) {
+                cancelAnimation()
+                scrollPx = currentPage.coerceAtLeast(0) * pageStepPx()
+                requestLayout()
+            }
+        }
+
+    /**
+     * Pixel gap between adjacent cards in carousel mode.
+     * A sensible default of 16 dp is applied automatically after construction if you
+     * never set this explicitly. Set to 0 to have cards touch edge to edge.
+     */
+    var carouselPageSpacingPx: Float = 0f
+        set(v) {
+            field = v.coerceAtLeast(0f)
+            if (pagerMode == PagerMode.CAROUSEL && width > 0) {
+                cancelAnimation()
+                scrollPx = currentPage.coerceAtLeast(0) * pageStepPx()
+                requestLayout()
+            }
+        }
+
+    /**
+     * How many pixels of the neighboring card are visible on each side of the pager in
+     * carousel mode. This "peek" margin is subtracted from both sides of the pager width
+     * when auto-sizing the square card, so you always see a sliver of the left and right
+     * neighbors even before a swipe begins.
+     *
+     * A sensible default of 48 dp is applied automatically after construction. Set to 0
+     * to have the card fill as much space as the pager height allows.
+     *
+     * This only has an effect when [carouselCardSizePx] is 0 (auto-size mode).
+     */
+    var carouselPeekPx: Float = 0f
+        set(v) {
+            field = v.coerceAtLeast(0f)
+            if (pagerMode == PagerMode.CAROUSEL && width > 0) {
+                cancelAnimation()
+                scrollPx = currentPage.coerceAtLeast(0) * pageStepPx()
+                requestLayout()
+            }
+        }
+
+    /**
+     * How many dp to shrink side cards relative to the center card in carousel mode.
+     * The center card always stays at full size (scale 1.0). As a card moves toward
+     * position ±1 (one full step from center), its scale is gradually reduced so that
+     * at exactly ±1 the card is `(cardSizePx − carouselSideScaleDp × density) / cardSizePx`
+     * in both width and height.
+     *
+     * A value of 0 (the default) disables the built-in scaling entirely, so only a
+     * [carouselPageTransformer] (if set) governs size changes.
+     *
+     * Good starting values are 24 dp (subtle) through 64 dp (prominent). The actual
+     * pixel reduction is clamped so the side-card scale never drops below 10 %.
+     */
+    var carouselSideScaleDp: Float = 0f
+        set(v) {
+            field = v.coerceAtLeast(0f)
+            if (pagerMode == PagerMode.CAROUSEL && width > 0) applyTranslations()
+        }
+
+    /**
+     * Which axis the pager scrolls along. Switching this at runtime cancels any running
+     * animation, clears the current scroll position, and forces a full re-layout so every
+     * page lands on the correct axis right away.
+     *
+     * [SlideDirection.HORIZONTAL] is the default left-right swipe behavior.
+     * [SlideDirection.VERTICAL] turns the pager into a top-to-bottom stack.
+     */
+    var slideDirection: SlideDirection = SlideDirection.HORIZONTAL
+        set(v) {
+            if (field == v) return
+            field = v
+            cancelAnimation()
+            if (width > 0) {
+                scrollPx = currentPage.coerceAtLeast(0) * pageStepPx()
+                requestLayout()
+            }
+        }
+
+    /**
+     * Whether the left and right neighbor cards are visible in carousel mode.
+     * `true` by default — neighbor cards peek in from both sides. Set to `false`
+     * to show only the center card (useful for a spotlight / focus style).
+     *
+     * You can also toggle this at any time via [setCarouselSidePagesVisible].
+     */
+    var carouselShowSidePages: Boolean = true
+        set(v) {
+            field = v
+            // Guard: width is 0 during construction, which means activePages hasn't been
+            // initialized yet. Skip the update here; applyTranslations handles it after layout.
+            if (pagerMode == PagerMode.CAROUSEL && width > 0) updateSidePageVisibility()
+        }
+
+    /**
+     * An optional callback that receives a normalized position value for each visible
+     * card every frame while in carousel mode. Assign a [CarouselPageTransformer] here
+     * to inject your own scale, alpha, elevation, or rotation animations.
+     *
+     * The transformer is called after [android.view.View.translationX] has already been
+     * set, so you only need to modify additional properties — not the horizontal position.
+     *
+     * Set to `null` to remove any transformer and let cards render without extra effects.
+     */
+    var carouselPageTransformer: CarouselPageTransformer? = null
+        set(v) {
+            field = v
+            if (pagerMode == PagerMode.CAROUSEL && width > 0) applyTranslations()
+        }
+
     init {
         if (attrs != null) {
             context.withStyledAttributes(attrs, R.styleable.FelicityPager, 0, 0) {
@@ -289,7 +417,33 @@ class FelicityPager @JvmOverloads constructor(
                 fadeDirection = FadeDirection.fromInt(
                         getInt(R.styleable.FelicityPager_fadeDirection, 0)
                 )
+                pagerMode = PagerMode.fromInt(getInt(R.styleable.FelicityPager_pagerMode, 0))
+                if (hasValue(R.styleable.FelicityPager_carouselPageSpacing)) {
+                    carouselPageSpacingPx = getDimension(R.styleable.FelicityPager_carouselPageSpacing, 0f)
+                }
+                if (hasValue(R.styleable.FelicityPager_carouselPeekMargin)) {
+                    carouselPeekPx = getDimension(R.styleable.FelicityPager_carouselPeekMargin, 0f)
+                }
+                carouselCardSizePx = getDimensionPixelSize(R.styleable.FelicityPager_carouselCardSize, 0)
+                carouselShowSidePages = getBoolean(R.styleable.FelicityPager_carouselShowSidePages, true)
+                if (hasValue(R.styleable.FelicityPager_carouselSideScaleDp)) {
+                    // Convert the raw dimension back to dp so the math in applyCarouselTransform
+                    // stays in density-independent units regardless of screen density.
+                    val rawPx = getDimension(R.styleable.FelicityPager_carouselSideScaleDp, 0f)
+                    carouselSideScaleDp = rawPx / resources.displayMetrics.density
+                }
+                slideDirection = SlideDirection.fromInt(
+                        getInt(R.styleable.FelicityPager_slideDirection, 0)
+                )
             }
+        }
+        // Fall back to 16 dp spacing if none was given via XML.
+        if (carouselPageSpacingPx == 0f) {
+            carouselPageSpacingPx = 16f * resources.displayMetrics.density
+        }
+        // Fall back to 48 dp peek margin if none was given via XML.
+        if (carouselPeekPx == 0f) {
+            carouselPeekPx = 48f * resources.displayMetrics.density
         }
     }
 
@@ -432,12 +586,16 @@ class FelicityPager @JvmOverloads constructor(
         val v = obtainView(position)
         activePages[position] = v
         addView(v)
-        // Measure and lay out the new child immediately so translationX is meaningful.
+        // Measure and lay out the new child immediately so translation is meaningful.
         if (width > 0 && height > 0) {
-            val cw = MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY)
-            val ch = MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY)
-            v.measure(cw, ch)
-            v.layout(0, 0, width, height)
+            val cardSize = if (pagerMode == PagerMode.CAROUSEL) resolvedCarouselCardSize() else 0
+            val cardW = if (pagerMode == PagerMode.CAROUSEL) cardSize else width
+            val cardH = if (pagerMode == PagerMode.CAROUSEL) cardSize else height
+            val leftOffset = if (pagerMode == PagerMode.CAROUSEL && slideDirection == SlideDirection.VERTICAL) (width - cardW) / 2 else 0
+            val topOffset = if (pagerMode == PagerMode.CAROUSEL && slideDirection == SlideDirection.HORIZONTAL) (height - cardH) / 2 else 0
+            v.measure(MeasureSpec.makeMeasureSpec(cardW, MeasureSpec.EXACTLY),
+                      MeasureSpec.makeMeasureSpec(cardH, MeasureSpec.EXACTLY))
+            v.layout(leftOffset, topOffset, leftOffset + cardW, topOffset + cardH)
         }
         applyTranslationTo(v, position)
     }
@@ -486,15 +644,71 @@ class FelicityPager @JvmOverloads constructor(
 
     private fun pageCount() = adapter?.getCount() ?: 0
     private fun maxLastPage() = (pageCount() - 1).coerceAtLeast(0)
-    private fun maxScrollPx() = maxLastPage() * width.toFloat()
+    private fun maxScrollPx() = maxLastPage() * pageStepPx()
+
+    /**
+     * Returns the number of pixels to advance in order to move exactly one page forward.
+     * In [PagerMode.CAROUSEL] this is the card size plus the spacing gap — same for both
+     * directions since the card is always square. In [PagerMode.NORMAL] it is the full
+     * pager width (horizontal) or the full pager height (vertical).
+     */
+    private fun pageStepPx(): Float = when {
+        pagerMode == PagerMode.CAROUSEL -> carouselStepPx()
+        slideDirection == SlideDirection.VERTICAL -> height.toFloat()
+        else -> width.toFloat()
+    }
+
+    /** The total pixel distance between the leading edges of two adjacent carousel cards. */
+    private fun carouselStepPx(): Float =
+        resolvedCarouselCardSize().toFloat() + carouselPageSpacingPx
+
+    /**
+     * Resolves the pixel size for carousel cards. The card is always square, so this single
+     * value is used for both width and height.
+     *
+     * When [carouselCardSizePx] is 0 (the default), the card is auto-sized: in horizontal
+     * mode it subtracts [carouselPeekPx] from both sides of the pager width, then caps at
+     * the pager height to stay square. In vertical mode the same logic applies along the
+     * vertical axis — peek is subtracted from the top and bottom, then capped at the pager
+     * width. You can pass explicit parent dimensions when calling from [onMeasure] before
+     * the layout pass has finished.
+     */
+    private fun resolvedCarouselCardSize(parentWidth: Int = width, parentHeight: Int = height): Int {
+        if (carouselCardSizePx > 0) return carouselCardSizePx
+        val peekEachSide = carouselPeekPx.toInt().coerceAtLeast(0)
+        return if (slideDirection == SlideDirection.HORIZONTAL) {
+            // Shrink the card so neighbors peek from the left and right.
+            val maxWidthAfterPeek = (parentWidth - 2 * peekEachSide).coerceAtLeast(1)
+            minOf(maxWidthAfterPeek, parentHeight).coerceAtLeast(1)
+        } else {
+            // Shrink the card so neighbors peek from the top and bottom.
+            val maxHeightAfterPeek = (parentHeight - 2 * peekEachSide).coerceAtLeast(1)
+            minOf(maxHeightAfterPeek, parentWidth).coerceAtLeast(1)
+        }
+    }
+
+    /**
+     * How far to offset the leading edge of each page from the pager's leading edge so that
+     * the center card appears centered along the scroll axis. Returns 0 in [PagerMode.NORMAL]
+     * so the same [applyTranslationTo] formula works for both modes without branching.
+     *
+     * In horizontal carousel mode this is a horizontal (left-edge) offset.
+     * In vertical carousel mode this is a vertical (top-edge) offset.
+     */
+    private fun carouselInsetPx(): Float {
+        if (pagerMode != PagerMode.CAROUSEL) return 0f
+        val cardSize = resolvedCarouselCardSize()
+        return if (slideDirection == SlideDirection.HORIZONTAL) (width - cardSize) / 2f
+        else (height - cardSize) / 2f
+    }
 
     /**
      * Returns the integer page index closest to the current [scrollPx].
      * Falls back to [currentPage] when the view width is not yet known.
      */
     private fun scrollPageIndex(): Int {
-        val w = width.takeIf { it > 0 } ?: return currentPage.coerceAtLeast(0)
-        return (scrollPx / w).roundToInt().coerceIn(0, maxLastPage())
+        val step = pageStepPx().takeIf { it > 0f } ?: return currentPage.coerceAtLeast(0)
+        return (scrollPx / step).roundToInt().coerceIn(0, maxLastPage())
     }
 
     /** Returns the adapter position of the currently selected page. */
@@ -517,36 +731,50 @@ class FelicityPager @JvmOverloads constructor(
         val bounded = item.coerceIn(0, maxLastPage())
         if (!smoothScroll) {
             cancelAnimation()
-            scrollPx = bounded * width.toFloat()
+            scrollPx = bounded * pageStepPx()
             applyTranslations()
             ensurePages()
             dispatchScrolled()
             dispatchPageSelected(bounded, fromUser = false)
             dispatchStateChanged(SCROLL_STATE_IDLE)
         } else {
-            smoothScrollTo(bounded * width.toFloat(), durationOverrideMs = null, fromUser = false)
+            smoothScrollTo(bounded * pageStepPx(), durationOverrideMs = null, fromUser = false)
         }
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
-        // Every page fills the pager exactly.
-        val cw = MeasureSpec.makeMeasureSpec(measuredWidth, MeasureSpec.EXACTLY)
-        val ch = MeasureSpec.makeMeasureSpec(measuredHeight, MeasureSpec.EXACTLY)
+        // Carousel cards are always square. Normal-mode pages fill the entire pager.
+        val cardSize = if (pagerMode == PagerMode.CAROUSEL) {
+            resolvedCarouselCardSize(measuredWidth, measuredHeight)
+        } else 0
+        val cardW = if (pagerMode == PagerMode.CAROUSEL) cardSize else measuredWidth
+        val cardH = if (pagerMode == PagerMode.CAROUSEL) cardSize else measuredHeight
+        val cw = MeasureSpec.makeMeasureSpec(cardW, MeasureSpec.EXACTLY)
+        val ch = MeasureSpec.makeMeasureSpec(cardH, MeasureSpec.EXACTLY)
         for (i in 0 until childCount) getChildAt(i).measure(cw, ch)
     }
 
     override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
         val w = r - l
         val h = b - t
-        for (i in 0 until childCount) getChildAt(i).layout(0, 0, w, h)
+        val cardSize = if (pagerMode == PagerMode.CAROUSEL) resolvedCarouselCardSize(w, h) else 0
+        val cardW = if (pagerMode == PagerMode.CAROUSEL) cardSize else w
+        val cardH = if (pagerMode == PagerMode.CAROUSEL) cardSize else h
+
+        // Center the square card along the axis perpendicular to scrolling:
+        // horizontal mode → center vertically; vertical mode → center horizontally.
+        val leftOffset = if (pagerMode == PagerMode.CAROUSEL && slideDirection == SlideDirection.VERTICAL) (w - cardW) / 2 else 0
+        val topOffset = if (pagerMode == PagerMode.CAROUSEL && slideDirection == SlideDirection.HORIZONTAL) (h - cardH) / 2 else 0
+
+        for (i in 0 until childCount) {
+            getChildAt(i).layout(leftOffset, topOffset, leftOffset + cardW, topOffset + cardH)
+        }
         if (w > 0) {
             if (changed) {
                 // Re-anchor scroll so the current page stays centred after a size change.
-                scrollPx = currentPage.coerceAtLeast(0) * w.toFloat()
+                scrollPx = currentPage.coerceAtLeast(0) * pageStepPx()
             }
-            // Always ensure pages are loaded — covers the case where the adapter was
-            // set before the first layout pass (width was 0 at that time).
             ensurePages()
             applyTranslations()
         }
@@ -569,19 +797,116 @@ class FelicityPager @JvmOverloads constructor(
     }
 
     /**
-     * Recomputes [View.translationX] for every active page based on the current [scrollPx].
+     * Recomputes the translation on every active page based on the current [scrollPx].
+     * Uses [View.translationX] in horizontal mode and [View.translationY] in vertical mode.
+     * Also applies the [carouselPageTransformer] (if any) and updates side-page visibility.
      */
     private fun applyTranslations() {
         val w = width.takeIf { it > 0 } ?: return
-        for ((pos, view) in activePages) applyTranslationTo(view, pos, w)
+        for ((pos, view) in activePages) {
+            applyTranslationTo(view, pos, w)
+            if (pagerMode == PagerMode.CAROUSEL && pos != WRAP_PAGE_KEY) {
+                applyCarouselTransform(view)
+            }
+        }
+        if (pagerMode == PagerMode.CAROUSEL) updateSidePageVisibility()
     }
 
     /**
-     * Sets [View.translationX] on [view] so that page [position] is centred at the current
-     * scroll position. Uses [w] as the page width (defaults to [width]).
+     * Positions [view] so that page [position] lands at the correct spot for the current
+     * scroll position. In horizontal mode this sets [View.translationX]; in vertical mode
+     * it sets [View.translationY] and zeroes out the other axis so switching directions
+     * never leaves a stale offset behind. The same formula covers both [PagerMode.NORMAL]
+     * and [PagerMode.CAROUSEL]: in normal mode [carouselInsetPx] is 0 and [pageStepPx]
+     * equals the pager dimension, so the math is identical to the original single-axis behavior.
      */
     private fun applyTranslationTo(view: View, position: Int, w: Int = width) {
-        if (w > 0) view.translationX = position * w.toFloat() - scrollPx
+        if (w <= 0) return
+        val offset = position * pageStepPx() - scrollPx + carouselInsetPx()
+        if (slideDirection == SlideDirection.VERTICAL) {
+            view.translationY = offset
+            view.translationX = 0f
+        } else {
+            view.translationX = offset
+            view.translationY = 0f
+        }
+    }
+
+    /**
+     * Feeds the [carouselPageTransformer] with a normalized position so callers can layer
+     * their own scale/alpha/rotation animations on top of the pager's horizontal scrolling.
+     * A position of 0 means the card is perfectly centered; ±1 means one full step away.
+     *
+     * Before handing off to the transformer this method:
+     *   1. Resets scaleX, scaleY, alpha, and rotationY to their neutral values so a
+     *      transformer that was removed mid-scroll never leaves stale visual artifacts.
+     *   2. Applies the built-in [carouselSideScaleDp] shrink effect (if non-zero).
+     * The external transformer runs last and can override anything set in step 2.
+     */
+    private fun applyCarouselTransform(view: View) {
+        val step = carouselStepPx().takeIf { it > 0f } ?: return
+        val inset = carouselInsetPx()
+        // Read the translation along the scroll axis so the normalized position is always correct
+        // regardless of whether we are scrolling horizontally or vertically.
+        val axisTranslation = if (slideDirection == SlideDirection.VERTICAL) view.translationY else view.translationX
+        val normalizedPos = (axisTranslation - inset) / step
+        val absPos = abs(normalizedPos).coerceIn(0f, 1f)
+
+        // Always start from a clean slate so removing a transformer never leaves
+        // a card frozen at a non-default scale, alpha, or rotation.
+        view.scaleX = 1f
+        view.scaleY = 1f
+        view.alpha = 1f
+        view.rotationY = 0f
+
+        // Built-in center-prominent scale: the card shrinks as it slides away from center.
+        if (carouselSideScaleDp > 0f) {
+            val cardSize = resolvedCarouselCardSize().toFloat().coerceAtLeast(1f)
+            val reductionPx = carouselSideScaleDp * resources.displayMetrics.density
+            val sideScale = ((cardSize - reductionPx) / cardSize).coerceIn(0.1f, 1f)
+            val scale = 1f - (1f - sideScale) * absPos
+            view.scaleX = scale
+            view.scaleY = scale
+        }
+
+        // The custom transformer runs last so it can stack on top of, or fully
+        // replace, whatever the built-in scale just set.
+        carouselPageTransformer?.transformPage(view, normalizedPos)
+    }
+
+    /**
+     * Resets the visual transform properties (scale, alpha, rotation) on every currently
+     * active card back to their neutral defaults. This is used when leaving carousel mode
+     * so pages look completely normal in the standard full-width layout.
+     */
+    private fun resetAllCardTransforms() {
+        for ((_, view) in activePages) {
+            view.scaleX = 1f
+            view.scaleY = 1f
+            view.alpha = 1f
+            view.rotationY = 0f
+        }
+    }
+
+    /**
+     * Hides or shows the left and right neighbor cards depending on [carouselShowSidePages].
+     * The card closest to the current scroll center is always kept visible regardless of the toggle.
+     * This is called every frame from [applyTranslations] while in carousel mode.
+     */
+    private fun updateSidePageVisibility() {
+        // activePages is initialized after the init block in source order, so this can
+        // be called before the backing field is ready during construction. Bail out early;
+        // applyTranslations will call us again once the view is properly laid out.
+        if (width == 0) return
+        val centerPage = scrollPageIndex()
+        for ((pos, view) in activePages) {
+            if (pos == WRAP_PAGE_KEY) continue
+            view.visibility = if (carouselShowSidePages || pos == centerPage) {
+                VISIBLE
+            } else {
+                INVISIBLE
+            }
+        }
     }
 
     /**
@@ -589,11 +914,11 @@ class FelicityPager @JvmOverloads constructor(
      * position, fractional offset, and pixel offset derived from [scrollPx].
      */
     private fun dispatchScrolled() {
-        val w = width.takeIf { it > 0 } ?: return
-        val posF = scrollPx / w
+        val step = pageStepPx().takeIf { it > 0f } ?: return
+        val posF = scrollPx / step
         val pos = posF.toInt().coerceIn(0, maxLastPage())
         val offset = (posF - pos).coerceIn(0f, 1f)
-        val px = (offset * w).toInt()
+        val px = (offset * step).toInt()
         pageChangeListeners.forEach {
             it.onPageScrolled(pos, offset, px)
         }
@@ -637,6 +962,9 @@ class FelicityPager @JvmOverloads constructor(
     /** X coordinate of the last processed [MotionEvent], updated every [MotionEvent.ACTION_MOVE]. */
     private var lastMotionX = 0f
 
+    /** Y coordinate of the last processed [MotionEvent] — used as the delta baseline in vertical mode. */
+    private var lastMotionY = 0f
+
     /**
      * X coordinate recorded at [MotionEvent.ACTION_DOWN]. Used to measure cumulative
      * displacement so that slow drags (whose per-event delta never exceeds the touch slop)
@@ -673,12 +1001,28 @@ class FelicityPager @JvmOverloads constructor(
         verticalDragListener = listener
     }
 
+    /**
+     * Toggles the visibility of the left and right neighbor cards in [PagerMode.CAROUSEL].
+     *
+     * When [visible] is `true` (the default) the cards on both sides peek in, creating the
+     * classic carousel effect. When `false`, only the center card is shown — handy for a
+     * focused/spotlight layout. This is a convenience wrapper around [carouselShowSidePages].
+     *
+     * Has no visual effect outside of carousel mode.
+     *
+     * @param visible `true` to show neighboring cards, `false` to hide them.
+     */
+    fun setCarouselSidePagesVisible(visible: Boolean) {
+        carouselShowSidePages = visible
+    }
+
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
         when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 initialMotionX = ev.x
                 initialMotionY = ev.y
                 lastMotionX = ev.x
+                lastMotionY = ev.y
                 isBeingDragged = false
                 isVerticalDrag = false
 
@@ -692,24 +1036,33 @@ class FelicityPager @JvmOverloads constructor(
                 velocityTracker?.recycle()
                 velocityTracker = VelocityTracker.obtain().apply { addMovement(ev) }
 
-                // Lock parent intercept immediately on DOWN so a vertical RecyclerView
-                // ancestor cannot steal horizontal swipes before direction is confirmed.
-                // The lock is re-opened below if the gesture turns out to be vertical.
+                // Lock parent intercept right away so an ancestor cannot steal the gesture
+                // before the dominant direction is confirmed. The lock is released below if
+                // the cross-axis is stronger.
                 parent?.requestDisallowInterceptTouchEvent(true)
             }
             MotionEvent.ACTION_MOVE -> {
                 velocityTracker?.addMovement(ev)
                 val dx = abs(ev.x - initialMotionX)
                 val dy = abs(ev.y - initialMotionY)
-                // If the gesture is clearly vertical, re-allow the parent (e.g., a vertical
-                // RecyclerView) to intercept and scroll normally.
-                if (dy > touchSlop * 0.6f && dy > dx) {
-                    parent?.requestDisallowInterceptTouchEvent(false)
-                    return false
+
+                if (slideDirection == SlideDirection.VERTICAL) {
+                    // Vertical paging mode: a horizontal cross-swipe should pass through to
+                    // an ancestor (e.g., a horizontal ViewPager). A vertical swipe is ours.
+                    if (dx > touchSlop * 0.6f && dx > dy) {
+                        parent?.requestDisallowInterceptTouchEvent(false)
+                        return false
+                    }
+                    if (dy > touchSlop * 0.6f && dy > dx) return true
+                } else {
+                    // Horizontal paging mode (default): a vertical cross-swipe should pass
+                    // through to ancestors such as a swipe-to-close handler or RecyclerView.
+                    if (dy > touchSlop * 0.6f && dy > dx) {
+                        parent?.requestDisallowInterceptTouchEvent(false)
+                        return false
+                    }
+                    if (dx > touchSlop * 0.6f && dx > dy) return true
                 }
-                // Only intercept when the gesture is clearly horizontal, so that a
-                // primarily-vertical swipe is never stolen from a parent swipe-to-close handler.
-                if (dx > touchSlop * 0.6f && dx > dy) return true
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 // If the child handled the full touch sequence (pager never intercepted),
@@ -731,6 +1084,7 @@ class FelicityPager @JvmOverloads constructor(
                 initialMotionX = event.x
                 initialMotionY = event.y
                 lastMotionX = event.x
+                lastMotionY = event.y
                 dragStartScrollPx = scrollPx
                 isVerticalDrag = false
                 // onInterceptTouchEvent(DOWN) may have already allocated the tracker for
@@ -738,44 +1092,75 @@ class FelicityPager @JvmOverloads constructor(
                 // clean baseline (adding the same DOWN event once is sufficient).
                 velocityTracker?.recycle()
                 velocityTracker = VelocityTracker.obtain().apply { addMovement(event) }
-                // Lock parent intercept immediately so a vertical ancestor (e.g., RecyclerView)
-                // cannot steal this gesture before the direction has been confirmed as horizontal.
-                // If the gesture turns out to be vertical, requestDisallowInterceptTouchEvent(false)
-                // is called in the MOVE handler to re-open parent interception.
                 parent?.requestDisallowInterceptTouchEvent(true)
             }
             MotionEvent.ACTION_MOVE -> {
                 velocityTracker?.addMovement(event)
-                val dx = event.x - lastMotionX
-                val totalDx = abs(event.x - initialMotionX)
-                val totalDy = event.y - initialMotionY // signed: positive = downward
 
-                if (!isBeingDragged && !isVerticalDrag) {
-                    when {
-                        // Primarily vertical — delegate to the vertical drag listener.
-                        abs(totalDy) > touchSlop * 0.6f && abs(totalDy) > totalDx -> {
-                            isVerticalDrag = true
-                            // Allow ancestors to intercept this gesture sequence.
-                            parent?.requestDisallowInterceptTouchEvent(false)
-                            verticalDragListener?.onVerticalDragBegin()
-                            verticalDragListener?.onVerticalDrag(totalDy, event)
+                if (slideDirection == SlideDirection.VERTICAL) {
+                    // In vertical paging mode, vertical swipes page through content.
+                    // Horizontal swipes (cross-axis) are passed up to the parent unchanged.
+                    val dy = event.y - lastMotionY
+                    val totalDy = abs(event.y - initialMotionY)
+                    val totalDx = abs(event.x - initialMotionX)
+
+                    if (!isBeingDragged && !isVerticalDrag) {
+                        when {
+                            // Horizontal cross-swipe — let the parent handle it.
+                            totalDx > touchSlop * 0.6f && totalDx > totalDy -> {
+                                // Reuse isVerticalDrag as a "cross-axis, ignore" flag so we
+                                // don't flip back to paging mid-gesture.
+                                isVerticalDrag = true
+                                parent?.requestDisallowInterceptTouchEvent(false)
+                            }
+                            // Vertical swipe — take ownership and start paging.
+                            totalDy > touchSlop * 0.6f -> {
+                                isBeingDragged = true
+                                dispatchStateChanged(SCROLL_STATE_DRAGGING)
+                                parent?.requestDisallowInterceptTouchEvent(true)
+                                performDrag(-dy)
+                            }
                         }
-                        // Primarily horizontal — commit to paging and lock the event.
-                        totalDx > touchSlop * 0.6f -> {
-                            isBeingDragged = true
-                            dispatchStateChanged(SCROLL_STATE_DRAGGING)
-                            parent?.requestDisallowInterceptTouchEvent(true)
-                            performDrag(-dx)
-                        }
+                    } else if (isVerticalDrag) {
+                        // Cross-axis gesture in progress — keep passing to parent.
+                        parent?.requestDisallowInterceptTouchEvent(false)
+                    } else if (isBeingDragged) {
+                        performDrag(-dy)
                     }
-                } else if (isVerticalDrag) {
-                    // Keep notifying while the finger is still moving vertically.
-                    verticalDragListener?.onVerticalDrag(totalDy, event)
-                    parent?.requestDisallowInterceptTouchEvent(false)
-                } else if (isBeingDragged) {
-                    performDrag(-dx)
+                    lastMotionY = event.y
+                } else {
+                    // Horizontal paging mode — original behavior.
+                    val dx = event.x - lastMotionX
+                    val totalDx = abs(event.x - initialMotionX)
+                    val totalDy = event.y - initialMotionY // signed: positive = downward
+
+                    if (!isBeingDragged && !isVerticalDrag) {
+                        when {
+                            // Primarily vertical — delegate to the vertical drag listener.
+                            abs(totalDy) > touchSlop * 0.6f && abs(totalDy) > totalDx -> {
+                                isVerticalDrag = true
+                                // Allow ancestors to intercept this gesture sequence.
+                                parent?.requestDisallowInterceptTouchEvent(false)
+                                verticalDragListener?.onVerticalDragBegin()
+                                verticalDragListener?.onVerticalDrag(totalDy, event)
+                            }
+                            // Primarily horizontal — commit to paging and lock the event.
+                            totalDx > touchSlop * 0.6f -> {
+                                isBeingDragged = true
+                                dispatchStateChanged(SCROLL_STATE_DRAGGING)
+                                parent?.requestDisallowInterceptTouchEvent(true)
+                                performDrag(-dx)
+                            }
+                        }
+                    } else if (isVerticalDrag) {
+                        // Keep notifying while the finger is still moving vertically.
+                        verticalDragListener?.onVerticalDrag(totalDy, event)
+                        parent?.requestDisallowInterceptTouchEvent(false)
+                    } else if (isBeingDragged) {
+                        performDrag(-dx)
+                    }
+                    lastMotionX = event.x
                 }
-                lastMotionX = event.x
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 velocityTracker?.addMovement(event)
@@ -784,12 +1169,21 @@ class FelicityPager @JvmOverloads constructor(
                 val vy = velocityTracker?.yVelocity ?: 0f
                 val totalDy = event.y - initialMotionY
 
-                if (isVerticalDrag) {
-                    verticalDragListener?.onVerticalDragEnd(totalDy, vy, event)
-                } else if (isBeingDragged) {
-                    finishDrag(vx)
-                } else if (event.actionMasked == MotionEvent.ACTION_UP) {
-                    performClick()
+                if (slideDirection == SlideDirection.VERTICAL) {
+                    if (isBeingDragged) {
+                        // Use Y velocity for vertical paging snap / fling decision.
+                        finishDrag(vy)
+                    } else if (event.actionMasked == MotionEvent.ACTION_UP && !isVerticalDrag) {
+                        performClick()
+                    }
+                } else {
+                    if (isVerticalDrag) {
+                        verticalDragListener?.onVerticalDragEnd(totalDy, vy, event)
+                    } else if (isBeingDragged) {
+                        finishDrag(vx)
+                    } else if (event.actionMasked == MotionEvent.ACTION_UP) {
+                        performClick()
+                    }
                 }
                 velocityTracker?.recycle()
                 velocityTracker = null
@@ -815,36 +1209,41 @@ class FelicityPager @JvmOverloads constructor(
 
     /**
      * Called when the user lifts their finger. Decides whether to fling to a distant page
-     * (when [velocityX] exceeds [minFlingVelocity]) or to snap to the nearest page using
+     * (when [velocity] exceeds [minFlingVelocity]) or to snap to the nearest page using
      * the [advanceThreshold] rule, then kicks off a settle animation.
+     *
+     * [velocity] is the signed velocity along the paging axis — X in horizontal mode, Y in
+     * vertical mode. The caller is responsible for passing the correct component so this
+     * method stays axis-agnostic.
      */
-    private fun finishDrag(velocityX: Float) {
-        val w = width.takeIf { it > 0 } ?: return
-        val dragDeltaPages = (scrollPx - dragStartScrollPx) / w
+    private fun finishDrag(velocity: Float) {
+        if (width <= 0) return
+        val step = pageStepPx()
+        val dragDeltaPages = (scrollPx - dragStartScrollPx) / step
         val forward = dragDeltaPages > 0f
 
-        if (abs(velocityX) > minFlingVelocity) {
-            val vPagesPerSec = abs(velocityX) / w
+        if (abs(velocity) > minFlingVelocity) {
+            val vPagesPerSec = abs(velocity) / step
             val windowSec = 0.18f
             val pages = max(1, (vPagesPerSec * windowSec).roundToInt().coerceAtMost(3))
-            val dir = if (velocityX < 0) +1 else -1
-            val floorPage = (scrollPx / w).toInt().coerceIn(0, maxLastPage())
+            val dir = if (velocity < 0) +1 else -1
+            val floorPage = (scrollPx / step).toInt().coerceIn(0, maxLastPage())
             val ceilPage = (floorPage + 1).coerceAtMost(maxLastPage())
             val base = if (dir > 0) ceilPage else floorPage
             val targetPage = (base + (pages - 1) * dir).coerceIn(0, maxLastPage())
-            val distPages = abs(targetPage - scrollPx / w)
+            val distPages = abs(targetPage - scrollPx / step)
             val durationMs = (if (vPagesPerSec > 0f) (distPages / vPagesPerSec) * 1000f * 0.95f else 420f)
                 .coerceIn(200f, 900f).toLong()
-            smoothScrollTo(targetPage * w.toFloat(), durationOverrideMs = durationMs, fromUser = true)
+            smoothScrollTo(targetPage * step, durationOverrideMs = durationMs, fromUser = true)
         } else {
-            val snapStart = (dragStartScrollPx / w).roundToInt().coerceIn(0, maxLastPage())
+            val snapStart = (dragStartScrollPx / step).roundToInt().coerceIn(0, maxLastPage())
             val target = if (abs(dragDeltaPages) > advanceThreshold) {
                 if (forward) (snapStart + 1).coerceAtMost(maxLastPage())
                 else (snapStart - 1).coerceAtLeast(0)
             } else snapStart
-            val distPages = abs(target - scrollPx / w)
+            val distPages = abs(target - scrollPx / step)
             val durationMs = (300f + 180f * distPages).coerceIn(200f, 700f).toLong()
-            smoothScrollTo(target * w.toFloat(), durationOverrideMs = durationMs, fromUser = true)
+            smoothScrollTo(target * step, durationOverrideMs = durationMs, fromUser = true)
         }
         isBeingDragged = false
     }
@@ -859,19 +1258,22 @@ class FelicityPager @JvmOverloads constructor(
 
     override fun onFling(e1: MotionEvent?, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
         if (scrollState == SCROLL_STATE_DRAGGING) return false
-        val w = width.takeIf { it > 0 } ?: return false
-        val vPagesPerSec = abs(velocityX) / w
+        if (width <= 0) return false
+        // Pick the velocity component that matches the paging axis.
+        val velocity = if (slideDirection == SlideDirection.VERTICAL) velocityY else velocityX
+        val step = pageStepPx()
+        val vPagesPerSec = abs(velocity) / step
         val windowSec = 0.18f
         val pages = max(1, (vPagesPerSec * windowSec).roundToInt().coerceAtMost(3))
-        val dir = if (velocityX < 0) +1 else -1
-        val floorPage = (scrollPx / w).toInt().coerceIn(0, maxLastPage())
+        val dir = if (velocity < 0) +1 else -1
+        val floorPage = (scrollPx / step).toInt().coerceIn(0, maxLastPage())
         val ceilPage = (floorPage + 1).coerceAtMost(maxLastPage())
         val base = if (dir > 0) ceilPage else floorPage
         val targetPage = (base + (pages - 1) * dir).coerceIn(0, maxLastPage())
-        val distPages = abs(targetPage - scrollPx / w)
+        val distPages = abs(targetPage - scrollPx / step)
         val durationMs = (if (vPagesPerSec > 0f) (distPages / vPagesPerSec) * 1000f * 0.95f else 420f)
             .coerceIn(200f, 900f).toLong()
-        smoothScrollTo(targetPage * w.toFloat(), durationOverrideMs = durationMs, fromUser = true)
+        smoothScrollTo(targetPage * step, durationOverrideMs = durationMs, fromUser = true)
         return true
     }
 
@@ -914,7 +1316,7 @@ class FelicityPager @JvmOverloads constructor(
         if (animating && clamped != animTo) {
             // Pivot the in-flight animation toward the new target without restarting.
             val distPx = abs(clamped - scrollPx)
-            val pagesAway = distPx / width.toFloat().coerceAtLeast(1f)
+            val pagesAway = distPx / pageStepPx().coerceAtLeast(1f)
             val baseDuration = durationOverrideMs ?: animationDurationMs
             val newDuration = (baseDuration * pagesAway.coerceAtLeast(0.5f))
                 .toLong().coerceIn(150L, 900L)
@@ -1015,7 +1417,7 @@ class FelicityPager @JvmOverloads constructor(
      * clamped to `[0, maxLastPage()]`.
      */
     private fun pageForPx(px: Float): Int =
-        (px / width.coerceAtLeast(1)).roundToInt().coerceIn(0, maxLastPage())
+        (px / pageStepPx().coerceAtLeast(1f)).roundToInt().coerceIn(0, maxLastPage())
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private var autoSlideInterval = 0L
@@ -1055,9 +1457,9 @@ class FelicityPager @JvmOverloads constructor(
         if (count <= 1) return
 
         // Preload page 0 so it is visible as soon as we scroll past the last page.
-        // Position it at scrollPx = count * width (one page beyond the last).
+        // Position it at scrollPx = count * pageStepPx() (one page beyond the last).
         val wrapPos = count   // virtual index of the page-0 clone
-        val wrapPx = wrapPos * width.toFloat()
+        val wrapPx = wrapPos * pageStepPx()
 
         // Load the real page 0 and position it at the wrap slot.
         adapter?.let { ad ->
@@ -1068,12 +1470,23 @@ class FelicityPager @JvmOverloads constructor(
                 activePages[WRAP_PAGE_KEY] = v
                 addView(v)
                 if (width > 0 && height > 0) {
-                    val cw = MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY)
-                    val ch = MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY)
-                    v.measure(cw, ch)
-                    v.layout(0, 0, width, height)
+                    val cardSize = if (pagerMode == PagerMode.CAROUSEL) resolvedCarouselCardSize() else 0
+                    val cardW = if (pagerMode == PagerMode.CAROUSEL) cardSize else width
+                    val cardH = if (pagerMode == PagerMode.CAROUSEL) cardSize else height
+                    val leftOffset = if (pagerMode == PagerMode.CAROUSEL && slideDirection == SlideDirection.VERTICAL) (width - cardW) / 2 else 0
+                    val topOffset = if (pagerMode == PagerMode.CAROUSEL && slideDirection == SlideDirection.HORIZONTAL) (height - cardH) / 2 else 0
+                    v.measure(MeasureSpec.makeMeasureSpec(cardW, MeasureSpec.EXACTLY),
+                              MeasureSpec.makeMeasureSpec(cardH, MeasureSpec.EXACTLY))
+                    v.layout(leftOffset, topOffset, leftOffset + cardW, topOffset + cardH)
                 }
-                v.translationX = wrapPx - scrollPx
+                val wrapOffset = wrapPx - scrollPx + carouselInsetPx()
+                if (slideDirection == SlideDirection.VERTICAL) {
+                    v.translationY = wrapOffset
+                    v.translationX = 0f
+                } else {
+                    v.translationX = wrapOffset
+                    v.translationY = 0f
+                }
             }
         }
 
@@ -1127,7 +1540,16 @@ class FelicityPager @JvmOverloads constructor(
 
         // Update translations for real pages + the wrap clone.
         applyTranslations()
-        activePages[WRAP_PAGE_KEY]?.translationX = wrapAnimTo - scrollPx
+        val wrapOffset = wrapAnimTo - scrollPx + carouselInsetPx()
+        activePages[WRAP_PAGE_KEY]?.let { clone ->
+            if (slideDirection == SlideDirection.VERTICAL) {
+                clone.translationY = wrapOffset
+                clone.translationX = 0f
+            } else {
+                clone.translationX = wrapOffset
+                clone.translationY = 0f
+            }
+        }
 
         dispatchScrolled()
 
