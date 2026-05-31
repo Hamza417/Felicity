@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="BlurImageView">
+        <!-- Gaussian blur radius in pixels applied to every bitmap set on this view. -->
+        <attr name="blurRadius" format="float" />
+        <!-- How long the crossfade from the original to the blurred image takes (ms).
+             Set to 0 to skip the animation and swap instantly. -->
+        <attr name="crossfadeDuration" format="integer" />
+    </declare-styleable>
+</resources>
+

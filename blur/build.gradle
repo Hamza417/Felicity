@@ -32,7 +32,9 @@ android {
 }
 
 dependencies {
-    // No extra dependencies — everything needed (EGL, GLES3, jnigraphics)
-    // is part of the Android NDK and linked via CMakeLists.txt.
+    // EGL, GLES3, and jnigraphics come from the NDK (see CMakeLists.txt).
+    // Coroutines are needed to run the blur off the main thread and post
+    // the result back once it is ready.
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0'
 }
 

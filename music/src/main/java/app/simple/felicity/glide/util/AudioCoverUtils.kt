@@ -78,6 +78,28 @@ object AudioCoverUtils {
             .into(this)
     }
 
+    fun Context.loadPlainArtCover(item: Any, onBitmap: (Bitmap) -> Unit) {
+        Glide.with(this)
+            .asBitmap()
+            .dontTransform()
+            .dontAnimate()
+            .transform(CenterCrop())
+            .load(item)
+            .into(object : CustomTarget<Bitmap>() {
+                override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap>?) {
+                    onBitmap(resource)
+                }
+
+                override fun onLoadCleared(placeholder: android.graphics.drawable.Drawable?) {
+                    // No action needed
+                }
+
+                override fun onLoadFailed(errorDrawable: android.graphics.drawable.Drawable?) {
+                    // No action needed
+                }
+            })
+    }
+
     fun Context.getArtCoverForWidget(
             item: Any,
             height: Int,
