@@ -54,8 +54,10 @@ class VolumeKnob : ScopedBottomSheetFragment() {
      * It reschedules itself every [VOLUME_REPEAT_DELAY_MS] milliseconds until the key is released.
      */
     private var volumeRepeatRunnable: Runnable? = null
+    private var closeRunnable: Runnable? = null
 
     private val volumeRepeatHandler = Handler(Looper.getMainLooper())
+    private val closeHandler = Handler(Looper.getMainLooper())
 
     /** Cached stream maximum so it is not queried inside every rotation callback. */
     private val maxVolume: Int by lazy {
@@ -82,6 +84,8 @@ class VolumeKnob : ScopedBottomSheetFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        startCloseRunnable()
 
         // Single background collector — only the latest distinct index reaches the audio manager.
         // Launched on Dispatchers.IO because setStreamVolume is a synchronous binder (IPC) call
@@ -134,6 +138,8 @@ class VolumeKnob : ScopedBottomSheetFragment() {
                 KeyEvent.KEYCODE_VOLUME_UP -> {
                     when (event.action) {
                         KeyEvent.ACTION_DOWN -> {
+                            stopCloseRunnable()
+
                             /**
                              * Only kick off the repeating runnable on the very first down event
                              * (repeatCount == 0). Subsequent hardware repeats are ignored here
@@ -147,6 +153,7 @@ class VolumeKnob : ScopedBottomSheetFragment() {
                         KeyEvent.ACTION_UP -> {
                             isEventConsumed = false
                             stopVolumeRepeat()
+                            startCloseRunnable()
                         }
                     }
 
@@ -155,6 +162,13 @@ class VolumeKnob : ScopedBottomSheetFragment() {
                 KeyEvent.KEYCODE_VOLUME_DOWN -> {
                     when (event.action) {
                         KeyEvent.ACTION_DOWN -> {
+                            stopCloseRunnable()
+
+                            /**
+                             * Only kick off the repeating runnable on the very first down event
+                             * (repeatCount == 0). Subsequent hardware repeats are ignored here
+                             * because our own handler takes over the pacing from that point on.
+                             */
                             if (event.repeatCount == 0 && isEventConsumed.not()) {
                                 isEventConsumed = true
                                 startVolumeRepeat(raising = false)
@@ -163,6 +177,7 @@ class VolumeKnob : ScopedBottomSheetFragment() {
                         KeyEvent.ACTION_UP -> {
                             isEventConsumed = false
                             stopVolumeRepeat()
+                            startCloseRunnable()
                         }
                     }
 
@@ -200,6 +215,17 @@ class VolumeKnob : ScopedBottomSheetFragment() {
             }
         }
         volumeRepeatRunnable?.run()
+    }
+
+    private fun startCloseRunnable() {
+        stopCloseRunnable()
+        closeRunnable = Runnable { dismiss() }
+        closeHandler.postDelayed(closeRunnable!!, VOLUME_CLOSE_DELAY_MS)
+    }
+
+    private fun stopCloseRunnable() {
+        closeRunnable?.let { closeHandler.removeCallbacks(it) }
+        closeRunnable = null
     }
 
     private fun stopVolumeRepeat() {
@@ -246,6 +272,7 @@ class VolumeKnob : ScopedBottomSheetFragment() {
 
     override fun onDestroy() {
         stopVolumeRepeat()
+        stopCloseRunnable()
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
@@ -282,5 +309,6 @@ class VolumeKnob : ScopedBottomSheetFragment() {
 
         /** How long to wait between each automatic volume step while the button is held down. */
         private const val VOLUME_REPEAT_DELAY_MS = 250L
+        private const val VOLUME_CLOSE_DELAY_MS = 3000L
     }
 }
