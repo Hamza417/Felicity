@@ -301,7 +301,7 @@ abstract class BasePlayerFragment : MediaFragment() {
 
         pcmInfo.setOnClickListener {
             // TODO - remove this when we have audio processor support on 32bit mode
-            if (AudioPreferences.shouldShowProcessors() || UsbDacManager.isActive) {
+            if (shouldShowProcessors()) {
                 showAudioPipeline(anchorView = pcmInfo)
             } else {
                 showWarning("All processors are disabled. PCM info is not available in 32-bit output mode.")
@@ -361,7 +361,7 @@ abstract class BasePlayerFragment : MediaFragment() {
         }
 
         equalizer.setOnClickListener {
-            if (AudioPreferences.shouldShowProcessors() || UsbDacManager.isActive) {
+            if (shouldShowProcessors()) {
                 openFragment(Equalizer.newInstance(), Equalizer.TAG)
             } else {
                 showWarning("All processors are disabled. EQ is not available in 32-bit output mode.")
@@ -369,7 +369,7 @@ abstract class BasePlayerFragment : MediaFragment() {
         }
 
         visualizerButton.setOnClickListener {
-            if (AudioPreferences.shouldShowProcessors() || UsbDacManager.isActive) {
+            if (shouldShowProcessors()) {
                 childFragmentManager.showVisualizerConfig()
             } else {
                 showWarning("All processors are disabled. Visualizers are not available in 32-bit output mode.")
@@ -414,7 +414,7 @@ abstract class BasePlayerFragment : MediaFragment() {
     }
 
     private fun setVisualizerState() {
-        if (PlayerPreferences.isVisualizerEnabled()) {
+        if (PlayerPreferences.isVisualizerEnabled() && shouldShowProcessors()) {
             // Wire the visualizer view's twin buffers directly to the audio processor so the
             // audio thread can write FFT magnitudes without any intermediate coroutine hop.
             // setDirectOutput is a no-op when the processor is not yet available (service not
@@ -598,6 +598,10 @@ abstract class BasePlayerFragment : MediaFragment() {
                 updatePlayButtonState(false)
             }
         }
+    }
+
+    private fun shouldShowProcessors(): Boolean {
+        return AudioPreferences.shouldShowProcessors() || UsbDacManager.isActive
     }
 
     override val wantsMiniPlayerVisible: Boolean
