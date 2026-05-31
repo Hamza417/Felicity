@@ -376,6 +376,14 @@ class FelicityVisualizer @JvmOverloads constructor(
         invalidate()
     }
 
+    /**
+     * Toggle cap visibility
+     */
+    fun setCapsEnabled(enabled: Boolean) {
+        capPaint.alpha = if (enabled) 220 else 0
+        invalidate()
+    }
+
     /** Animates all bars and peaks down to zero by zeroing the back buffer and swapping. */
     fun clear() {
         val back = if (isBufferAFront.get()) bufferB else bufferA

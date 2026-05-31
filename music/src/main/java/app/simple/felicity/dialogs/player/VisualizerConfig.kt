@@ -25,7 +25,7 @@ class VisualizerConfig : MediaBottomDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        updateLyricsAlignmentState()
+        updateVizStyleState()
 
         binding.visualizerToggle.isChecked = PlayerPreferences.isVisualizerEnabled()
         binding.visualizerToggle.setOnCheckedChangeListener { _, isChecked ->
@@ -37,9 +37,14 @@ class VisualizerConfig : MediaBottomDialogFragment() {
         binding.particlesToggle.setOnCheckedChangeListener { _, isChecked ->
             VisualizerPreferences.setParticlesEnabled(isChecked)
         }
+
+        binding.capsToggle.isChecked = VisualizerPreferences.areCapsEnabled()
+        binding.capsToggle.setOnCheckedChangeListener { _, isChecked ->
+            VisualizerPreferences.setCapsEnabled(isChecked)
+        }
     }
 
-    fun updateLyricsAlignmentState() {
+    fun updateVizStyleState() {
         binding.styleToggle.iconSize = 14F
         binding.styleToggle.setButtons(
                 listOf(
