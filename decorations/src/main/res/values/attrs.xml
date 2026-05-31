@@ -281,6 +281,15 @@
             true = neighbors peek in from the sides (default); false = only the center card is shown.
         -->
         <attr name="carouselShowSidePages" format="boolean" />
+        <!--
+            How many dp to reduce the size of side cards relative to the center card in carousel
+            mode. The center card is always at full scale (1.0). Cards at position ±1 (one full
+            step from center) are scaled down by this dp amount, and all cards in between
+            interpolate smoothly. Higher values produce a more pronounced "center prominent"
+            look. Set to 0 (the default) to disable the built-in scaling entirely.
+            Good starting values: 24 dp (subtle) to 64 dp (strong).
+        -->
+        <attr name="carouselSideScaleDp" format="dimension" />
     </declare-styleable>
 
     <!-- WaveformSeekView: scrollable equalizer-bar waveform with seek overlay -->

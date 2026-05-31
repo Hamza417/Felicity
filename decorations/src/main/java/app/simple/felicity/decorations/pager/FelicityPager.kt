@@ -32,80 +32,6 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
- * Controls whether [FelicityPager] operates in standard full-width mode or the carousel
- * mode where a square card is centered and neighboring pages peek from both sides.
- */
-enum class PagerMode {
-    /** Every page fills the entire pager width — the original behavior. */
-    NORMAL,
-
-    /**
-     * The active page is displayed as a square card at the center of the pager.
-     * The cards to the left and right are partially visible on each side, giving the
-     * classic "peek" carousel effect. Spacing between cards is controlled by
-     * [FelicityPager.carouselPageSpacingPx].
-     */
-    CAROUSEL;
-
-    companion object {
-        /** Returns the [PagerMode] whose ordinal matches [value], or [NORMAL] if out of range. */
-        fun fromInt(value: Int): PagerMode = entries.getOrElse(value) { NORMAL }
-    }
-}
-
-/**
- * A callback that lets you inject your own per-frame animations onto each page card when
- * [FelicityPager] is in [PagerMode.CAROUSEL] mode.
- *
- * Assign an instance to [FelicityPager.carouselPageTransformer]. The pager will call
- * [transformPage] for every visible card after it has already positioned the card via
- * [android.view.View.translationX], so you are free to modify any other property —
- * scale, alpha, rotation, elevation — without worrying about layout.
- */
-fun interface CarouselPageTransformer {
-    /**
-     * Apply your custom visual transform to [page].
-     *
-     * @param page     The card view to animate.
-     * @param position How far this card is from the center, measured in "card steps".
-     *                 0.0 means the card is exactly centered. -1.0 means it is one full
-     *                 step to the left of center. +1.0 means one full step to the right.
-     *                 Fractional values occur during mid-swipe scrolling.
-     */
-    fun transformPage(page: View, position: Float)
-}
-
-/**
- * The direction in which the [FelicityPager] edge-fade gradient travels.
- *
- * The "transparent" end is the edge described by the name. For example, [TOP_TO_BOTTOM]
- * leaves the top fully opaque and fades the bottom toward 0 % alpha.
- */
-enum class FadeDirection {
-    /** Fade from opaque at the top toward transparent at the bottom. */
-    TOP_TO_BOTTOM,
-
-    /** Fade from opaque at the bottom toward transparent at the top. */
-    BOTTOM_TO_TOP,
-
-    /** Fade from opaque on the left toward transparent on the right. */
-    LEFT_TO_RIGHT,
-
-    /** Fade from opaque on the right toward transparent on the left. */
-    RIGHT_TO_LEFT;
-
-    companion object {
-        /**
-         * Returns the [FadeDirection] whose ordinal matches [value],
-         * or [TOP_TO_BOTTOM] when [value] is out of range.
-         *
-         * @param value Integer ordinal sourced from a typed-array attribute.
-         */
-        fun fromInt(value: Int): FadeDirection = entries.getOrElse(value) { TOP_TO_BOTTOM }
-    }
-}
-
-/**
  * A raw horizontal pager [ViewGroup] that is intentionally free of any image-loading
  * or Glide dependency. It is a pure scroll / layout / touch engine:
  *
@@ -344,7 +270,11 @@ class FelicityPager @JvmOverloads constructor(
     var pagerMode: PagerMode = PagerMode.NORMAL
         set(v) {
             if (field == v) return
+            val leavingCarousel = field == PagerMode.CAROUSEL
             field = v
+            // When leaving carousel mode, clean up any scale/alpha/rotation that a
+            // transformer may have applied so pages look normal again.
+            if (leavingCarousel) resetAllCardTransforms()
             cancelAnimation()
             if (width > 0) {
                 scrollPx = currentPage.coerceAtLeast(0) * pageStepPx()
@@ -404,6 +334,25 @@ class FelicityPager @JvmOverloads constructor(
         }
 
     /**
+     * How many dp to shrink side cards relative to the center card in carousel mode.
+     * The center card always stays at full size (scale 1.0). As a card moves toward
+     * position ±1 (one full step from center), its scale is gradually reduced so that
+     * at exactly ±1 the card is `(cardSizePx − carouselSideScaleDp × density) / cardSizePx`
+     * in both width and height.
+     *
+     * A value of 0 (the default) disables the built-in scaling entirely, so only a
+     * [carouselPageTransformer] (if set) governs size changes.
+     *
+     * Good starting values are 24 dp (subtle) through 64 dp (prominent). The actual
+     * pixel reduction is clamped so the side-card scale never drops below 10 %.
+     */
+    var carouselSideScaleDp: Float = 0f
+        set(v) {
+            field = v.coerceAtLeast(0f)
+            if (pagerMode == PagerMode.CAROUSEL && width > 0) applyTranslations()
+        }
+
+    /**
      * Whether the left and right neighbor cards are visible in carousel mode.
      * `true` by default — neighbor cards peek in from both sides. Set to `false`
      * to show only the center card (useful for a spotlight / focus style).
@@ -451,6 +400,12 @@ class FelicityPager @JvmOverloads constructor(
                 }
                 carouselCardSizePx = getDimensionPixelSize(R.styleable.FelicityPager_carouselCardSize, 0)
                 carouselShowSidePages = getBoolean(R.styleable.FelicityPager_carouselShowSidePages, true)
+                if (hasValue(R.styleable.FelicityPager_carouselSideScaleDp)) {
+                    // Convert the raw dimension back to dp so the math in applyCarouselTransform
+                    // stays in density-independent units regardless of screen density.
+                    val rawPx = getDimension(R.styleable.FelicityPager_carouselSideScaleDp, 0f)
+                    carouselSideScaleDp = rawPx / resources.displayMetrics.density
+                }
             }
         }
         // Fall back to 16 dp spacing if none was given via XML.
@@ -820,13 +775,53 @@ class FelicityPager @JvmOverloads constructor(
      * Feeds the [carouselPageTransformer] with a normalized position so callers can layer
      * their own scale/alpha/rotation animations on top of the pager's horizontal scrolling.
      * A position of 0 means the card is perfectly centered; ±1 means one full step away.
+     *
+     * Before handing off to the transformer this method:
+     *   1. Resets scaleX, scaleY, alpha, and rotationY to their neutral values so a
+     *      transformer that was removed mid-scroll never leaves stale visual artifacts.
+     *   2. Applies the built-in [carouselSideScaleDp] shrink effect (if non-zero).
+     * The external transformer runs last and can override anything set in step 2.
      */
     private fun applyCarouselTransform(view: View) {
-        val transformer = carouselPageTransformer ?: return
         val step = carouselStepPx().takeIf { it > 0f } ?: return
         val inset = carouselInsetPx()
         val normalizedPos = (view.translationX - inset) / step
-        transformer.transformPage(view, normalizedPos)
+        val absPos = abs(normalizedPos).coerceIn(0f, 1f)
+
+        // Always start from a clean slate so removing a transformer never leaves
+        // a card frozen at a non-default scale, alpha, or rotation.
+        view.scaleX = 1f
+        view.scaleY = 1f
+        view.alpha = 1f
+        view.rotationY = 0f
+
+        // Built-in center-prominent scale: the card shrinks as it slides away from center.
+        if (carouselSideScaleDp > 0f) {
+            val cardSize = resolvedCarouselCardWidth().toFloat().coerceAtLeast(1f)
+            val reductionPx = carouselSideScaleDp * resources.displayMetrics.density
+            val sideScale = ((cardSize - reductionPx) / cardSize).coerceIn(0.1f, 1f)
+            val scale = 1f - (1f - sideScale) * absPos
+            view.scaleX = scale
+            view.scaleY = scale
+        }
+
+        // The custom transformer runs last so it can stack on top of, or fully
+        // replace, whatever the built-in scale just set.
+        carouselPageTransformer?.transformPage(view, normalizedPos)
+    }
+
+    /**
+     * Resets the visual transform properties (scale, alpha, rotation) on every currently
+     * active card back to their neutral defaults. This is used when leaving carousel mode
+     * so pages look completely normal in the standard full-width layout.
+     */
+    private fun resetAllCardTransforms() {
+        for ((_, view) in activePages) {
+            view.scaleX = 1f
+            view.scaleY = 1f
+            view.alpha = 1f
+            view.rotationY = 0f
+        }
     }
 
     /**

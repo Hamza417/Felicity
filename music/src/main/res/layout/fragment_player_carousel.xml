@@ -27,6 +27,8 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
+            app:carouselShowSidePages="true"
+            app:carouselSideScaleDp="32dp"
             app:fadeDirection="top_to_bottom"
             app:fadeEnabled="false"
             app:pagerMode="carousel" />
