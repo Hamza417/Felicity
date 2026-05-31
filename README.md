@@ -140,7 +140,7 @@ Features that are planned but will not be a priority.
 | ![](/screenshots/18.png) | ![](/screenshots/19.png) | ![](/screenshots/20.png) |
 | ![](/screenshots/21.png) | ![](/screenshots/22.png) | ![](/screenshots/23.png) |
 | ![](/screenshots/24.png) | ![](/screenshots/25.png) | ![](/screenshots/26.gif) |
-| ![](/screenshots/27.png) | ![](/screenshots/28.png) |                          |
+| ![](/screenshots/27.png) | ![](/screenshots/28.png) | ![](/screenshots/29.png) |
 
 | Artflow Interface        |
 |--------------------------|
