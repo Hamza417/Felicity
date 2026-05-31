@@ -14,22 +14,20 @@ import androidx.annotation.ColorRes
 import androidx.annotation.IntDef
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.createBitmap
-import androidx.core.graphics.scale
+import app.simple.felicity.blur.GPUBlur
 import app.simple.felicity.preferences.AppearancePreferences
 import com.bumptech.glide.load.engine.bitmap_recycle.BitmapPool
 import com.bumptech.glide.load.resource.bitmap.BitmapTransformation
 import com.bumptech.glide.util.Util
-import com.google.android.renderscript.Toolkit
 import java.nio.ByteBuffer
 import java.security.MessageDigest
 import kotlin.math.cos
-import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
  * This transformation applies a shadow intrinsically to the bitmap.
  * This is useful for images with complex shapes where Android does
- * not support elevation shadows. The colour of the shadow, its blur
+ * not support elevation shadows. The color of the shadow, its blur
  * radius, and offset from the image can all be configured.
  *
  *
@@ -41,7 +39,7 @@ import kotlin.math.sin
 
 /**
  * Default constructor.
- * The shadow is set at 0 elevation and 0 blur, with black colour at 50%
+ * The shadow is set at 0 elevation and 0 blur, with black color at 50%
  * opacity, by default.
  *
  * @param context current context
@@ -116,10 +114,10 @@ class BlurShadow(private val context: Context) : BitmapTransformation() {
     }
 
     /**
-     * Sets the shadow's colour.
+     * Sets the shadow's color.
      * Shadow is drawn black with 50% opacity by default.
      *
-     * @param colour the colour as a @ColorInt
+     * @param colour the color as a @ColorInt
      * @return returns self
      */
     fun setShadowColour(@ColorInt colour: Int): BlurShadow {
@@ -128,10 +126,10 @@ class BlurShadow(private val context: Context) : BitmapTransformation() {
     }
 
     /**
-     * Sets the shadow's colour by colour resource.
+     * Sets the shadow's color by color resource.
      * Shadow is drawn black with 50% opacity by default.
      *
-     * @param  res  the colour resource as a @ColorRes
+     * @param  res  the color resource as a @ColorRes
      * @return      returns self
      */
     fun setShadowColourRes(@ColorRes res: Int): BlurShadow {
@@ -176,7 +174,7 @@ class BlurShadow(private val context: Context) : BitmapTransformation() {
         if (blurRadius <= MAX_BLUR_RADIUS) {
             //Apply Blur
             shadow = if (shadowEffectEnabled) {
-                Toolkit.blur(source, blurRadius.toInt())
+                GPUBlur.blur(source, blurRadius)
             } else {
                 createBitmap(source.width, source.height)
             }
@@ -187,15 +185,11 @@ class BlurShadow(private val context: Context) : BitmapTransformation() {
             canvas.drawBitmap(shadow, 0F, 0F, shadowPaint)
             canvas.drawBitmap(source, 0f, 0f, null)
         } else {
-            //Scale
-            val scaleFactor = MAX_BLUR_RADIUS / blurRadius
-            @Suppress("UNUSED_VARIABLE") val scaledWidth = 1.coerceAtLeast((source.width.toFloat() * scaleFactor).roundToInt())
-            @Suppress("UNUSED_VARIABLE") val scaledHeight = 1.coerceAtLeast((source.height.toFloat() * scaleFactor).roundToInt())
-            val scaled = source.scale(source.width, source.height)
-
-            //Apply Blur
+            // The GPU pipeline inside GPUBlur handles large radii transparently
+            // by downscaling internally, so we can treat this branch the same way
+            // as the small-radius case and let the native side do the heavy lifting.
             shadow = if (shadowEffectEnabled) {
-                Toolkit.blur(scaled, MAX_BLUR_RADIUS.toInt())
+                GPUBlur.blur(source, blurRadius)
             } else {
                 createBitmap(source.width, source.height)
             }
