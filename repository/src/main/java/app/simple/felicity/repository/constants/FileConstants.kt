@@ -19,6 +19,11 @@ object FileConstants {
             "ogg" to "Ogg Vorbis",
             "opus" to "Opus Audio Codec",
             "wma" to "Windows Media Audio",
+            // WMV is a video container, but it can hold audio-only streams too.
+            // We only index WMV files that have no video track.
+            "wmv" to "Windows Media Video (Audio Only)",
+            "webma" to "WebM Audio",
+            "webm" to "WebM Audio",
 
             // Lossless & Uncompressed Formats
             "wav" to "Waveform Audio File Format",

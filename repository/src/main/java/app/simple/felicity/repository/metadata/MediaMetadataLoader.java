@@ -118,6 +118,15 @@ public class MediaMetadataLoader {
      * @noinspection DataFlowIssue
      */
     private void setAudioMetadata(Audio audio) {
+        // WMV is a container that can carry either video or audio-only content.
+        // If the media framework reports a video track we stop right here so the
+        // file never gets inserted into the audio library, regardless of how this
+        // loader was invoked.
+        String hasVideo = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_HAS_VIDEO);
+        if ("yes".equals(hasVideo)) {
+            throw new UnsupportedOperationException("Media file contains a video track — skipping");
+        }
+
         audio.setTitle(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE));
         
         if (file != null) {
