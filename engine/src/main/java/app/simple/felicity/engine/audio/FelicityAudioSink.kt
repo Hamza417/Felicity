@@ -107,8 +107,15 @@ class FelicityAudioSink(
      * inside [flush] so we don't accidentally restart the AAudio stream while the
      * user has the player paused — doing so would cause a brief audio blip at the
      * start of every song change while paused.
+     *
+     * Initialized to true so that [flush] calls made during ExoPlayer's initial
+     * preparation phase (before the user ever presses play) do not accidentally start
+     * the hardware stream. Without this, the stream would get started by the very first
+     * [flush] and any pre-buffered frames ExoPlayer pushes through [handleBuffer] would
+     * reach the hardware, causing audible blips on first launch and on song changes while
+     * paused. [play] resets this to false when the user actually intends to hear audio.
      */
-    private var isPaused: Boolean = false
+    private var isPaused: Boolean = true
 
     /**
      * A pre-allocated float buffer that gets reused across every call to [handleBuffer].
