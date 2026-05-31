@@ -125,7 +125,7 @@ object AudioPreferences {
 
     fun shouldShowProcessors(): Boolean {
         return isHiresOutputEnabled().not()
-                || getOutputSink() == SINK_AUDIO_TRACK
-                || getOutputSink() == SINK_OBOE
+                || isAaudioEnabled()
+                || isOboeEnabled()
     }
 }
