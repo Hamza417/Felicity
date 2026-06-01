@@ -289,7 +289,6 @@
     <string name="style">样式</string>
     <string name="latency">延迟</string>
     <string name="particles">粒子</string>
-    <string name="hires_warning">高解析度 (32位) 输出支持直接硬件直通，以获得最纯粹的音频信号。因为音频绕过了内部引擎，在此模式下，均衡器、低音和可视化效果将被禁用。</string>
     <string name="slide">滑动</string>
     <string name="typewriting">打字机</string>
     <string name="no_effect">无效果</string>
@@ -473,4 +472,7 @@
     <string name="disable_equalizer">禁用均衡器</string>
     <string name="enable_equalizer">启用均衡器</string>
     <string name="show_lyrics_summary">在播放器屏幕上显示单行歌词。</string>
+    <string name="carousel">旋转木马</string>
+    <string name="carousel_ui_desc">简单的播放器风格和旋转相册艺术。</string>
+    <string name="caps">线头圆度</string>
 </resources>

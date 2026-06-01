@@ -289,7 +289,6 @@
     <string name="style">Stil</string>
     <string name="latency">Gecikme</string>
     <string name="particles">Parçacıklar</string>
-    <string name="hires_warning">Hi-Res (32-bit) çıkış, en saf ses sinyali için doğrudan donanım geçişini etkinleştirir. Ses dahili motoru atladığı için bu modda ekolayzır, bas ve görselleştirici devre dışı bırakılacaktır.</string>
     <string name="slide">Kaydır</string>
     <string name="typewriting">Daktilo</string>
     <string name="no_effect">Efekt Yok</string>
@@ -473,4 +472,7 @@
     <string name="disable_equalizer">Ekolayzırı Devre Dışı Bırak</string>
     <string name="enable_equalizer">Ekolayzırı Etkinleştir</string>
     <string name="show_lyrics_summary">Oynatıcı ekranında tek satır sözleri göster.</string>
+    <string name="carousel">Karosel</string>
+    <string name="carousel_ui_desc">Carousel tipi albüm sanatları ile basit oyuncu tarzı.</string>
+    <string name="caps">Caps</string>
 </resources>
