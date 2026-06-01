@@ -289,7 +289,6 @@
     <string name="style">Stil</string>
     <string name="latency">Latenz</string>
     <string name="particles">Partikel</string>
-    <string name="hires_warning">Die Hi-Res-Ausgabe (32-Bit) ermöglicht direktes Hardware-Passthrough für das reinste Audiosignal. Da das Audio die interne Engine umgeht, werden Equalizer, Bass und Visualizer in diesem Modus deaktiviert.</string>
     <string name="slide">Schieben</string>
     <string name="typewriting">Tippen</string>
     <string name="no_effect">Kein Effekt</string>
@@ -473,4 +472,7 @@
     <string name="disable_equalizer">Deaktiviere Equalizer</string>
     <string name="enable_equalizer">Aktiviere Equalizer</string>
     <string name="show_lyrics_summary">Zeige Songtexte auf dem Player-Bildschirm.</string>
+    <string name="carousel">Carousel</string>
+    <string name="carousel_ui_desc">Einfache Player-Stil mit Karussell-Art Albumkunst.</string>
+    <string name="caps">Caps</string>
 </resources>
