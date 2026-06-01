@@ -289,7 +289,6 @@
     <string name="style">Stile</string>
     <string name="latency">Latenza</string>
     <string name="particles">Particelle</string>
-    <string name="hires_warning">L\'uscita Hi-Res (32-bit) abilita il passthrough hardware diretto per il segnale audio più puro. Poiché l\'audio bypassa il motore interno, l\'equalizzatore, i bassi e il visualizzatore saranno disabilitati in questa modalità.</string>
     <string name="slide">Scorri</string>
     <string name="typewriting">Macchina da scrivere</string>
     <string name="no_effect">Nessun effetto</string>
@@ -473,4 +472,7 @@
     <string name="disable_equalizer">Disabilita Equalizzatore</string>
     <string name="enable_equalizer">Abilita Equalizzatore</string>
     <string name="show_lyrics_summary">Mostra i testi a riga singola sullo schermo del giocatore.</string>
+    <string name="carousel">Carosello</string>
+    <string name="carousel_ui_desc">Semplice stile player con album di tipo carosello.</string>
+    <string name="caps">Caps</string>
 </resources>
