@@ -289,7 +289,6 @@
     <string name="style">Стиль</string>
     <string name="latency">Задержка</string>
     <string name="particles">Частицы</string>
-    <string name="hires_warning">Режим Hi-Res (32-бит) обеспечивает прямой аппаратный вывод аудио для максимально чистого звука. Поскольку аудио обходит внутренний движок, эквалайзер, усилитель баса и визуализатор будут отключены в этом режиме.</string>
     <string name="slide">Слайд</string>
     <string name="typewriting">Печатная машинка</string>
     <string name="no_effect">Без эффекта</string>
@@ -473,4 +472,7 @@
     <string name="disable_equalizer">Отключить Эквалайзер</string>
     <string name="enable_equalizer">Включить Эквалайзер</string>
     <string name="show_lyrics_summary">Показать одну строку текстов песен на экране плеера.</string>
+    <string name="carousel">Карусель</string>
+    <string name="carousel_ui_desc">Простой стиль плеера с типом карусели обложки.</string>
+    <string name="caps">Капс</string>
 </resources>
