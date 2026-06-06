@@ -1,40 +1,53 @@
+### PEQ and DSP
+
+- Added **Parametric Equalizer (PEQ)** with **_n_-bands suppor**t.
+    - Added a dedicated **PEQ engine to the DSP**.
+- Added **coeffs smoothing** to solve the zipper noise issue when changing EQ settings.
+
+### Output
+
+- Added native **USB DAC driver** for exclusive output through the DAC devices.
+- Added USB DAC to **PCM Info**.
+- Added **DAC and AAudio bypass** to **support DSP in Hi-Res mode**. #25
+- Fixed Hi-Res stuttering via AAudio sink.
+- Force float32 bypass via AAudio, Oboe and USB DAC for ExoPlayer.
+- Feed audio data to visualizer in Hi-Res mode to make sure visualizer works. #25
+- Fixed audio blips in AAudio and Oboe modes.
+- Fixed audio reroute failure on output device change.
+
 ### Library
 
-- Toggle to pause activity records. #74
-- Option to clear all activity records. #74
-- Cache downloaded artist images internally to avoid redownloading. #71
+- Added option to manually pick an artist image.
+- Add webm audio support. #80
 
 ### User Interface
 
-- Added **Bookmarks** support.
-    - Added tap to add bookmarks in **Waveform** on player screen.
-    - Added **Bookmarks** panel to view all songs with atleast one bookmark.
-    - Added quick jump to bookmarked positions in the player screen.
-    - Dedicated **Bookmarks** menus.
-    - Added bookmark indicator in the **Waveform**.
-- Add **monochrome** app icon. #70
-- Added option to sort by **As Added** in playlist to show songs in order as they were added. #73
+- Added new **Carousel** style player UI. #105
+- Added option to play selected songs as queue.
+- Updated EQ panel UI.
+- Organize **Audio Preferences**.
+- Added toggle to show/hide **Lyrics** in **Player** page.
+- Add toggle for visualizer caps.
 
 ### Bug Fixes
 
-- Fixed **EQ params** not loaded in first launches.
-- Fixed weird filenames for metadata-less files. #84
-- Fixed cover art not showing for some formats like WAV. #75
-- Fixed audio quality badge showing incorrect quality for some formats. #77
-- Fixed metadata extractor not parsing some fields like **NumTracks** etc. #77, #75
-- Fixed **Audio Information** showing no for _Embedded Album Art_ field. #75
-- Fixed external art covers are never queried due to SAF migration.
-- Fixed multiple OOMs in database and playback managers causing the app to crash when library grew
-  too big.
-- Fixed a crash caused by **Server Service** not starting properly.
+- Fixed volume button events getting triggered twice on button presses causing inaccurate volume
+  changes. #90
+- Fixed app crashing randomly when changing songs.
+- Fixed downloaded artist image not showing in **Artist** page. #71
 
 ### Improvements
 
-- Swipe down to hide **Mini Player** temporarily. #74
+- Increase volume gradually when volume buttons are long pressed. #102
+- Open IMEs automatically when **Search** panel is opened. #76
+- Auto hide volume panels.
+- Easier to swipe away the player screen.
+- Added GPU accelerated blur to blur album arts faster.
 
-### Changes
+### Translations
 
-- Disable visualizer and equalizer in Hi-Res mode.
-- Changed the stats information to show first in stats panels like **Most Played** etc. #60
-- Include sample rate to check audio quality for lossless formats. #77
-- Large heap to create more memory buffer for burst library parsing in lower end devices.
+- Added **Russian** translations.
+- Added **German** translations.
+- Added **Turkish** translations.
+- Added **Italian** translations.
+- Added **Chinese (Simplified)** translations.
