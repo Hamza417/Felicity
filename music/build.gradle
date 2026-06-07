@@ -17,8 +17,8 @@ android {
     defaultConfig {
         applicationId "app.simple.felicity"
 
-        versionCode 21
-        versionName "0.0.21_alpha"
+        versionCode 22
+        versionName "0.0.22_alpha"
     }
 
     bundle {
