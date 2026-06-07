@@ -36,7 +36,7 @@ object PlaybackStateManager {
     suspend fun saveCurrentPlaybackState(context: Context, logTag: String = TAG): Boolean {
         // Always persist the original (unshuffled) queue so we can restore and optionally
         // re-shuffle on the next launch rather than saving an already-shuffled order.
-        val songs = MediaPlaybackManager.getOriginalQueue()
+        val songs = MediaPlaybackManager.getSongs()
         if (songs.isEmpty()) {
             Log.w(logTag, "Songs list is empty, skipping state save")
             return false
