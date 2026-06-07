@@ -44,8 +44,7 @@ static constexpr int WEIGHT_ARRAY_SIZE = MAX_HALF_KERNEL + 1; // 65
  * well, the readback naturally comes out in the top-to-bottom order that
  * Android bitmaps expect — no manual row flip is needed.
  */
-static const char *VERT_SRC = R"glsl(
-#version 300 es
+static const char *VERT_SRC = R"glsl(#version 300 es
 layout(location = 0) in vec2 aPosition;
 layout(location = 1) in vec2 aTexCoord;
 out vec2 vTexCoord;
@@ -62,8 +61,7 @@ void main() {
  * kept as a compile-time constant (65) with an early break so drivers that
  * struggle with non-constant loop bounds still behave correctly.
  */
-static const char *HBLUR_FRAG_SRC = R"glsl(
-#version 300 es
+static const char *HBLUR_FRAG_SRC = R"glsl(#version 300 es
 precision mediump float;
 uniform sampler2D uTexture;
 uniform float     uWeights[65];
@@ -87,8 +85,7 @@ void main() {
  * Vertical Gaussian blur pass — same logic as horizontal, but sampling
  * along the Y axis instead.
  */
-static const char *VBLUR_FRAG_SRC = R"glsl(
-#version 300 es
+static const char *VBLUR_FRAG_SRC = R"glsl(#version 300 es
 precision mediump float;
 uniform sampler2D uTexture;
 uniform float     uWeights[65];
@@ -113,8 +110,7 @@ void main() {
  * the requested radius exceeds MAX_HALF_KERNEL. GL_LINEAR filtering on the
  * source texture handles the bilinear interpolation automatically.
  */
-static const char *COPY_FRAG_SRC = R"glsl(
-#version 300 es
+static const char *COPY_FRAG_SRC = R"glsl(#version 300 es
 precision mediump float;
 uniform sampler2D uTexture;
 in  vec2 vTexCoord;
