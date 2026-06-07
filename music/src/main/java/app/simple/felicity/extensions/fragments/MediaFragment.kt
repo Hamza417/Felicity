@@ -195,6 +195,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
             MediaPlaybackManager.songListFlow.collect { songs ->
                 Log.d(TAG, "Song list updated: ${songs.size} songs")
                 onSongListChanged(songs)
+                saveCurrentPlaybackState()
             }
         }
 
