@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="number_of_songs">
+        <item quantity="one">%d utwór</item>
+        <item quantity="few">%d utwory</item>
+        <item quantity="many">%d utworów</item>
+        <item quantity="other">%d Utworu</item>
+    </plurals>
+    <plurals name="songs_selected">
+        <item quantity="one">%d utwór wybrany</item>
+        <item quantity="few">%d utwory wybrane</item>
+        <item quantity="many">%d utworów wybranych</item>
+        <item quantity="other">%d utworu wybrane</item>
+    </plurals>
+    <plurals name="number_of_albums">
+        <item quantity="one">%d album</item>
+        <item quantity="few">%d albumy</item>
+        <item quantity="many">%d albumów</item>
+        <item quantity="other">%d albumu</item>
+    </plurals>
+    <plurals name="total_times">
+        <item quantity="one">%d raz</item>
+        <item quantity="few">%d razy</item>
+        <item quantity="many">%d razy</item>
+        <item quantity="other">%d raza</item>
+    </plurals>
+    <plurals name="number_of_bookmarks">
+        <item quantity="one">%d zakładka</item>
+        <item quantity="few">%d zakładki</item>
+        <item quantity="many">%d zakładek</item>
+        <item quantity="other">%d zakładki</item>
+    </plurals>
+</resources>
