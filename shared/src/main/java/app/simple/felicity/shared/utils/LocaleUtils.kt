@@ -33,6 +33,8 @@ object LocaleUtils {
             Lang("Italiano (Italian)", "it-IT"),
             // Simplified Chinese (China)
             Lang("简体中文 (Simplified Chinese)", "zh-CN"),
+            // Polish
+            Lang("Polski (Polish)", "pl-PL"),
     )
 
     fun getAppLocale(): Locale {
