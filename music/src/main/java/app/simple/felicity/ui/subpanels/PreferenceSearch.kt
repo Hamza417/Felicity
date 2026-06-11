@@ -65,6 +65,8 @@ class PreferenceSearch : PreferenceFragment() {
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
         binding.recyclerView.setHasFixedSize(false)
 
+        headerBinding.editText.showInput()
+
         allPreferences = buildAllPreferences()
 
         setupSearchBox()
