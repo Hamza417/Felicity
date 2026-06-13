@@ -15,7 +15,7 @@ package app.simple.felicity.decorations.views
  * @author Hamza417
  */
 data class PopupMenuItem(
-        val title: Int,
+        val title: Any,
         val icon: Int = 0,
         val summary: String? = null,
         val isExperimental: Boolean = false

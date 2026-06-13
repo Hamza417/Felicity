@@ -13,6 +13,8 @@ import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentPlayingQueueBinding
 import app.simple.felicity.databinding.HeaderPlayingQueueBinding
 import app.simple.felicity.decorations.views.AppHeader
+import app.simple.felicity.decorations.views.PopupMenuItem
+import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.app.TotalTime.Companion.showTotalTime
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.fragments.BasePanelFragment
@@ -68,7 +70,40 @@ class PlayingQueue : BasePanelFragment() {
     }
 
     private fun setupHeaderClicks() {
-        // Reserved for future header actions
+        headerBinding.currentQueue.setOnClickListener { it ->
+            SharedScrollViewPopup(
+                    container = requireContainerView(),
+                    anchorView = it,
+                    menuItems = listOf(
+                            PopupMenuItem(title = "Queue 1"),
+                            PopupMenuItem(title = "Queue 2"),
+                            PopupMenuItem(title = "Queue 3"),
+                            PopupMenuItem(title = "Queue 4"),
+                            PopupMenuItem(title = "Queue 5")
+                    ),
+                    onMenuItemClick = {
+                        // When hard strings are used the menu returns idx of the clicked item
+                        when (it) {
+                            0 -> {
+                                // Handle Queue 1 click
+                            }
+                            1 -> {
+                                // Handle Queue 2 click
+                            }
+                            2 -> {
+                                // Handle Queue 3 click
+                            }
+                            3 -> {
+                                // Handle Queue 4 click
+                            }
+                            4 -> {
+                                // Handle Queue 5 click
+                            }
+                        }
+                    },
+                    onDismiss = {}
+            ).show()
+        }
     }
 
     private fun updateQueueList(songs: List<Audio>) {
