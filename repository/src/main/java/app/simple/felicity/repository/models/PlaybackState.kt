@@ -14,6 +14,11 @@ import androidx.room.PrimaryKey
  * the hash of the song that was active — the hash lets the restore logic find the
  * right index even after cascade deletions shifted the queue positions.</p>
  *
+ * <p>[activeQueueId] tracks which of the five saved queues (0–4) was active when
+ * the state was last persisted. On app launch the queue matching this ID is
+ * restored alongside the scalar playback state so the user picks up exactly where
+ * they left off.</p>
+ *
  * @author Hamza417
  */
 @Entity(tableName = "playback_state")
@@ -24,7 +29,10 @@ data class PlaybackState(
         val shuffle: Boolean = false,
         val repeatMode: Int = 0,
         val updatedAt: Long = 0L,
-        /** XXHash64 fingerprint of the song that was active when state was saved. */
-        @ColumnInfo(name = "current_hash") val currentHash: Long = 0L
+        /** fingerprint of the song that was active when state was saved. */
+        @ColumnInfo(name = "current_hash") val currentHash: Long = 0L,
+        /** Which of the five saved queues (0–4) was active when state was persisted. */
+        @ColumnInfo(name = "active_queue_id", defaultValue = "0")
+        val activeQueueId: Int = 0
 )
 

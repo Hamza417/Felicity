@@ -7,18 +7,27 @@ import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.PlaybackQueueEntry
 import app.simple.felicity.repository.models.PlaybackState
+import app.simple.felicity.repository.models.SavedQueueEntry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Manages persistence and restoration of playback state.
+ * Manages persistence and restoration of playback state across five independent
+ * queue slots.
  *
- * <p>The current queue is stored as individual {@link PlaybackQueueEntry} rows so that
- * SQLite's cascade-delete mechanism automatically prunes any song removed from the
- * library. Scalar state (index, seek position, repeat mode) is kept in a single-row
- * {@link PlaybackState} record. The active song's hash is also stored so that
- * {@link #getAudiosFromQueueIDs} can resolve the correct queue index even when
- * cascade deletions have shifted positions.</p>
+ * <p>The active (currently playing) queue is stored as individual
+ * {@link PlaybackQueueEntry} rows in {@code playback_queue} — exactly as before —
+ * so that every other part of the app continues to read the queue from the same
+ * place without any refactoring. Scalar state (index, seek position, repeat mode,
+ * active queue ID) is kept in a single-row {@link PlaybackState} record.</p>
+ *
+ * <p>When the user switches queues, the current queue is first archived into its
+ * slot in {@code saved_queue}, then the target queue is loaded from its slot and
+ * written into {@code playback_queue}. The active queue ID in {@code playback_state}
+ * is updated so the correct queue is restored on the next app launch.</p>
+ *
+ * <p>Queue slot IDs range from 0 to 4 (five total). Slot 0 is the default and
+ * represents the original single-queue behavior.</p>
  *
  * @author Hamza417
  */
@@ -26,8 +35,23 @@ object PlaybackStateManager {
 
     private const val TAG = "PlaybackStateManager"
 
+    /** Number of independent queue slots available to the user. */
+    const val QUEUE_COUNT = 5
+
+    // Human-readable labels shown in the queue-switcher popup.
+    val QUEUE_LABELS = listOf("Queue 1", "Queue 2", "Queue 3", "Queue 4", "Queue 5")
+
     /**
      * Saves the current playback state from [MediaPlaybackManager] to the database.
+     *
+     * <p>This writes two things atomically:</p>
+     * <ol>
+     *   <li>The active queue (as {@link PlaybackQueueEntry} rows) and scalar state
+     *       (index, seek, shuffle) into their primary tables so the app can restore
+     *       on next launch.</li>
+     *   <li>The same queue into the {@code saved_queue} slot matching the currently
+     *       active queue ID, so the archive stays up-to-date for queue switching.</li>
+     * </ol>
      *
      * @param context  The application context.
      * @param logTag   Optional tag for logging (defaults to TAG).
@@ -59,15 +83,19 @@ object PlaybackStateManager {
 
         return try {
             val audioDatabase = AudioDatabase.getInstance(context)
+            val activeQueueId = MediaPlaybackManager.getActiveQueueId()
             savePlaybackState(
                     db = audioDatabase,
                     queueHash = songs.map { it.hash },
                     index = position,
                     position = seek,
                     shuffle = ShufflePreferences.isShuffleEnabled(),
-                    repeat = 0
+                    repeat = 0,
+                    activeQueueId = activeQueueId
             )
-            Log.d(logTag, "Playback state saved: position=$position, seek=$seek, queueSize=${songs.size}, shuffle=${ShufflePreferences.isShuffleEnabled()}")
+            Log.d(logTag, "Playback state saved: position=$position, seek=$seek, " +
+                    "queueSize=${songs.size}, shuffle=${ShufflePreferences.isShuffleEnabled()}, " +
+                    "activeQueue=$activeQueueId")
             true
         } catch (e: Exception) {
             Log.e(logTag, "Error saving playback state", e)
@@ -79,14 +107,16 @@ object PlaybackStateManager {
      * Persists the given queue and scalar playback state to the database.
      *
      * <p>The previous queue rows are deleted and replaced atomically so there are never
-     * stale slots from a prior session.</p>
+     * stale slots from a prior session. The queue is also archived into its matching
+     * {@code saved_queue} slot so queue-switching always sees the latest state.</p>
      *
-     * @param db        The open [AudioDatabase] instance.
-     * @param queueHash Ordered list of audio hashes representing the queue.
-     * @param index     Index of the currently active song within [queueHash].
-     * @param position  Seek position in milliseconds.
-     * @param shuffle   Whether shuffle mode was active.
-     * @param repeat    Repeat mode constant.
+     * @param db            The open [AudioDatabase] instance.
+     * @param queueHash     Ordered list of audio hashes representing the queue.
+     * @param index         Index of the currently active song within [queueHash].
+     * @param position      Seek position in milliseconds.
+     * @param shuffle       Whether shuffle mode was active.
+     * @param repeat        Repeat mode constant.
+     * @param activeQueueId Which queue slot (0–4) this state belongs to.
      */
     suspend fun savePlaybackState(
             db: AudioDatabase,
@@ -94,7 +124,8 @@ object PlaybackStateManager {
             index: Int,
             position: Long,
             shuffle: Boolean,
-            repeat: Int
+            repeat: Int,
+            activeQueueId: Int = 0
     ) {
         if (queueHash.isEmpty()) return
 
@@ -106,7 +137,8 @@ object PlaybackStateManager {
                 shuffle = shuffle,
                 repeatMode = repeat,
                 updatedAt = System.currentTimeMillis(),
-                currentHash = currentHash
+                currentHash = currentHash,
+                activeQueueId = activeQueueId
         )
 
         val entries = queueHash.mapIndexed { pos, hash ->
@@ -116,6 +148,134 @@ object PlaybackStateManager {
         db.playbackQueueDao().clear()
         db.playbackQueueDao().insertAll(entries)
         db.playbackStateDao().save(state)
+
+        // Mirror the queue into the saved_queue archive so queue-switching always
+        // has an up-to-date copy of the active slot.
+        saveQueueToSlot(db, activeQueueId, queueHash)
+    }
+
+    /**
+     * Archives a queue into the {@code saved_queue} table under the given slot ID.
+     *
+     * <p>Any previous contents for this slot are cleared first so the archive
+     * never contains stale remnants from an older version of the same queue.</p>
+     *
+     * @param db        The open [AudioDatabase] instance.
+     * @param queueId   The slot to save into (0–4).
+     * @param queueHash Ordered list of audio hashes.
+     */
+    suspend fun saveQueueToSlot(
+            db: AudioDatabase,
+            queueId: Int,
+            queueHash: List<Long>
+    ) {
+        if (queueHash.isEmpty()) return
+        val entries = queueHash.mapIndexed { pos, hash ->
+            SavedQueueEntry(queueId = queueId, queuePos = pos, audioHash = hash)
+        }
+        db.savedQueueDao().clear(queueId)
+        db.savedQueueDao().insertAll(entries)
+    }
+
+    /**
+     * Loads a previously archived queue from the {@code saved_queue} table.
+     *
+     * <p>Only tracks still present in the library are returned — any song that has
+     * been deleted since the last save is silently omitted thanks to the INNER JOIN
+     * against the {@code audio} table.</p>
+     *
+     * @param db      The open [AudioDatabase] instance.
+     * @param queueId The slot to load from (0–4).
+     * @return The restored queue as a list of [Audio], or {@code null} if the
+     *         slot is empty or all its songs have been removed from the library.
+     */
+    suspend fun loadQueueFromSlot(
+            db: AudioDatabase,
+            queueId: Int
+    ): MutableList<Audio>? {
+        val audios = db.savedQueueDao().getQueuedAudios(queueId)
+        return if (audios.isEmpty()) null else audios.toMutableList()
+    }
+
+    /**
+     * Switches the active playback queue to the given slot.
+     *
+     * <p>This performs three steps atomically:</p>
+     * <ol>
+     *   <li>Saves the currently active queue into its own {@code saved_queue} slot
+     *       (so nothing is lost).</li>
+     *   <li>Loads the target queue from {@code saved_queue} and writes it into
+     *       {@code playback_queue} so the rest of the app sees it.</li>
+     *   <li>Updates {@code playback_state.active_queue_id} so the correct slot
+     *       is restored on the next launch.</li>
+     * </ol>
+     *
+     * <p>The currently playing song is NOT interrupted — the caller
+     * ([MediaPlaybackManager]) decides whether to keep playing the current song
+     * or switch to the new queue.</p>
+     *
+     * @param context       The application context.
+     * @param targetQueueId The slot to switch to (0–4).
+     * @return The loaded queue as a list of [Audio], or an empty list if the
+     *         target slot has no saved songs.
+     */
+    suspend fun switchToQueue(context: Context, targetQueueId: Int): List<Audio> {
+        val db = AudioDatabase.getInstance(context)
+        val currentQueueId = MediaPlaybackManager.getActiveQueueId()
+
+        if (currentQueueId == targetQueueId) {
+            Log.d(TAG, "switchToQueue: already on queue $targetQueueId, nothing to do")
+            return MediaPlaybackManager.getSongs()
+        }
+
+        // Step 1: Archive the currently active queue into its saved slot.
+        val currentSongs = MediaPlaybackManager.getSongs()
+        if (currentSongs.isNotEmpty()) {
+            saveQueueToSlot(db, currentQueueId, currentSongs.map { it.hash })
+            Log.d(TAG, "switchToQueue: archived queue $currentQueueId (${currentSongs.size} songs)")
+        }
+
+        // Step 2: Load the target queue from its saved slot.
+        val targetSongs = loadQueueFromSlot(db, targetQueueId)
+
+        // Step 3: Update the active queue ID in playback_state so the correct
+        //         slot is restored on the next cold launch.
+        val currentState = fetchPlaybackState(db)
+        if (currentState != null) {
+            db.playbackStateDao().save(currentState.copy(activeQueueId = targetQueueId))
+        } else {
+            // No state row exists yet — create a minimal one with just the queue ID.
+            db.playbackStateDao().save(
+                    PlaybackState(activeQueueId = targetQueueId, updatedAt = System.currentTimeMillis())
+            )
+        }
+
+        if (targetSongs.isNullOrEmpty()) {
+            Log.d(TAG, "switchToQueue: queue $targetQueueId is empty, returning empty list")
+            return emptyList()
+        }
+
+        // Write the loaded queue into playback_queue so every other part of the
+        // app that reads from there (BaseActivity restore, widget, etc.) sees it.
+        val entries = targetSongs.mapIndexed { pos, audio ->
+            PlaybackQueueEntry(queuePos = pos, audioHash = audio.hash)
+        }
+        db.playbackQueueDao().clear()
+        db.playbackQueueDao().insertAll(entries)
+
+        Log.d(TAG, "switchToQueue: switched from queue $currentQueueId to $targetQueueId " +
+                "(${targetSongs.size} songs loaded)")
+        return targetSongs
+    }
+
+    /**
+     * Returns the ID of the queue that was active when playback state was last saved.
+     *
+     * @param db The open [AudioDatabase] instance.
+     * @return The active queue ID (0–4), defaulting to 0 if no state exists.
+     */
+    suspend fun getActiveQueueId(db: AudioDatabase): Int {
+        return fetchPlaybackState(db)?.activeQueueId ?: 0
     }
 
     /**
@@ -128,7 +288,8 @@ object PlaybackStateManager {
     }
 
     /**
-     * Returns the restored queue as an ordered list of [Audio] objects.
+     * Returns the restored queue as an ordered list of [Audio] objects from the
+     * active {@code playback_queue} table.
      *
      * <p>Songs that were cascade-deleted since the last save are absent from the
      * result automatically — no stale entries are ever returned.</p>

@@ -24,6 +24,7 @@ import app.simple.felicity.engine.managers.MediaPlaybackManager.playNext
 import app.simple.felicity.engine.managers.MediaPlaybackManager.previous
 import app.simple.felicity.engine.managers.MediaPlaybackManager.removeQueueItemSilently
 import app.simple.felicity.engine.managers.MediaPlaybackManager.setSongs
+import app.simple.felicity.engine.managers.MediaPlaybackManager.switchToQueue
 import app.simple.felicity.engine.managers.MediaPlaybackManager.updatePosition
 import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.repository.constants.MediaConstants
@@ -110,6 +111,14 @@ object MediaPlaybackManager {
     // Used during queue reorders so that moving the playing song's index does not
     // trigger onAudio() in every observer — the song itself hasn't changed.
     private var suppressPositionEmit: Boolean = false
+
+    /**
+     * Tracks which of the five saved queue slots (0–4) is currently active.
+     * Defaults to 0 so existing users start on the original queue.
+     * Updated when the user switches queues via [switchToQueue] or when
+     * state is restored from the database on cold launch.
+     */
+    private var activeQueueId: Int = 0
 
     /**
      * Tracks positions for which a user-initiated [mediaController.seekTo] has been issued
@@ -585,6 +594,136 @@ object MediaPlaybackManager {
 
     fun isPlaying(): Boolean {
         return mediaController?.isPlaying == true
+    }
+
+    /**
+     * Returns which of the five queue slots (0–4) is currently active.
+     */
+    fun getActiveQueueId(): Int = activeQueueId
+
+    /**
+     * Switches the active playback queue to the given slot without interrupting the
+     * currently playing song.
+     *
+     * <p>The current queue is first saved to its archive slot, then the target queue
+     * is loaded from the database. If the target queue has songs, they replace the
+     * active queue — but the currently playing song continues uninterrupted. The
+     * new queue is simply loaded in the background, ready for when the user taps
+     * a song or the current one finishes.</p>
+     *
+     * <p>If the target queue is empty (never been saved), the active queue is cleared
+     * and the user sees an empty queue panel.</p>
+     *
+     * @param queueId The queue slot to switch to (0–4).
+     * @param context The application context for database access.
+     */
+    fun switchToQueue(queueId: Int, context: android.content.Context) {
+        if (queueId == activeQueueId) {
+            Log.d(TAG, "switchToQueue: already on queue $queueId, ignoring")
+            return
+        }
+
+        if (queueId !in 0 until PlaybackStateManager.QUEUE_COUNT) {
+            Log.w(TAG, "switchToQueue: invalid queue ID $queueId, ignoring")
+            return
+        }
+
+        Log.d(TAG, "switchToQueue: switching from queue $activeQueueId to queue $queueId")
+
+        val previousQueueId = activeQueueId
+        activeQueueId = queueId
+
+        scope.launch {
+            try {
+                val targetSongs = withContext(Dispatchers.IO) {
+                    PlaybackStateManager.switchToQueue(context, queueId)
+                }
+
+                withContext(Dispatchers.Main) {
+                    if (targetSongs.isNotEmpty()) {
+                        // Load the target queue without interrupting playback.
+                        // We capture the currently playing song so we can preserve it.
+                        val currentSong = getCurrentSong()
+
+                        // Update internal state to reflect the new queue.
+                        originalQueue = targetSongs
+                        shuffledQueue = emptyList()
+                        songs = targetSongs
+
+                        // Try to find the currently playing song in the new queue.
+                        // If it exists there, keep playing it; otherwise reset to position 0
+                        // but do NOT seek — the user hasn't tapped anything yet.
+                        val newPosition = if (currentSong != null) {
+                            targetSongs.indexOfFirst { it.id == currentSong.id }
+                                .takeIf { it >= 0 } ?: 0
+                        } else {
+                            0
+                        }
+
+                        suppressPositionEmit = true
+                        currentSongPosition = newPosition
+                        suppressPositionEmit = false
+
+                        // Surgically replace the ExoPlayer queue without interrupting
+                        // the currently playing song.
+                        val mediaItems = withContext(Dispatchers.Default) {
+                            targetSongs.map { it.toMediaItem() }
+                        }
+
+                        val controller = mediaController
+                        if (controller != null) {
+                            isQueueBeingReplaced = true
+                            pendingSeekPositions.clear()
+                            pendingSeekPositions.add(newPosition)
+
+                            val oldCount = controller.mediaItemCount
+                            if (oldCount > 0) {
+                                controller.replaceMediaItems(0, oldCount, mediaItems)
+                            } else {
+                                controller.setMediaItems(mediaItems, newPosition, getSeekPosition())
+                                controller.prepare()
+                            }
+                            // Do NOT seek — keep playing the current song if it's in the new queue.
+                        }
+
+                        _songListFlow.emit(songs)
+                        _songPositionFlow.emit(newPosition)
+
+                        Log.d(TAG, "switchToQueue: queue $queueId loaded with ${targetSongs.size} songs, " +
+                                "current position=$newPosition")
+                    } else {
+                        // Target queue is empty — clear everything.
+                        songs = emptyList()
+                        originalQueue = emptyList()
+                        shuffledQueue = emptyList()
+                        currentSongPosition = 0
+                        mediaController?.clearMediaItems()
+                        mediaController?.stop()
+                        stopSeekPositionUpdates()
+                        _songListFlow.emit(emptyList())
+                        _songPositionFlow.emit(0)
+
+                        Log.d(TAG, "switchToQueue: queue $queueId is empty, cleared playback")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "switchToQueue: failed to switch to queue $queueId", e)
+                // Revert the active queue ID on failure.
+                activeQueueId = previousQueueId
+            }
+        }
+    }
+
+    /**
+     * Sets the active queue ID directly, used during cold-launch restore when the
+     * database tells us which queue was active last session.
+     *
+     * @param queueId The queue slot ID (0–4) that was last active.
+     */
+    fun setActiveQueueId(queueId: Int) {
+        if (queueId in 0 until PlaybackStateManager.QUEUE_COUNT) {
+            activeQueueId = queueId
+        }
     }
 
     fun flipState() {

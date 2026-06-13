@@ -158,6 +158,7 @@ class WidgetActionReceiver : BroadcastReceiver() {
                         // Tell MediaPlaybackManager about the restored queue. This also
                         // calls controller.setMediaItems and controller.play via autoPlay=true.
                         MediaPlaybackManager.setMediaController(controller)
+                        MediaPlaybackManager.setActiveQueueId(playbackState.activeQueueId)
                         MediaPlaybackManager.setSongs(
                                 audios = savedQueue,
                                 position = restoredIndex,

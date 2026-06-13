@@ -17,6 +17,7 @@ import app.simple.felicity.decorations.views.PopupMenuItem
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.app.TotalTime.Companion.showTotalTime
 import app.simple.felicity.engine.managers.MediaPlaybackManager
+import app.simple.felicity.engine.managers.PlaybackStateManager
 import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.repository.managers.SelectionManager
 import app.simple.felicity.repository.models.Audio
@@ -52,6 +53,7 @@ class PlayingQueue : BasePanelFragment() {
         /** Queue always shows as a single-column list; no grid switching. */
         binding.recyclerView.setupGridLayoutManager(1)
 
+        updateQueueHeaderLabel()
         setupHeaderClicks()
 
         playingQueueViewModel.songs.collectWhenStarted { songs ->
@@ -70,40 +72,32 @@ class PlayingQueue : BasePanelFragment() {
     }
 
     private fun setupHeaderClicks() {
-        headerBinding.currentQueue.setOnClickListener { it ->
+        headerBinding.currentQueue.setOnClickListener { anchorView ->
+            val activeQueueId = MediaPlaybackManager.getActiveQueueId()
+            val labels = PlaybackStateManager.QUEUE_LABELS
+
             SharedScrollViewPopup(
                     container = requireContainerView(),
-                    anchorView = it,
-                    menuItems = listOf(
-                            PopupMenuItem(title = "Queue 1"),
-                            PopupMenuItem(title = "Queue 2"),
-                            PopupMenuItem(title = "Queue 3"),
-                            PopupMenuItem(title = "Queue 4"),
-                            PopupMenuItem(title = "Queue 5")
-                    ),
-                    onMenuItemClick = {
-                        // When hard strings are used the menu returns idx of the clicked item
-                        when (it) {
-                            0 -> {
-                                // Handle Queue 1 click
-                            }
-                            1 -> {
-                                // Handle Queue 2 click
-                            }
-                            2 -> {
-                                // Handle Queue 3 click
-                            }
-                            3 -> {
-                                // Handle Queue 4 click
-                            }
-                            4 -> {
-                                // Handle Queue 5 click
-                            }
+                    anchorView = anchorView,
+                    menuItems = labels.map { label -> PopupMenuItem(title = label) },
+                    onMenuItemClick = { clickedIndex ->
+                        if (clickedIndex != activeQueueId) {
+                            MediaPlaybackManager.switchToQueue(clickedIndex, requireContext())
+                            updateQueueHeaderLabel()
                         }
                     },
                     onDismiss = {}
             ).show()
         }
+    }
+
+    /**
+     * Updates the header label to show the name of the currently active queue.
+     */
+    private fun updateQueueHeaderLabel() {
+        val activeId = MediaPlaybackManager.getActiveQueueId()
+        val label = PlaybackStateManager.QUEUE_LABELS.getOrElse(activeId) { "Queue ${activeId + 1}" }
+        headerBinding.currentQueue.text = label
     }
 
     private fun updateQueueList(songs: List<Audio>) {
