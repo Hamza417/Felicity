@@ -88,7 +88,11 @@ class PlayingQueue : BasePanelFragment() {
             hideMiniPlayer()
 
             val activeQueueId = MediaPlaybackManager.getActiveQueueId()
-            val labels = PlaybackStateManager.QUEUE_LABELS
+            val labels = mutableListOf<String>().apply {
+                for (i in PlaybackStateManager.QUEUE_LABELS.indices) {
+                    add(getString(R.string.current_queue, i + 1))
+                }
+            }
 
             SharedScrollViewPopup(
                     container = requireContainerView(),
@@ -114,7 +118,7 @@ class PlayingQueue : BasePanelFragment() {
      */
     private fun updateQueueHeaderLabel() {
         val activeId = MediaPlaybackManager.getActiveQueueId()
-        val label = PlaybackStateManager.QUEUE_LABELS.getOrElse(activeId) { "Queue ${activeId + 1}" }
+        val label = getString(R.string.current_queue, activeId + 1)
         headerBinding.currentQueue.text = label
     }
 
