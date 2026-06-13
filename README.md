@@ -114,7 +114,7 @@ This feature list is not exhaustive and only main features are listed.
 - [ ] Sleep Timer
 - [ ] Global Search Provider
 - [ ] More widgets
-- [ ] Multiple Queue Support
+- [x] Multiple Queue Support
 - [x] Bookmarks
 
 ##### Niche Features
