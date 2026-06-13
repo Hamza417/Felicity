@@ -56,8 +56,12 @@ class PlayingQueue : BasePanelFragment() {
         updateQueueHeaderLabel()
         setupHeaderClicks()
 
-        playingQueueViewModel.songs.collectWhenStarted { songs ->
+        // Keep the header label in sync whenever the active queue slot changes.
+        MediaPlaybackManager.activeQueueIdFlow.collectWhenStarted { queueId ->
             updateQueueHeaderLabel()
+        }
+
+        playingQueueViewModel.songs.collectWhenStarted { songs ->
             if (songs.isNotEmpty()) {
                 updateQueueList(songs)
                 setDurations()
@@ -93,10 +97,9 @@ class PlayingQueue : BasePanelFragment() {
                     onMenuItemClick = { clickedIndex ->
                         if (clickedIndex != activeQueueId) {
                             MediaPlaybackManager.switchToQueue(clickedIndex, requireContext())
-                            updateQueueHeaderLabel()
-                            // The header label and song list update automatically when
-                            // songListFlow emits after the switch completes — see
-                            // [collectWhenStarted] block above.
+                            // The header label updates automatically via
+                            // activeQueueIdFlow, and the song list via
+                            // songListFlow — both observed above.
                         }
                     },
                     onDismiss = {

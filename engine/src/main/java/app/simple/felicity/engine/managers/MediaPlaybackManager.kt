@@ -217,6 +217,7 @@ object MediaPlaybackManager {
     private val _playbackStateFlow = MutableSharedFlow<Int>(replay = 1)
     private val _repeatModeFlow = MutableSharedFlow<Int>(replay = 1)
     private val _shuffleStateFlow = MutableSharedFlow<Boolean>(replay = 1)
+    private val _activeQueueIdFlow = MutableSharedFlow<Int>(replay = 1)
 
     val songListFlow: SharedFlow<List<Audio>> = _songListFlow.asSharedFlow()
     val songPositionFlow: SharedFlow<Int> = _songPositionFlow.asSharedFlow()
@@ -224,6 +225,7 @@ object MediaPlaybackManager {
     val playbackStateFlow: SharedFlow<Int> = _playbackStateFlow.asSharedFlow()
     val repeatModeFlow: SharedFlow<Int> = _repeatModeFlow.asSharedFlow()
     val shuffleStateFlow: SharedFlow<Boolean> = _shuffleStateFlow.asSharedFlow()
+    val activeQueueIdFlow: SharedFlow<Int> = _activeQueueIdFlow.asSharedFlow()
 
     /**
      * Indicates the direction of the most recent song transition.
@@ -612,17 +614,24 @@ object MediaPlaybackManager {
     fun getActiveQueueId(): Int = activeQueueId
 
     /**
+     * Guards against overlapping queue-switch operations. While a switch is in
+     * progress any subsequent [switchToQueue] call is silently ignored so the
+     * first switch completes cleanly without racing against a second one.
+     */
+    @Volatile
+    private var isSwitchingQueue: Boolean = false
+
+    /**
      * Switches the active playback queue to the given slot without interrupting the
      * currently playing song.
      *
      * <p>The current queue is first saved to its archive slot, then the target queue
      * is loaded from the database. If the target queue has songs, they replace the
-     * active queue — but the currently playing song continues uninterrupted. The
-     * new queue is simply loaded in the background, ready for when the user taps
-     * a song or the current one finishes.</p>
+     * active queue — but the currently playing song continues uninterrupted. If the
+     * target queue is empty the queue panel simply shows a blank list.</p>
      *
-     * <p>If the target queue is empty (never been saved), the active queue is cleared
-     * and the user sees an empty queue panel.</p>
+     * <p>Concurrent calls are ignored while a switch is already in progress to
+     * prevent state corruption from overlapping database writes.</p>
      *
      * @param queueId The queue slot to switch to (0–4).
      * @param context The application context for database access.
@@ -638,11 +647,14 @@ object MediaPlaybackManager {
             return
         }
 
+        if (isSwitchingQueue) {
+            Log.w(TAG, "switchToQueue: switch already in progress, ignoring request for queue $queueId")
+            return
+        }
+
         Log.d(TAG, "switchToQueue: switching from queue $activeQueueId to queue $queueId")
 
-        // Capture the source queue ID BEFORE the async work so PlaybackStateManager
-        // knows which slot to archive into. Do NOT mutate activeQueueId yet — that
-        // must wait until the DB switch actually succeeds.
+        isSwitchingQueue = true
         val previousQueueId = activeQueueId
 
         scope.launch {
@@ -652,22 +664,18 @@ object MediaPlaybackManager {
                 }
 
                 withContext(Dispatchers.Main) {
-                    // Now that the DB switch succeeded, update the in-memory queue ID.
-                    activeQueueId = queueId
-
                     if (targetSongs.isNotEmpty()) {
-                        // Load the target queue without interrupting playback.
-                        // We capture the currently playing song so we can preserve it.
                         val currentSong = getCurrentSong()
 
-                        // Update internal state to reflect the new queue.
+                        // Replace the internal queue state with the loaded songs.
+                        // Shuffle is reset — the loaded queue appears in its saved order.
                         originalQueue = targetSongs
                         shuffledQueue = emptyList()
                         songs = targetSongs
 
-                        // Try to find the currently playing song in the new queue.
-                        // If it exists there, keep playing it; otherwise reset to position 0
-                        // but do NOT seek — the user hasn't tapped anything yet.
+                        // Find where the currently playing song lives in the new queue.
+                        // If it doesn't exist there, position 0 is a safe fallback but
+                        // we do NOT seek — the user hasn't tapped anything.
                         val newPosition = if (currentSong != null) {
                             targetSongs.indexOfFirst { it.id == currentSong.id }
                                 .takeIf { it >= 0 } ?: 0
@@ -698,18 +706,16 @@ object MediaPlaybackManager {
                                 controller.setMediaItems(mediaItems, newPosition, getSeekPosition())
                                 controller.prepare()
                             }
-                            // Do NOT seek — keep playing the current song if it's in the new queue.
                         }
 
+                        // Emit the new state so all observers (ViewModel → Fragment) update.
                         _songListFlow.emit(songs)
                         _songPositionFlow.emit(newPosition)
 
-                        Log.d(
-                                TAG, "switchToQueue: queue $queueId loaded with ${targetSongs.size} songs, " +
-                                "current position=$newPosition"
-                        )
+                        Log.d(TAG, "switchToQueue: queue $queueId loaded with ${targetSongs.size} songs, " +
+                                "position=$newPosition")
                     } else {
-                        // Target queue is empty — clear everything.
+                        // Target queue is empty — clear everything so the UI shows blank.
                         songs = emptyList()
                         originalQueue = emptyList()
                         shuffledQueue = emptyList()
@@ -722,11 +728,17 @@ object MediaPlaybackManager {
 
                         Log.d(TAG, "switchToQueue: queue $queueId is empty, cleared playback")
                     }
+
+                    // Mark the switch as fully complete — DB archive, in-memory state,
+                    // and ExoPlayer are all updated. Notify observers of the new queue ID.
+                    activeQueueId = queueId
+                    _activeQueueIdFlow.emit(queueId)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "switchToQueue: failed to switch to queue $queueId", e)
-                // Revert the active queue ID on failure — keep using the previous one.
                 activeQueueId = previousQueueId
+            } finally {
+                isSwitchingQueue = false
             }
         }
     }
@@ -739,7 +751,12 @@ object MediaPlaybackManager {
      */
     fun setActiveQueueId(queueId: Int) {
         if (queueId in 0 until PlaybackStateManager.QUEUE_COUNT) {
-            activeQueueId = queueId
+            if (activeQueueId != queueId) {
+                activeQueueId = queueId
+                scope.launch {
+                    _activeQueueIdFlow.emit(queueId)
+                }
+            }
         }
     }
 
