@@ -57,10 +57,18 @@ class PlayingQueue : BasePanelFragment() {
         setupHeaderClicks()
 
         playingQueueViewModel.songs.collectWhenStarted { songs ->
+            updateQueueHeaderLabel()
             if (songs.isNotEmpty()) {
                 updateQueueList(songs)
                 setDurations()
                 adapterPlayingQueue?.updateCurrentPosition(MediaPlaybackManager.getCurrentSongPosition())
+            } else {
+                // Queue was cleared (e.g. switched to an empty saved queue) —
+                // reset the adapter so the list reflects the empty state.
+                adapterPlayingQueue = null
+                binding.recyclerView.adapter = null
+                headerBinding.count.text = getString(R.string.x_songs, 0)
+                headerBinding.hours.text = 0L.toDynamicTimeString()
             }
         }
     }
@@ -73,6 +81,8 @@ class PlayingQueue : BasePanelFragment() {
 
     private fun setupHeaderClicks() {
         headerBinding.currentQueue.setOnClickListener { anchorView ->
+            hideMiniPlayer()
+
             val activeQueueId = MediaPlaybackManager.getActiveQueueId()
             val labels = PlaybackStateManager.QUEUE_LABELS
 
@@ -84,9 +94,14 @@ class PlayingQueue : BasePanelFragment() {
                         if (clickedIndex != activeQueueId) {
                             MediaPlaybackManager.switchToQueue(clickedIndex, requireContext())
                             updateQueueHeaderLabel()
+                            // The header label and song list update automatically when
+                            // songListFlow emits after the switch completes — see
+                            // [collectWhenStarted] block above.
                         }
                     },
-                    onDismiss = {}
+                    onDismiss = {
+                        showMiniPlayer()
+                    },
             ).show()
         }
     }
@@ -159,7 +174,8 @@ class PlayingQueue : BasePanelFragment() {
                                 currentPosition,
                                 binding.appHeader.height
                                         + resources.getDimensionPixelSize(R.dimen.padding_8)
-                                        + binding.recyclerView.paddingTop)
+                                        + binding.recyclerView.paddingTop
+                        )
                         binding.recyclerView.scheduleLayoutAnimation()
                     }
                 }

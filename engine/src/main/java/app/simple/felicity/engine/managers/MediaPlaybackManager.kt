@@ -251,19 +251,26 @@ object MediaPlaybackManager {
      * but replay=1 on both flows ensures UI will observe the latest of each.
      */
     fun setSongs(audios: List<Audio>, position: Int = 0, startPositionMs: Long = 0L, autoPlay: Boolean = false) {
-        Log.d(TAG, "setSongs called: count=${audios.size}, position=$position, startPositionMs=$startPositionMs, autoPlay=$autoPlay")
+        Log.d(
+                TAG,
+                "setSongs called: count=${audios.size}, position=$position, startPositionMs=$startPositionMs, autoPlay=$autoPlay"
+        )
 
         // simply skip to the song position since list is same and user does not want shuffling here.
         if (ShufflePreferences.isNoReshuffleEnabled()
                 && shuffledQueue.isNotEmpty()
                 && audios.size == originalQueue.size
-                && audios.indices.all { audios[it].id == originalQueue[it].id }) {
+                && audios.indices.all { audios[it].id == originalQueue[it].id }
+        ) {
             val clickedSong = audios.getOrNull(position)
             val shuffledPos = clickedSong?.let { song ->
                 shuffledQueue.indexOfFirst { it.id == song.id }
             } ?: -1
             if (shuffledPos >= 0) {
-                Log.d(TAG, "setSongs: shuffle active and same queue detected — seeking to shuffled position $shuffledPos instead of reshuffling")
+                Log.d(
+                        TAG,
+                        "setSongs: shuffle active and same queue detected — seeking to shuffled position $shuffledPos instead of reshuffling"
+                )
                 updatePosition(shuffledPos, forcePlay = autoPlay)
                 return
             }
@@ -576,7 +583,10 @@ object MediaPlaybackManager {
             Log.w(TAG, "play() called but songs list is empty")
             return
         }
-        Log.d(TAG, "play() called: currentPosition=$currentSongPosition, mediaItemCount=${mediaController?.mediaItemCount}")
+        Log.d(
+                TAG,
+                "play() called: currentPosition=$currentSongPosition, mediaItemCount=${mediaController?.mediaItemCount}"
+        )
         mediaController?.play()
         startSeekPositionUpdates()
     }
@@ -630,16 +640,21 @@ object MediaPlaybackManager {
 
         Log.d(TAG, "switchToQueue: switching from queue $activeQueueId to queue $queueId")
 
+        // Capture the source queue ID BEFORE the async work so PlaybackStateManager
+        // knows which slot to archive into. Do NOT mutate activeQueueId yet — that
+        // must wait until the DB switch actually succeeds.
         val previousQueueId = activeQueueId
-        activeQueueId = queueId
 
         scope.launch {
             try {
                 val targetSongs = withContext(Dispatchers.IO) {
-                    PlaybackStateManager.switchToQueue(context, queueId)
+                    PlaybackStateManager.switchToQueue(context, previousQueueId, queueId)
                 }
 
                 withContext(Dispatchers.Main) {
+                    // Now that the DB switch succeeded, update the in-memory queue ID.
+                    activeQueueId = queueId
+
                     if (targetSongs.isNotEmpty()) {
                         // Load the target queue without interrupting playback.
                         // We capture the currently playing song so we can preserve it.
@@ -689,8 +704,10 @@ object MediaPlaybackManager {
                         _songListFlow.emit(songs)
                         _songPositionFlow.emit(newPosition)
 
-                        Log.d(TAG, "switchToQueue: queue $queueId loaded with ${targetSongs.size} songs, " +
-                                "current position=$newPosition")
+                        Log.d(
+                                TAG, "switchToQueue: queue $queueId loaded with ${targetSongs.size} songs, " +
+                                "current position=$newPosition"
+                        )
                     } else {
                         // Target queue is empty — clear everything.
                         songs = emptyList()
@@ -708,7 +725,7 @@ object MediaPlaybackManager {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "switchToQueue: failed to switch to queue $queueId", e)
-                // Revert the active queue ID on failure.
+                // Revert the active queue ID on failure — keep using the previous one.
                 activeQueueId = previousQueueId
             }
         }
@@ -735,7 +752,10 @@ object MediaPlaybackManager {
             Log.w(TAG, "flipState() called but songs list is empty")
             return
         }
-        Log.d(TAG, "flipState() called: isPlaying=${mediaController?.isPlaying}, mediaItemCount=${mediaController?.mediaItemCount}")
+        Log.d(
+                TAG,
+                "flipState() called: isPlaying=${mediaController?.isPlaying}, mediaItemCount=${mediaController?.mediaItemCount}"
+        )
         if (mediaController?.isPlaying == true) {
             pause()
         } else {
@@ -926,11 +946,17 @@ object MediaPlaybackManager {
                 val oldCount = controller.mediaItemCount
                 if (oldCount > 0) {
                     controller.replaceMediaItems(0, oldCount, mediaItems)
-                    Log.d(TAG, "replaceMediaItems called for shuffle ${if (enabled) "enable" else "disable"}: oldCount=$oldCount, newCount=${mediaItems.size}")
+                    Log.d(
+                            TAG,
+                            "replaceMediaItems called for shuffle ${if (enabled) "enable" else "disable"}: oldCount=$oldCount, newCount=${mediaItems.size}"
+                    )
                 } else {
                     controller.setMediaItems(mediaItems, newPosition, seekPosition)
                     controller.prepare()
-                    Log.d(TAG, "setMediaItems called for shuffle ${if (enabled) "enable" else "disable"}: newCount=${mediaItems.size}, starting at position $newPosition")
+                    Log.d(
+                            TAG,
+                            "setMediaItems called for shuffle ${if (enabled) "enable" else "disable"}: newCount=${mediaItems.size}, starting at position $newPosition"
+                    )
                 }
                 controller.seekTo(newPosition, seekPosition)
             }
@@ -942,7 +968,10 @@ object MediaPlaybackManager {
             _songListFlow.emit(songs)
             _shuffleStateFlow.emit(enabled)
 
-            Log.d(TAG, "Shuffle ${if (enabled) "enabled" else "disabled"}: queue swapped, continuing at position $newPosition")
+            Log.d(
+                    TAG,
+                    "Shuffle ${if (enabled) "enabled" else "disabled"}: queue swapped, continuing at position $newPosition"
+            )
         }
     }
 
@@ -1015,13 +1044,16 @@ object MediaPlaybackManager {
                     _songSeekPositionFlow.emit(getSeekPosition())
                 }
             }
+
             MediaConstants.PLAYBACK_BUFFERING -> {
                 // Don't stop during buffering, but also don't restart if not running
                 // ExoPlayer is handling buffer state, we shouldn't interfere
             }
+
             MediaConstants.PLAYBACK_STOPPED,
             MediaConstants.PLAYBACK_ENDED,
             MediaConstants.PLAYBACK_ERROR -> stopSeekPositionUpdates()
+
             else -> {
                 // No-op
             }
@@ -1208,7 +1240,10 @@ object MediaPlaybackManager {
                 // It is now safe to lift the guard and process this position normally.
                 isQueueBeingReplaced = false
             } else {
-                Log.d(TAG, "notifyCurrentPosition: discarding stale ExoPlayer callback (position=$position) — queue replacement in progress")
+                Log.d(
+                        TAG,
+                        "notifyCurrentPosition: discarding stale ExoPlayer callback (position=$position) — queue replacement in progress"
+                )
                 return
             }
         }
@@ -1244,7 +1279,10 @@ object MediaPlaybackManager {
                 }
             }
         } else {
-            Log.w(TAG, "notifyCurrentPosition: Invalid song position: $position. Must be between 0 and ${songs.size - 1}.")
+            Log.w(
+                    TAG,
+                    "notifyCurrentPosition: Invalid song position: $position. Must be between 0 and ${songs.size - 1}."
+            )
         }
     }
 
@@ -1285,8 +1323,10 @@ object MediaPlaybackManager {
      */
     fun replaceAndNotifyCurrentAudio(audio: Audio) {
         if (audio.id != getCurrentSongId()) {
-            Log.w(TAG, "replaceCurrentAudio: Audio ID ${audio.id} does not " +
-                    "match currently playing song ID ${getCurrentSongId()}. Cannot replace.")
+            Log.w(
+                    TAG, "replaceCurrentAudio: Audio ID ${audio.id} does not " +
+                    "match currently playing song ID ${getCurrentSongId()}. Cannot replace."
+            )
             return
         }
 
@@ -1296,7 +1336,10 @@ object MediaPlaybackManager {
             songs = newList
             scope.launch { _songListFlow.emit(songs) }
         } else {
-            Log.w(TAG, "replaceCurrentAudio: Invalid current song position: $currentSongPosition. Cannot replace audio.")
+            Log.w(
+                    TAG,
+                    "replaceCurrentAudio: Invalid current song position: $currentSongPosition. Cannot replace audio."
+            )
         }
     }
 

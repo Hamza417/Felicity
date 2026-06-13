@@ -93,9 +93,11 @@ object PlaybackStateManager {
                     repeat = 0,
                     activeQueueId = activeQueueId
             )
-            Log.d(logTag, "Playback state saved: position=$position, seek=$seek, " +
+            Log.d(
+                    logTag, "Playback state saved: position=$position, seek=$seek, " +
                     "queueSize=${songs.size}, shuffle=${ShufflePreferences.isShuffleEnabled()}, " +
-                    "activeQueue=$activeQueueId")
+                    "activeQueue=$activeQueueId"
+            )
             true
         } catch (e: Exception) {
             Log.e(logTag, "Error saving playback state", e)
@@ -207,26 +209,26 @@ object PlaybackStateManager {
      *   <li>Loads the target queue from {@code saved_queue} and writes it into
      *       {@code playback_queue} so the rest of the app sees it.</li>
      *   <li>Updates {@code playback_state.active_queue_id} so the correct slot
-     *       is restored on the next launch.</li>
+     *       is restored on the next cold launch.</li>
      * </ol>
      *
      * <p>The currently playing song is NOT interrupted — the caller
      * ([MediaPlaybackManager]) decides whether to keep playing the current song
      * or switch to the new queue.</p>
      *
-     * @param context       The application context.
-     * @param targetQueueId The slot to switch to (0–4).
+     * @param context        The application context.
+     * @param currentQueueId The queue ID we are switching FROM (captured before
+     *                       the caller updates its in-memory state).
+     * @param targetQueueId  The slot to switch to (0–4).
      * @return The loaded queue as a list of [Audio], or an empty list if the
      *         target slot has no saved songs.
      */
-    suspend fun switchToQueue(context: Context, targetQueueId: Int): List<Audio> {
+    suspend fun switchToQueue(
+            context: Context,
+            currentQueueId: Int,
+            targetQueueId: Int
+    ): List<Audio> {
         val db = AudioDatabase.getInstance(context)
-        val currentQueueId = MediaPlaybackManager.getActiveQueueId()
-
-        if (currentQueueId == targetQueueId) {
-            Log.d(TAG, "switchToQueue: already on queue $targetQueueId, nothing to do")
-            return MediaPlaybackManager.getSongs()
-        }
 
         // Step 1: Archive the currently active queue into its saved slot.
         val currentSongs = MediaPlaybackManager.getSongs()
@@ -263,8 +265,10 @@ object PlaybackStateManager {
         db.playbackQueueDao().clear()
         db.playbackQueueDao().insertAll(entries)
 
-        Log.d(TAG, "switchToQueue: switched from queue $currentQueueId to $targetQueueId " +
-                "(${targetSongs.size} songs loaded)")
+        Log.d(
+                TAG, "switchToQueue: switched from queue $currentQueueId to $targetQueueId " +
+                "(${targetSongs.size} songs loaded)"
+        )
         return targetSongs
     }
 
