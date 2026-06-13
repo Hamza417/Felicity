@@ -24,6 +24,7 @@ import app.simple.felicity.engine.managers.MediaPlaybackManager.playNext
 import app.simple.felicity.engine.managers.MediaPlaybackManager.previous
 import app.simple.felicity.engine.managers.MediaPlaybackManager.removeQueueItemSilently
 import app.simple.felicity.engine.managers.MediaPlaybackManager.setSongs
+import app.simple.felicity.engine.managers.MediaPlaybackManager.switchToQueue
 import app.simple.felicity.engine.managers.MediaPlaybackManager.updatePosition
 import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.repository.constants.MediaConstants
@@ -110,6 +111,14 @@ object MediaPlaybackManager {
     // Used during queue reorders so that moving the playing song's index does not
     // trigger onAudio() in every observer — the song itself hasn't changed.
     private var suppressPositionEmit: Boolean = false
+
+    /**
+     * Tracks which of the five saved queue slots (0–4) is currently active.
+     * Defaults to 0 so existing users start on the original queue.
+     * Updated when the user switches queues via [switchToQueue] or when
+     * state is restored from the database on cold launch.
+     */
+    private var activeQueueId: Int = 0
 
     /**
      * Tracks positions for which a user-initiated [mediaController.seekTo] has been issued
@@ -208,6 +217,7 @@ object MediaPlaybackManager {
     private val _playbackStateFlow = MutableSharedFlow<Int>(replay = 1)
     private val _repeatModeFlow = MutableSharedFlow<Int>(replay = 1)
     private val _shuffleStateFlow = MutableSharedFlow<Boolean>(replay = 1)
+    private val _activeQueueIdFlow = MutableSharedFlow<Int>(replay = 1)
 
     val songListFlow: SharedFlow<List<Audio>> = _songListFlow.asSharedFlow()
     val songPositionFlow: SharedFlow<Int> = _songPositionFlow.asSharedFlow()
@@ -215,6 +225,7 @@ object MediaPlaybackManager {
     val playbackStateFlow: SharedFlow<Int> = _playbackStateFlow.asSharedFlow()
     val repeatModeFlow: SharedFlow<Int> = _repeatModeFlow.asSharedFlow()
     val shuffleStateFlow: SharedFlow<Boolean> = _shuffleStateFlow.asSharedFlow()
+    val activeQueueIdFlow: SharedFlow<Int> = _activeQueueIdFlow.asSharedFlow()
 
     /**
      * Indicates the direction of the most recent song transition.
@@ -242,19 +253,26 @@ object MediaPlaybackManager {
      * but replay=1 on both flows ensures UI will observe the latest of each.
      */
     fun setSongs(audios: List<Audio>, position: Int = 0, startPositionMs: Long = 0L, autoPlay: Boolean = false) {
-        Log.d(TAG, "setSongs called: count=${audios.size}, position=$position, startPositionMs=$startPositionMs, autoPlay=$autoPlay")
+        Log.d(
+                TAG,
+                "setSongs called: count=${audios.size}, position=$position, startPositionMs=$startPositionMs, autoPlay=$autoPlay"
+        )
 
         // simply skip to the song position since list is same and user does not want shuffling here.
         if (ShufflePreferences.isNoReshuffleEnabled()
                 && shuffledQueue.isNotEmpty()
                 && audios.size == originalQueue.size
-                && audios.indices.all { audios[it].id == originalQueue[it].id }) {
+                && audios.indices.all { audios[it].id == originalQueue[it].id }
+        ) {
             val clickedSong = audios.getOrNull(position)
             val shuffledPos = clickedSong?.let { song ->
                 shuffledQueue.indexOfFirst { it.id == song.id }
             } ?: -1
             if (shuffledPos >= 0) {
-                Log.d(TAG, "setSongs: shuffle active and same queue detected — seeking to shuffled position $shuffledPos instead of reshuffling")
+                Log.d(
+                        TAG,
+                        "setSongs: shuffle active and same queue detected — seeking to shuffled position $shuffledPos instead of reshuffling"
+                )
                 updatePosition(shuffledPos, forcePlay = autoPlay)
                 return
             }
@@ -567,7 +585,10 @@ object MediaPlaybackManager {
             Log.w(TAG, "play() called but songs list is empty")
             return
         }
-        Log.d(TAG, "play() called: currentPosition=$currentSongPosition, mediaItemCount=${mediaController?.mediaItemCount}")
+        Log.d(
+                TAG,
+                "play() called: currentPosition=$currentSongPosition, mediaItemCount=${mediaController?.mediaItemCount}"
+        )
         mediaController?.play()
         startSeekPositionUpdates()
     }
@@ -587,6 +608,158 @@ object MediaPlaybackManager {
         return mediaController?.isPlaying == true
     }
 
+    /**
+     * Returns which of the five queue slots (0–4) is currently active.
+     */
+    fun getActiveQueueId(): Int = activeQueueId
+
+    /**
+     * Guards against overlapping queue-switch operations. While a switch is in
+     * progress any subsequent [switchToQueue] call is silently ignored so the
+     * first switch completes cleanly without racing against a second one.
+     */
+    @Volatile
+    private var isSwitchingQueue: Boolean = false
+
+    /**
+     * Switches the active playback queue to the given slot without interrupting the
+     * currently playing song.
+     *
+     * <p>The current queue is first saved to its archive slot, then the target queue
+     * is loaded from the database. If the target queue has songs, they replace the
+     * active queue — but the currently playing song continues uninterrupted. If the
+     * target queue is empty the queue panel simply shows a blank list.</p>
+     *
+     * <p>Concurrent calls are ignored while a switch is already in progress to
+     * prevent state corruption from overlapping database writes.</p>
+     *
+     * @param queueId The queue slot to switch to (0–4).
+     * @param context The application context for database access.
+     */
+    fun switchToQueue(queueId: Int, context: android.content.Context) {
+        if (queueId == activeQueueId) {
+            Log.d(TAG, "switchToQueue: already on queue $queueId, ignoring")
+            return
+        }
+
+        if (queueId !in 0 until PlaybackStateManager.QUEUE_COUNT) {
+            Log.w(TAG, "switchToQueue: invalid queue ID $queueId, ignoring")
+            return
+        }
+
+        if (isSwitchingQueue) {
+            Log.w(TAG, "switchToQueue: switch already in progress, ignoring request for queue $queueId")
+            return
+        }
+
+        Log.d(TAG, "switchToQueue: switching from queue $activeQueueId to queue $queueId")
+
+        isSwitchingQueue = true
+        val previousQueueId = activeQueueId
+
+        scope.launch {
+            try {
+                val targetSongs = withContext(Dispatchers.IO) {
+                    PlaybackStateManager.switchToQueue(context, previousQueueId, queueId)
+                }
+
+                withContext(Dispatchers.Main) {
+                    if (targetSongs.isNotEmpty()) {
+                        val currentSong = getCurrentSong()
+
+                        // Replace the internal queue state with the loaded songs.
+                        // Shuffle is reset — the loaded queue appears in its saved order.
+                        originalQueue = targetSongs
+                        shuffledQueue = emptyList()
+                        songs = targetSongs
+
+                        // Find where the currently playing song lives in the new queue.
+                        // If it doesn't exist there, position 0 is a safe fallback but
+                        // we do NOT seek — the user hasn't tapped anything.
+                        val newPosition = if (currentSong != null) {
+                            targetSongs.indexOfFirst { it.id == currentSong.id }
+                                .takeIf { it >= 0 } ?: 0
+                        } else {
+                            0
+                        }
+
+                        suppressPositionEmit = true
+                        currentSongPosition = newPosition
+                        suppressPositionEmit = false
+
+                        // Surgically replace the ExoPlayer queue without interrupting
+                        // the currently playing song.
+                        val mediaItems = withContext(Dispatchers.Default) {
+                            targetSongs.map { it.toMediaItem() }
+                        }
+
+                        val controller = mediaController
+                        if (controller != null) {
+                            isQueueBeingReplaced = true
+                            pendingSeekPositions.clear()
+                            pendingSeekPositions.add(newPosition)
+
+                            val oldCount = controller.mediaItemCount
+                            if (oldCount > 0) {
+                                controller.replaceMediaItems(0, oldCount, mediaItems)
+                            } else {
+                                controller.setMediaItems(mediaItems, newPosition, getSeekPosition())
+                                controller.prepare()
+                            }
+                        }
+
+                        // Emit the new state so all observers (ViewModel → Fragment) update.
+                        _songListFlow.emit(songs)
+                        _songPositionFlow.emit(newPosition)
+
+                        Log.d(TAG, "switchToQueue: queue $queueId loaded with ${targetSongs.size} songs, " +
+                                "position=$newPosition")
+                    } else {
+                        // Target queue is empty — clear everything so the UI shows blank.
+                        songs = emptyList()
+                        originalQueue = emptyList()
+                        shuffledQueue = emptyList()
+                        currentSongPosition = 0
+                        mediaController?.clearMediaItems()
+                        mediaController?.stop()
+                        stopSeekPositionUpdates()
+                        _songListFlow.emit(emptyList())
+                        _songPositionFlow.emit(0)
+
+                        Log.d(TAG, "switchToQueue: queue $queueId is empty, cleared playback")
+                    }
+
+                    // Mark the switch as fully complete — DB archive, in-memory state,
+                    // and ExoPlayer are all updated. Notify observers of the new queue ID.
+                    activeQueueId = queueId
+                    _activeQueueIdFlow.emit(queueId)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "switchToQueue: failed to switch to queue $queueId", e)
+                activeQueueId = previousQueueId
+            } finally {
+                isSwitchingQueue = false
+            }
+        }
+    }
+
+    /**
+     * Sets the active queue ID directly, used during cold-launch restore when the
+     * database tells us which queue was active last session.
+     *
+     * @param queueId The queue slot ID (0–4) that was last active.
+     */
+    fun setActiveQueueId(queueId: Int) {
+        if (queueId in 0 until PlaybackStateManager.QUEUE_COUNT) {
+            if (activeQueueId != queueId) {
+                activeQueueId = queueId
+                scope.launch {
+                    _activeQueueIdFlow.emit(queueId)
+                }
+            }
+        }
+    }
+
     fun flipState() {
         if (mediaController == null) {
             Log.w(TAG, "flipState() called but mediaController is null")
@@ -596,7 +769,10 @@ object MediaPlaybackManager {
             Log.w(TAG, "flipState() called but songs list is empty")
             return
         }
-        Log.d(TAG, "flipState() called: isPlaying=${mediaController?.isPlaying}, mediaItemCount=${mediaController?.mediaItemCount}")
+        Log.d(
+                TAG,
+                "flipState() called: isPlaying=${mediaController?.isPlaying}, mediaItemCount=${mediaController?.mediaItemCount}"
+        )
         if (mediaController?.isPlaying == true) {
             pause()
         } else {
@@ -787,11 +963,17 @@ object MediaPlaybackManager {
                 val oldCount = controller.mediaItemCount
                 if (oldCount > 0) {
                     controller.replaceMediaItems(0, oldCount, mediaItems)
-                    Log.d(TAG, "replaceMediaItems called for shuffle ${if (enabled) "enable" else "disable"}: oldCount=$oldCount, newCount=${mediaItems.size}")
+                    Log.d(
+                            TAG,
+                            "replaceMediaItems called for shuffle ${if (enabled) "enable" else "disable"}: oldCount=$oldCount, newCount=${mediaItems.size}"
+                    )
                 } else {
                     controller.setMediaItems(mediaItems, newPosition, seekPosition)
                     controller.prepare()
-                    Log.d(TAG, "setMediaItems called for shuffle ${if (enabled) "enable" else "disable"}: newCount=${mediaItems.size}, starting at position $newPosition")
+                    Log.d(
+                            TAG,
+                            "setMediaItems called for shuffle ${if (enabled) "enable" else "disable"}: newCount=${mediaItems.size}, starting at position $newPosition"
+                    )
                 }
                 controller.seekTo(newPosition, seekPosition)
             }
@@ -803,7 +985,10 @@ object MediaPlaybackManager {
             _songListFlow.emit(songs)
             _shuffleStateFlow.emit(enabled)
 
-            Log.d(TAG, "Shuffle ${if (enabled) "enabled" else "disabled"}: queue swapped, continuing at position $newPosition")
+            Log.d(
+                    TAG,
+                    "Shuffle ${if (enabled) "enabled" else "disabled"}: queue swapped, continuing at position $newPosition"
+            )
         }
     }
 
@@ -876,13 +1061,16 @@ object MediaPlaybackManager {
                     _songSeekPositionFlow.emit(getSeekPosition())
                 }
             }
+
             MediaConstants.PLAYBACK_BUFFERING -> {
                 // Don't stop during buffering, but also don't restart if not running
                 // ExoPlayer is handling buffer state, we shouldn't interfere
             }
+
             MediaConstants.PLAYBACK_STOPPED,
             MediaConstants.PLAYBACK_ENDED,
             MediaConstants.PLAYBACK_ERROR -> stopSeekPositionUpdates()
+
             else -> {
                 // No-op
             }
@@ -1069,7 +1257,10 @@ object MediaPlaybackManager {
                 // It is now safe to lift the guard and process this position normally.
                 isQueueBeingReplaced = false
             } else {
-                Log.d(TAG, "notifyCurrentPosition: discarding stale ExoPlayer callback (position=$position) — queue replacement in progress")
+                Log.d(
+                        TAG,
+                        "notifyCurrentPosition: discarding stale ExoPlayer callback (position=$position) — queue replacement in progress"
+                )
                 return
             }
         }
@@ -1105,7 +1296,10 @@ object MediaPlaybackManager {
                 }
             }
         } else {
-            Log.w(TAG, "notifyCurrentPosition: Invalid song position: $position. Must be between 0 and ${songs.size - 1}.")
+            Log.w(
+                    TAG,
+                    "notifyCurrentPosition: Invalid song position: $position. Must be between 0 and ${songs.size - 1}."
+            )
         }
     }
 
@@ -1146,8 +1340,10 @@ object MediaPlaybackManager {
      */
     fun replaceAndNotifyCurrentAudio(audio: Audio) {
         if (audio.id != getCurrentSongId()) {
-            Log.w(TAG, "replaceCurrentAudio: Audio ID ${audio.id} does not " +
-                    "match currently playing song ID ${getCurrentSongId()}. Cannot replace.")
+            Log.w(
+                    TAG, "replaceCurrentAudio: Audio ID ${audio.id} does not " +
+                    "match currently playing song ID ${getCurrentSongId()}. Cannot replace."
+            )
             return
         }
 
@@ -1157,7 +1353,10 @@ object MediaPlaybackManager {
             songs = newList
             scope.launch { _songListFlow.emit(songs) }
         } else {
-            Log.w(TAG, "replaceCurrentAudio: Invalid current song position: $currentSongPosition. Cannot replace audio.")
+            Log.w(
+                    TAG,
+                    "replaceCurrentAudio: Invalid current song position: $currentSongPosition. Cannot replace audio."
+            )
         }
     }
 

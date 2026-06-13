@@ -15,6 +15,7 @@ import app.simple.felicity.repository.database.dao.BookmarkDao
 import app.simple.felicity.repository.database.dao.PlaybackQueueDao
 import app.simple.felicity.repository.database.dao.PlaybackStateDao
 import app.simple.felicity.repository.database.dao.PlaylistDao
+import app.simple.felicity.repository.database.dao.SavedQueueDao
 import app.simple.felicity.repository.database.dao.SongStatDao
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.AudioBookmark
@@ -25,6 +26,7 @@ import app.simple.felicity.repository.models.PlaybackQueueEntry
 import app.simple.felicity.repository.models.PlaybackState
 import app.simple.felicity.repository.models.Playlist
 import app.simple.felicity.repository.models.PlaylistSongCrossRef
+import app.simple.felicity.repository.models.SavedQueueEntry
 
 /**
  * Room database that holds the entire audio library, playback state, song statistics,
@@ -45,6 +47,13 @@ import app.simple.felicity.repository.models.PlaylistSongCrossRef
  *   17 → 18: Created the {@code audio_bookmarks} table for per-track playback bookmarks.
  *   Bookmarks are intentionally not foreign-keyed to {@code audio} so they survive
  *   library deletions and are restored automatically when a track is re-added.
+ *   18 → 19: Added {@code active_queue_id} column to {@code playback_state} so the
+ *   app remembers which of the five queues was active on last launch. Created the
+ *   {@code saved_queue} table to persist all five queues independently — each row
+ *   holds a single queue slot identified by {@code queue_id} (0–4), {@code queue_pos},
+ *   and the {@code audio_hash} of the track at that position. The active queue is
+ *   still mirrored in {@code playback_queue} for backward compatibility with every
+ *   other part of the app that reads the queue from there.
  *
  * @author Hamza417
  */
@@ -58,9 +67,10 @@ import app.simple.felicity.repository.models.PlaylistSongCrossRef
             PlaylistSongCrossRef::class,
             MusicBrainzArtistInfo::class,
             MusicBrainzAlbumInfo::class,
-            AudioBookmark::class
+            AudioBookmark::class,
+            SavedQueueEntry::class
         ],
-        version = 18,
+        version = 19,
         exportSchema = true
 )
 abstract class AudioDatabase : RoomDatabase() {
@@ -68,6 +78,7 @@ abstract class AudioDatabase : RoomDatabase() {
     abstract fun audioDao(): AudioDao?
     abstract fun playbackStateDao(): PlaybackStateDao
     abstract fun playbackQueueDao(): PlaybackQueueDao
+    abstract fun savedQueueDao(): SavedQueueDao
     abstract fun songStatDao(): SongStatDao
     abstract fun playlistDao(): PlaylistDao
     abstract fun artistInfoCacheDao(): ArtistInfoCacheDao
@@ -203,6 +214,44 @@ abstract class AudioDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Adds multi-queue support so the user can maintain up to five independent
+         * playback queues and switch between them instantly.
+         *
+         * <p>Two changes are applied:</p>
+         * <ol>
+         *   <li>A new {@code active_queue_id} column is added to {@code playback_state}
+         *       (defaults to 0) so the app remembers which queue was active on the
+         *       last launch.</li>
+         *   <li>The {@code saved_queue} table is created to persist all five queues.
+         *       Each row holds one queue slot: the queue it belongs to
+         *       ({@code queue_id}), its position in that queue ({@code queue_pos}),
+         *       and the audio track hash at that position ({@code audio_hash}).
+         *       The composite primary key on ({@code queue_id}, {@code queue_pos})
+         *       ensures each queue slot is unique.</li>
+         * </ol>
+         *
+         * <p>Existing users start with queue 0 as the default — the current
+         * {@code playback_queue} contents are treated as queue 0. When the user
+         * first switches to a different queue, the current queue 0 state is
+         * automatically archived into {@code saved_queue} before the switch.</p>
+         */
+        private val MIGRATION_18_19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `playback_state` ADD COLUMN `active_queue_id` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `saved_queue` (
+                        `queue_id` INTEGER NOT NULL,
+                        `queue_pos` INTEGER NOT NULL,
+                        `audio_hash` INTEGER NOT NULL,
+                        PRIMARY KEY(`queue_id`, `queue_pos`)
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_saved_queue_queue_id` ON `saved_queue` (`queue_id`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_saved_queue_audio_hash` ON `saved_queue` (`audio_hash`)")
+            }
+        }
+
         fun getInstance(context: Context): AudioDatabase {
             return instance ?: synchronized(this) {
                 instance ?: buildDatabase(context.applicationContext).also {
@@ -243,7 +292,7 @@ abstract class AudioDatabase : RoomDatabase() {
         private fun buildDatabase(context: Context): AudioDatabase {
             expandCursorWindowSize()
             return Room.databaseBuilder(context, AudioDatabase::class.java, DB_NAME)
-                .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18)
+                .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19)
                 .fallbackToDestructiveMigration(dropAllTables = true)
                 .build()
         }

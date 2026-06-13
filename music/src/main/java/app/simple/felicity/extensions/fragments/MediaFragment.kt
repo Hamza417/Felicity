@@ -314,7 +314,8 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                     index = idx,
                     position = seek,
                     shuffle = shuffleEnabled,
-                    repeat = 0
+                    repeat = 0,
+                    activeQueueId = MediaPlaybackManager.getActiveQueueId()
             )
         }
     }

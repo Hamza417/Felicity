@@ -138,7 +138,11 @@ abstract class SharedScrollViewPopupNonContainer @JvmOverloads constructor(
                 isFocusable = true
                 RippleUtils.setForegroundDrawable(this)
                 setOnClickListener {
-                    onMenuItemClick(item.title)
+                    when (item.title) {
+                        is Int -> onMenuItemClick(item.title)
+                        is String -> onMenuItemClick(menuItems.indexOf(item)) // For string titles, pass the index as identifier
+                        else -> throw IllegalArgumentException("Unsupported title type: ${item.title::class.java}")
+                    }
                     dismiss()
                 }
             }
@@ -175,7 +179,11 @@ abstract class SharedScrollViewPopupNonContainer @JvmOverloads constructor(
             val titleView = TypeFaceTextView(context).apply {
                 setTypeFaceStyle(TypefaceStyle.BOLD.style)
                 setTextColor(ThemeManager.theme.textViewTheme.primaryTextColor)
-                setText(item.title)
+                text = when (item.title) {
+                    is Int -> context.getString(item.title)
+                    is String -> item.title
+                    else -> throw IllegalArgumentException("Unsupported title type: ${item.title::class.java}")
+                }
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
             }
             textColumn.addView(titleView)

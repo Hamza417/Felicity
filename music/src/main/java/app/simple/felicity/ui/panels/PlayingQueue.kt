@@ -13,8 +13,11 @@ import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentPlayingQueueBinding
 import app.simple.felicity.databinding.HeaderPlayingQueueBinding
 import app.simple.felicity.decorations.views.AppHeader
+import app.simple.felicity.decorations.views.PopupMenuItem
+import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.app.TotalTime.Companion.showTotalTime
 import app.simple.felicity.engine.managers.MediaPlaybackManager
+import app.simple.felicity.engine.managers.PlaybackStateManager
 import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.repository.managers.SelectionManager
 import app.simple.felicity.repository.models.Audio
@@ -50,13 +53,26 @@ class PlayingQueue : BasePanelFragment() {
         /** Queue always shows as a single-column list; no grid switching. */
         binding.recyclerView.setupGridLayoutManager(1)
 
+        updateQueueHeaderLabel()
         setupHeaderClicks()
+
+        // Keep the header label in sync whenever the active queue slot changes.
+        MediaPlaybackManager.activeQueueIdFlow.collectWhenStarted { queueId ->
+            updateQueueHeaderLabel()
+        }
 
         playingQueueViewModel.songs.collectWhenStarted { songs ->
             if (songs.isNotEmpty()) {
                 updateQueueList(songs)
                 setDurations()
                 adapterPlayingQueue?.updateCurrentPosition(MediaPlaybackManager.getCurrentSongPosition())
+            } else {
+                // Queue was cleared (e.g. switched to an empty saved queue) —
+                // reset the adapter so the list reflects the empty state.
+                adapterPlayingQueue = null
+                binding.recyclerView.adapter = null
+                headerBinding.count.text = getString(R.string.x_songs, 0)
+                headerBinding.hours.text = 0L.toDynamicTimeString()
             }
         }
     }
@@ -68,7 +84,42 @@ class PlayingQueue : BasePanelFragment() {
     }
 
     private fun setupHeaderClicks() {
-        // Reserved for future header actions
+        headerBinding.currentQueue.setOnClickListener { anchorView ->
+            hideMiniPlayer()
+
+            val activeQueueId = MediaPlaybackManager.getActiveQueueId()
+            val labels = mutableListOf<String>().apply {
+                for (i in PlaybackStateManager.QUEUE_LABELS.indices) {
+                    add(getString(R.string.current_queue, i + 1))
+                }
+            }
+
+            SharedScrollViewPopup(
+                    container = requireContainerView(),
+                    anchorView = anchorView,
+                    menuItems = labels.map { label -> PopupMenuItem(title = label) },
+                    onMenuItemClick = { clickedIndex ->
+                        if (clickedIndex != activeQueueId) {
+                            MediaPlaybackManager.switchToQueue(clickedIndex, requireContext())
+                            // The header label updates automatically via
+                            // activeQueueIdFlow, and the song list via
+                            // songListFlow — both observed above.
+                        }
+                    },
+                    onDismiss = {
+                        showMiniPlayer()
+                    },
+            ).show()
+        }
+    }
+
+    /**
+     * Updates the header label to show the name of the currently active queue.
+     */
+    private fun updateQueueHeaderLabel() {
+        val activeId = MediaPlaybackManager.getActiveQueueId()
+        val label = getString(R.string.current_queue, activeId + 1)
+        headerBinding.currentQueue.text = label
     }
 
     private fun updateQueueList(songs: List<Audio>) {
@@ -130,7 +181,8 @@ class PlayingQueue : BasePanelFragment() {
                                 currentPosition,
                                 binding.appHeader.height
                                         + resources.getDimensionPixelSize(R.dimen.padding_8)
-                                        + binding.recyclerView.paddingTop)
+                                        + binding.recyclerView.paddingTop
+                        )
                         binding.recyclerView.scheduleLayoutAnimation()
                     }
                 }

@@ -274,12 +274,16 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
                         // shuffled (or not) from the very moment it is handed to ExoPlayer.
                         ShufflePreferences.setShuffleEnabled(playbackState.shuffle)
 
+                        // Restore which queue slot was active so subsequent saves go to the
+                        // correct slot and the queue-switcher popup shows the right label.
+                        MediaPlaybackManager.setActiveQueueId(playbackState.activeQueueId)
+
                         MediaPlaybackManager.setSongs(
                                 audios = lastSongs,
                                 position = restoredIndex,
                                 startPositionMs = playbackState.position.coerceAtLeast(0L),
                         )
-                        Log.d(TAG, "Playback state restored successfully (shuffle=${playbackState.shuffle})")
+                        Log.d(TAG, "Playback state restored successfully (shuffle=${playbackState.shuffle}, queue=${playbackState.activeQueueId})")
                         onStateReady()
                     }
                 } else {

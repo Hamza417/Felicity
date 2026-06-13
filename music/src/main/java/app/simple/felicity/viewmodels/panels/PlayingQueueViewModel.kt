@@ -23,9 +23,13 @@ class PlayingQueueViewModel @Inject constructor(
     private val _currentPosition = MutableStateFlow(0)
     val currentPosition: StateFlow<Int> = _currentPosition.asStateFlow()
 
+    private val _activeQueueId = MutableStateFlow(MediaPlaybackManager.getActiveQueueId())
+    val activeQueueId: StateFlow<Int> = _activeQueueId.asStateFlow()
+
     init {
         observeQueue()
         observePosition()
+        observeActiveQueueId()
     }
 
     private fun observeQueue() {
@@ -42,6 +46,15 @@ class PlayingQueueViewModel @Inject constructor(
             MediaPlaybackManager.songPositionFlow.collect { position ->
                 Log.d(TAG, "Queue position updated: $position")
                 _currentPosition.value = position
+            }
+        }
+    }
+
+    private fun observeActiveQueueId() {
+        viewModelScope.launch {
+            MediaPlaybackManager.activeQueueIdFlow.collect { queueId ->
+                Log.d(TAG, "Active queue changed: $queueId")
+                _activeQueueId.value = queueId
             }
         }
     }
