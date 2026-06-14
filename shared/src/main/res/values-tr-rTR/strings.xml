@@ -417,8 +417,6 @@
     <string name="done">Bitti</string>
     <string name="manage_music_folders">Müzik Klasörlerini Yönet</string>
     <string name="manage_music_folders_desc">Kitaplık indekslemesi için yerel dizinleri yönetin.</string>
-    <string name="immersive_mode">Sürükleyici Mod</string>
-    <string name="immersive_mode_summary">Bazı görsel ağırlıklı ekranlar aktifken uygulamayı tam ekranda kullanın.</string>
     <!-- Dashboard section titles and chips -->
     <string name="top_artists">En İyi Sanatçılar</string>
     <string name="top_albums">En İyi Albümler</string>

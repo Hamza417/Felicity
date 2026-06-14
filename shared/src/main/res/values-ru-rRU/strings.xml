@@ -415,10 +415,6 @@
     <string name="clear_image_cache">Очистить кэш изображений</string>
     <string name="clear_image_cache_summary">Очистить весь кэш изображений. Кэш будет воссоздан. Используйте, если видите неверные обложки.</string>
     <string name="done">Готово</string>
-    <string name="manage_music_folders">Управление музыкальными папками</string>
-    <string name="manage_music_folders_desc">Управление локальными папками для индексации медиатеки.</string>
-    <string name="immersive_mode">Иммерсивный режим</string>
-    <string name="immersive_mode_summary">Использовать приложение на весь экран на отдельных визуально насыщенных экранах.</string>
     <!-- Dashboard section titles and chips -->
     <string name="top_artists">Топ исполнителей</string>
     <string name="top_albums">Топ альбомов</string>

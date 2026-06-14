@@ -417,8 +417,6 @@
     <string name="done">Fatto</string>
     <string name="manage_music_folders">Gestisci cartelle musicali</string>
     <string name="manage_music_folders_desc">Gestisci le directory locali per l\'indicizzazione della libreria.</string>
-    <string name="immersive_mode">Modalità immersiva</string>
-    <string name="immersive_mode_summary">Usa l\'app a schermo intero quando sono attive alcune schermate con molta grafica.</string>
     <!-- Dashboard section titles and chips -->
     <string name="top_artists">Artisti principali</string>
     <string name="top_albums">Album principali</string>

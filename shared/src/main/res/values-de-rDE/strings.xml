@@ -417,8 +417,6 @@
     <string name="done">Fertig</string>
     <string name="manage_music_folders">Musikordner verwalten</string>
     <string name="manage_music_folders_desc">Verwalte lokale Verzeichnisse für die Bibliotheksindexierung.</string>
-    <string name="immersive_mode">Immersiver Modus</string>
-    <string name="immersive_mode_summary">Nutze die App im Vollbildmodus, wenn visuell aufwendige Bildschirme aktiv sind.</string>
     <!-- Dashboard section titles and chips -->
     <string name="top_artists">Top-Künstler</string>
     <string name="top_albums">Top-Alben</string>

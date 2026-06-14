@@ -417,8 +417,6 @@
     <string name="done">完成</string>
     <string name="manage_music_folders">管理音乐文件夹</string>
     <string name="manage_music_folders_desc">管理用于媒体库索引的本地目录。</string>
-    <string name="immersive_mode">沉浸模式</string>
-    <string name="immersive_mode_summary">当某些侧重视觉效果的屏幕处于活动状态时，全屏使用应用。</string>
     <!-- Dashboard section titles and chips -->
     <string name="top_artists">热门歌手</string>
     <string name="top_albums">热门专辑</string>

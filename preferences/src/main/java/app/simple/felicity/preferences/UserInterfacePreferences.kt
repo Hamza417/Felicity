@@ -19,7 +19,6 @@ object UserInterfacePreferences {
     const val MARGIN_AROUND_MINIPLAYER = "margin_around_miniplayer"
     const val HOME_INTERFACE = "home_interface_"
     const val PLAYER_INTERFACE = "player_interface_"
-    const val IMMERSIVE_MODE = "immersive_mode"
 
     private const val VOLUME_CONTROLS = "volume_controls"
 
@@ -82,18 +81,6 @@ object UserInterfacePreferences {
         getSharedPreferences()
             .edit {
                 putInt(PLAYER_INTERFACE, value)
-            }
-    }
-
-    fun isImmersiveMode(): Boolean {
-        return getSharedPreferences()
-            .getBoolean(IMMERSIVE_MODE, false)
-    }
-
-    fun setImmersiveMode(enabled: Boolean) {
-        getSharedPreferences()
-            .edit {
-                putBoolean(IMMERSIVE_MODE, enabled)
             }
     }
 
