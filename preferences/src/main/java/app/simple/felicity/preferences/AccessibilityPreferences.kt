@@ -1,7 +1,6 @@
 package app.simple.felicity.preferences
 
 import androidx.core.content.edit
-import app.simple.felicity.manager.SharedPreferences
 import app.simple.felicity.manager.SharedPreferences.getSharedPreferences
 import app.simple.felicity.shared.constants.Colors
 
@@ -34,17 +33,17 @@ object AccessibilityPreferences {
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun setHighlightStroke(boolean: Boolean) {
-        SharedPreferences.getSharedPreferences().edit { putBoolean(IS_HIGHLIGHT_STROKE, boolean) }
+        getSharedPreferences().edit { putBoolean(IS_HIGHLIGHT_STROKE, boolean) }
     }
 
     fun isHighlightStroke(): Boolean {
-        return SharedPreferences.getSharedPreferences().getBoolean(IS_HIGHLIGHT_STROKE, false)
+        return getSharedPreferences().getBoolean(IS_HIGHLIGHT_STROKE, false)
     }
 
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun setDivider(boolean: Boolean) {
-        SharedPreferences.getSharedPreferences().edit().putBoolean(IS_DIVIDER_ENABLED, boolean).apply()
+        getSharedPreferences().edit { putBoolean(IS_DIVIDER_ENABLED, boolean) }
     }
 
     fun isDividerEnabled(): Boolean {
@@ -54,41 +53,41 @@ object AccessibilityPreferences {
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun setReduceAnimations(boolean: Boolean) {
-        SharedPreferences.getSharedPreferences().edit().putBoolean(REDUCE_ANIMATIONS, boolean).apply()
+        getSharedPreferences().edit { putBoolean(REDUCE_ANIMATIONS, boolean) }
     }
 
     fun isAnimationReduced(): Boolean {
-        return SharedPreferences.getSharedPreferences().getBoolean(REDUCE_ANIMATIONS, false)
+        return getSharedPreferences().getBoolean(REDUCE_ANIMATIONS, false)
     }
 
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun setAppElementsContext(value: Boolean) {
-        SharedPreferences.getSharedPreferences().edit().putBoolean(BOTTOM_MENU_CONTEXT, value).apply()
+        getSharedPreferences().edit { putBoolean(BOTTOM_MENU_CONTEXT, value) }
     }
 
     fun isAppElementsContext(): Boolean {
-        return SharedPreferences.getSharedPreferences().getBoolean(BOTTOM_MENU_CONTEXT, true)
+        return getSharedPreferences().getBoolean(BOTTOM_MENU_CONTEXT, true)
     }
 
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun setColorfulIcons(boolean: Boolean) {
-        SharedPreferences.getSharedPreferences().edit().putBoolean(IS_COLORFUL_ICONS, boolean).apply()
+        getSharedPreferences().edit { putBoolean(IS_COLORFUL_ICONS, boolean) }
     }
 
     fun isColorfulIcons(): Boolean {
-        return SharedPreferences.getSharedPreferences().getBoolean(IS_COLORFUL_ICONS, false)
+        return getSharedPreferences().getBoolean(IS_COLORFUL_ICONS, false)
     }
 
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun setColorfulIconsPalette(palette: Int) {
-        SharedPreferences.getSharedPreferences().edit().putInt(COLORFUL_ICONS_PALETTE, palette).apply()
+        getSharedPreferences().edit { putInt(COLORFUL_ICONS_PALETTE, palette) }
     }
 
     fun getColorfulIconsPalette(): Int {
-        return SharedPreferences.getSharedPreferences().getInt(COLORFUL_ICONS_PALETTE, Colors.PASTEL)
+        return getSharedPreferences().getInt(COLORFUL_ICONS_PALETTE, Colors.PASTEL)
     }
 
     // ---------------------------------------------------------------------------------------------------------- //
