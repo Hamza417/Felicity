@@ -33,6 +33,16 @@ class UsbDacDriver private constructor(private val context: Context) {
     private var activeDevice: UsbDevice? = null
 
     /**
+     * These three fields remember the last format we successfully programmed on
+     * the DAC. When [negotiateFormat] is called with the same values we skip the
+     * full stop/reprogram/restart cycle, which prevents the ring buffer from
+     * being unnecessarily wiped while audio is playing.
+     */
+    private var lastNegotiatedSampleRate: Int = 0
+    private var lastNegotiatedBitDepth: Int = 0
+    private var lastNegotiatedChannels: Int = 0
+
+    /**
      * Receives the result of [UsbManager.requestPermission]. Android delivers this
      * as a broadcast with a boolean extra telling us whether the user said yes or no.
      */
@@ -84,6 +94,7 @@ class UsbDacDriver private constructor(private val context: Context) {
         UsbDacManager.notifyDetached()
         nativeStopStream()
         releaseConnection()
+        resetNegotiatedFormat()
         Log.d(TAG, "UsbDacDriver detached")
     }
 
@@ -122,6 +133,7 @@ class UsbDacDriver private constructor(private val context: Context) {
             nativeStopStream()
             nativeReleaseUsb()
             releaseConnection()
+            resetNegotiatedFormat()
         }
     }
 
@@ -179,6 +191,13 @@ class UsbDacDriver private constructor(private val context: Context) {
         activeDevice = null
     }
 
+    /** Resets the cached negotiated format so the next [negotiateFormat] call always re-programs the DAC. */
+    private fun resetNegotiatedFormat() {
+        lastNegotiatedSampleRate = 0
+        lastNegotiatedBitDepth = 0
+        lastNegotiatedChannels = 0
+    }
+
     /**
      * Re-runs format negotiation on the currently open DAC with the given parameters,
      * then restarts the isochronous stream in the new format.
@@ -186,15 +205,33 @@ class UsbDacDriver private constructor(private val context: Context) {
      * if no device is connected. Useful when the user changes the DSP output sample
      * rate or bit depth in the app settings.
      *
+     * If the format is unchanged since the last successful negotiation, this call
+     * is a no-op and returns `false` — no stop/restart happens and the stream keeps
+     * running uninterrupted.
+     *
      * @param sampleRate Target sample rate in Hz (e.g. 48000, 96000).
      * @param bitDepth   Desired bit depth (e.g. 16, 24, 32).
      * @param channels   Number of output channels.
+     * @return `true` when the DAC was re-programmed and a [startStream] call is now
+     *         needed; `false` when the format was already in place and no restart is required.
      */
-    fun negotiateFormat(sampleRate: Int, bitDepth: Int, channels: Int) {
+    fun negotiateFormat(sampleRate: Int, bitDepth: Int, channels: Int): Boolean {
         if (connection == null) {
             Log.d(TAG, "negotiateFormat skipped — no DAC connected")
-            return
+            return false
         }
+
+        // Skip the full stop/reprogram cycle when nothing actually changed.
+        // This is the common case when ExoPlayer calls configure() between buffers
+        // with the same format — without this guard, every configure call would wipe
+        // the ring buffer and restart the stream, causing persistent underruns.
+        if (sampleRate == lastNegotiatedSampleRate &&
+                bitDepth == lastNegotiatedBitDepth &&
+                channels == lastNegotiatedChannels) {
+            Log.d(TAG, "Format unchanged ($sampleRate Hz / ${bitDepth}-bit / $channels ch) — skipping re-negotiation")
+            return false
+        }
+
         Log.i(TAG, "Negotiating format: $sampleRate Hz / ${bitDepth}-bit / $channels ch")
 
         // Stop the current stream before changing the interface alt-setting.
@@ -204,9 +241,40 @@ class UsbDacDriver private constructor(private val context: Context) {
 
         val ok = nativeNegotiateFormat(sampleRate, bitDepth, channels)
         if (ok) {
+            lastNegotiatedSampleRate = sampleRate
+            lastNegotiatedBitDepth = bitDepth
+            lastNegotiatedChannels = channels
             Log.i(TAG, "Format negotiation succeeded — call startStream() to begin playback")
         } else {
             Log.w(TAG, "Format negotiation failed — DAC may use a fallback format")
+        }
+
+        // Return true regardless of whether nativeNegotiateFormat succeeded — the
+        // stream was stopped so the caller needs to restart it either way.
+        return true
+    }
+
+    /**
+     * Returns true when the isochronous USB stream is currently live and pushing audio.
+     * Used by the audio sink to skip a redundant [startStream] call after a simple
+     * pause/resume where the stream was intentionally kept alive.
+     */
+    fun isStreamRunning(): Boolean {
+        return connection != null && nativeIsStreamRunning()
+    }
+
+    /**
+     * Discards all pending audio samples from the internal ring buffer without
+     * stopping or restarting the isochronous USB stream.
+     *
+     * Call this during seeks and track transitions instead of a full stop/restart
+     * cycle. In-flight USB transfers will briefly output zeros while the DSP thread
+     * refills the buffer, which is far less disruptive than the audible gap caused
+     * by tearing down and rebuilding the whole USB pipeline.
+     */
+    fun flushRingBuffer() {
+        if (connection != null) {
+            nativeFlushRingBuffer()
         }
     }
 
@@ -278,8 +346,20 @@ class UsbDacDriver private constructor(private val context: Context) {
      */
     external fun nativePushPcm(samples: FloatArray, offset: Int, count: Int): Int
 
+    /**
+     * Discards pending samples from the ring buffer without touching the
+     * isochronous stream. Safe to call from any thread while the stream is running.
+     */
+    private external fun nativeFlushRingBuffer()
+
     /** Tells the native layer to stop the stream, release libusb, and exit. */
     private external fun nativeReleaseUsb()
+
+    /**
+     * Returns true when the native isochronous stream is currently running.
+     * Fast — just reads an atomic flag, no USB I/O.
+     */
+    private external fun nativeIsStreamRunning(): Boolean
 
     companion object {
         private const val TAG = "UsbDacDriver"

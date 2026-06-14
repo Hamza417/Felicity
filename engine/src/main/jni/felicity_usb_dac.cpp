@@ -31,6 +31,14 @@ static UsbIsoStream *g_iso_stream = nullptr;
 static int g_active_alt_idx = -1;
 
 /**
+ * Sample rate and source channel count from the most recent successful call to
+ * nativeNegotiateFormat(). nativeStartStream() passes these to UsbIsoStream::start()
+ * so the packet-size accumulator and the mono→stereo upmix path use the right values.
+ */
+static uint32_t g_active_sample_rate = 48000u;
+static int g_src_channels = 2;
+
+/**
  * Attempts to detach a kernel driver from the given interface, if one is attached.
  * On Android, the kernel sometimes binds a dummy driver to USB audio endpoints; we
  * must evict it before libusb can claim the interface for user-space use.
@@ -67,7 +75,8 @@ static bool detach_kernel_driver_if_needed(libusb_device_handle *handle, int ifa
     return false;
 }
 
-extern "C" {
+extern "C"
+{
 
 JNIEXPORT jboolean JNICALL
 Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeInitUsb(
@@ -191,13 +200,22 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeNegotiateFormat(
     req.bitDepth = static_cast<uint8_t>(bitDepth);
     req.channels = static_cast<uint8_t>(channels);
 
-    const int chosenIdx = uac_negotiate_format(g_usb_handle, &g_device_info, req);
+    // Let the negotiator tell us what rate the DAC actually locked onto.
+    // This may differ from req.sampleRate if the device silently fell back
+    // to a rate it supports better — using the confirmed rate prevents the
+    // packet-size accumulator from feeding the DAC at the wrong speed.
+    uint32_t confirmedRate = req.sampleRate;
+    const int chosenIdx = uac_negotiate_format(g_usb_handle, &g_device_info, req, &confirmedRate);
     if (chosenIdx >= 0) {
         // Remember which alt-setting is now live so nativeStartStream() can open the
         // isochronous pipeline with the exact matching endpoint and packet parameters.
         g_active_alt_idx = chosenIdx;
+        // Use the rate the device actually confirmed, not what we requested, so the
+        // per-packet frame count and the DAC's internal clock stay in lockstep.
+        g_active_sample_rate = confirmedRate;
+        g_src_channels = static_cast<int>(req.channels);
         // Reset to unity gain so any previous software attenuation is cleared.
-        uac_set_volume(g_usb_handle, &g_device_info, /*0 dB in Q8.8 =*/ 0x0000);
+        uac_set_volume(g_usb_handle, &g_device_info, /*0 dB in Q8.8 =*/0x0000);
     }
     return chosenIdx >= 0 ? JNI_TRUE : JNI_FALSE;
 }
@@ -241,11 +259,15 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeReleaseUsb(
 
     g_device_info_valid = false;
     g_active_alt_idx = -1;
+    g_active_sample_rate = 48000u;
+    g_src_channels = 2;
 }
 
 JNIEXPORT jboolean JNICALL
 Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeStartStream(
         JNIEnv * /*env*/, jobject /*thiz*/) {
+
+    LOGI("nativeStartStream called");
 
     if (g_usb_handle == nullptr) {
         LOGE("nativeStartStream called but no USB device is open");
@@ -283,8 +305,9 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeStartStream(
             g_usb_handle,
             chosen,
             chosen.bSubslotSize,
-            chosen.bBitResolution
-    );
+            chosen.bBitResolution,
+            g_active_sample_rate,
+            g_src_channels);
 
     if (!ok) {
         delete g_iso_stream;
@@ -301,7 +324,8 @@ JNIEXPORT void JNICALL
 Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeStopStream(
         JNIEnv * /*env*/, jobject /*thiz*/) {
 
-    if (g_iso_stream == nullptr) return;
+    if (g_iso_stream == nullptr)
+        return;
 
     LOGI("nativeStopStream — halting isochronous pipeline");
     g_iso_stream->stop();
@@ -315,10 +339,11 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativePushPcm(
         JNIEnv *env, jobject /*thiz*/,
         jfloatArray samples, jint offset, jint count) {
 
-    LOGI("nativePushPcm — count=%d offset=%d", count, offset);
-
     if (g_iso_stream == nullptr || !g_iso_stream->isRunning()) {
-        LOGE("nativePushPcm called but ISO stream is not running");
+        // This can happen briefly during start-up or after a format change
+        // before the stream is re-created. The caller will retry on the next
+        // buffer cycle so a single dropped frame is inaudible.
+        LOGD("nativePushPcm skipped — ISO stream not running");
         return 0;
     }
 
@@ -333,9 +358,28 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativePushPcm(
 
     const int written = g_iso_stream->pushPcm(ptr + offset, count);
     env->ReleaseFloatArrayElements(samples, ptr, JNI_ABORT);
-    LOGI("nativePushPcm — wrote %d samples to ISO stream", written);
     return written;
 }
 
-} // extern "C"
+JNIEXPORT void JNICALL
+Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeFlushRingBuffer(
+        JNIEnv * /*env*/, jobject /*thiz*/) {
 
+    if (g_iso_stream != nullptr && g_iso_stream->isRunning()) {
+        g_iso_stream->flushRingBuffer();
+        LOGD("USB ring buffer flushed — stream stays alive");
+    }
+}
+
+/**
+ * Cheap status check: returns true when the isochronous pipeline is live.
+ * The audio sink uses this to skip a redundant startStream() call after a
+ * pause/resume where the stream was intentionally kept alive.
+ */
+JNIEXPORT jboolean JNICALL
+Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeIsStreamRunning(
+        JNIEnv * /*env*/, jobject /*thiz*/) {
+    return (g_iso_stream != nullptr && g_iso_stream->isRunning()) ? JNI_TRUE : JNI_FALSE;
+}
+
+} // extern "C"
