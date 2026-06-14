@@ -213,6 +213,15 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     /** Coroutine job that pushes a fresh [AudioPipelineSnapshot] every 3 seconds while playing. */
     private var snapshotPulseJob: Job? = null
 
+    /**
+     * Debounce job that coalesces rapid-fire [buildAndPushSnapshot] calls into a single
+     * trailing push. During a song transition, up to 6 callbacks can fire within ~200ms
+     * (decoder init, format change, item transition, state ready, playing changed, pulse).
+     * Rather than pushing 6 duplicate snapshots, we cancel any pending push and schedule
+     * one new push after a short cooldown — only the last call in the burst wins.
+     */
+    private var snapshotDebounceJob: Job? = null
+
     override fun onCreate() {
         super.onCreate()
         initRegisterSharedPreferenceChangeListener(applicationContext)
@@ -847,8 +856,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             if (isPlaying) {
                 MediaPlaybackManager.notifyPlaybackState(MediaConstants.PLAYBACK_PLAYING)
                 startPeriodicStateSaving()
-                startSnapshotPulse()
-                buildAndPushSnapshot()
+                startSnapshotPulse() // internally calls buildAndPushSnapshot() immediately, no need to call it again here
                 broadcastWidgetUpdate()
             } else if (player.playbackState == Player.STATE_READY) {
                 MediaPlaybackManager.notifyPlaybackState(MediaConstants.PLAYBACK_PAUSED)
@@ -1484,11 +1492,13 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     }
 
     /**
-     * Cancels the running snapshot pulse coroutine, if any.
+     * Cancels the running snapshot pulse and any pending debounced push.
      */
     private fun stopSnapshotPulse() {
         snapshotPulseJob?.cancel()
         snapshotPulseJob = null
+        snapshotDebounceJob?.cancel()
+        snapshotDebounceJob = null
         Log.d(TAG, "Stopped snapshot pulse")
     }
 
@@ -1504,8 +1514,26 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
      * Must be called from the main thread because several [ExoPlayer] API calls
      * (e.g., [ExoPlayer.audioFormat]) are not thread-safe. All call sites guarantee
      * this by using [Dispatchers.Main] or being inside main-thread callbacks.
+     *
+     * This method is debounced: rapid successive calls (e.g. during a song transition when
+     * the analytics listener, player listener, and snapshot pulse all fire within ~200ms)
+     * are coalesced into a single trailing push. Only the last call in a burst wins.
      */
     private fun buildAndPushSnapshot() {
+        if (!::player.isInitialized) return
+        snapshotDebounceJob?.cancel()
+        snapshotDebounceJob = serviceScope.launch(Dispatchers.Main) {
+            delay(SNAPSHOT_DEBOUNCE_MS)
+            buildAndPushSnapshotNow()
+        }
+    }
+
+    /**
+     * Performs the actual snapshot assembly and push without any debounce guard.
+     * All callers must route through [buildAndPushSnapshot] for debounce protection;
+     * this function exists only as the target of the debounced coroutine.
+     */
+    private fun buildAndPushSnapshotNow() {
         if (!::player.isInitialized) return
 
         val inputFormat = currentAudioInputFormat
@@ -2121,6 +2149,15 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
          * the skip counter in the song statistics database.
          */
         private const val SKIP_THRESHOLD = 0.30
+
+        /**
+         * Cooldown window in milliseconds that coalesces rapid-fire [buildAndPushSnapshot]
+         * calls during a song transition. Up to 6 callbacks (decoder init, format change,
+         * item transition, state ready, playing changed, snapshot pulse) can fire within
+         * ~200ms of each other. This debounce ensures only the last call in a burst
+         * produces a snapshot, reducing duplicate pipeline updates from 6 to 1.
+         */
+        private const val SNAPSHOT_DEBOUNCE_MS = 200L
 
         /** Custom session command sent when the user taps the repeat button in the notification. */
         const val COMMAND_TOGGLE_REPEAT = "app.simple.felicity.TOGGLE_REPEAT"
