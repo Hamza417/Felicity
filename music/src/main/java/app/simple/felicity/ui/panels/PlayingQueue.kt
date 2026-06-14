@@ -16,6 +16,7 @@ import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.decorations.views.PopupMenuItem
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.app.TotalTime.Companion.showTotalTime
+import app.simple.felicity.dialogs.playlists.AddMultipleToPlaylistDialog.Companion.showAddMultipleToPlaylistDialog
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.engine.managers.PlaybackStateManager
 import app.simple.felicity.extensions.fragments.BasePanelFragment
@@ -110,6 +111,10 @@ class PlayingQueue : BasePanelFragment() {
                         showMiniPlayer()
                     },
             ).show()
+        }
+
+        headerBinding.createPlaylist.setOnClickListener {
+            childFragmentManager.showAddMultipleToPlaylistDialog(MediaPlaybackManager.getSongs())
         }
     }
 
