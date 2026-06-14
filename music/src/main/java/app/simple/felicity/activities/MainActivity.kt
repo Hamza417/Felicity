@@ -533,13 +533,21 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         return when (keyCode) {
             KeyEvent.KEYCODE_VOLUME_UP -> {
-                openVolumeKnobDialog()
-                true
+                if (UserInterfacePreferences.isVolumeControls()) {
+                    openVolumeKnobDialog()
+                    true
+                } else {
+                    super.onKeyDown(keyCode, event)
+                }
             }
 
             KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                openVolumeKnobDialog()
-                true
+                if (UserInterfacePreferences.isVolumeControls()) {
+                    openVolumeKnobDialog()
+                    true
+                } else {
+                    super.onKeyDown(keyCode, event)
+                }
             }
 
             else -> {

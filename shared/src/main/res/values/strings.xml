@@ -490,4 +490,6 @@
     <string name="carousel_ui_desc">Simple player style with carousel type album arts.</string>
     <string name="caps">Caps</string>
     <string name="current_queue">Queue %1$d</string>
+    <string name="volume_controls">Volume Controls</string>
+    <string name="volume_controls_summary">Show volume controls when volume buttons are pressed.</string>
 </resources>

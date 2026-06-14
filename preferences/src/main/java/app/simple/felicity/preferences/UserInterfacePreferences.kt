@@ -21,6 +21,8 @@ object UserInterfacePreferences {
     const val PLAYER_INTERFACE = "player_interface_"
     const val IMMERSIVE_MODE = "immersive_mode"
 
+    private const val VOLUME_CONTROLS = "volume_controls"
+
     const val HOME_INTERFACE_DASHBOARD = 1
     const val HOME_INTERFACE_TILED = 2
     const val HOME_INTERFACE_ARTFLOW = 3
@@ -92,6 +94,18 @@ object UserInterfacePreferences {
         getSharedPreferences()
             .edit {
                 putBoolean(IMMERSIVE_MODE, enabled)
+            }
+    }
+
+    fun isVolumeControls(): Boolean {
+        return getSharedPreferences()
+            .getBoolean(VOLUME_CONTROLS, true)
+    }
+
+    fun setVolumeControls(enabled: Boolean) {
+        getSharedPreferences()
+            .edit {
+                putBoolean(VOLUME_CONTROLS, enabled)
             }
     }
 

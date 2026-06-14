@@ -396,6 +396,19 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val volumeControls = Preference(
+                title = R.string.volume_controls,
+                summary = R.string.volume_controls_summary,
+                icon = R.drawable.ic_volume_up,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    UserInterfacePreferences.setVolumeControls((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    UserInterfacePreferences.isVolumeControls()
+                }
+        )
+
         preferences.add(homeHeader)
         preferences.add(panelVisibility)
         preferences.add(homeInterface)
@@ -407,6 +420,7 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(applicationHeader)
         preferences.add(immersiveMode)
         preferences.add(likeButton)
+        preferences.add(volumeControls)
 
         return preferences
     }
