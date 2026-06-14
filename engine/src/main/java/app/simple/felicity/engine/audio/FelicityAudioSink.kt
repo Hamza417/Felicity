@@ -196,8 +196,8 @@ class FelicityAudioSink(
                 Log.i(TAG, "USB DAC attached mid-stream — re-negotiating to " +
                         "$currentSampleRate Hz / ${bitDepth}-bit / $currentChannelCount ch")
                 val driver = UsbDacDriver.getInstance(context)
-                val needsRestart = driver.negotiateFormat(currentSampleRate, bitDepth, currentChannelCount)
-                if (needsRestart && !isPaused) {
+                driver.negotiateFormat(currentSampleRate, bitDepth, currentChannelCount)
+                if (!isPaused) {
                     driver.startStream()
                 }
             }
@@ -267,8 +267,8 @@ class FelicityAudioSink(
             val bitDepth = encodingToBitDepth(currentEncoding)
             Log.i(TAG, "USB DAC active — syncing DAC format to $sr Hz / ${bitDepth}-bit / $ch ch")
             val driver = UsbDacDriver.getInstance(context)
-            val needsRestart = driver.negotiateFormat(sr, bitDepth, ch)
-            if (needsRestart && !isPaused) {
+            driver.negotiateFormat(sr, bitDepth, ch)
+            if (!isPaused) {
                 driver.startStream()
             }
             muteDelegateIfNeeded()
@@ -336,22 +336,12 @@ class FelicityAudioSink(
     /** Starts the delegate and, when AAudio is enabled (and USB DAC is not active), starts the native stream. */
     override fun play() {
         isPaused = false
+        super.play()
         if (UsbDacManager.isActive) {
             muteDelegateIfNeeded()
-            val driver = UsbDacDriver.getInstance(context)
-            /**
-             * Only start the stream if it isn't already running. After a simple pause/resume
-             * the stream keeps running (we removed the stopStream call from pause), so calling
-             * startStream would needlessly tear it down and rebuild it, causing another PLL
-             * re-lock burst and a brief gap in audio.
-             */
-            if (!driver.isStreamRunning()) {
-                driver.startStream()
-            }
-            super.play()
+            UsbDacDriver.getInstance(context).startStream()
             return
         }
-        super.play()
         when (AudioPreferences.getOutputSink()) {
             AudioPreferences.SINK_AAUDIO -> {
                 muteDelegateIfNeeded()
@@ -364,20 +354,13 @@ class FelicityAudioSink(
         }
     }
 
-    /** Pauses the delegate and stops non-USB native streams. */
+    /** Pauses the delegate and stops the native stream. */
     override fun pause() {
         isPaused = true
         super.pause()
         aaudioStream?.stop()
         oboeStream?.stop()
-        /**
-         * For the USB DAC path we intentionally do NOT stop the isochronous stream here.
-         * Tearing down and rebuilding the USB pipeline on every pause/resume forces the
-         * DAC's internal PLL to re-acquire lock each time. During re-acquisition many DACs
-         * produce loud noise or screeching. Instead, we let the ring buffer drain naturally
-         * to silence — the stream keeps sending zeros to the DAC, which holds the PLL lock.
-         * The stream is only ever stopped by format changes or device disconnect.
-         */
+        UsbDacDriver.getInstance(context).stopStream()
     }
 
     /**
@@ -483,38 +466,33 @@ class FelicityAudioSink(
     }
 
     /**
-     * Flushes the delegate and restarts the AAudio/Oboe stream (if active) to clear
-     * in-flight frames on seeks and discontinuities. Also clears [pendingDelegateBuffer]
-     * so the first buffer after the seek is always treated as fresh.
-     *
-     * For the USB DAC path we only discard stale samples from the ring buffer —
-     * the isochronous stream itself keeps running. Stopping and restarting the USB
-     * stream on every flush was the primary cause of persistent underruns: the ring
-     * buffer was wiped clean each time and the USB event thread drained all in-flight
-     * URBs as silence before any new PCM could arrive from the DSP thread.
+     * Flushes the delegate and restarts the AAudio stream (if active) to clear in-flight
+     * frames on seeks and discontinuities. Also clears [pendingDelegateBuffer] so the
+     * first buffer after the seek is always treated as fresh — without this, a buffer
+     * presented just before the seek and never consumed by the delegate would suppress
+     * the first audio frame after the seek from reaching AAudio.
      *
      * When the player is currently paused (e.g. the user changed songs without resuming
-     * playback), the AAudio/Oboe stream is stopped but NOT restarted. Restarting it here
-     * while paused would let the very first decoded frames of the new song slip through
-     * to the hardware before [play] is called, producing a brief audible blip.
+     * playback), the AAudio stream is stopped but NOT restarted. Restarting it here while
+     * paused would let the very first decoded frames of the new song slip through to the
+     * hardware before [play] is called, producing a brief audible blip on every song change.
+     *
+     * USB ring buffer is NOT flushed here because the native isochronous pipeline will
+     * drain the stale bytes as silence before new data arrives — abruptly flushing
+     * mid-transfer is more disruptive than letting it drain.
      */
     override fun flush() {
         super.flush()
         pendingDelegateBuffer = null
         aaudioStream?.stop()
         oboeStream?.stop()
-
-        if (UsbDacManager.isActive) {
-            // Discard stale ring buffer samples so the DAC doesn't play audio from
-            // before the seek. The isochronous URBs stay alive and will briefly output
-            // zeros until the next handleBuffer call pushes fresh PCM.
-            UsbDacDriver.getInstance(context).flushRingBuffer()
-        }
-
+        UsbDacDriver.getInstance(context).stopStream()
         if (!isPaused) {
             aaudioStream?.start()
             oboeStream?.start()
-            // The USB stream is already running and does not need a restart here.
+            if (UsbDacManager.isActive) {
+                UsbDacDriver.getInstance(context).startStream()
+            }
         }
     }
 

@@ -41,11 +41,7 @@ public:
     uint32_t write(const float *src, uint32_t count) {
         const uint32_t w = writeIdx_.load(std::memory_order_relaxed);
         const uint32_t r = readIdx_.load(std::memory_order_acquire);
-
-        // Compute used space correctly even when the write index has wrapped
-        // around 2^32 but the read index has not caught up yet.
-        const uint32_t used = (w >= r) ? (w - r) : (CAPACITY - r + w);
-        const uint32_t free = CAPACITY - used;
+        const uint32_t free = CAPACITY - (w - r);         // wraps correctly for uint32
         const uint32_t n = (count < free) ? count : free;
 
         for (uint32_t i = 0; i < n; i++) {
@@ -65,10 +61,7 @@ public:
     uint32_t read(float *dst, uint32_t count) {
         const uint32_t r = readIdx_.load(std::memory_order_relaxed);
         const uint32_t w = writeIdx_.load(std::memory_order_acquire);
-
-        // Compute available samples correctly even when the write index has
-        // wrapped around 2^32 but the read index is still behind.
-        const uint32_t avail = (w >= r) ? (w - r) : (CAPACITY - r + w);
+        const uint32_t avail = w - r;                   // wraps correctly for uint32
         const uint32_t n = (count < avail) ? count : avail;
 
         for (uint32_t i = 0; i < n; i++) {
@@ -86,9 +79,8 @@ public:
 
     /** Samples currently waiting to be consumed. */
     uint32_t available() const {
-        const uint32_t w = writeIdx_.load(std::memory_order_acquire);
-        const uint32_t r = readIdx_.load(std::memory_order_acquire);
-        return (w >= r) ? (w - r) : (CAPACITY - r + w);
+        return writeIdx_.load(std::memory_order_acquire)
+               - readIdx_.load(std::memory_order_acquire);
     }
 
     /** Free slots that can still accept new samples. */
@@ -109,3 +101,4 @@ private:
     alignas(64) std::atomic<uint32_t> readIdx_;
     alignas(64) float data_[CAPACITY];
 };
+

@@ -82,89 +82,35 @@ void UsbIsoStream::convertAndPack(const float *src, uint8_t *dst, int frames) co
  * Fills [transfer]'s buffer by reading from the ring buffer and converting each
  * packet worth of frames to packed PCM. Any packet that cannot be satisfied from
  * live ring-buffer data is zero-filled (silence) — this is the underrun guard.
- *
- * Packet sizing uses a fractional accumulator so that the host delivers EXACTLY
- * [sampleRate_] frames per second to the DAC. For 44.1 kHz this alternates between
- * 44 and 45 frames per 1 ms packet; for 48 kHz it is always 48. Using [maxPacketSize]
- * directly was sending far too many frames per packet, overflowing the DAC's internal
- * buffer and producing screeching artifacts.
- *
- * The frame count per packet is capped by BOTH the hardware's [maxPacketSize_] AND
- * by the 512-float scratch buffer. Without the second cap a high-channel-count / high-rate
- * device could request more frames than the scratch buffer holds, and the gap between
- * what we write and [pkt.length] would be filled with stale garbage — causing audible
- * zombie-audio loops.
  */
 void UsbIsoStream::fillTransferBuffer(libusb_transfer *transfer) {
     const int bytesPerFrame = subslotSize_ * channels_;
-    if (bytesPerFrame <= 0) return;
-
-    // The scratch buffer holds one packet's worth of interleaved float samples.
-    // Capping here (not later) ensures framesInPkt, actualBytes, and the number
-    // of bytes we actually write are always consistent — no gap, no garbage.
-    const int maxScratchFrames = 512 / channels_;
-
     uint8_t *bufferPtr = transfer->buffer;
 
     for (int p = 0; p < transfer->num_iso_packets; p++) {
         libusb_iso_packet_descriptor &pkt = transfer->iso_packet_desc[p];
-
-        // Accumulator-based frame count: advance by sampleRate_ per ms, take the integer
-        // part as the frame count for this packet, carry the remainder forward.
-        // Example for 44100 Hz: 9 packets get 44 frames, 1 packet gets 45 frames per 10 ms.
-        sampleAccum_ += sampleRate_;
-        const int nominalFrames = static_cast<int>(sampleAccum_ / 1000u);
-        sampleAccum_ %= 1000u;
-
-        // Apply both limits before computing actualBytes so the buffer write and
-        // pkt.length are always equal — zero-padding requirement satisfied.
-        const int maxFromHardware = maxPacketSize_ / bytesPerFrame;
-        const int hardCap = (maxFromHardware < maxScratchFrames) ? maxFromHardware
-                                                                 : maxScratchFrames;
-        const int framesInPkt = (nominalFrames < hardCap) ? nominalFrames : hardCap;
-        const int actualBytes = framesInPkt * bytesPerFrame;
-
-        // Tell libusb exactly how many bytes to send so it doesn't transmit old data.
-        pkt.length = static_cast<unsigned int>(actualBytes);
+        const int packetBytes = static_cast<int>(pkt.length);
+        const int framesInPkt = (bytesPerFrame > 0) ? (packetBytes / bytesPerFrame) : 0;
 
         if (framesInPkt > 0) {
+            // Temporary scratch buffer for the float data. Stack allocation is fine
+            // because PACKETS_PER_URB * framesPerPacket is bounded and small.
             float scratch[512]{};
+            const int clampedFrames = (framesInPkt > 512) ? 512 : framesInPkt;
+            const int samplesNeeded = clampedFrames * channels_;
 
-            // Read source-channel samples from the ring buffer. For a mono track through
-            // a stereo DAC, srcChannels_ == 1 and channels_ == 2 — we read half as many
-            // samples as the DAC expects, then upmix below.
-            // The ring buffer already zero-pads any shortfall, so underruns produce
-            // silence rather than garbage without any extra handling here.
-            const int srcSamplesNeeded = framesInPkt * srcChannels_;
-            const uint32_t got = ringBuffer_.read(scratch, static_cast<uint32_t>(srcSamplesNeeded));
-
-            if (got < static_cast<uint32_t>(srcSamplesNeeded)) {
-                const uint32_t n = underrunCount_.fetch_add(1, std::memory_order_relaxed) + 1;
-                if (n == 1 || n % 500 == 0) {
-                    LOGD("USB underrun: needed %d samples, got %u — padding with silence (count: %u)",
-                         srcSamplesNeeded, got, n);
-                }
-            } else {
-                underrunCount_.store(0, std::memory_order_relaxed);
+            const uint32_t got = ringBuffer_.read(scratch, static_cast<uint32_t>(samplesNeeded));
+            if (got < static_cast<uint32_t>(samplesNeeded)) {
+                LOGD("USB underrun: needed %d samples, got %u — padding with silence",
+                     samplesNeeded, got);
             }
 
-            // Mono-to-stereo upmix: duplicate each mono sample into both L and R channels.
-            // Processing frames from last to first avoids overwriting a source sample before
-            // it has been copied, since the stereo frame at index f writes to scratch[f*2]
-            // and scratch[f*2+1], and the mono source at index f sits at scratch[f].
-            if (srcChannels_ == 1 && channels_ == 2) {
-                for (int f = framesInPkt - 1; f >= 0; --f) {
-                    const float mono = scratch[f];
-                    scratch[f * 2] = mono;
-                    scratch[f * 2 + 1] = mono;
-                }
-            }
-
-            convertAndPack(scratch, bufferPtr, framesInPkt);
+            // Convert float → packed PCM (zeros produce silence on underrun because
+            // UsbRingBuffer::read already zero-filled the scratch buffer).
+            convertAndPack(scratch, bufferPtr, clampedFrames);
         }
 
-        // Advance past only the bytes we actually wrote, not the full maxPacketSize.
-        bufferPtr += actualBytes;
+        bufferPtr += packetBytes;
     }
 }
 
@@ -252,16 +198,8 @@ void UsbIsoStream::onTransferComplete(libusb_transfer *transfer) {
     // Resubmit immediately so the pipeline is always full.
     const int ret = libusb_submit_transfer(transfer);
     if (ret != LIBUSB_SUCCESS) {
-        if (ret == LIBUSB_ERROR_NO_DEVICE) {
-            // The DAC was physically unplugged. Stop accepting new submissions and
-            // let the remaining in-flight URBs drain naturally. The Kotlin layer's
-            // UsbDacReceiver will detect the disconnect and call nativeReleaseUsb.
-            LOGE("USB device no longer present — halting stream");
-            running_.store(false, std::memory_order_release);
-        } else {
-            LOGE("libusb_submit_transfer failed after callback: %s — stream may stall",
-                 libusb_strerror((libusb_error) ret));
-        }
+        LOGE("libusb_submit_transfer failed after callback: %s — stream may stall",
+             libusb_strerror((libusb_error) ret));
         pendingCount_.fetch_sub(1, std::memory_order_release);
     }
 }
@@ -291,11 +229,9 @@ void UsbIsoStream::eventThreadLoop() {
 
     LOGI("USB event thread started");
 
-    // 1 ms poll interval — tight enough to catch URB completions within one USB
-    // microframe boundary and keep the isochronous pipeline fed without burning CPU
-    // in a busy-spin. libusb_handle_events_timeout returns immediately when events
-    // are already pending, so this timeout only matters during quiet periods.
-    struct timeval tv{0, 1000};
+    // 10 ms poll interval — short enough for low-latency audio, long enough
+    // that a tear-down signal is noticed promptly without burning CPU in a spin.
+    struct timeval tv{0, 10000};
 
     while (!eventThreadExit_.load(std::memory_order_acquire)) {
         int ret = libusb_handle_events_timeout(ctx_, &tv);
@@ -315,9 +251,7 @@ bool UsbIsoStream::start(libusb_context *ctx,
                          libusb_device_handle *handle,
                          const UacAltSetting &alt,
                          int subslotSize,
-                         int bitResolution,
-                         uint32_t sampleRate,
-                         int srcChannels) {
+                         int bitResolution) {
     if (alt.endpointAddress == 0 || alt.wMaxPacketSize == 0) {
         LOGE("Cannot start ISO stream — alt-setting has no valid endpoint");
         return false;
@@ -328,13 +262,9 @@ bool UsbIsoStream::start(libusb_context *ctx,
     bitResolution_ = bitResolution;
     maxPacketSize_ = alt.wMaxPacketSize;
     channels_ = (alt.bNrChannels > 0) ? alt.bNrChannels : 2;
-    sampleRate_ = (sampleRate > 0) ? sampleRate : 48000u;
-    srcChannels_ = (srcChannels > 0) ? srcChannels : channels_;
-    sampleAccum_ = 0;  // Reset fractional packet accumulator for clean start
 
-    LOGI("Starting ISO stream: ep=0x%02X maxPkt=%d subslot=%d bits=%d dacCh=%d srcCh=%d rate=%u",
-         alt.endpointAddress, maxPacketSize_, subslotSize_, bitResolution_,
-         channels_, srcChannels_, sampleRate_);
+    LOGI("Starting ISO stream: ep=0x%02X maxPkt=%d subslot=%d bits=%d ch=%d",
+         alt.endpointAddress, maxPacketSize_, subslotSize_, bitResolution_, channels_);
 
     if (!allocateTransfers(handle, alt.endpointAddress, maxPacketSize_)) {
         freeTransfers();
@@ -427,9 +357,5 @@ void UsbIsoStream::stop() {
 
 int UsbIsoStream::pushPcm(const float *samples, int count) {
     return static_cast<int>(ringBuffer_.write(samples, static_cast<uint32_t>(count)));
-}
-
-void UsbIsoStream::flushRingBuffer() {
-    ringBuffer_.flush();
 }
 

@@ -82,16 +82,6 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativePushPcm(
         JNIEnv *env, jobject thiz,
         jfloatArray samples, jint offset, jint count);
 
-/**
- * Discards all pending samples from the ring buffer without stopping the
- * isochronous stream. Use this during seeks and track transitions instead of
- * a full stop/restart cycle — the stream keeps running and new audio arrives
- * from the next handleBuffer call without any gap or underrun burst.
- */
-JNIEXPORT void JNICALL
-Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeFlushRingBuffer(
-        JNIEnv *env, jobject thiz);
-
 #ifdef __cplusplus
 }
 #endif

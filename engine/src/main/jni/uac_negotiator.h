@@ -16,17 +16,11 @@
  * corresponding [UacAltSetting] to the isochronous stream so it uses the exact
  * endpoint address and packet parameters for the negotiated format.
  *
- * @param outConfirmedRate  Receives the sample rate the device actually reported
- *                          back after programming. May differ from [request.sampleRate]
- *                          if the device silently chose a fallback rate. Set to
- *                          [request.sampleRate] when confirmation is unavailable.
- *
  * @author Hamza417
  */
 int uac_negotiate_format(libusb_device_handle *handle,
                          const UacDeviceInfo *info,
-                         const UacFormatRequest &request,
-                         uint32_t *outConfirmedRate);
+                         const UacFormatRequest &request);
 
 /**
  * Attempts to set the volume on the first Feature Unit that reports volume control
