@@ -80,8 +80,12 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeInitUsb(
     if (g_usb_ctx != nullptr) {
         LOGW("Previous libusb context still open — releasing before re-init");
         if (g_usb_handle != nullptr) {
+            // Note: If you dynamically claim multiple interfaces, you should ideally loop
+            // to release them all. For now, this safely drops the connection.
             if (g_claimed_interface >= 0) {
-                libusb_release_interface(g_usb_handle, g_claimed_interface);
+                for (int i = g_claimed_interface; i >= 0; i--) {
+                    libusb_release_interface(g_usb_handle, i);
+                }
                 g_claimed_interface = -1;
             }
             libusb_close(g_usb_handle);
@@ -93,6 +97,7 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeInitUsb(
     g_device_info_valid = false;
     g_active_alt_idx = -1;
 
+    // --- CRITICAL FIX FOR ANDROID SELINUX ---
     // Prevent libusb from scanning the device tree, which is blocked by Android.
     libusb_set_option(nullptr, LIBUSB_OPTION_NO_DEVICE_DISCOVERY);
 
@@ -116,36 +121,45 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeInitUsb(
     }
     LOGI("libusb handle wrapped from FD=%d", fileDescriptor);
 
-    // Detach kernel drivers so we can claim both interfaces.
-    for (int iface: audio_interfaces) {
-        if (!detach_kernel_driver_if_needed(g_usb_handle, iface)) {
-            LOGW("Could not detach kernel driver from interface %d — claiming anyway", iface);
-        }
-    }
+    // --- CRITICAL FIX FOR MULTI-INTERFACE DACS ---
+    // Extract the physical device pointer from our open handle
+    libusb_device *device = libusb_get_device(g_usb_handle);
 
-    // Claim Audio Control interface (0) — needed to send control transfers.
-    ret = libusb_claim_interface(g_usb_handle, USB_AUDIO_CONTROL_INTERFACE);
-    if (ret != LIBUSB_SUCCESS) {
-        LOGE("Failed to claim Audio Control interface (0): %s",
-             libusb_strerror((libusb_error) ret));
+    // Get the active configuration to see how many interfaces this DAC actually has
+    libusb_config_descriptor *config = nullptr;
+    ret = libusb_get_active_config_descriptor(device,
+                                              &config); // Pass 'device' instead of 'g_usb_handle'
+
+    if (ret != LIBUSB_SUCCESS || config == nullptr) {
+        LOGE("Failed to get config descriptor: %s", libusb_strerror((libusb_error) ret));
         libusb_close(g_usb_handle);
         g_usb_handle = nullptr;
         libusb_exit(g_usb_ctx);
         g_usb_ctx = nullptr;
         return JNI_FALSE;
     }
-    LOGI("Audio Control interface (0) claimed");
 
-    // Claim Audio Streaming interface (1) — carries the isochronous PCM frames.
-    ret = libusb_claim_interface(g_usb_handle, USB_AUDIO_STREAMING_INTERFACE);
-    if (ret != LIBUSB_SUCCESS) {
-        LOGW("Could not claim Audio Streaming interface (1): %s — device may use interface 0 only",
-             libusb_strerror((libusb_error) ret));
-        g_claimed_interface = USB_AUDIO_CONTROL_INTERFACE;
-    } else {
-        LOGI("Audio Streaming interface (1) claimed");
-        g_claimed_interface = USB_AUDIO_STREAMING_INTERFACE;
+    int num_interfaces = config->bNumInterfaces;
+    LOGI("Device has %d interfaces. Detaching kernel drivers and claiming...", num_interfaces);
+
+    // Dynamically detach and claim EVERY interface on the device
+    for (int i = 0; i < num_interfaces; i++) {
+        if (!detach_kernel_driver_if_needed(g_usb_handle, i)) {
+            LOGW("Could not detach kernel driver from interface %d — claiming anyway", i);
+        }
+
+        ret = libusb_claim_interface(g_usb_handle, i);
+        if (ret != LIBUSB_SUCCESS) {
+            LOGE("Failed to claim interface %d: %s", i, libusb_strerror((libusb_error) ret));
+        } else {
+            LOGI("Interface %d claimed successfully", i);
+            // Track the highest interface claimed so our teardown logic can clean it up
+            g_claimed_interface = i;
+        }
     }
+
+    // Free the config descriptor since we are done with it
+    libusb_free_config_descriptor(config);
 
     LOGI("USB DAC initialized — VID=0x%04X PID=0x%04X", vendorId, productId);
     return JNI_TRUE;
@@ -209,9 +223,9 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeReleaseUsb(
 
     if (g_usb_handle != nullptr) {
         if (g_claimed_interface >= 0) {
-            libusb_release_interface(g_usb_handle, g_claimed_interface);
-            if (g_claimed_interface == USB_AUDIO_STREAMING_INTERFACE) {
-                libusb_release_interface(g_usb_handle, USB_AUDIO_CONTROL_INTERFACE);
+            // Loop backwards from the highest interface we claimed down to 0
+            for (int i = g_claimed_interface; i >= 0; i--) {
+                libusb_release_interface(g_usb_handle, i);
             }
             g_claimed_interface = -1;
             LOGD("USB interfaces released");
@@ -303,16 +317,25 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativePushPcm(
         JNIEnv *env, jobject /*thiz*/,
         jfloatArray samples, jint offset, jint count) {
 
-    if (g_iso_stream == nullptr || !g_iso_stream->isRunning()) return 0;
+    LOGI("nativePushPcm — count=%d offset=%d", count, offset);
+
+    if (g_iso_stream == nullptr || !g_iso_stream->isRunning()) {
+        LOGE("nativePushPcm called but ISO stream is not running");
+        return 0;
+    }
 
     // GetFloatArrayElements gives us a direct or copied pointer to the float array.
     // We use JNI_ABORT on release since we never modify the array — no need to
     // copy back changes, and this avoids an unnecessary heap copy on some JVMs.
     jfloat *ptr = env->GetFloatArrayElements(samples, nullptr);
-    if (ptr == nullptr) return 0;
+    if (ptr == nullptr) {
+        LOGE("Failed to get float array elements");
+        return 0;
+    }
 
     const int written = g_iso_stream->pushPcm(ptr + offset, count);
     env->ReleaseFloatArrayElements(samples, ptr, JNI_ABORT);
+    LOGI("nativePushPcm — wrote %d samples to ISO stream", written);
     return written;
 }
 
