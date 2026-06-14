@@ -44,8 +44,10 @@
             android:drawablePadding="@dimen/padding_5"
             android:textSize="@dimen/text_size_14"
             app:appFontStyle="bold"
-            app:drawableTintStyle="accent"
-            app:textColorStyle="tertiary" />
+            app:drawableTint="@android:color/white"
+            app:drawableTintStyle="custom"
+            app:textColorStyle="tertiary"
+            app:useAccentColor="true" />
 
         <app.simple.felicity.decorations.highlight.HighlightTextView
             android:id="@+id/count"
