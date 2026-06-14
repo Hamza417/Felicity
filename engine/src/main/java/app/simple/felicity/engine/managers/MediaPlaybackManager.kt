@@ -684,10 +684,13 @@ object MediaPlaybackManager {
                             0
                         }
 
-                        // Capture the current seek position on the main thread before
-                        // any dispatcher hops — getSeekPosition() reads from the media
-                        // controller which must happen on Main.
-                        val currentSeek = getSeekPosition()
+                        // Only preserve the seek position when the same song is actually
+                        // present in the target queue. If the song isn't there, start the
+                        // first song from the beginning — leaking the old seek offset into
+                        // an unrelated track would jump to an arbitrary timestamp.
+                        val sameSongFound = currentSong != null
+                                && targetSongs.any { it.id == currentSong.id }
+                        val currentSeek = if (sameSongFound) getSeekPosition() else 0L
 
                         suppressPositionEmit = true
                         currentSongPosition = newPosition
