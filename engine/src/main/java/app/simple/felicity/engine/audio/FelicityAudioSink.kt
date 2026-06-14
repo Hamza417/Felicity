@@ -195,8 +195,11 @@ class FelicityAudioSink(
                 val bitDepth = encodingToBitDepth(currentEncoding)
                 Log.i(TAG, "USB DAC attached mid-stream — re-negotiating to " +
                         "$currentSampleRate Hz / ${bitDepth}-bit / $currentChannelCount ch")
-                UsbDacDriver.getInstance(context)
-                    .negotiateFormat(currentSampleRate, bitDepth, currentChannelCount)
+                val driver = UsbDacDriver.getInstance(context)
+                driver.negotiateFormat(currentSampleRate, bitDepth, currentChannelCount)
+                if (!isPaused) {
+                    driver.startStream()
+                }
             }
             muteDelegateIfNeeded()
         }
@@ -263,7 +266,11 @@ class FelicityAudioSink(
             if (oboeStream != null) releaseOboeStream()
             val bitDepth = encodingToBitDepth(currentEncoding)
             Log.i(TAG, "USB DAC active — syncing DAC format to $sr Hz / ${bitDepth}-bit / $ch ch")
-            UsbDacDriver.getInstance(context).negotiateFormat(sr, bitDepth, ch)
+            val driver = UsbDacDriver.getInstance(context)
+            driver.negotiateFormat(sr, bitDepth, ch)
+            if (!isPaused) {
+                driver.startStream()
+            }
             muteDelegateIfNeeded()
             return
         }
@@ -332,6 +339,7 @@ class FelicityAudioSink(
         super.play()
         if (UsbDacManager.isActive) {
             muteDelegateIfNeeded()
+            UsbDacDriver.getInstance(context).startStream()
             return
         }
         when (AudioPreferences.getOutputSink()) {
@@ -352,6 +360,7 @@ class FelicityAudioSink(
         super.pause()
         aaudioStream?.stop()
         oboeStream?.stop()
+        UsbDacDriver.getInstance(context).stopStream()
     }
 
     /**
@@ -477,9 +486,13 @@ class FelicityAudioSink(
         pendingDelegateBuffer = null
         aaudioStream?.stop()
         oboeStream?.stop()
+        UsbDacDriver.getInstance(context).stopStream()
         if (!isPaused) {
             aaudioStream?.start()
             oboeStream?.start()
+            if (UsbDacManager.isActive) {
+                UsbDacDriver.getInstance(context).startStream()
+            }
         }
     }
 

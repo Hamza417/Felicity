@@ -167,18 +167,9 @@ class UsbDacDriver private constructor(private val context: Context) {
         // the best available alt-setting if the device does not support that exactly.
         negotiateFormat(sampleRate = 96_000, bitDepth = 24, channels = 2)
 
-        // Start the isochronous data pipeline. The ring buffer is empty at this
-        // point so the first URBs will be filled with silence until the DSP thread
-        // starts calling pushPcm().
-        val streamOk = nativeStartStream()
-        if (streamOk) {
-            Log.i(TAG, "USB isochronous stream running")
-            // Notify the audio sink and service that the DAC is live. They will
-            // re-negotiate the format to match whatever ExoPlayer is currently playing.
-            UsbDacManager.notifyAttached(96_000, 2)
-        } else {
-            Log.e(TAG, "Failed to start USB stream — DAC is initialized but silent")
-        }
+        // Notify the audio sink and service that the DAC is live. They will
+        // re-negotiate the format to match whatever ExoPlayer is currently playing.
+        UsbDacManager.notifyAttached(96_000, 2)
     }
 
     /** Closes and clears the current [UsbDeviceConnection]. */
@@ -213,11 +204,30 @@ class UsbDacDriver private constructor(private val context: Context) {
 
         val ok = nativeNegotiateFormat(sampleRate, bitDepth, channels)
         if (ok) {
-            Log.i(TAG, "Format negotiation succeeded — restarting stream")
-            nativeStartStream()
+            Log.i(TAG, "Format negotiation succeeded — call startStream() to begin playback")
         } else {
             Log.w(TAG, "Format negotiation failed — DAC may use a fallback format")
         }
+    }
+
+    /**
+     * Starts the isochronous USB stream if a DAC is currently connected.
+     * Safe to call at any time; silently no-ops when no device is open.
+     * The audio sink calls this when playback begins or resumes.
+     */
+    fun startStream() {
+        if (connection != null) {
+            nativeStartStream()
+        }
+    }
+
+    /**
+     * Stops the isochronous USB stream. Idempotent — safe to call even if the
+     * stream was never started or the DAC has already been detached.
+     * The audio sink calls this when playback is paused or flushed.
+     */
+    fun stopStream() {
+        nativeStopStream()
     }
 
     // JNI declarations — implemented in felicity_usb_dac.cpp
