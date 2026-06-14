@@ -674,8 +674,7 @@ object MediaPlaybackManager {
                         songs = targetSongs
 
                         // Find where the currently playing song lives in the new queue.
-                        // If it doesn't exist there, position 0 is a safe fallback but
-                        // we do NOT seek — the user hasn't tapped anything.
+                        // If it doesn't exist there, position 0 is a safe fallback.
                         val newPosition = if (currentSong != null) {
                             targetSongs.indexOfFirst { it.id == currentSong.id }
                                 .takeIf { it >= 0 } ?: 0
@@ -683,12 +682,17 @@ object MediaPlaybackManager {
                             0
                         }
 
+                        // Capture the current seek position on the main thread before
+                        // any dispatcher hops — getSeekPosition() reads from the media
+                        // controller which must happen on Main.
+                        val currentSeek = getSeekPosition()
+
                         suppressPositionEmit = true
                         currentSongPosition = newPosition
                         suppressPositionEmit = false
 
-                        // Surgically replace the ExoPlayer queue without interrupting
-                        // the currently playing song.
+                        // Build the MediaItem list on a background thread to avoid
+                        // janking the main thread for large queues.
                         val mediaItems = withContext(Dispatchers.Default) {
                             targetSongs.map { it.toMediaItem() }
                         }
@@ -701,9 +705,16 @@ object MediaPlaybackManager {
 
                             val oldCount = controller.mediaItemCount
                             if (oldCount > 0) {
+                                // replaceMediaItems swaps the queue in-place but does NOT
+                                // change the current playback index — ExoPlayer keeps
+                                // playing whatever sits at the old index number in the
+                                // new queue. We must explicitly seekTo so ExoPlayer
+                                // jumps to where the currently playing song actually
+                                // lives in the new queue, at the same seek position.
                                 controller.replaceMediaItems(0, oldCount, mediaItems)
+                                controller.seekTo(newPosition, currentSeek)
                             } else {
-                                controller.setMediaItems(mediaItems, newPosition, getSeekPosition())
+                                controller.setMediaItems(mediaItems, newPosition, currentSeek)
                                 controller.prepare()
                             }
                         }
