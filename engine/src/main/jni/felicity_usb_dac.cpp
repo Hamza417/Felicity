@@ -80,8 +80,6 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeInitUsb(
     if (g_usb_ctx != nullptr) {
         LOGW("Previous libusb context still open — releasing before re-init");
         if (g_usb_handle != nullptr) {
-            // Note: If you dynamically claim multiple interfaces, you should ideally loop
-            // to release them all. For now, this safely drops the connection.
             if (g_claimed_interface >= 0) {
                 for (int i = g_claimed_interface; i >= 0; i--) {
                     libusb_release_interface(g_usb_handle, i);
@@ -91,6 +89,7 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeInitUsb(
             libusb_close(g_usb_handle);
             g_usb_handle = nullptr;
         }
+
         libusb_exit(g_usb_ctx);
         g_usb_ctx = nullptr;
     }
@@ -121,7 +120,6 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeInitUsb(
     }
     LOGI("libusb handle wrapped from FD=%d", fileDescriptor);
 
-    // --- CRITICAL FIX FOR MULTI-INTERFACE DACS ---
     // Extract the physical device pointer from our open handle
     libusb_device *device = libusb_get_device(g_usb_handle);
 
