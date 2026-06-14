@@ -1,6 +1,7 @@
 package app.simple.felicity.engine.managers
 
 import android.animation.ValueAnimator
+import android.content.Context
 import android.net.Uri
 import android.util.Log
 import androidx.annotation.MainThread
@@ -50,6 +51,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.math.max
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Converts an audio path string to a URI that ExoPlayer can open for playback.
@@ -636,7 +638,7 @@ object MediaPlaybackManager {
      * @param queueId The queue slot to switch to (0–4).
      * @param context The application context for database access.
      */
-    fun switchToQueue(queueId: Int, context: android.content.Context) {
+    fun switchToQueue(queueId: Int, context: Context) {
         if (queueId == activeQueueId) {
             Log.d(TAG, "switchToQueue: already on queue $queueId, ignoring")
             return
@@ -704,6 +706,7 @@ object MediaPlaybackManager {
                             pendingSeekPositions.add(newPosition)
 
                             val oldCount = controller.mediaItemCount
+
                             if (oldCount > 0) {
                                 // replaceMediaItems swaps the queue in-place but does NOT
                                 // change the current playback index — ExoPlayer keeps
@@ -1043,7 +1046,8 @@ object MediaPlaybackManager {
                     _songSeekPositionFlow.value = position
                     lastEmittedPosition = position
                 }
-                delay(intervalMs)
+
+                delay(intervalMs.milliseconds)
             }
         }
     }
