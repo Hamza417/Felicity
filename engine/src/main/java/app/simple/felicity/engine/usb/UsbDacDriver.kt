@@ -38,7 +38,7 @@ class UsbDacDriver private constructor(private val context: Context) {
      */
     private val permissionReceiver = object : BroadcastReceiver() {
         override fun onReceive(ctx: Context, intent: Intent) {
-            if (intent.action != ACTION_USB_PERMISSION) return
+            if (intent.action != ACTION_USB_PERMISSION) throw IllegalStateException("Unexpected intent action: ${intent.action}")
 
             val device: UsbDevice? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
@@ -46,7 +46,8 @@ class UsbDacDriver private constructor(private val context: Context) {
                 @Suppress("DEPRECATION")
                 intent.getParcelableExtra(UsbManager.EXTRA_DEVICE)
             }
-            device ?: return
+
+            device ?: throw IllegalStateException("USB permission result received with no device")
             val granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
 
             if (granted) {
@@ -102,7 +103,7 @@ class UsbDacDriver private constructor(private val context: Context) {
                     context,
                     0,
                     Intent(ACTION_USB_PERMISSION).setPackage(context.packageName),
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
             )
             Log.d(TAG, "Requesting USB permission for ${device.deviceName}")
             usbManager.requestPermission(device, pendingIntent)

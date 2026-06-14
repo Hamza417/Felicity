@@ -93,7 +93,10 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeInitUsb(
     g_device_info_valid = false;
     g_active_alt_idx = -1;
 
-    // 1. Initialize libusb context.
+    // Prevent libusb from scanning the device tree, which is blocked by Android.
+    libusb_set_option(nullptr, LIBUSB_OPTION_NO_DEVICE_DISCOVERY);
+
+    // Initialize libusb context.
     int ret = libusb_init(&g_usb_ctx);
     if (ret != LIBUSB_SUCCESS) {
         LOGE("libusb_init failed: %s", libusb_strerror((libusb_error) ret));
@@ -101,7 +104,7 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeInitUsb(
     }
     LOGI("libusb context initialized");
 
-    // 2. Wrap the Android FD — avoids needing /dev/bus/usb enumeration.
+    // Wrap the Android FD — avoids needing /dev/bus/usb enumeration.
     ret = libusb_wrap_sys_device(g_usb_ctx,
                                  static_cast<intptr_t>(fileDescriptor),
                                  &g_usb_handle);
@@ -113,14 +116,14 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeInitUsb(
     }
     LOGI("libusb handle wrapped from FD=%d", fileDescriptor);
 
-    // 3. Detach kernel drivers so we can claim both interfaces.
+    // Detach kernel drivers so we can claim both interfaces.
     for (int iface: audio_interfaces) {
         if (!detach_kernel_driver_if_needed(g_usb_handle, iface)) {
             LOGW("Could not detach kernel driver from interface %d — claiming anyway", iface);
         }
     }
 
-    // 4. Claim Audio Control interface (0) — needed to send control transfers.
+    // Claim Audio Control interface (0) — needed to send control transfers.
     ret = libusb_claim_interface(g_usb_handle, USB_AUDIO_CONTROL_INTERFACE);
     if (ret != LIBUSB_SUCCESS) {
         LOGE("Failed to claim Audio Control interface (0): %s",
@@ -133,7 +136,7 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeInitUsb(
     }
     LOGI("Audio Control interface (0) claimed");
 
-    // 5. Claim Audio Streaming interface (1) — carries the isochronous PCM frames.
+    // Claim Audio Streaming interface (1) — carries the isochronous PCM frames.
     ret = libusb_claim_interface(g_usb_handle, USB_AUDIO_STREAMING_INTERFACE);
     if (ret != LIBUSB_SUCCESS) {
         LOGW("Could not claim Audio Streaming interface (1): %s — device may use interface 0 only",
