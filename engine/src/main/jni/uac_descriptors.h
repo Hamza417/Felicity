@@ -191,6 +191,7 @@ struct UacClockSource {
  */
 struct UacAltSetting {
     uint8_t bAlternateSetting;
+    uint8_t bTerminalLink;
     uint8_t bFormatType;
 
     /** UAC1: wFormatTag (PCM = 0x0001). UAC2: bmFormats bitmask. */

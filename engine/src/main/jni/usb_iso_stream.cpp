@@ -5,8 +5,8 @@
 #include <cstdlib>
 #include <climits>
 #include <cerrno>
-#include <sched.h>    // SCHED_FIFO, sched_param
-#include <time.h>     // nanosleep
+#include <sched.h> // SCHED_FIFO, sched_param
+#include <time.h>  // nanosleep
 
 // ------------------------------------------------------------------ //
 //  libusb transfer callback — called by libusb on the event thread
@@ -45,27 +45,26 @@ void UsbIsoStream::convertAndPack(const float *src, uint8_t *dst, int frames) co
     const int samples = frames * channels_;
 
     for (int i = 0; i < samples; i++) {
-        const float f = (src[i] < -1.f) ? -1.f : (src[i] > 1.f) ? 1.f : src[i];
+        const float f = (src[i] < -1.f) ? -1.f : (src[i] > 1.f) ? 1.f
+                                                                : src[i];
 
         if (subslotSize_ == 2) {
             // 16-bit PCM: scale to [-32768, 32767]
             const int16_t s16 = static_cast<int16_t>(f * 32767.f);
-            dst[0] = static_cast<uint8_t>( s16 & 0xFF);
+            dst[0] = static_cast<uint8_t>(s16 & 0xFF);
             dst[1] = static_cast<uint8_t>((s16 >> 8) & 0xFF);
             dst += 2;
-
         } else if (subslotSize_ == 3) {
             // 24-bit PCM packed into 3 bytes (the most common high-res DAC format)
             const int32_t s24 = static_cast<int32_t>(f * 8388607.f); // 2^23 - 1
-            dst[0] = static_cast<uint8_t>( s24 & 0xFF);
+            dst[0] = static_cast<uint8_t>(s24 & 0xFF);
             dst[1] = static_cast<uint8_t>((s24 >> 8) & 0xFF);
             dst[2] = static_cast<uint8_t>((s24 >> 16) & 0xFF);
             dst += 3;
-
         } else {
             // 32-bit PCM (subslotSize == 4), covers both 24-bit padded and true 32-bit
             const int32_t s32 = static_cast<int32_t>(f * 2147483647.f); // 2^31 - 1
-            dst[0] = static_cast<uint8_t>( s32 & 0xFF);
+            dst[0] = static_cast<uint8_t>(s32 & 0xFF);
             dst[1] = static_cast<uint8_t>((s32 >> 8) & 0xFF);
             dst[2] = static_cast<uint8_t>((s32 >> 16) & 0xFF);
             dst[3] = static_cast<uint8_t>((s32 >> 24) & 0xFF);
@@ -79,9 +78,45 @@ void UsbIsoStream::convertAndPack(const float *src, uint8_t *dst, int frames) co
 // ------------------------------------------------------------------ //
 
 /**
+ * Computes how many audio frames the current microframe should carry so the
+ * long-term data rate matches the negotiated sample rate exactly.
+ *
+ * USB high-speed runs at 8000 microframes per second.  For sample rates that are
+ * integer multiples of 8000 (e.g. 48000, 96000) every microframe gets the same
+ * number of frames.  For rates like 44100 Hz the ratio is fractional (5.5125);
+ * we use a Bresenham-style accumulator so that the average over many microframes
+ * is exactly 44100/8000, preventing the ring buffer from draining faster than the
+ * DAC actually consumes audio.
+ *
+ * @return Number of frames to pack into this microframe's packet.
+ */
+int UsbIsoStream::framesForCurrentUframe() {
+    const int baseFrames = sampleRate_ / 8000;
+    const uint32_t remainder = static_cast<uint32_t>(sampleRate_ % 8000);
+
+    if (remainder == 0) {
+        // Exact integer ratio (e.g. 48000/8000 = 6) — no fractional tracking needed.
+        return baseFrames;
+    }
+
+    uframeFraction_ += remainder;
+    if (uframeFraction_ >= 8000u) {
+        uframeFraction_ -= 8000u;
+        return baseFrames + 1; // emit an extra frame this microframe
+    }
+    return baseFrames;
+}
+
+/**
  * Fills [transfer]'s buffer by reading from the ring buffer and converting each
- * packet worth of frames to packed PCM. Any packet that cannot be satisfied from
- * live ring-buffer data is zero-filled (silence) — this is the underrun guard.
+ * packet worth of frames to packed PCM.  The number of frames packed into each
+ * microframe is determined by [framesForCurrentUframe] so it matches the DAC's
+ * audio clock rather than the endpoint's maximum bandwidth — this is what
+ * prevents the chronic underruns that would otherwise happen when maxPacketSize
+ * is dozens of times larger than the sample-rate-dictated packet size.
+ *
+ * Any packet that cannot be satisfied from live ring-buffer data is zero-filled
+ * (silence) — this is the underrun guard.
  */
 void UsbIsoStream::fillTransferBuffer(libusb_transfer *transfer) {
     const int bytesPerFrame = subslotSize_ * channels_;
@@ -89,15 +124,28 @@ void UsbIsoStream::fillTransferBuffer(libusb_transfer *transfer) {
 
     for (int p = 0; p < transfer->num_iso_packets; p++) {
         libusb_iso_packet_descriptor &pkt = transfer->iso_packet_desc[p];
-        const int packetBytes = static_cast<int>(pkt.length);
-        const int framesInPkt = (bytesPerFrame > 0) ? (packetBytes / bytesPerFrame) : 0;
 
-        if (framesInPkt > 0) {
-            // Temporary scratch buffer for the float data. Stack allocation is fine
-            // because PACKETS_PER_URB * framesPerPacket is bounded and small.
+        // Determine how many audio frames belong in this microframe based on the
+        // negotiated sample rate — NOT the endpoint's wMaxPacketSize which is
+        // typically 10-50× larger than what the audio clock actually needs.
+        const int framesInPkt = framesForCurrentUframe();
+        const int packetBytes = framesInPkt * bytesPerFrame;
+
+        // Guard against exceeding the endpoint's hardware limit.
+        if (packetBytes > static_cast<int>(maxPacketSize_)) {
+            LOGW("Calculated packet size %d exceeds maxPacketSize %d — clamping",
+                 packetBytes, maxPacketSize_);
+            pkt.length = maxPacketSize_;
+        } else {
+            pkt.length = static_cast<unsigned int>(packetBytes);
+        }
+
+        if (framesInPkt > 0 && packetBytes > 0) {
+            // Temporary scratch buffer for the float data.  Stack allocation is
+            // fine because with correct sample-rate-based sizing each packet
+            // carries at most ~12 frames (for 96000 Hz stereo) — well under 512.
             float scratch[512]{};
-            const int clampedFrames = (framesInPkt > 512) ? 512 : framesInPkt;
-            const int samplesNeeded = clampedFrames * channels_;
+            const int samplesNeeded = framesInPkt * channels_;
 
             const uint32_t got = ringBuffer_.read(scratch, static_cast<uint32_t>(samplesNeeded));
             if (got < static_cast<uint32_t>(samplesNeeded)) {
@@ -107,10 +155,10 @@ void UsbIsoStream::fillTransferBuffer(libusb_transfer *transfer) {
 
             // Convert float → packed PCM (zeros produce silence on underrun because
             // UsbRingBuffer::read already zero-filled the scratch buffer).
-            convertAndPack(scratch, bufferPtr, clampedFrames);
+            convertAndPack(scratch, bufferPtr, framesInPkt);
         }
 
-        bufferPtr += packetBytes;
+        bufferPtr += pkt.length;
     }
 }
 
@@ -146,8 +194,8 @@ bool UsbIsoStream::allocateTransfers(libusb_device_handle *handle,
                 bufferSize,
                 PACKETS_PER_URB,
                 iso_transfer_callback,
-                this,          // user_data → routed to onTransferComplete
-                0              // no timeout — isochronous transfers don't use one
+                this, // user_data → routed to onTransferComplete
+                0     // no timeout — isochronous transfers don't use one
         );
 
         libusb_set_iso_packet_lengths(t, maxPacketSize);
@@ -251,9 +299,14 @@ bool UsbIsoStream::start(libusb_context *ctx,
                          libusb_device_handle *handle,
                          const UacAltSetting &alt,
                          int subslotSize,
-                         int bitResolution) {
+                         int bitResolution,
+                         int sampleRate) {
     if (alt.endpointAddress == 0 || alt.wMaxPacketSize == 0) {
         LOGE("Cannot start ISO stream — alt-setting has no valid endpoint");
+        return false;
+    }
+    if (sampleRate <= 0) {
+        LOGE("Cannot start ISO stream — invalid sample rate %d", sampleRate);
         return false;
     }
 
@@ -262,9 +315,21 @@ bool UsbIsoStream::start(libusb_context *ctx,
     bitResolution_ = bitResolution;
     maxPacketSize_ = alt.wMaxPacketSize;
     channels_ = (alt.bNrChannels > 0) ? alt.bNrChannels : 2;
+    sampleRate_ = sampleRate;
+    uframeFraction_ = 0;
 
-    LOGI("Starting ISO stream: ep=0x%02X maxPkt=%d subslot=%d bits=%d ch=%d",
-         alt.endpointAddress, maxPacketSize_, subslotSize_, bitResolution_, channels_);
+    // Compute frames-per-microframe so we can size each USB packet to match the
+    // DAC's actual audio clock rather than the endpoint's maximum bandwidth.
+    // USB high-speed = 8000 microframes per second.
+    // For integer ratios (e.g. 48000/8000=6) every packet gets the same size.
+    // For fractional ratios (e.g. 44100/8000=5.5125) we use a Bresenham
+    // accumulator so the long-term average is exact.
+    const int baseFramesPerUframe = sampleRate_ / 8000;
+
+    LOGI("Starting ISO stream: ep=0x%02X maxPkt=%d subslot=%d bits=%d ch=%d rate=%dHz "
+         "baseFramesPerUframe=%d",
+         alt.endpointAddress, maxPacketSize_, subslotSize_, bitResolution_, channels_,
+         sampleRate_, baseFramesPerUframe);
 
     if (!allocateTransfers(handle, alt.endpointAddress, maxPacketSize_)) {
         freeTransfers();
@@ -306,7 +371,8 @@ bool UsbIsoStream::start(libusb_context *ctx,
 }
 
 void UsbIsoStream::stop() {
-    if (!running_.load(std::memory_order_acquire) && !threadStarted_) return;
+    if (!running_.load(std::memory_order_acquire) && !threadStarted_)
+        return;
 
     LOGI("Stopping ISO stream…");
 
@@ -358,4 +424,3 @@ void UsbIsoStream::stop() {
 int UsbIsoStream::pushPcm(const float *samples, int count) {
     return static_cast<int>(ringBuffer_.write(samples, static_cast<uint32_t>(count)));
 }
-

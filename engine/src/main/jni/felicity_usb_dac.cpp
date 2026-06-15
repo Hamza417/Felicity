@@ -20,6 +20,12 @@ static bool g_device_info_valid = false;
 // Using a pointer so its constructor does not run at static-init time.
 static UsbIsoStream *g_iso_stream = nullptr;
 
+// The sample rate last negotiated with the DAC.  nativeStartStream() reads this to
+// tell the isochronous stream how many audio frames belong in each 125 µs USB
+// microframe.  Stored separately from the alt-setting because UacAltSetting only
+// carries *supported* rates, not the one we actually programmed.
+static int g_negotiated_sample_rate = 0;
+
 /**
  * Index into g_device_info.altSettings[] of the alt-setting that was last activated by
  * uac_negotiate_format(). nativeStartStream() uses this to open the isochronous stream
@@ -67,7 +73,8 @@ static bool detach_kernel_driver_if_needed(libusb_device_handle *handle, int ifa
     return false;
 }
 
-extern "C" {
+extern "C"
+{
 
 JNIEXPORT jboolean JNICALL
 Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeInitUsb(
@@ -95,6 +102,7 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeInitUsb(
     }
     g_device_info_valid = false;
     g_active_alt_idx = -1;
+    g_negotiated_sample_rate = 0;
 
     // --- CRITICAL FIX FOR ANDROID SELINUX ---
     // Prevent libusb from scanning the device tree, which is blocked by Android.
@@ -193,11 +201,13 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeNegotiateFormat(
 
     const int chosenIdx = uac_negotiate_format(g_usb_handle, &g_device_info, req);
     if (chosenIdx >= 0) {
-        // Remember which alt-setting is now live so nativeStartStream() can open the
-        // isochronous pipeline with the exact matching endpoint and packet parameters.
+        // Remember both the alt-setting and the sample rate so nativeStartStream()
+        // can open the isochronous pipeline with the exact endpoint, packet
+        // parameters, AND sample-rate-correct microframe pacing.
         g_active_alt_idx = chosenIdx;
+        g_negotiated_sample_rate = sampleRate;
         // Reset to unity gain so any previous software attenuation is cleared.
-        uac_set_volume(g_usb_handle, &g_device_info, /*0 dB in Q8.8 =*/ 0x0000);
+        uac_set_volume(g_usb_handle, &g_device_info, /*0 dB in Q8.8 =*/0x0000);
     }
     return chosenIdx >= 0 ? JNI_TRUE : JNI_FALSE;
 }
@@ -241,6 +251,7 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeReleaseUsb(
 
     g_device_info_valid = false;
     g_active_alt_idx = -1;
+    g_negotiated_sample_rate = 0;
 }
 
 JNIEXPORT jboolean JNICALL
@@ -273,9 +284,10 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeStartStream(
     // to receive data with the wrong packet size and would prevent the LED from
     // reflecting the correct sample rate.
     const UacAltSetting &chosen = g_device_info.altSettings[g_active_alt_idx];
-    LOGI("Starting stream with negotiated alt-setting %d (endpoint=0x%02X, subslot=%d, bits=%d)",
+    LOGI("Starting stream with negotiated alt-setting %d (endpoint=0x%02X, subslot=%d, bits=%d, "
+         "rate=%d Hz)",
          chosen.bAlternateSetting, chosen.endpointAddress,
-         chosen.bSubslotSize, chosen.bBitResolution);
+         chosen.bSubslotSize, chosen.bBitResolution, g_negotiated_sample_rate);
 
     g_iso_stream = new UsbIsoStream();
     const bool ok = g_iso_stream->start(
@@ -283,8 +295,8 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeStartStream(
             g_usb_handle,
             chosen,
             chosen.bSubslotSize,
-            chosen.bBitResolution
-    );
+            chosen.bBitResolution,
+            g_negotiated_sample_rate);
 
     if (!ok) {
         delete g_iso_stream;
@@ -301,7 +313,8 @@ JNIEXPORT void JNICALL
 Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeStopStream(
         JNIEnv * /*env*/, jobject /*thiz*/) {
 
-    if (g_iso_stream == nullptr) return;
+    if (g_iso_stream == nullptr)
+        return;
 
     LOGI("nativeStopStream — halting isochronous pipeline");
     g_iso_stream->stop();
@@ -338,4 +351,3 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativePushPcm(
 }
 
 } // extern "C"
-

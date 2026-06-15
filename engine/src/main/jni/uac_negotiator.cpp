@@ -279,26 +279,73 @@ static int select_best_alt_setting(const UacDeviceInfo *info, const UacFormatReq
  * For UAC2 we look up the Input Terminal that feeds the streaming interface,
  * then return its bClockSourceId. For UAC1 there is no clock entity (returns 0).
  */
-static uint8_t resolve_clock_source(const UacDeviceInfo *info) {
+// 1. Update the signature to accept the chosen alt-setting
+static uint8_t resolve_clock_source(const UacDeviceInfo *info, const UacAltSetting &chosenAlt) {
     if (info->uacVersion != 2) return 0;
 
-    // The Input Terminal with wTerminalType = 0x0101 (USB Streaming) is the one
-    // that feeds audio from the host into the routing graph.
-    for (int i = 0; i < info->inputTerminalCount; i++) {
-        if (info->inputTerminals[i].wTerminalType == 0x0101) {
-            return info->inputTerminals[i].bClockSourceId;
-        }
-    }
-
-    // If no USB Streaming terminal was tagged (uncommon), fall back to the first
-    // programmable clock source we found during parsing.
+    // Option A: The Alt-Setting's Terminal Link directly points to a Clock Source.
+    // (We check if a clock source exists with an ID matching the terminal link).
     for (int i = 0; i < info->clockSourceCount; i++) {
-        if ((info->clockSources[i].bmAttributes & 0x03) == 0x03) {
+        if (info->clockSources[i].bClockID == chosenAlt.bTerminalLink) {
+            LOGI("Found clock directly linked to Alt-Setting via TerminalLink: %d",
+                 chosenAlt.bTerminalLink);
             return info->clockSources[i].bClockID;
         }
     }
 
-    // Last resort: use the first clock source regardless of type.
+    // Option B: The Terminal Link points to an Input Terminal.
+    for (int i = 0; i < info->inputTerminalCount; i++) {
+        if (info->inputTerminals[i].bTerminalID == chosenAlt.bTerminalLink) {
+
+            // Check if the Input Terminal knows its clock.
+            if (info->inputTerminals[i].bClockSourceId != 0) {
+                LOGI("Found clock via Input Terminal %d: %d", chosenAlt.bTerminalLink,
+                     info->inputTerminals[i].bClockSourceId);
+                return info->inputTerminals[i].bClockSourceId;
+            }
+
+            // If the Input Terminal doesn't know its clock (like your device),
+            // check if the clock is tied to the OUTPUT terminal that this Input Terminal feeds.
+            // (This is a common topology for complex DACs).
+            for (int o = 0; o < info->outputTerminalCount; o++) {
+                // If this Output Terminal gets its data from our Input Terminal...
+                if (info->outputTerminals[o].bSourceId == chosenAlt.bTerminalLink ||
+                    info->outputTerminals[o].bSourceId ==
+                    info->inputTerminals[i].bTerminalID) { // Note: these might be the same
+
+                    if (info->outputTerminals[o].bClockSourceId != 0) {
+                        LOGI("Found clock via Output Terminal %d: %d",
+                             info->outputTerminals[o].bTerminalID,
+                             info->outputTerminals[o].bClockSourceId);
+                        return info->outputTerminals[o].bClockSourceId;
+                    }
+                }
+            }
+        }
+    }
+
+    // Option C: The Terminal Link points to an Output Terminal (less common for IN endpoints, but happens)
+    for (int i = 0; i < info->outputTerminalCount; i++) {
+        if (info->outputTerminals[i].bTerminalID == chosenAlt.bTerminalLink) {
+            if (info->outputTerminals[i].bClockSourceId != 0) {
+                LOGI("Found clock directly via Output Terminal %d: %d", chosenAlt.bTerminalLink,
+                     info->outputTerminals[i].bClockSourceId);
+                return info->outputTerminals[i].bClockSourceId;
+            }
+        }
+    }
+
+    // Fallbacks (if the breadcrumb trail is broken)
+    LOGW("Could not trace bTerminalLink (%d) to a Clock Source.", chosenAlt.bTerminalLink);
+
+    for (int i = 0; i < info->clockSourceCount; i++) {
+        if ((info->clockSources[i].bmAttributes & 0x03) == 0x03) {
+            LOGI("Fallback: Using first programmable clock found: %d",
+                 info->clockSources[i].bClockID);
+            return info->clockSources[i].bClockID;
+        }
+    }
+
     return (info->clockSourceCount > 0) ? info->clockSources[0].bClockID : 0;
 }
 
@@ -354,7 +401,7 @@ int uac_negotiate_format(libusb_device_handle *handle,
         }
     } else {
         // UAC2: find the Clock Source entity that feeds this stream and program it.
-        const uint8_t clockId = resolve_clock_source(info);
+        const uint8_t clockId = resolve_clock_source(info, chosen);
         if (clockId != 0) {
             if (!uac2_set_clock_frequency(handle, clockId,
                                           info->acInterfaceNumber,

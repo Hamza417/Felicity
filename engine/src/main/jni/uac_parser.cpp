@@ -209,21 +209,19 @@ static void parse_as_alt_setting(const libusb_interface_descriptor *alt,
                 if (info->uacVersion == 1) {
                     // UAC1 AS_GENERAL: bTerminalLink(3), bDelay(4), wFormatTag(5-6)
                     if (bLength >= 7) {
+                        as.bTerminalLink = p[3];
                         as.formatTag = read_u16(p + 5);
                     }
                 } else {
                     // UAC2 AS_GENERAL: bTerminalLink(3), bmControls(4), bFormatType(5),
                     //                  bmFormats(6-9), bNrChannels(10), bmChannelConfig(11-14),
-                    //                  iChannelNames(15), bClockId is NOT here — it comes from
-                    //                  the linked Input Terminal. We grab bFormatType and
-                    //                  bmFormats here.
+                    //                  iChannelNames(15)
                     if (bLength >= 10) {
+                        as.bTerminalLink = p[3];
                         as.bFormatType = p[5];
                         as.formatTag = read_u32(p + 6);
                         as.bNrChannels = (bLength >= 11) ? p[10] : 0;
                     }
-                    // The clock ID is stored on the Input Terminal linked to this stream.
-                    // We resolve it from the terminal table in uac_negotiator when needed.
                 }
             }
 
@@ -388,4 +386,3 @@ bool uac_parse_device(libusb_device_handle *handle, UacDeviceInfo *info) {
 
     return info->altSettingCount > 0;
 }
-

@@ -48,13 +48,18 @@ public:
      * @param alt            The chosen alt-setting (provides endpoint addr + maxPktSize).
      * @param subslotSize    Bytes per sample slot as negotiated (e.g. 3 for 24-bit).
      * @param bitResolution  Significant bits per sample (e.g. 24).
+     * @param sampleRate     The negotiated sample rate in Hz (e.g. 44100, 96000).
+     *                       Used to compute the exact frames-per-microframe so packets
+     *                       are sized to match the audio clock rather than the maximum
+     *                       endpoint bandwidth.
      * @return true if all URBs were submitted and the event thread started.
      */
     bool start(libusb_context *ctx,
                libusb_device_handle *handle,
                const UacAltSetting &alt,
                int subslotSize,
-               int bitResolution);
+               int bitResolution,
+               int sampleRate);
 
     /**
      * Cancels all pending transfers and joins the event thread.
@@ -90,6 +95,16 @@ private:
 
     void fillTransferBuffer(libusb_transfer *transfer);
 
+    /**
+     * Returns the number of audio frames that should be packed into the current
+     * 125 µs USB microframe to match the negotiated sample rate.
+     *
+     * For integer ratios (e.g. 48000 Hz / 8000 = 6) the return value is constant.
+     * For fractional ratios (e.g. 44100 Hz / 8000 = 5.5125) a Bresenham-style
+     * accumulator toggles between floor and ceil so the long-term average is exact.
+     */
+    int framesForCurrentUframe();
+
     void convertAndPack(const float *src, uint8_t *dst, int frames) const;
 
     static void *eventThreadEntry(void *arg);
@@ -111,5 +126,24 @@ private:
     int bitResolution_ = 16;
     uint16_t maxPacketSize_ = 0;
     int channels_ = 2;
-};
 
+    /**
+     * The sample rate negotiated with the DAC, used to calculate the exact number
+     * of audio frames that should be packed into each 125 µs USB microframe.
+     * For non-integer rates (e.g. 44100 Hz → 5.5125 frames/uframe), the fractional
+     * remainder is tracked by [uframeFraction_] so the correct integer frame count
+     * averages out to the target rate over many microframes.
+     */
+    int sampleRate_ = 0;
+
+    /**
+     * Accumulated fractional part of the frames-per-microframe calculation.
+     * Each microframe we add `sampleRate_ % 8000`; when the accumulator reaches
+     * or exceeds 8000 we emit one extra frame and subtract 8000.
+     *
+     * This implements Bresenham-style sample rate conversion — it guarantees the
+     * long-term average frame count per microframe matches the DAC clock exactly,
+     * preventing the ring buffer from draining faster than the DAC plays.
+     */
+    uint32_t uframeFraction_ = 0;
+};
