@@ -93,49 +93,23 @@ void UsbIsoStream::convertAndPack(const float *src, uint8_t *dst, int frames) co
  * is exactly 44100/8000, preventing the ring buffer from draining faster than the
  * DAC actually consumes audio.
  *
- * In addition, every 512 microframes (~64 ms) we sample the ring buffer fill level
- * and apply a ±1 frame nudge when the level strays into the danger zone. This
- * compensates for the tiny clock mismatch between the DAC's hardware oscillator and
- * Android's audio clock — without it, a 500–1000 ppm difference accumulates over
- * minutes until the ring buffer overflows and drops samples, which is heard as
- * crackling that slowly worsens until the stream is restarted.
- *
- * One frame per 512 microframes is a 0.024% rate change at most — far below the
- * ~0.2% pitch-detection threshold, so the adjustment is inaudible.
- *
  * @return Number of frames to pack into this microframe's packet.
  */
 int UsbIsoStream::framesForCurrentUframe() {
     const int baseFrames = sampleRate_ / 8000;
     const uint32_t remainder = static_cast<uint32_t>(sampleRate_ % 8000);
 
-    int frames = baseFrames;
-    if (remainder != 0) {
-        uframeFraction_ += remainder;
-        if (uframeFraction_ >= 8000u) {
-            uframeFraction_ -= 8000u;
-            frames = baseFrames + 1;
-        }
+    if (remainder == 0) {
+        // Exact integer ratio (e.g. 48000/8000 = 6) — no fractional tracking needed.
+        return baseFrames;
     }
 
-    // Once every 512 microframes, check the ring buffer fill level and nudge
-    // the consumption rate to compensate for any clock drift that has accumulated.
-    if ((++driftCounter_ & 511u) == 0) {
-        const uint32_t fill = ringBuffer_.available();
-
-        // Above 75% fill: the DSP clock is running slightly faster than the DAC.
-        // Consume one extra frame right now to drain the growing backlog.
-        if (fill > (UsbRingBuffer::CAPACITY * 3u / 4u)) {
-            frames++;
-        }
-            // Below 12.5% fill (but not empty): the DAC is outrunning the DSP.
-            // Skip one frame to let the ring buffer recover before we hit silence.
-        else if (fill > 0u && fill < (UsbRingBuffer::CAPACITY / 8u)) {
-            if (frames > 1) frames--;
-        }
+    uframeFraction_ += remainder;
+    if (uframeFraction_ >= 8000u) {
+        uframeFraction_ -= 8000u;
+        return baseFrames + 1; // emit an extra frame this microframe
     }
-
-    return frames;
+    return baseFrames;
 }
 
 /**
@@ -179,7 +153,10 @@ void UsbIsoStream::fillTransferBuffer(libusb_transfer *transfer) {
             const int samplesNeeded = framesInPkt * channels_;
 
             const uint32_t got = ringBuffer_.read(scratch, static_cast<uint32_t>(samplesNeeded));
-            (void) got; // silence is already padded by UsbRingBuffer::read when got < samplesNeeded
+            if (got < static_cast<uint32_t>(samplesNeeded)) {
+                LOGD("USB underrun: needed %d samples, got %u — padding with silence",
+                     samplesNeeded, got);
+            }
 
             // Convert float → packed PCM (zeros produce silence on underrun because
             // UsbRingBuffer::read already zero-filled the scratch buffer).
@@ -374,33 +351,22 @@ bool UsbIsoStream::start(libusb_context *ctx,
         return false;
     }
 
+    // Pre-fill the ring buffer with enough silence to cover the entire USB
+    // pipeline depth before the DSP thread pushes its first audio chunk.
+    // Without this cushion the first few dozen URB completions would hit an
+    // empty ring buffer and pad every packet with zeros — producing an
+    // audible gap at the start of playback and making the pipeline vulnerable
+    // to underrun-then-burst cycles that sound like a skipping CD.
+    //
+    // We pre-fill with roughly half the ring buffer's capacity so the USB
+    // consumer has immediate data to drain while the DSP producer is still
+    // ramping up. At 96 kHz stereo this is ~170 ms of silence, well under
+    // the perceptual threshold for an initial gap.
+    ringBuffer_.flush();
+    ringBuffer_.prefillSilence(UsbRingBuffer::CAPACITY / 2u);
+
     running_.store(true, std::memory_order_release);
     eventThreadExit_.store(false, std::memory_order_release);
-    driftCounter_ = 0;
-
-    // Pre-fill the ring buffer with just enough silence to cover the USB pipeline
-    // depth while the DSP thread is starting up — no more.
-    //
-    // The old approach used CAPACITY/2 (≈370 ms at 44.1 kHz). The problem: the DSP
-    // begins pushing real audio immediately after start(), so by the time that block
-    // of silence finished draining the ring buffer was already nearly full. Any tiny
-    // clock mismatch then caused instant overflow → silent sample drops → crackling
-    // that gradually worsened over minutes of playback.
-    //
-    // The new approach pre-fills 2× the pipeline depth, which covers the typical
-    // 50–100 ms DSP startup delay while leaving ≥75% of the ring buffer free.
-    // The adaptive drift compensator in framesForCurrentUframe() keeps the fill
-    // level stable for the remainder of the session.
-    ringBuffer_.flush();
-    const uint32_t pipelineSamples =
-            static_cast<uint32_t>(NUM_TRANSFERS) *
-            static_cast<uint32_t>(PACKETS_PER_URB) *
-            (static_cast<uint32_t>(sampleRate_) / 8000u + 1u) *
-            static_cast<uint32_t>(channels_);
-    const uint32_t prefillCount = (pipelineSamples * 2u < UsbRingBuffer::CAPACITY / 4u)
-                                  ? pipelineSamples * 2u
-                                  : UsbRingBuffer::CAPACITY / 4u;
-    ringBuffer_.prefillSilence(prefillCount);
 
     // Submit all URBs before starting the event thread to ensure the DAC has a
     // full pipeline immediately on open, avoiding an initial starvation burst.
@@ -488,16 +454,11 @@ int UsbIsoStream::pushPcm(const float *samples, int count) {
 }
 
 void UsbIsoStream::flushRingBuffer() {
+    // Throw away whatever audio was sitting in the ring buffer.
+    // The isochronous pipeline keeps running and will naturally read zeros
+    // (silence) until the DSP starts delivering fresh audio after the seek.
+    // This is much cheaper than a full stop/start cycle and avoids the
+    // audible gap that a teardown would create.
     ringBuffer_.flush();
-
-    // Seed 20 ms of silence so the USB callbacks have something to read during
-    // the brief window between this flush and the DSP delivering fresh audio after
-    // a seek. Without this, all 512 microframes per 64 ms fire against an empty
-    // ring buffer simultaneously, causing hundreds of underrun events in one burst.
-    // 20 ms is small enough (< 2% of ring buffer capacity) that it has no effect
-    // on the overflow headroom maintained by the drift compensator.
-    const uint32_t ms20 = static_cast<uint32_t>(sampleRate_) *
-                          static_cast<uint32_t>(channels_) / 50u;
-    ringBuffer_.prefillSilence(ms20);
 }
 
