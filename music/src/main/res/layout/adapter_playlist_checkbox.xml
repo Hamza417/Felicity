@@ -5,8 +5,9 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:clipToPadding="false"
-    android:paddingHorizontal="@dimen/padding_15"
-    android:paddingVertical="@dimen/padding_10">
+    android:layout_marginHorizontal="@dimen/padding_20"
+    android:layout_marginVertical="@dimen/padding_5"
+    android:padding="@dimen/padding_10">
 
     <app.simple.felicity.decorations.typeface.TypeFaceTextView
         android:id="@+id/name"

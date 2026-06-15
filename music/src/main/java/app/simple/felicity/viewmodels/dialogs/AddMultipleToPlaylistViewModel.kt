@@ -71,7 +71,7 @@ class AddMultipleToPlaylistViewModel @AssistedInject constructor(
     private fun observePlaylists() {
         viewModelScope.launch {
             playlistRepository.getAllPlaylistsWithSongs().collect { list ->
-                val playlists = list.map { it.playlist }
+                val playlists = list.map { it.playlist }.filter { it.isM3UPlaylist.not() }.sortedBy { it.dateCreated }
                 val songCounts = list.associate { it.playlist.id to it.songs.size }
                 _state.emit(State(playlists, songCounts))
             }
