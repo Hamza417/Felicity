@@ -336,9 +336,19 @@ bool UsbIsoStream::start(libusb_context *ctx,
         return false;
     }
 
-    // Pre-fill ring buffer with silence so the first batch of URBs have something
-    // to drain even before the DSP thread pushes any real audio.
+    // Pre-fill the ring buffer with enough silence to cover the entire USB
+    // pipeline depth before the DSP thread pushes its first audio chunk.
+    // Without this cushion the first few dozen URB completions would hit an
+    // empty ring buffer and pad every packet with zeros — producing an
+    // audible gap at the start of playback and making the pipeline vulnerable
+    // to underrun-then-burst cycles that sound like a skipping CD.
+    //
+    // We pre-fill with roughly half the ring buffer's capacity so the USB
+    // consumer has immediate data to drain while the DSP producer is still
+    // ramping up. At 96 kHz stereo this is ~170 ms of silence, well under
+    // the perceptual threshold for an initial gap.
     ringBuffer_.flush();
+    ringBuffer_.prefillSilence(UsbRingBuffer::CAPACITY / 2u);
 
     running_.store(true, std::memory_order_release);
     eventThreadExit_.store(false, std::memory_order_release);

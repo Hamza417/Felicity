@@ -328,8 +328,6 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativePushPcm(
         JNIEnv *env, jobject /*thiz*/,
         jfloatArray samples, jint offset, jint count) {
 
-    LOGI("nativePushPcm — count=%d offset=%d", count, offset);
-
     if (g_iso_stream == nullptr || !g_iso_stream->isRunning()) {
         LOGE("nativePushPcm called but ISO stream is not running");
         return 0;
@@ -346,7 +344,6 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativePushPcm(
 
     const int written = g_iso_stream->pushPcm(ptr + offset, count);
     env->ReleaseFloatArrayElements(samples, ptr, JNI_ABORT);
-    LOGI("nativePushPcm — wrote %d samples to ISO stream", written);
     return written;
 }
 

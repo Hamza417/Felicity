@@ -436,6 +436,7 @@ class FelicityAudioSink(
                 nativeDsp.processInPlace(floatScratchBuffer, sampleCount)
                 visualizer.feedFloat(floatScratchBuffer, sampleCount, currentChannelCount)
 
+                @Suppress("KotlinConstantConditions")
                 when {
                     usbActive -> UsbDacDriver.getInstance(context).nativePushPcm(floatScratchBuffer, 0, sampleCount)
                     aaudioReady -> aaudioStream?.write(floatScratchBuffer, sampleCount)
@@ -575,7 +576,7 @@ class FelicityAudioSink(
      */
     private fun isBluetoothOutputActive(): Boolean {
         val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-                ?: return false
+            ?: return false
         return audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).any { device ->
             device.isBluetoothType()
         }

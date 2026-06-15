@@ -30,10 +30,10 @@
 class UsbIsoStream {
 public:
     /** URBs kept in-flight simultaneously. More = smoother but higher latency. */
-    static constexpr int NUM_TRANSFERS = 8;
+    static constexpr int NUM_TRANSFERS = 32;
 
     /** Isochronous packets bundled inside each URB. */
-    static constexpr int PACKETS_PER_URB = 8;
+    static constexpr int PACKETS_PER_URB = 64;
 
     UsbIsoStream();
 
