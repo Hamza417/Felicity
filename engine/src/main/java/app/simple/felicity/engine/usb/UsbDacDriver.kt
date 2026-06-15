@@ -230,6 +230,20 @@ class UsbDacDriver private constructor(private val context: Context) {
         nativeStopStream()
     }
 
+    /**
+     * Discards any audio sitting in the ring buffer without tearing down the
+     * isochronous USB pipeline. The pipeline keeps running and plays silence
+     * until the DSP delivers fresh audio, so there is no audible gap.
+     *
+     * Use this instead of [stopStream] + [startStream] on seeks and
+     * ExoPlayer flush events — it is orders of magnitude cheaper.
+     */
+    fun flushRingBuffer() {
+        if (connection != null) {
+            nativeFlushStream()
+        }
+    }
+
     // JNI declarations — implemented in felicity_usb_dac.cpp
 
     /**
@@ -266,6 +280,13 @@ class UsbDacDriver private constructor(private val context: Context) {
      * the URB pool. Idempotent — safe to call even if the stream was never started.
      */
     private external fun nativeStopStream()
+
+    /**
+     * Clears stale audio from the ring buffer without stopping the isochronous
+     * pipeline. The pipeline keeps sending packets (silence until new audio arrives)
+     * so there is no audible gap on seeks or format discontinuities.
+     */
+    private external fun nativeFlushStream()
 
     /**
      * Pushes interleaved float PCM into the ring buffer that feeds the isochronous

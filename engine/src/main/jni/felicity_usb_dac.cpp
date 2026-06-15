@@ -347,4 +347,20 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativePushPcm(
     return written;
 }
 
+JNIEXPORT void JNICALL
+Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeFlushStream(
+        JNIEnv * /*env*/, jobject /*thiz*/) {
+
+    if (g_iso_stream == nullptr || !g_iso_stream->isRunning()) {
+        LOGD("nativeFlushStream — stream not running, nothing to flush");
+        return;
+    }
+
+    // Discard stale audio from the ring buffer without tearing down the
+    // isochronous USB pipeline. The pipeline keeps sending packets (silence
+    // until the DSP refills) so there is no restart gap.
+    g_iso_stream->flushRingBuffer();
+    LOGD("nativeFlushStream — ring buffer cleared after seek");
+}
+
 } // extern "C"

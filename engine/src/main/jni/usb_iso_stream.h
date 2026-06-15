@@ -29,11 +29,21 @@
  */
 class UsbIsoStream {
 public:
-    /** URBs kept in-flight simultaneously. More = smoother but higher latency. */
-    static constexpr int NUM_TRANSFERS = 32;
+    /**
+     * URBs kept in-flight simultaneously. 16 gives ~32 ms of pipeline depth at
+     * 96 kHz stereo, which is enough to absorb Android's scheduler jitter while
+     * keeping teardown fast. The original value of 32 created a 256 ms pipeline
+     * that took ~2 seconds to drain on shutdown.
+     */
+    static constexpr int NUM_TRANSFERS = 16;
 
-    /** Isochronous packets bundled inside each URB. */
-    static constexpr int PACKETS_PER_URB = 64;
+    /**
+     * Isochronous packets bundled inside each URB. 32 packets × 16 URBs = 512
+     * micro-frames = 64 ms at USB high-speed. Combined with the ring buffer this
+     * gives ~400 ms of total buffering — far more than any realistic scheduler
+     * delay — without the excessive latency of the previous 64-packet value.
+     */
+    static constexpr int PACKETS_PER_URB = 32;
 
     UsbIsoStream();
 
@@ -66,6 +76,16 @@ public:
      * Blocks until teardown is complete — safe to call from any thread.
      */
     void stop();
+
+    /**
+     * Clears all pending audio from the ring buffer without stopping the
+     * isochronous USB pipeline. The stream keeps running and plays silence
+     * until the DSP refills the buffer with fresh audio after a seek.
+     *
+     * Much cheaper than a full stop/start cycle and avoids the audible gap
+     * that would otherwise happen on every ExoPlayer flush.
+     */
+    void flushRingBuffer();
 
     /**
      * Delivers interleaved float PCM samples from the DSP thread into the ring

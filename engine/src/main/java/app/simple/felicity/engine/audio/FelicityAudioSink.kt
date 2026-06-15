@@ -467,33 +467,35 @@ class FelicityAudioSink(
     }
 
     /**
-     * Flushes the delegate and restarts the AAudio stream (if active) to clear in-flight
-     * frames on seeks and discontinuities. Also clears [pendingDelegateBuffer] so the
-     * first buffer after the seek is always treated as fresh — without this, a buffer
-     * presented just before the seek and never consumed by the delegate would suppress
-     * the first audio frame after the seek from reaching AAudio.
+     * Flushes the delegate and restarts the AAudio/Oboe stream (if active) to clear
+     * in-flight frames on seeks and discontinuities. Also clears [pendingDelegateBuffer]
+     * so the first buffer after the seek is always treated as fresh.
      *
-     * When the player is currently paused (e.g. the user changed songs without resuming
-     * playback), the AAudio stream is stopped but NOT restarted. Restarting it here while
-     * paused would let the very first decoded frames of the new song slip through to the
-     * hardware before [play] is called, producing a brief audible blip on every song change.
+     * For the USB DAC path we intentionally do NOT stop the isochronous pipeline.
+     * Stopping and restarting it takes 20–500 ms even after the cancellation bug was
+     * fixed, and creates a noticeable dropout on every seek. Instead we just flush the
+     * ring buffer: the USB stream keeps sending packets and plays silence until the DSP
+     * starts delivering new audio — the gap is inaudible and matches seek behaviour on
+     * every other audio output path.
      *
-     * USB ring buffer is NOT flushed here because the native isochronous pipeline will
-     * drain the stale bytes as silence before new data arrives — abruptly flushing
-     * mid-transfer is more disruptive than letting it drain.
+     * Format changes (different sample rate or bit depth) are handled in [configure],
+     * which calls [UsbDacDriver.negotiateFormat] and does a proper stop/start as needed.
      */
     override fun flush() {
         super.flush()
         pendingDelegateBuffer = null
         aaudioStream?.stop()
         oboeStream?.stop()
-        UsbDacDriver.getInstance(context).stopStream()
+        if (UsbDacManager.isActive) {
+            UsbDacDriver.getInstance(context).flushRingBuffer()
+        } else {
+            UsbDacDriver.getInstance(context).stopStream()
+        }
         if (!isPaused) {
             aaudioStream?.start()
             oboeStream?.start()
-            if (UsbDacManager.isActive) {
-                UsbDacDriver.getInstance(context).startStream()
-            }
+            // The isochronous USB pipeline is already running after the ring buffer
+            // flush above — no startStream() call needed here.
         }
     }
 

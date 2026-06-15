@@ -62,8 +62,13 @@ void UsbIsoStream::convertAndPack(const float *src, uint8_t *dst, int frames) co
             dst[2] = static_cast<uint8_t>((s24 >> 16) & 0xFF);
             dst += 3;
         } else {
-            // 32-bit PCM (subslotSize == 4), covers both 24-bit padded and true 32-bit
-            const int32_t s32 = static_cast<int32_t>(f * 2147483647.f); // 2^31 - 1
+            // 32-bit PCM (subslotSize == 4). We use double-precision here on purpose:
+            // 2147483647 is not exactly representable as a 32-bit float — it rounds up
+            // to 2^31 = 2147483648.0f. Multiplying a near-peak float by that and then
+            // casting to int32_t overflows, which is undefined behavior and produces
+            // garbage (often INT32_MIN) on some platforms — heard as sharp crackle/clipping
+            // at loud volumes. Using double keeps the full integer range without UB.
+            const int32_t s32 = static_cast<int32_t>((double) f * 2147483647.0);
             dst[0] = static_cast<uint8_t>(s32 & 0xFF);
             dst[1] = static_cast<uint8_t>((s32 >> 8) & 0xFF);
             dst[2] = static_cast<uint8_t>((s32 >> 16) & 0xFF);
@@ -227,10 +232,16 @@ void UsbIsoStream::onTransferComplete(libusb_transfer *transfer) {
         return;
     }
 
-    // If the stream is no longer running, cancel this transfer instead of
-    // resubmitting it so the event thread can eventually drain to zero pending.
+    // If the stream is no longer running, release this slot and exit.
+    //
+    // The previous approach called libusb_cancel_transfer() here, but that is
+    // wrong: by the time the callback fires the transfer has already completed
+    // and is no longer in-flight. libusb returns LIBUSB_ERROR_NOT_FOUND,
+    // no second callback fires, and pendingCount_ stays stuck above zero —
+    // causing the 2-second timeout in stop() and the audible restart gap.
+    // Decrementing the count directly here is the correct fix.
     if (!running_.load(std::memory_order_acquire)) {
-        libusb_cancel_transfer(transfer);
+        pendingCount_.fetch_sub(1, std::memory_order_release);
         return;
     }
 
@@ -268,9 +279,13 @@ void UsbIsoStream::eventThreadLoop() {
     // it and fall back to the default scheduler without failing hard.
     struct sched_param sp{};
     sp.sched_priority = sched_get_priority_max(SCHED_FIFO);
-    if (pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp) != 0) {
-        LOGW("Could not set SCHED_FIFO for USB event thread (errno=%d) — using default scheduler",
-             errno);
+    const int schedRet = pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp);
+    if (schedRet != 0) {
+        // Android typically blocks SCHED_FIFO for unprivileged apps.
+        // Log the actual error code from pthread_setschedparam, not errno,
+        // since that function returns its error directly rather than setting errno.
+        LOGW("Could not set SCHED_FIFO for USB event thread (err=%d) — using default scheduler",
+             schedRet);
     } else {
         LOGI("USB event thread running at SCHED_FIFO priority %d", sp.sched_priority);
     }
@@ -398,8 +413,11 @@ void UsbIsoStream::stop() {
         }
     }
 
-    // 3. Wait for all callbacks to confirm cancellation (max 2 s).
-    const int maxWaitMs = 2000;
+    // 3. Wait for all callbacks to confirm cancellation (max 500 ms).
+    //    With the fixed onTransferComplete this should complete in one or two
+    //    event-thread poll cycles (≤ 20 ms). The 500 ms cap is a last-resort
+    //    safety net in case a kernel driver holds a transfer unexpectedly long.
+    const int maxWaitMs = 500;
     int waitedMs = 0;
     while (pendingCount_.load(std::memory_order_acquire) > 0 && waitedMs < maxWaitMs) {
         struct timespec ts{0, 5'000'000L}; // 5 ms
@@ -434,3 +452,13 @@ void UsbIsoStream::stop() {
 int UsbIsoStream::pushPcm(const float *samples, int count) {
     return static_cast<int>(ringBuffer_.write(samples, static_cast<uint32_t>(count)));
 }
+
+void UsbIsoStream::flushRingBuffer() {
+    // Throw away whatever audio was sitting in the ring buffer.
+    // The isochronous pipeline keeps running and will naturally read zeros
+    // (silence) until the DSP starts delivering fresh audio after the seek.
+    // This is much cheaper than a full stop/start cycle and avoids the
+    // audible gap that a teardown would create.
+    ringBuffer_.flush();
+}
+
