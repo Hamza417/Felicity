@@ -476,5 +476,29 @@ void UsbIsoStream::flushRingBuffer() {
     // This is much cheaper than a full stop/start cycle and avoids the
     // audible gap that a teardown would create.
     ringBuffer_.flush();
+    ringBuffer_.resetWriteCounter();
 }
 
+int64_t UsbIsoStream::getPlaybackPositionUs(int channelCount, int sampleRate) const {
+    if (channelCount <= 0 || sampleRate <= 0) return -1LL;
+
+    const uint64_t totalSamples = ringBuffer_.totalWritten();
+    if (totalSamples == 0) return -1LL;
+
+    /**
+     * Estimate how many interleaved samples have left the ring buffer and are
+     * on their way to (or already at) the DAC. We subtract what's still
+     * sitting in the buffer from the lifetime total, which gives us the
+     * samples that the USB pipeline has already consumed.
+     *
+     * Converting from interleaved samples → frames → microseconds:
+     *   frames = samples / channelCount
+     *   positionUs = frames * 1_000_000 / sampleRate
+     */
+    const uint32_t bufferSamples = ringBuffer_.available();
+    const int64_t consumedSamples = static_cast<int64_t>(totalSamples) - bufferSamples;
+    if (consumedSamples <= 0) return 0LL;
+
+    const int64_t consumedFrames = consumedSamples / channelCount;
+    return consumedFrames * 1000000LL / sampleRate;
+}

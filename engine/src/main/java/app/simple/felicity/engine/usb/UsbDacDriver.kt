@@ -339,6 +339,19 @@ class UsbDacDriver private constructor(private val context: Context) {
         }
     }
 
+    /**
+     * Returns the estimated playback position in microseconds for the currently
+     * active USB audio stream, based on how many samples have left the ring buffer.
+     * Returns -1 when no stream is running or no device is connected.
+     *
+     * @param channelCount Number of interleaved output channels.
+     * @param sampleRate   Negotiated sample rate in Hz.
+     */
+    fun getPlaybackPositionUs(channelCount: Int, sampleRate: Int): Long {
+        if (connection == null) return -1L
+        return nativeGetPlaybackPositionUs(channelCount, sampleRate)
+    }
+
     // JNI declarations — implemented in felicity_usb_dac.cpp
 
     /**
@@ -450,6 +463,9 @@ class UsbDacDriver private constructor(private val context: Context) {
      */
     @Volatile
     var softwareVolumeGain: Float = 1f
+
+    /** Returns the estimated playback position in microseconds from the ring buffer state. */
+    private external fun nativeGetPlaybackPositionUs(channelCount: Int, sampleRate: Int): Long
 
     /** Tells the native layer to stop the stream, release libusb, and exit. */
     private external fun nativeReleaseUsb()

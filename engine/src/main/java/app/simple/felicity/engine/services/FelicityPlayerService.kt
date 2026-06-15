@@ -317,14 +317,13 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 audioSink.setOffloadMode(offloadMode)
 
                 /**
-                 * Wrap the [DefaultAudioSink] with [FelicityAudioSink] unconditionally.
-                 * The wrapper is a transparent forwarding sink when AAudio is disabled;
-                 * when [AudioPreferences.isAaudioEnabled] returns true, [handleBuffer]
-                 * also routes float PCM to the native AAudio stream for direct-to-HAL
-                 * low-latency output. The [DefaultAudioSink] (with its [AudioTrack] muted)
-                 * is kept alive for clock and state management.
+                 * Wrap the [DefaultAudioSink] with [FelicityAudioSink] as an exclusive router.
+                 * The wrapper selects exactly one output path — USB DAC, AAudio, Oboe, or the
+                 * standard AudioTrack — and routes all audio there. The [DefaultAudioSink] is
+                 * only used when the AudioTrack path is active; for native paths it is kept
+                 * idle (via the factory) so no AudioTrack is ever created unnecessarily.
                  */
-                return FelicityAudioSink(audioSink, context, audioProcessorManager.nativeDspProcessor, audioProcessorManager.visualizerProcessor)
+                return FelicityAudioSink({ audioSink }, context, audioProcessorManager.nativeDspProcessor, audioProcessorManager.visualizerProcessor)
             }
 
             override fun buildAudioRenderers(
