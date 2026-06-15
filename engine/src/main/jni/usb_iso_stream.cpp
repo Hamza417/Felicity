@@ -153,10 +153,7 @@ void UsbIsoStream::fillTransferBuffer(libusb_transfer *transfer) {
             const int samplesNeeded = framesInPkt * channels_;
 
             const uint32_t got = ringBuffer_.read(scratch, static_cast<uint32_t>(samplesNeeded));
-            if (got < static_cast<uint32_t>(samplesNeeded)) {
-                LOGD("USB underrun: needed %d samples, got %u — padding with silence",
-                     samplesNeeded, got);
-            }
+            (void) got; // silence is already padded by UsbRingBuffer::read when got < samplesNeeded
 
             // Convert float → packed PCM (zeros produce silence on underrun because
             // UsbRingBuffer::read already zero-filled the scratch buffer).
