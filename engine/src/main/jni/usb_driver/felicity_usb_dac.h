@@ -82,6 +82,19 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativePushPcm(
         JNIEnv *env, jobject thiz,
         jfloatArray samples, jint offset, jint count);
 
+/**
+ * Returns the estimated playback position in microseconds by computing how many
+ * samples have left the ring buffer relative to the total written so far.
+ *
+ * @param channelCount Number of interleaved output channels.
+ * @param sampleRate   Negotiated sample rate in Hz.
+ * @return Position in microseconds, or -1 if the stream is not active.
+ */
+JNIEXPORT jlong JNICALL
+Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeGetPlaybackPositionUs(
+        JNIEnv *env, jobject thiz,
+        jint channelCount, jint sampleRate);
+
 #ifdef __cplusplus
 }
 #endif

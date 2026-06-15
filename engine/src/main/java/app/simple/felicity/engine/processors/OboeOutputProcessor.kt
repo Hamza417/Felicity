@@ -73,12 +73,24 @@ class OboeOutputProcessor(
     }
 
     /**
-     * Returns the estimated round-trip output latency in milliseconds,
+     * Returns the estimated output latency in milliseconds,
      * or -1 if the stream is not open or the value is unavailable.
      */
     fun getLatencyMs(): Int {
         if (nativeHandle == 0L) return -1
         return nativeOboeGetLatencyMs(nativeHandle)
+    }
+
+    /**
+     * Returns the estimated playback position in microseconds using Oboe's
+     * hardware timestamp API. Returns -1 when the stream is not running
+     * or the timestamp is not yet available.
+     *
+     * @param sourceEnded True when the audio source has finished delivering data.
+     */
+    fun getPlaybackPositionUs(sourceEnded: Boolean): Long {
+        if (nativeHandle == 0L) return -1L
+        return nativeOboeGetPlaybackPositionUs(nativeHandle, sourceEnded)
     }
 
     /**
@@ -108,6 +120,7 @@ class OboeOutputProcessor(
     private external fun nativeOboeStart(handle: Long): Boolean
     private external fun nativeOboeWrite(handle: Long, pcmBuffer: FloatArray)
     private external fun nativeOboeGetLatencyMs(handle: Long): Int
+    private external fun nativeOboeGetPlaybackPositionUs(handle: Long, sourceEnded: Boolean): Long
     private external fun nativeOboeGetApiName(handle: Long): String
     private external fun nativeOboeStop(handle: Long)
     private external fun nativeOboeDestroy(handle: Long)

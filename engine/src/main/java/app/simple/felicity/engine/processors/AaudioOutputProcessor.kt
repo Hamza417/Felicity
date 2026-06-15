@@ -95,6 +95,18 @@ class AaudioOutputProcessor(
     }
 
     /**
+     * Returns the estimated playback position in microseconds using AAudio's
+     * hardware timestamp API. Returns [androidx.media3.common.C.TIME_UNSET] (-1)
+     * when the stream is not running or the timestamp is not yet available.
+     *
+     * @param sourceEnded True when the audio source has finished delivering data.
+     */
+    fun getPlaybackPositionUs(sourceEnded: Boolean): Long {
+        if (nativeHandle == 0L) return -1L
+        return nativeAaudioGetPlaybackPositionUs(nativeHandle, sourceEnded)
+    }
+
+    /**
      * Returns the estimated output latency in milliseconds, or -1 if unavailable.
      */
     fun getLatencyMs(): Int {
@@ -162,6 +174,7 @@ class AaudioOutputProcessor(
     private external fun nativeAaudioStart(handle: Long): Boolean
     private external fun nativeAaudioWrite(handle: Long, pcmBuffer: FloatArray)
     private external fun nativeAaudioGetLatencyMs(handle: Long): Int
+    private external fun nativeAaudioGetPlaybackPositionUs(handle: Long, sourceEnded: Boolean): Long
 
     /**
      * Returns the [aaudio_format_t] constant the HAL actually used after opening the stream.
