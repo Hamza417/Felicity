@@ -90,7 +90,6 @@ class Milkdrop : MediaFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         requireLightBarIcons()
-        requireImmersiveMode()
         requireHiddenMiniPlayer()
         setPresetPagerBackground()
 

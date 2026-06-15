@@ -417,8 +417,6 @@
     <string name="done">Gotowe</string>
     <string name="manage_music_folders">Zarządzaj folderami z muzyką</string>
     <string name="manage_music_folders_desc">Zarządzaj lokalnymi katalogami do indeksowania biblioteki.</string>
-    <string name="immersive_mode">Tryb immersyjny</string>
-    <string name="immersive_mode_summary">Użyj aplikacji na pełnym ekranie, gdy niektóre ciężkie wizualnie ekrany są aktywne.</string>
     <!-- Dashboard section titles and chips -->
     <string name="top_artists">Top wykonawcy</string>
     <string name="top_albums">Top albumy</string>
@@ -475,4 +473,7 @@
     <string name="carousel">Karuzela</string>
     <string name="carousel_ui_desc">Prosty styl odtwarzacza z okładkami w stylu karuzeli.</string>
     <string name="caps">Wielkie litery</string>
+    <string name="current_queue">Kolejka %1$d</string>
+    <string name="volume_controls">Regulacja głośności</string>
+    <string name="volume_controls_summary">Pokaż regulację głośności po naciśnięciu przycisków głośności.</string>
 </resources>

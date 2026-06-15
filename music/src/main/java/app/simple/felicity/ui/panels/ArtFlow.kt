@@ -37,7 +37,6 @@ class ArtFlow : MediaFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         requireLightBarIcons()
-        requireImmersiveMode()
         requireTransparentMiniPlayer()
 
         WindowUtil.getStatusBarHeightWhenAvailable(binding.topMenuContainer) { height ->

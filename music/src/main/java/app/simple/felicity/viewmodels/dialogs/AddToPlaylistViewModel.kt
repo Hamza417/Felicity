@@ -81,7 +81,7 @@ class AddToPlaylistViewModel @AssistedInject constructor(
             val audioHash = audio.hash
             playlistRepository.getAllPlaylistsWithSongs()
                 .collect { playlistsWithSongs ->
-                    val playlists = playlistsWithSongs.map { it.playlist }
+                    val playlists = playlistsWithSongs.map { it.playlist }.filter { it.isM3UPlaylist.not() }.sortedBy { it.dateCreated }
                     val preCheckedIds = playlistsWithSongs
                         .filter { pws -> pws.songs.any { song -> song.hash == audioHash } }
                         .map { it.playlist.id }
