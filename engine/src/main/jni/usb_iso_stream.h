@@ -166,4 +166,12 @@ private:
      * preventing the ring buffer from draining faster than the DAC plays.
      */
     uint32_t uframeFraction_ = 0;
+
+    /**
+     * Counter incremented on every call to [framesForCurrentUframe].
+     * The adaptive drift-compensation check runs once every 512 calls (~64 ms at
+     * any sample rate) so the ring buffer fill level can be sampled and a
+     * ±1-frame nudge applied before the buffer drifts into overflow or underrun.
+     */
+    uint32_t driftCounter_ = 0;
 };
