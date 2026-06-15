@@ -7,6 +7,8 @@
 #include <cerrno>
 #include <sched.h> // SCHED_FIFO, sched_param
 #include <time.h>  // nanosleep
+#include <linux/resource.h>
+#include <sys/resource.h>
 
 // ------------------------------------------------------------------ //
 //  libusb transfer callback — called by libusb on the event thread
@@ -270,21 +272,14 @@ void *UsbIsoStream::eventThreadEntry(void *arg) {
 }
 
 void UsbIsoStream::eventThreadLoop() {
-    // Try to elevate this thread to SCHED_FIFO so USB callbacks preempt regular
-    // threads. This dramatically reduces isochronous timing jitter on busy systems.
-    // On Android, SCHED_FIFO requires CAP_SYS_NICE or the audio group — we attempt
-    // it and fall back to the default scheduler without failing hard.
-    struct sched_param sp{};
-    sp.sched_priority = sched_get_priority_max(SCHED_FIFO);
-    const int schedRet = pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp);
-    if (schedRet != 0) {
-        // Android typically blocks SCHED_FIFO for unprivileged apps.
-        // Log the actual error code from pthread_setschedparam, not errno,
-        // since that function returns its error directly rather than setting errno.
-        LOGW("Could not set SCHED_FIFO for USB event thread (err=%d) — using default scheduler",
-             schedRet);
+    // Elevate this thread to Android's URGENT_AUDIO priority (-19).
+    // This replaces SCHED_FIFO, which Android blocks for unprivileged apps.
+    // It dramatically reduces isochronous timing jitter on busy systems,
+    // preventing underruns when the user interacts with the UI.
+    if (setpriority(PRIO_PROCESS, 0, -19) != 0) {
+        LOGW("Could not set URGENT_AUDIO priority (errno=%d) — using default scheduler", errno);
     } else {
-        LOGI("USB event thread running at SCHED_FIFO priority %d", sp.sched_priority);
+        LOGI("USB event thread running at URGENT_AUDIO priority (-19)");
     }
 
     LOGI("USB event thread started");
