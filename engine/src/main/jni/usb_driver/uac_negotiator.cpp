@@ -34,13 +34,12 @@ static bool send_set_cur(libusb_device_handle *handle,
     // wIndex = (entityId << 8) | interfaceNumber
     const int transferred = libusb_control_transfer(
             handle,
-            /*bmRequestType=*/ 0x21,
-            /*bRequest=*/      UAC_SET_CUR,
-            /*wValue=*/        static_cast<uint16_t>((controlSelector << 8) | channel),
-            /*wIndex=*/        static_cast<uint16_t>((entityId << 8) | acInterfaceNum),
+            /*bmRequestType=*/0x21,
+            /*bRequest=*/UAC_SET_CUR,
+            /*wValue=*/static_cast<uint16_t>((controlSelector << 8) | channel),
+            /*wIndex=*/static_cast<uint16_t>((entityId << 8) | acInterfaceNum),
             data, dataLen,
-            /*timeout_ms=*/ 1000
-    );
+            /*timeout_ms=*/1000);
 
     if (transferred < 0) {
         LOGE("SET_CUR failed (entity=%d cs=0x%02X): %s",
@@ -63,13 +62,12 @@ static int send_get_cur(libusb_device_handle *handle,
     // bmRequestType = 0xA1: device-to-host | class | interface
     return libusb_control_transfer(
             handle,
-            /*bmRequestType=*/ 0xA1,
-            /*bRequest=*/      UAC_GET_CUR,
-            /*wValue=*/        static_cast<uint16_t>((controlSelector << 8) | channel),
-            /*wIndex=*/        static_cast<uint16_t>((entityId << 8) | acInterfaceNum),
+            /*bmRequestType=*/0xA1,
+            /*bRequest=*/UAC_GET_CUR,
+            /*wValue=*/static_cast<uint16_t>((controlSelector << 8) | channel),
+            /*wIndex=*/static_cast<uint16_t>((entityId << 8) | acInterfaceNum),
             data, dataLen,
-            /*timeout_ms=*/ 1000
-    );
+            /*timeout_ms=*/1000);
 }
 
 /**
@@ -87,20 +85,19 @@ static bool uac1_set_endpoint_sample_rate(libusb_device_handle *handle,
                                           uint8_t endpointAddr,
                                           uint32_t sampleRate) {
     uint8_t buf[3];
-    buf[0] = static_cast<uint8_t>( sampleRate & 0xFF);
+    buf[0] = static_cast<uint8_t>(sampleRate & 0xFF);
     buf[1] = static_cast<uint8_t>((sampleRate >> 8) & 0xFF);
     buf[2] = static_cast<uint8_t>((sampleRate >> 16) & 0xFF);
 
     // bmRequestType = 0x22: host-to-device | class | endpoint
     const int ret = libusb_control_transfer(
             handle,
-            /*bmRequestType=*/ 0x22,
-            /*bRequest=*/      UAC_SET_CUR,
-            /*wValue=*/        static_cast<uint16_t>(UAC1_ENDPOINT_CS_SAMPLING_FREQ << 8),
-            /*wIndex=*/        static_cast<uint16_t>(endpointAddr),
+            /*bmRequestType=*/0x22,
+            /*bRequest=*/UAC_SET_CUR,
+            /*wValue=*/static_cast<uint16_t>(UAC1_ENDPOINT_CS_SAMPLING_FREQ << 8),
+            /*wIndex=*/static_cast<uint16_t>(endpointAddr),
             buf, 3,
-            /*timeout_ms=*/ 1000
-    );
+            /*timeout_ms=*/1000);
 
     if (ret < 0) {
         LOGE("UAC1 endpoint sample rate SET_CUR failed: %s",
@@ -112,18 +109,17 @@ static bool uac1_set_endpoint_sample_rate(libusb_device_handle *handle,
     uint8_t verify[3] = {};
     const int vret = libusb_control_transfer(
             handle,
-            /*bmRequestType=*/ 0xA2, // device-to-host | class | endpoint
-            /*bRequest=*/      UAC_GET_CUR,
-            /*wValue=*/        static_cast<uint16_t>(UAC1_ENDPOINT_CS_SAMPLING_FREQ << 8),
-            /*wIndex=*/        static_cast<uint16_t>(endpointAddr),
+            /*bmRequestType=*/0xA2, // device-to-host | class | endpoint
+            /*bRequest=*/UAC_GET_CUR,
+            /*wValue=*/static_cast<uint16_t>(UAC1_ENDPOINT_CS_SAMPLING_FREQ << 8),
+            /*wIndex=*/static_cast<uint16_t>(endpointAddr),
             verify, 3,
-            /*timeout_ms=*/ 1000
-    );
+            /*timeout_ms=*/1000);
 
     if (vret == 3) {
-        const uint32_t confirmed = static_cast<uint32_t>(verify[0])
-                                   | (static_cast<uint32_t>(verify[1]) << 8)
-                                   | (static_cast<uint32_t>(verify[2]) << 16);
+        const uint32_t confirmed =
+                static_cast<uint32_t>(verify[0]) | (static_cast<uint32_t>(verify[1]) << 8) |
+                (static_cast<uint32_t>(verify[2]) << 16);
         if (confirmed == sampleRate) {
             LOGI("UAC1 sample rate confirmed: %u Hz", confirmed);
         } else {
@@ -150,7 +146,7 @@ static bool uac2_set_clock_frequency(libusb_device_handle *handle,
                                      uint8_t clockId, uint8_t acInterfaceNum,
                                      uint32_t sampleRate) {
     uint8_t buf[4];
-    buf[0] = static_cast<uint8_t>( sampleRate & 0xFF);
+    buf[0] = static_cast<uint8_t>(sampleRate & 0xFF);
     buf[1] = static_cast<uint8_t>((sampleRate >> 8) & 0xFF);
     buf[2] = static_cast<uint8_t>((sampleRate >> 16) & 0xFF);
     buf[3] = static_cast<uint8_t>((sampleRate >> 24) & 0xFF);
@@ -166,10 +162,10 @@ static bool uac2_set_clock_frequency(libusb_device_handle *handle,
     const int got = send_get_cur(handle, clockId, acInterfaceNum,
                                  UAC2_CS_SAM_FREQ_CONTROL, 0, readback, 4);
     if (got == 4) {
-        const uint32_t confirmed = static_cast<uint32_t>(readback[0])
-                                   | (static_cast<uint32_t>(readback[1]) << 8)
-                                   | (static_cast<uint32_t>(readback[2]) << 16)
-                                   | (static_cast<uint32_t>(readback[3]) << 24);
+        const uint32_t confirmed =
+                static_cast<uint32_t>(readback[0]) | (static_cast<uint32_t>(readback[1]) << 8) |
+                (static_cast<uint32_t>(readback[2]) << 16) |
+                (static_cast<uint32_t>(readback[3]) << 24);
         if (confirmed != sampleRate) {
             LOGW("UAC2 clock %d rate mismatch: requested %u Hz, confirmed %u Hz",
                  clockId, sampleRate, confirmed);
@@ -207,8 +203,10 @@ static bool uac2_set_clock_frequency(libusb_device_handle *handle,
  * the fallback path so we always end up with something workable.
  */
 static int score_alt_setting(const UacAltSetting &alt, const UacFormatRequest &req) {
-    if (alt.endpointAddress == 0) return 0; // Zero-bandwidth, skip.
-    if (alt.bFormatType != FORMAT_TYPE_I) return 0; // We only handle PCM Type I.
+    if (alt.endpointAddress == 0)
+        return 0; // Zero-bandwidth, skip.
+    if (alt.bFormatType != FORMAT_TYPE_I)
+        return 0; // We only handle PCM Type I.
 
     int score = 0;
 
@@ -217,10 +215,12 @@ static int score_alt_setting(const UacAltSetting &alt, const UacFormatRequest &r
     const int requestedBytes = (req.bitDepth + 7) / 8;
     if (alt.bSubslotSize == requestedBytes) {
         score += 100;
-        if (alt.bBitResolution == req.bitDepth) score += 50;
+        if (alt.bBitResolution == req.bitDepth)
+            score += 50;
     } else {
         // Bit depth mismatch: prefer the closest without truncation.
-        if (alt.bSubslotSize >= requestedBytes) score += 10;
+        if (alt.bSubslotSize >= requestedBytes)
+            score += 10;
     }
 
     // Sample rate match. For UAC1 we check the discrete/continuous list;
@@ -238,7 +238,8 @@ static int score_alt_setting(const UacAltSetting &alt, const UacFormatRequest &r
             }
         }
         // UAC2: sampleRateCount == 0 means rate is clock-driven — always eligible.
-        if (alt.sampleRateCount == 0) score += 80;
+        if (alt.sampleRateCount == 0)
+            score += 80;
     }
 
     // Channel count: prefer an exact match; mono is acceptable for stereo requests.
@@ -279,26 +280,74 @@ static int select_best_alt_setting(const UacDeviceInfo *info, const UacFormatReq
  * For UAC2 we look up the Input Terminal that feeds the streaming interface,
  * then return its bClockSourceId. For UAC1 there is no clock entity (returns 0).
  */
-static uint8_t resolve_clock_source(const UacDeviceInfo *info) {
-    if (info->uacVersion != 2) return 0;
+// 1. Update the signature to accept the chosen alt-setting
+static uint8_t resolve_clock_source(const UacDeviceInfo *info, const UacAltSetting &chosenAlt) {
+    if (info->uacVersion != 2)
+        return 0;
 
-    // The Input Terminal with wTerminalType = 0x0101 (USB Streaming) is the one
-    // that feeds audio from the host into the routing graph.
-    for (int i = 0; i < info->inputTerminalCount; i++) {
-        if (info->inputTerminals[i].wTerminalType == 0x0101) {
-            return info->inputTerminals[i].bClockSourceId;
-        }
-    }
-
-    // If no USB Streaming terminal was tagged (uncommon), fall back to the first
-    // programmable clock source we found during parsing.
+    // Option A: The Alt-Setting's Terminal Link directly points to a Clock Source.
+    // (We check if a clock source exists with an ID matching the terminal link).
     for (int i = 0; i < info->clockSourceCount; i++) {
-        if ((info->clockSources[i].bmAttributes & 0x03) == 0x03) {
+        if (info->clockSources[i].bClockID == chosenAlt.bTerminalLink) {
+            LOGI("Found clock directly linked to Alt-Setting via TerminalLink: %d",
+                 chosenAlt.bTerminalLink);
             return info->clockSources[i].bClockID;
         }
     }
 
-    // Last resort: use the first clock source regardless of type.
+    // Option B: The Terminal Link points to an Input Terminal.
+    for (int i = 0; i < info->inputTerminalCount; i++) {
+        if (info->inputTerminals[i].bTerminalID == chosenAlt.bTerminalLink) {
+
+            // Check if the Input Terminal knows its clock.
+            if (info->inputTerminals[i].bClockSourceId != 0) {
+                LOGI("Found clock via Input Terminal %d: %d", chosenAlt.bTerminalLink,
+                     info->inputTerminals[i].bClockSourceId);
+                return info->inputTerminals[i].bClockSourceId;
+            }
+
+            // If the Input Terminal doesn't know its clock (like your device),
+            // check if the clock is tied to the OUTPUT terminal that this Input Terminal feeds.
+            // (This is a common topology for complex DACs).
+            for (int o = 0; o < info->outputTerminalCount; o++) {
+                // If this Output Terminal gets its data from our Input Terminal...
+                if (info->outputTerminals[o].bSourceId == chosenAlt.bTerminalLink ||
+                    info->outputTerminals[o].bSourceId ==
+                            info->inputTerminals[i].bTerminalID) { // Note: these might be the same
+
+                    if (info->outputTerminals[o].bClockSourceId != 0) {
+                        LOGI("Found clock via Output Terminal %d: %d",
+                             info->outputTerminals[o].bTerminalID,
+                             info->outputTerminals[o].bClockSourceId);
+                        return info->outputTerminals[o].bClockSourceId;
+                    }
+                }
+            }
+        }
+    }
+
+    // Option C: The Terminal Link points to an Output Terminal (less common for IN endpoints, but happens)
+    for (int i = 0; i < info->outputTerminalCount; i++) {
+        if (info->outputTerminals[i].bTerminalID == chosenAlt.bTerminalLink) {
+            if (info->outputTerminals[i].bClockSourceId != 0) {
+                LOGI("Found clock directly via Output Terminal %d: %d", chosenAlt.bTerminalLink,
+                     info->outputTerminals[i].bClockSourceId);
+                return info->outputTerminals[i].bClockSourceId;
+            }
+        }
+    }
+
+    // Fallbacks (if the breadcrumb trail is broken)
+    LOGW("Could not trace bTerminalLink (%d) to a Clock Source.", chosenAlt.bTerminalLink);
+
+    for (int i = 0; i < info->clockSourceCount; i++) {
+        if ((info->clockSources[i].bmAttributes & 0x03) == 0x03) {
+            LOGI("Fallback: Using first programmable clock found: %d",
+                 info->clockSources[i].bClockID);
+            return info->clockSources[i].bClockID;
+        }
+    }
+
     return (info->clockSourceCount > 0) ? info->clockSources[0].bClockID : 0;
 }
 
@@ -307,8 +356,8 @@ static uint8_t resolve_clock_source(const UacDeviceInfo *info) {
 // ------------------------------------------------------------------ //
 
 int uac_negotiate_format(libusb_device_handle *handle,
-                          const UacDeviceInfo *info,
-                          const UacFormatRequest &request) {
+                         const UacDeviceInfo *info,
+                         const UacFormatRequest &request) {
 
     LOGI("Format negotiation start — target: %u Hz / %d-bit / %d ch",
          request.sampleRate, request.bitDepth, request.channels);
@@ -354,7 +403,7 @@ int uac_negotiate_format(libusb_device_handle *handle,
         }
     } else {
         // UAC2: find the Clock Source entity that feeds this stream and program it.
-        const uint8_t clockId = resolve_clock_source(info);
+        const uint8_t clockId = resolve_clock_source(info, chosen);
         if (clockId != 0) {
             if (!uac2_set_clock_frequency(handle, clockId,
                                           info->acInterfaceNumber,
@@ -372,11 +421,12 @@ int uac_negotiate_format(libusb_device_handle *handle,
     bool unmuted = false;
     for (int i = 0; i < info->featureUnitCount; i++) {
         const UacFeatureUnit &fu = info->featureUnits[i];
-        if (!fu.hasMute) continue;
+        if (!fu.hasMute)
+            continue;
 
         uint8_t muteByte = 0x00; // 0x00 = not muted
         const bool ok = send_set_cur(handle, fu.bUnitID, info->acInterfaceNumber,
-                                     FU_CS_MUTE, /*channel=*/ 0,
+                                     FU_CS_MUTE, /*channel=*/0,
                                      &muteByte, 1);
         if (ok) {
             LOGI("Feature Unit %d: output unmuted", fu.bUnitID);
@@ -415,23 +465,40 @@ void uac_set_volume(libusb_device_handle *handle,
                     const UacDeviceInfo *info,
                     int16_t volumeDb256) {
 
+    if (info->featureUnitCount == 0) {
+        LOGD("uac_set_volume: DAC has no Feature Units — hardware volume control is not available on this device");
+        return;
+    }
+
     for (int i = 0; i < info->featureUnitCount; i++) {
         const UacFeatureUnit &fu = info->featureUnits[i];
-        if (!fu.hasVolume) continue;
+        if (!fu.hasVolume)
+            continue;
 
         // Volume is a signed 16-bit value in 1/256 dB steps (Q8.8 fixed-point).
         // 0x0000 = 0 dB, 0x0100 = +1 dB, 0xFF00 = -1 dB.
         uint8_t buf[2];
-        buf[0] = static_cast<uint8_t>( volumeDb256 & 0xFF);
+        buf[0] = static_cast<uint8_t>(volumeDb256 & 0xFF);
         buf[1] = static_cast<uint8_t>((volumeDb256 >> 8) & 0xFF);
 
         const bool ok = send_set_cur(handle, fu.bUnitID, info->acInterfaceNumber,
-                                     FU_CS_VOLUME, /*channel=*/ 0,
+                                     FU_CS_VOLUME, /*channel=*/0,
                                      buf, 2);
         if (ok) {
-            LOGI("Feature Unit %d: volume set to %d/256 dB", fu.bUnitID, volumeDb256);
+            // Show both the raw Q8.8 value and the approximate dB for readability.
+            const float db = static_cast<float>(volumeDb256) / 256.0f;
+            LOGI("Feature Unit %d: volume set to %d/256 dB (≈ %.1f dB)", fu.bUnitID, volumeDb256,
+                 db);
+        } else {
+            LOGW("Feature Unit %d: volume SET_CUR failed — DAC may ignore software volume",
+                 fu.bUnitID);
         }
         // Only set volume on the first unit that supports it.
-        break;
+        return;
     }
+
+    // If we reach here, we iterated all Feature Units and none had volume control.
+    LOGD("uac_set_volume: DAC has %d Feature Unit(s) but none report volume control — "
+         "this DAC likely uses a hardware knob and ignores software volume requests",
+         info->featureUnitCount);
 }

@@ -67,10 +67,10 @@ FetchContent_MakeAvailable(oboe)
 # independently of the main audio engine. The Kotlin side loads it via
 # System.loadLibrary("felicity_usb_dac") inside UsbDacDriver.
 add_library(felicity_usb_dac SHARED
-        felicity_usb_dac.cpp
-        uac_parser.cpp
-        uac_negotiator.cpp
-        usb_iso_stream.cpp)
+        usb_driver/felicity_usb_dac.cpp
+        usb_driver/uac_parser.cpp
+        usb_driver/uac_negotiator.cpp
+        usb_driver/usb_iso_stream.cpp)
 
 find_library(log-lib-usb log)
 
@@ -83,10 +83,10 @@ target_link_libraries(felicity_usb_dac
 
 # JNI bridge code
 add_library(felicity_audio_engine SHARED
-            visualizer-fft.cpp
-            dsp-engine.cpp
-        aaudio-player.cpp
-        oboe-player.cpp)
+        dsp/visualizer-fft.cpp
+        dsp/dsp-engine.cpp
+        aaudio/aaudio-player.cpp
+        oboe/oboe-player.cpp)
 
 # Explicitly add pffft's source root so that #include "pffft.h" resolves
 # correctly regardless of how the PFFFT::PFFFT target exposes its headers.

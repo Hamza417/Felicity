@@ -20,6 +20,12 @@ static bool g_device_info_valid = false;
 // Using a pointer so its constructor does not run at static-init time.
 static UsbIsoStream *g_iso_stream = nullptr;
 
+// The sample rate last negotiated with the DAC.  nativeStartStream() reads this to
+// tell the isochronous stream how many audio frames belong in each 125 µs USB
+// microframe.  Stored separately from the alt-setting because UacAltSetting only
+// carries *supported* rates, not the one we actually programmed.
+static int g_negotiated_sample_rate = 0;
+
 /**
  * Index into g_device_info.altSettings[] of the alt-setting that was last activated by
  * uac_negotiate_format(). nativeStartStream() uses this to open the isochronous stream
@@ -67,7 +73,8 @@ static bool detach_kernel_driver_if_needed(libusb_device_handle *handle, int ifa
     return false;
 }
 
-extern "C" {
+extern "C"
+{
 
 JNIEXPORT jboolean JNICALL
 Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeInitUsb(
@@ -81,19 +88,27 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeInitUsb(
         LOGW("Previous libusb context still open — releasing before re-init");
         if (g_usb_handle != nullptr) {
             if (g_claimed_interface >= 0) {
-                libusb_release_interface(g_usb_handle, g_claimed_interface);
+                for (int i = g_claimed_interface; i >= 0; i--) {
+                    libusb_release_interface(g_usb_handle, i);
+                }
                 g_claimed_interface = -1;
             }
             libusb_close(g_usb_handle);
             g_usb_handle = nullptr;
         }
+
         libusb_exit(g_usb_ctx);
         g_usb_ctx = nullptr;
     }
     g_device_info_valid = false;
     g_active_alt_idx = -1;
+    g_negotiated_sample_rate = 0;
 
-    // 1. Initialize libusb context.
+    // --- CRITICAL FIX FOR ANDROID SELINUX ---
+    // Prevent libusb from scanning the device tree, which is blocked by Android.
+    libusb_set_option(nullptr, LIBUSB_OPTION_NO_DEVICE_DISCOVERY);
+
+    // Initialize libusb context.
     int ret = libusb_init(&g_usb_ctx);
     if (ret != LIBUSB_SUCCESS) {
         LOGE("libusb_init failed: %s", libusb_strerror((libusb_error) ret));
@@ -101,7 +116,7 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeInitUsb(
     }
     LOGI("libusb context initialized");
 
-    // 2. Wrap the Android FD — avoids needing /dev/bus/usb enumeration.
+    // Wrap the Android FD — avoids needing /dev/bus/usb enumeration.
     ret = libusb_wrap_sys_device(g_usb_ctx,
                                  static_cast<intptr_t>(fileDescriptor),
                                  &g_usb_handle);
@@ -113,36 +128,44 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeInitUsb(
     }
     LOGI("libusb handle wrapped from FD=%d", fileDescriptor);
 
-    // 3. Detach kernel drivers so we can claim both interfaces.
-    for (int iface: audio_interfaces) {
-        if (!detach_kernel_driver_if_needed(g_usb_handle, iface)) {
-            LOGW("Could not detach kernel driver from interface %d — claiming anyway", iface);
-        }
-    }
+    // Extract the physical device pointer from our open handle
+    libusb_device *device = libusb_get_device(g_usb_handle);
 
-    // 4. Claim Audio Control interface (0) — needed to send control transfers.
-    ret = libusb_claim_interface(g_usb_handle, USB_AUDIO_CONTROL_INTERFACE);
-    if (ret != LIBUSB_SUCCESS) {
-        LOGE("Failed to claim Audio Control interface (0): %s",
-             libusb_strerror((libusb_error) ret));
+    // Get the active configuration to see how many interfaces this DAC actually has
+    libusb_config_descriptor *config = nullptr;
+    ret = libusb_get_active_config_descriptor(device,
+                                              &config); // Pass 'device' instead of 'g_usb_handle'
+
+    if (ret != LIBUSB_SUCCESS || config == nullptr) {
+        LOGE("Failed to get config descriptor: %s", libusb_strerror((libusb_error) ret));
         libusb_close(g_usb_handle);
         g_usb_handle = nullptr;
         libusb_exit(g_usb_ctx);
         g_usb_ctx = nullptr;
         return JNI_FALSE;
     }
-    LOGI("Audio Control interface (0) claimed");
 
-    // 5. Claim Audio Streaming interface (1) — carries the isochronous PCM frames.
-    ret = libusb_claim_interface(g_usb_handle, USB_AUDIO_STREAMING_INTERFACE);
-    if (ret != LIBUSB_SUCCESS) {
-        LOGW("Could not claim Audio Streaming interface (1): %s — device may use interface 0 only",
-             libusb_strerror((libusb_error) ret));
-        g_claimed_interface = USB_AUDIO_CONTROL_INTERFACE;
-    } else {
-        LOGI("Audio Streaming interface (1) claimed");
-        g_claimed_interface = USB_AUDIO_STREAMING_INTERFACE;
+    int num_interfaces = config->bNumInterfaces;
+    LOGI("Device has %d interfaces. Detaching kernel drivers and claiming...", num_interfaces);
+
+    // Dynamically detach and claim EVERY interface on the device
+    for (int i = 0; i < num_interfaces; i++) {
+        if (!detach_kernel_driver_if_needed(g_usb_handle, i)) {
+            LOGW("Could not detach kernel driver from interface %d — claiming anyway", i);
+        }
+
+        ret = libusb_claim_interface(g_usb_handle, i);
+        if (ret != LIBUSB_SUCCESS) {
+            LOGE("Failed to claim interface %d: %s", i, libusb_strerror((libusb_error) ret));
+        } else {
+            LOGI("Interface %d claimed successfully", i);
+            // Track the highest interface claimed so our teardown logic can clean it up
+            g_claimed_interface = i;
+        }
     }
+
+    // Free the config descriptor since we are done with it
+    libusb_free_config_descriptor(config);
 
     LOGI("USB DAC initialized — VID=0x%04X PID=0x%04X", vendorId, productId);
     return JNI_TRUE;
@@ -178,11 +201,13 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeNegotiateFormat(
 
     const int chosenIdx = uac_negotiate_format(g_usb_handle, &g_device_info, req);
     if (chosenIdx >= 0) {
-        // Remember which alt-setting is now live so nativeStartStream() can open the
-        // isochronous pipeline with the exact matching endpoint and packet parameters.
+        // Remember both the alt-setting and the sample rate so nativeStartStream()
+        // can open the isochronous pipeline with the exact endpoint, packet
+        // parameters, AND sample-rate-correct microframe pacing.
         g_active_alt_idx = chosenIdx;
+        g_negotiated_sample_rate = sampleRate;
         // Reset to unity gain so any previous software attenuation is cleared.
-        uac_set_volume(g_usb_handle, &g_device_info, /*0 dB in Q8.8 =*/ 0x0000);
+        uac_set_volume(g_usb_handle, &g_device_info, /*0 dB in Q8.8 =*/0x0000);
     }
     return chosenIdx >= 0 ? JNI_TRUE : JNI_FALSE;
 }
@@ -206,9 +231,9 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeReleaseUsb(
 
     if (g_usb_handle != nullptr) {
         if (g_claimed_interface >= 0) {
-            libusb_release_interface(g_usb_handle, g_claimed_interface);
-            if (g_claimed_interface == USB_AUDIO_STREAMING_INTERFACE) {
-                libusb_release_interface(g_usb_handle, USB_AUDIO_CONTROL_INTERFACE);
+            // Loop backwards from the highest interface we claimed down to 0
+            for (int i = g_claimed_interface; i >= 0; i--) {
+                libusb_release_interface(g_usb_handle, i);
             }
             g_claimed_interface = -1;
             LOGD("USB interfaces released");
@@ -226,6 +251,7 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeReleaseUsb(
 
     g_device_info_valid = false;
     g_active_alt_idx = -1;
+    g_negotiated_sample_rate = 0;
 }
 
 JNIEXPORT jboolean JNICALL
@@ -258,9 +284,10 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeStartStream(
     // to receive data with the wrong packet size and would prevent the LED from
     // reflecting the correct sample rate.
     const UacAltSetting &chosen = g_device_info.altSettings[g_active_alt_idx];
-    LOGI("Starting stream with negotiated alt-setting %d (endpoint=0x%02X, subslot=%d, bits=%d)",
+    LOGI("Starting stream with negotiated alt-setting %d (endpoint=0x%02X, subslot=%d, bits=%d, "
+         "rate=%d Hz)",
          chosen.bAlternateSetting, chosen.endpointAddress,
-         chosen.bSubslotSize, chosen.bBitResolution);
+         chosen.bSubslotSize, chosen.bBitResolution, g_negotiated_sample_rate);
 
     g_iso_stream = new UsbIsoStream();
     const bool ok = g_iso_stream->start(
@@ -268,8 +295,8 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeStartStream(
             g_usb_handle,
             chosen,
             chosen.bSubslotSize,
-            chosen.bBitResolution
-    );
+            chosen.bBitResolution,
+            g_negotiated_sample_rate);
 
     if (!ok) {
         delete g_iso_stream;
@@ -286,7 +313,8 @@ JNIEXPORT void JNICALL
 Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeStopStream(
         JNIEnv * /*env*/, jobject /*thiz*/) {
 
-    if (g_iso_stream == nullptr) return;
+    if (g_iso_stream == nullptr)
+        return;
 
     LOGI("nativeStopStream — halting isochronous pipeline");
     g_iso_stream->stop();
@@ -300,18 +328,54 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativePushPcm(
         JNIEnv *env, jobject /*thiz*/,
         jfloatArray samples, jint offset, jint count) {
 
-    if (g_iso_stream == nullptr || !g_iso_stream->isRunning()) return 0;
+    if (g_iso_stream == nullptr || !g_iso_stream->isRunning()) {
+        LOGE("nativePushPcm called but ISO stream is not running");
+        return 0;
+    }
 
     // GetFloatArrayElements gives us a direct or copied pointer to the float array.
     // We use JNI_ABORT on release since we never modify the array — no need to
     // copy back changes, and this avoids an unnecessary heap copy on some JVMs.
     jfloat *ptr = env->GetFloatArrayElements(samples, nullptr);
-    if (ptr == nullptr) return 0;
+    if (ptr == nullptr) {
+        LOGE("Failed to get float array elements");
+        return 0;
+    }
 
     const int written = g_iso_stream->pushPcm(ptr + offset, count);
     env->ReleaseFloatArrayElements(samples, ptr, JNI_ABORT);
     return written;
 }
 
-} // extern "C"
+JNIEXPORT void JNICALL
+Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeFlushStream(
+        JNIEnv * /*env*/, jobject /*thiz*/) {
 
+    if (g_iso_stream == nullptr || !g_iso_stream->isRunning()) {
+        LOGD("nativeFlushStream — stream not running, nothing to flush");
+        return;
+    }
+
+    // Discard stale audio from the ring buffer without tearing down the
+    // isochronous USB pipeline. The pipeline keeps sending packets (silence
+    // until the DSP refills) so there is no restart gap.
+    g_iso_stream->flushRingBuffer();
+    LOGD("nativeFlushStream — ring buffer cleared after seek");
+}
+
+JNIEXPORT void JNICALL
+Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeSetVolume(
+        JNIEnv * /*env*/, jobject /*thiz*/,
+        jshort volumeDb256) {
+
+    if (g_usb_handle == nullptr || !g_device_info_valid) {
+        LOGD("nativeSetVolume — no active DAC to set volume on, ignoring");
+        return;
+    }
+
+    LOGI("nativeSetVolume — pushing %d/256 dB (≈ %.1f dB) to DAC",
+         volumeDb256, static_cast<float>(volumeDb256) / 256.0f);
+    uac_set_volume(g_usb_handle, &g_device_info, static_cast<int16_t>(volumeDb256));
+}
+
+} // extern "C"

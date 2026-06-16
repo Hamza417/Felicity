@@ -62,4 +62,5 @@
     <string name="rg_track_peak" translatable="false">Track Peak</string>
     <string name="rg_album_peak" translatable="false">Album Peak</string>
     <string name="active_years">%1$s – %2$s</string>
+    <string name="usb_dac">USB DAC</string>
 </resources>

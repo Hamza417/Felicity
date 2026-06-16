@@ -195,8 +195,11 @@ class FelicityAudioSink(
                 val bitDepth = encodingToBitDepth(currentEncoding)
                 Log.i(TAG, "USB DAC attached mid-stream — re-negotiating to " +
                         "$currentSampleRate Hz / ${bitDepth}-bit / $currentChannelCount ch")
-                UsbDacDriver.getInstance(context)
-                    .negotiateFormat(currentSampleRate, bitDepth, currentChannelCount)
+                val driver = UsbDacDriver.getInstance(context)
+                driver.negotiateFormat(currentSampleRate, bitDepth, currentChannelCount)
+                if (!isPaused) {
+                    driver.startStream()
+                }
             }
             muteDelegateIfNeeded()
         }
@@ -263,7 +266,11 @@ class FelicityAudioSink(
             if (oboeStream != null) releaseOboeStream()
             val bitDepth = encodingToBitDepth(currentEncoding)
             Log.i(TAG, "USB DAC active — syncing DAC format to $sr Hz / ${bitDepth}-bit / $ch ch")
-            UsbDacDriver.getInstance(context).negotiateFormat(sr, bitDepth, ch)
+            val driver = UsbDacDriver.getInstance(context)
+            driver.negotiateFormat(sr, bitDepth, ch)
+            if (!isPaused) {
+                driver.startStream()
+            }
             muteDelegateIfNeeded()
             return
         }
@@ -332,6 +339,7 @@ class FelicityAudioSink(
         super.play()
         if (UsbDacManager.isActive) {
             muteDelegateIfNeeded()
+            UsbDacDriver.getInstance(context).startStream()
             return
         }
         when (AudioPreferences.getOutputSink()) {
@@ -352,6 +360,7 @@ class FelicityAudioSink(
         super.pause()
         aaudioStream?.stop()
         oboeStream?.stop()
+        UsbDacDriver.getInstance(context).stopStream()
     }
 
     /**
@@ -427,8 +436,19 @@ class FelicityAudioSink(
                 nativeDsp.processInPlace(floatScratchBuffer, sampleCount)
                 visualizer.feedFloat(floatScratchBuffer, sampleCount, currentChannelCount)
 
+                @Suppress("KotlinConstantConditions")
                 when {
-                    usbActive -> UsbDacDriver.getInstance(context).nativePushPcm(floatScratchBuffer, 0, sampleCount)
+                    usbActive -> {
+                        // Apply software volume attenuation for DACs that lack hardware
+                        // volume control. The gain is always ≤ 1.0 so no clipping occurs.
+                        val gain = UsbDacDriver.getInstance(context).softwareVolumeGain
+                        if (gain < 0.999f) {
+                            for (i in 0 until sampleCount) {
+                                floatScratchBuffer[i] *= gain
+                            }
+                        }
+                        UsbDacDriver.getInstance(context).nativePushPcm(floatScratchBuffer, 0, sampleCount)
+                    }
                     aaudioReady -> aaudioStream?.write(floatScratchBuffer, sampleCount)
                     oboeReady -> oboeStream?.write(floatScratchBuffer, sampleCount)
                 }
@@ -457,29 +477,35 @@ class FelicityAudioSink(
     }
 
     /**
-     * Flushes the delegate and restarts the AAudio stream (if active) to clear in-flight
-     * frames on seeks and discontinuities. Also clears [pendingDelegateBuffer] so the
-     * first buffer after the seek is always treated as fresh — without this, a buffer
-     * presented just before the seek and never consumed by the delegate would suppress
-     * the first audio frame after the seek from reaching AAudio.
+     * Flushes the delegate and restarts the AAudio/Oboe stream (if active) to clear
+     * in-flight frames on seeks and discontinuities. Also clears [pendingDelegateBuffer]
+     * so the first buffer after the seek is always treated as fresh.
      *
-     * When the player is currently paused (e.g. the user changed songs without resuming
-     * playback), the AAudio stream is stopped but NOT restarted. Restarting it here while
-     * paused would let the very first decoded frames of the new song slip through to the
-     * hardware before [play] is called, producing a brief audible blip on every song change.
+     * For the USB DAC path we intentionally do NOT stop the isochronous pipeline.
+     * Stopping and restarting it takes 20–500 ms even after the cancellation bug was
+     * fixed, and creates a noticeable dropout on every seek. Instead we just flush the
+     * ring buffer: the USB stream keeps sending packets and plays silence until the DSP
+     * starts delivering new audio — the gap is inaudible and matches seek behaviour on
+     * every other audio output path.
      *
-     * USB ring buffer is NOT flushed here because the native isochronous pipeline will
-     * drain the stale bytes as silence before new data arrives — abruptly flushing
-     * mid-transfer is more disruptive than letting it drain.
+     * Format changes (different sample rate or bit depth) are handled in [configure],
+     * which calls [UsbDacDriver.negotiateFormat] and does a proper stop/start as needed.
      */
     override fun flush() {
         super.flush()
         pendingDelegateBuffer = null
         aaudioStream?.stop()
         oboeStream?.stop()
+        if (UsbDacManager.isActive) {
+            UsbDacDriver.getInstance(context).flushRingBuffer()
+        } else {
+            UsbDacDriver.getInstance(context).stopStream()
+        }
         if (!isPaused) {
             aaudioStream?.start()
             oboeStream?.start()
+            // The isochronous USB pipeline is already running after the ring buffer
+            // flush above — no startStream() call needed here.
         }
     }
 
@@ -562,7 +588,7 @@ class FelicityAudioSink(
      */
     private fun isBluetoothOutputActive(): Boolean {
         val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-                ?: return false
+            ?: return false
         return audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).any { device ->
             device.isBluetoothType()
         }

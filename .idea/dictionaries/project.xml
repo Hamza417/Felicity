@@ -22,6 +22,7 @@
       <w>chargebacked</w>
       <w>coeffs</w>
       <w>dac's</w>
+      <w>dacs</w>
       <w>diffusors</w>
       <w>discnumber</w>
       <w>externalstorage</w>
@@ -34,6 +35,7 @@
       <w>logw</w>
       <w>mbid</w>
       <w>mediastore</w>
+      <w>microframes</w>
       <w>playhead</w>
       <w>rasterizing</w>
       <w>snapshotted</w>

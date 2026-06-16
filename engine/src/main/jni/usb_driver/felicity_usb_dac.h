@@ -82,6 +82,26 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativePushPcm(
         JNIEnv *env, jobject thiz,
         jfloatArray samples, jint offset, jint count);
 
+/**
+ * Sets the hardware volume on the DAC's Feature Unit in 1/256 dB steps (Q8.8).
+ * 0x0000 = 0 dB (unity gain), negative values = attenuation.
+ * Best-effort — many DACs with physical knobs ignore software volume.
+ *
+ * @param volumeDb256 Signed 16-bit value in 1/256 dB steps.
+ */
+JNIEXPORT void JNICALL
+Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeSetVolume(
+        JNIEnv *env, jobject thiz,
+        jshort volumeDb256);
+
+/**
+ * Discards stale audio from the ring buffer without stopping the isochronous
+ * pipeline. Used on seeks and format discontinuities for gap-free transitions.
+ */
+JNIEXPORT void JNICALL
+Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeFlushStream(
+        JNIEnv *env, jobject thiz);
+
 #ifdef __cplusplus
 }
 #endif

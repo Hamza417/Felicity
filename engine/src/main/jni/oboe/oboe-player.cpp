@@ -25,7 +25,7 @@
 
 #include <jni.h>
 #include <android/log.h>
-#include <oboe/Oboe.h>
+#include "oboe/Oboe.h"
 #include <cstdlib>
 #include <cstring>
 #include <string>

@@ -21,10 +21,11 @@
 class UsbRingBuffer {
 public:
     /**
-     * ~170 ms of float samples at 96 kHz stereo. Large enough to absorb DSP
-     * scheduling jitter without adding perceptible latency.
+     * ~341 ms of float samples at 96 kHz stereo. Large enough to absorb DSP
+     * scheduling jitter and the entire USB pipeline depth (32 URBs × 64 packets
+     * ≈ 256 ms) without underrunning even under heavy system load.
      */
-    static constexpr uint32_t CAPACITY = 32768u;
+    static constexpr uint32_t CAPACITY = 65536u;
     static constexpr uint32_t MASK = CAPACITY - 1u;
 
     UsbRingBuffer() : writeIdx_(0), readIdx_(0) {
@@ -41,7 +42,7 @@ public:
     uint32_t write(const float *src, uint32_t count) {
         const uint32_t w = writeIdx_.load(std::memory_order_relaxed);
         const uint32_t r = readIdx_.load(std::memory_order_acquire);
-        const uint32_t free = CAPACITY - (w - r);         // wraps correctly for uint32
+        const uint32_t free = CAPACITY - (w - r); // wraps correctly for uint32
         const uint32_t n = (count < free) ? count : free;
 
         for (uint32_t i = 0; i < n; i++) {
@@ -61,7 +62,7 @@ public:
     uint32_t read(float *dst, uint32_t count) {
         const uint32_t r = readIdx_.load(std::memory_order_relaxed);
         const uint32_t w = writeIdx_.load(std::memory_order_acquire);
-        const uint32_t avail = w - r;                   // wraps correctly for uint32
+        const uint32_t avail = w - r; // wraps correctly for uint32
         const uint32_t n = (count < avail) ? count : avail;
 
         for (uint32_t i = 0; i < n; i++) {
@@ -79,8 +80,7 @@ public:
 
     /** Samples currently waiting to be consumed. */
     uint32_t available() const {
-        return writeIdx_.load(std::memory_order_acquire)
-               - readIdx_.load(std::memory_order_acquire);
+        return writeIdx_.load(std::memory_order_acquire) - readIdx_.load(std::memory_order_acquire);
     }
 
     /** Free slots that can still accept new samples. */
@@ -94,6 +94,26 @@ public:
                        std::memory_order_release);
     }
 
+    /**
+     * Pre-fills the ring buffer with [sampleCount] zeros (digital silence).
+     * This is called right before the first URBs are submitted so the USB
+     * pipeline has immediate data to drain — avoiding an initial waterfall of
+     * underruns that would otherwise happen while the DSP thread is still
+     * waking up and pushing its first real audio chunk.
+     *
+     * The write index is advanced by [sampleCount] positions; the read index
+     * is left unchanged so the consumer sees the pre-filled data immediately.
+     */
+    void prefillSilence(uint32_t sampleCount) {
+        if (sampleCount > CAPACITY)
+            sampleCount = CAPACITY;
+        const uint32_t w = writeIdx_.load(std::memory_order_relaxed);
+        for (uint32_t i = 0; i < sampleCount; i++) {
+            data_[(w + i) & MASK] = 0.f;
+        }
+        writeIdx_.store(w + sampleCount, std::memory_order_release);
+    }
+
 private:
     // Each index on its own cache line to eliminate false-sharing between the
     // producer (DSP thread) and consumer (USB callback thread).
@@ -101,4 +121,3 @@ private:
     alignas(64) std::atomic<uint32_t> readIdx_;
     alignas(64) float data_[CAPACITY];
 };
-
