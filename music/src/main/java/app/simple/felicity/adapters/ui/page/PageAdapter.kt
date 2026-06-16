@@ -402,13 +402,13 @@ class PageAdapter(
                 Glide.with(holder.binding.cover).clear(holder.binding.cover)
             }
             is Albums -> {
-                holder.cleanup()
+                holder.binding.recyclerView.saveScrollState()
             }
             is Artists -> {
-                holder.cleanup()
+                holder.binding.recyclerView.saveScrollState()
             }
             is Genres -> {
-                holder.cleanup()
+                holder.binding.recyclerView.saveScrollState()
             }
         }
     }

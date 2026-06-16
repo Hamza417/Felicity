@@ -7,17 +7,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import app.simple.felicity.decorations.overscroll.CustomHorizontalRecyclerView
 import app.simple.felicity.decorations.singletons.CarouselScrollStateStore
 
-/**
- * A drop-in replacement for [CustomHorizontalRecyclerView] that also keeps track of
- * where the user has scrolled. When the fragment is recreated the list will jump
- * back to exactly the same spot instead of starting from the beginning.
- *
- * Just call [setUniqueKey] with a stable string that identifies this carousel
- * (e.g. the section title) before attaching an adapter, and everything else is
- * handled automatically.
- *
- * @author Hamza417
- */
 class CarouselStateRecyclerView @JvmOverloads constructor(
         context: Context,
         attrs: AttributeSet? = null,
@@ -25,52 +14,65 @@ class CarouselStateRecyclerView @JvmOverloads constructor(
 ) : CustomHorizontalRecyclerView(context, attrs, defStyleAttr) {
 
     private var uniqueKey: String? = null
+    private var isStateRestored = false
 
     /**
-     * Watches for the first batch of items to arrive from the adapter so we
-     * know it's safe to scroll to the saved position. We unregister right after
-     * the first restore to avoid doing it on every future data change.
+     * Watches for data changes to restore state once data is populated.
+     * Overrides multiple methods to support ListAdapter/DiffUtil updates.
      */
     private val restoreObserver = object : AdapterDataObserver() {
-        override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
-            restoreScrollState()
-            adapter?.unregisterAdapterDataObserver(this)
+        override fun onChanged() {
+            attemptRestore()
         }
 
-        override fun onChanged() {
-            restoreScrollState()
-            adapter?.unregisterAdapterDataObserver(this)
+        override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
+            attemptRestore()
+        }
+
+        override fun onItemRangeMoved(fromPosition: Int, toPosition: Int, itemCount: Int) {
+            attemptRestore()
+        }
+
+        override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) {
+            attemptRestore()
         }
     }
 
     /**
-     * Ties this carousel to a stable identifier so the scroll store can tell
-     * instances apart. Call this before [setAdapter] so the key is ready when
-     * state restoration is triggered.
+     * Ties this carousel to a stable identifier.
+     * Now properly triggers a save of the old state and a restore of the new one.
      */
     fun setUniqueKey(key: String) {
-        uniqueKey = key
+        if (this.uniqueKey == key) return // Prevent unnecessary work if the key hasn't changed
+
+        // 1. Save the state of the OUTGOING carousel before swapping keys
+        if (this.uniqueKey != null) {
+            saveScrollState()
+        }
+
+        // 2. Set the new key and reset the restoration flag
+        this.uniqueKey = key
+        this.isStateRestored = false
+
+        // 3. Attempt to restore immediately (if data is already present)
+        attemptRestore()
     }
 
     override fun setAdapter(adapter: Adapter<*>?) {
-        // Unregister any leftover observer from the previous adapter first.
         try {
             this.adapter?.unregisterAdapterDataObserver(restoreObserver)
-        } catch (e: IllegalStateException) {
-            Log.w(TAG, "observer was not registered, skipping unregister", e)
+        } catch (_: IllegalStateException) {
+            // Ignored
         }
 
         super.setAdapter(adapter)
-        if (adapter != null) {
-            // If the adapter already has items (data was loaded before setAdapter was called),
-            // the observer will never fire, so we restore immediately via post to let the
-            // layout pass finish first. Otherwise, we register the observer and wait for data.
-            if (adapter.itemCount > 0) {
-                post { restoreScrollState() }
-            } else {
-                adapter.registerAdapterDataObserver(restoreObserver)
-            }
-        }
+
+        // Modern RecyclerViews natively prevent state restoration when empty.
+        // This acts as a great safety net alongside our manual dictionary.
+        adapter?.stateRestorationPolicy = Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
+
+        adapter?.registerAdapterDataObserver(restoreObserver)
+        attemptRestore()
     }
 
     override fun onDetachedFromWindow() {
@@ -78,37 +80,38 @@ class CarouselStateRecyclerView @JvmOverloads constructor(
         super.onDetachedFromWindow()
     }
 
-    override fun onScrolled(dx: Int, dy: Int) {
-        super.onScrolled(dx, dy)
-        // Save on every scroll so the latest position survives even if the view
-        // is destroyed without a normal detach lifecycle call.
-        saveScrollState()
-    }
+    // REMOVED onScrolled() override to prevent severe performance penalties.
 
-    private fun saveScrollState() {
+    /**
+     * Expose this publicly so the Parent Adapter can call it in onViewRecycled()
+     */
+    fun saveScrollState() {
         val key = uniqueKey ?: return
         val lm = layoutManager as? LinearLayoutManager ?: return
+
         lm.onSaveInstanceState()?.let { state ->
             CarouselScrollStateStore.saveState(key, state)
             Log.d(TAG, "Saved scroll state for key '$key'")
         }
     }
 
-    private fun restoreScrollState() {
+    private fun attemptRestore() {
+        if (isStateRestored) return // Already restored for this key
+        if (adapter == null || adapter!!.itemCount == 0) return // No data to layout yet
+
         val key = uniqueKey ?: return
         val lm = layoutManager as? LinearLayoutManager ?: return
-        Log.d(TAG, "Attempting to restore scroll state for key '$key'")
+
         CarouselScrollStateStore.getState(key)?.let { state ->
             lm.onRestoreInstanceState(state)
-            Log.d(TAG, "Restored scroll state for key '$key', $state")
-            return
-        }
+            Log.d(TAG, "Restored scroll state for key '$key'")
+        } ?: Log.d(TAG, "No scroll state found for key '$key'")
 
-        Log.d(TAG, "No scroll state found for key '$key'")
+        // Mark as restored so we don't continually reset the user's scroll position on future data updates
+        isStateRestored = true
     }
 
     companion object {
         private const val TAG = "CarouselStateRecyclerView"
     }
 }
-
