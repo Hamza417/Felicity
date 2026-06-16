@@ -54,7 +54,12 @@ class CarouselStateRecyclerView @JvmOverloads constructor(
 
     override fun setAdapter(adapter: Adapter<*>?) {
         // Unregister any leftover observer from the previous adapter first.
-        this.adapter?.unregisterAdapterDataObserver(restoreObserver)
+        try {
+            this.adapter?.unregisterAdapterDataObserver(restoreObserver)
+        } catch (e: IllegalStateException) {
+            Log.w(TAG, "observer was not registered, skipping unregister", e)
+        }
+
         super.setAdapter(adapter)
         if (adapter != null) {
             // If the adapter already has items (data was loaded before setAdapter was called),
@@ -85,21 +90,25 @@ class CarouselStateRecyclerView @JvmOverloads constructor(
         val lm = layoutManager as? LinearLayoutManager ?: return
         lm.onSaveInstanceState()?.let { state ->
             CarouselScrollStateStore.saveState(key, state)
-            Log.d("CarouselStateRecyclerView", "Saved scroll state for key '$key'")
+            Log.d(TAG, "Saved scroll state for key '$key'")
         }
     }
 
     private fun restoreScrollState() {
         val key = uniqueKey ?: return
         val lm = layoutManager as? LinearLayoutManager ?: return
-        Log.d("CarouselStateRecyclerView", "Attempting to restore scroll state for key '$key'")
+        Log.d(TAG, "Attempting to restore scroll state for key '$key'")
         CarouselScrollStateStore.getState(key)?.let { state ->
             lm.onRestoreInstanceState(state)
-            Log.d("CarouselStateRecyclerView", "Restored scroll state for key '$key', $state")
+            Log.d(TAG, "Restored scroll state for key '$key', $state")
             return
         }
 
-        Log.d("CarouselStateRecyclerView", "No scroll state found for key '$key'")
+        Log.d(TAG, "No scroll state found for key '$key'")
+    }
+
+    companion object {
+        private const val TAG = "CarouselStateRecyclerView"
     }
 }
 
