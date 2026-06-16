@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.hardware.usb.UsbConstants
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbManager
@@ -34,6 +35,9 @@ class UsbDacDriver private constructor(private val context: Context) {
 
     /** The USB device that is currently connected and initialized. */
     private var activeDevice: UsbDevice? = null
+
+    /** Guards against double-registration of [permissionReceiver]. */
+    private var isAttached = false
 
     /**
      * Receives the result of [UsbManager.requestPermission]. Android delivers this
@@ -65,9 +69,14 @@ class UsbDacDriver private constructor(private val context: Context) {
     /**
      * Registers the permission result receiver so we can hear back from Android after
      * the user dismisses the "Allow Felicity to access the USB device?" dialog.
-     * Call this once when the service is created.
+     * Call this once when the service is created. Safe to call multiple times — only
+     * the first call actually registers the receiver.
      */
     fun attach() {
+        if (isAttached) {
+            Log.d(TAG, "UsbDacDriver already attached, skipping duplicate registration")
+            return
+        }
         val filter = IntentFilter(ACTION_USB_PERMISSION)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             context.registerReceiver(permissionReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
@@ -75,6 +84,7 @@ class UsbDacDriver private constructor(private val context: Context) {
             @Suppress("UnspecifiedRegisterReceiverFlag")
             context.registerReceiver(permissionReceiver, filter)
         }
+        isAttached = true
         Log.d(TAG, "UsbDacDriver attached")
     }
 
@@ -83,11 +93,74 @@ class UsbDacDriver private constructor(private val context: Context) {
      * Call this when the service is destroyed.
      */
     fun detach() {
+        isAttached = false
         runCatching { context.unregisterReceiver(permissionReceiver) }
         UsbDacManager.notifyDetached()
         nativeStopStream()
         releaseConnection()
         Log.d(TAG, "UsbDacDriver detached")
+    }
+
+    /**
+     * Pulses the USB subsystem at app launch to discover any DAC that was already
+     * plugged in before the app process started. Without this, a DAC that was
+     * connected before launch is invisible because Android only sends the
+     * ACTION_USB_DEVICE_ATTACHED broadcast when a device is physically plugged in
+     * *while* a registered receiver exists.
+     *
+     * Call this once from [MainActivity] after the driver is attached. If an audio
+     * device is found it follows the normal permission→open→stream flow. If nothing
+     * is found a single log line is emitted so the silence is not mysterious.
+     */
+    fun checkForExistingDac() {
+        // The permission receiver must be registered before we request permission,
+        // otherwise the user grant lands in a black hole.
+        if (!isAttached) {
+            Log.w(TAG, "checkForExistingDac called before attach() — calling attach() now")
+            attach()
+        }
+
+        val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
+        val devices = usbManager.deviceList
+
+        if (devices.isEmpty()) {
+            Log.i(TAG, "No USB devices connected at app launch — DAC pulse complete")
+            return
+        }
+
+        Log.d(TAG, "DAC pulse: scanning ${devices.size} connected USB device(s)")
+
+        var foundAudioDevice = false
+        for ((_, device) in devices) {
+            if (isAudioDevice(device)) {
+                foundAudioDevice = true
+                Log.i(TAG, "DAC pulse: found pre-connected audio device — " +
+                        "VID=0x${device.vendorId.toString(16).uppercase()} " +
+                        "PID=0x${device.productId.toString(16).uppercase()} " +
+                        "name=${device.deviceName}")
+                onDeviceAttached(device)
+                break // Only handle the first audio device found
+            }
+        }
+
+        if (!foundAudioDevice) {
+            Log.i(TAG, "DAC pulse complete — no USB audio device found among ${devices.size} connected device(s)")
+        }
+    }
+
+    /**
+     * Returns true when at least one interface on this USB device belongs to the audio
+     * class (class code 0x01 per the USB spec). We scan all interfaces rather than relying
+     * solely on the top-level device class because some DACs set the device class to
+     * "Miscellaneous" (0xEF) and only expose the audio class at the interface level.
+     */
+    private fun isAudioDevice(device: UsbDevice): Boolean {
+        for (i in 0 until device.interfaceCount) {
+            if (device.getInterface(i).interfaceClass == UsbConstants.USB_CLASS_AUDIO) {
+                return true
+            }
+        }
+        return false
     }
 
     /**

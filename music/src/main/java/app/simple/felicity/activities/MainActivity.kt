@@ -95,6 +95,9 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
 
     private var isFirstLaunch = true
 
+    /** Ensures the DAC launch-pulse only runs once, on the first resume. */
+    private var dacPulseDone = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
 
         /**
@@ -669,6 +672,14 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         // refreshIfNoLyrics() is smart enough to skip this when lyrics are already loaded.
         lyricsManager.refreshIfNoLyrics()
         runDatabaseScanner()
+
+        // One-shot pulse to discover a USB DAC that was already plugged in before the
+        // app launched. The broadcast receiver only catches hotplug events while the
+        // process is alive, so we manually scan the USB device list on first resume.
+        if (!dacPulseDone) {
+            dacPulseDone = true
+            UsbDacDriver.getInstance(this).checkForExistingDac()
+        }
     }
 
     override fun onStop() {
