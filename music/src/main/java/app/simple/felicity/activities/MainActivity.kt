@@ -43,6 +43,7 @@ import app.simple.felicity.extensions.fragments.ScopedFragment
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtIntoBitmap
 import app.simple.felicity.interfaces.MiniPlayerPolicy
 import app.simple.felicity.managers.LyricsManager
+import app.simple.felicity.preferences.AudioPreferences
 import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.preferences.TrialPreferences
@@ -604,6 +605,11 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
             TrialPreferences.HAS_LICENSE_KEY -> {
 
             }
+            AudioPreferences.IS_USB_DAC -> {
+                // If the user toggled the USB DAC preference, we need to re-check for a DAC
+                // and re-initialize the audio output path accordingly.
+                UsbDacDriver.getInstance(this).checkForExistingDac()
+            }
         }
     }
 
@@ -676,9 +682,11 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         // One-shot pulse to discover a USB DAC that was already plugged in before the
         // app launched. The broadcast receiver only catches hotplug events while the
         // process is alive, so we manually scan the USB device list on first resume.
-        if (!dacPulseDone) {
-            dacPulseDone = true
-            UsbDacDriver.getInstance(this).checkForExistingDac()
+        if (AudioPreferences.isUsbDacEnabled()) {
+            if (!dacPulseDone) {
+                dacPulseDone = true
+                UsbDacDriver.getInstance(this).checkForExistingDac()
+            }
         }
     }
 

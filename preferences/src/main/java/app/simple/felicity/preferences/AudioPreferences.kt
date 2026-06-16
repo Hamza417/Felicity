@@ -13,6 +13,7 @@ object AudioPreferences {
     const val HIRES_OUTPUT = "hires_output"
     const val SKIP_SILENCE = "skip_silence"
     const val IS_STEREO_DOWNMIX_FORCED = "is_stereo_downmix_forced"
+    const val IS_USB_DAC = "is_usb_dac"
 
     /**
      * The key used to store the user's chosen audio output sink.
@@ -127,5 +128,16 @@ object AudioPreferences {
         return isHiresOutputEnabled().not()
                 || isAaudioEnabled()
                 || isOboeEnabled()
+    }
+
+    /**
+     * Should use USB DAC for audio output.
+     */
+    fun setUsbDac(enabled: Boolean) {
+        SharedPreferences.getSharedPreferences().edit { putBoolean(IS_USB_DAC, enabled) }
+    }
+
+    fun isUsbDacEnabled(): Boolean {
+        return SharedPreferences.getSharedPreferences().getBoolean(IS_USB_DAC, false)
     }
 }

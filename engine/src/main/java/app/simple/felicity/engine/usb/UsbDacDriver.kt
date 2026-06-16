@@ -14,6 +14,7 @@ import android.media.AudioManager
 import android.os.Build
 import android.util.Log
 import app.simple.felicity.engine.usb.UsbDacDriver.Companion.MAX_ATTENUATION_DB
+import app.simple.felicity.preferences.AudioPreferences
 import kotlin.math.pow
 
 /**
@@ -77,6 +78,14 @@ class UsbDacDriver private constructor(private val context: Context) {
             Log.d(TAG, "UsbDacDriver already attached, skipping duplicate registration")
             return
         }
+
+        if (AudioPreferences.isUsbDacEnabled()) {
+            Log.d(TAG, "USB DAC support is enabled in preferences")
+        } else {
+            Log.d(TAG, "USB DAC support is disabled in preferences — skipping attach()")
+            return
+        }
+
         val filter = IntentFilter(ACTION_USB_PERMISSION)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             context.registerReceiver(permissionReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
