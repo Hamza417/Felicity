@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Billing screen strings for the Play Store flavor -->
+    <string name="play_store_purchase_summary">Finalisez votre achat sécurisé avec Google Play.</string>
+    <string name="billing_connecting">Connexion à Google Play\u2026</string>
+    <string name="billing_unavailable">L\'achat Google Play n\'est pas disponible sur cet appareil.</string>
+    <string name="billing_error">Quelque chose s\'est mal passé : %1$s</string>
+    <string name="purchase_complete">C\'est tour bon ! Bienvenue dans la version complète de Felicity.</string>
+    <string name="already_purchased">Déjà acheté - profitez de la version complète !</string>
+    <string name="purchase_restored">Votre achat a été restauré. Ravi de vous revoir !</string>
+    <string name="days_left">%1$d jours restants</string>
+    <string name="trial_expired_short">Essai expiré</string>
+    <string name="full_version_active">Version complète activée</string>
+    <!-- Feature list shown on the purchase screen — sell it! -->
+    <string name="feature_unlimited_playback">Lecture illimitée sans interruption.</string>
+    <string name="feature_equalizer">Égaliseur intégré avec préréglages.</string>
+    <string name="feature_milkdrop">Visualiseur MilkDrop.</string>
+    <string name="feature_themes">Superbes thèmes avec diverses personnalisations.</string>
+    <string name="feature_lyrics">Paroles synchronisées en temps réel pendant l\'écoute.</string>
+    <string name="feature_wifi_server">Serveur Wi-Fi local pour écouter votre bibliothèque depuis un navigateur sur votre réseau.</string>
+    <string name="feature_no_subscription">Achat unique. Payez une fois, c\'est à vous, pas de paiement récurrent.</string>
+    <string name="feature_updates">Toutes les futures mises à jour incluses sans surcoût.</string>
+    <string name="all_features_summary">Obtenez l\'application complète sans restriction.</string>
+    <!-- Restore purchase button and result messages -->
+    <string name="restore_purchase">Restaurer l\'achat</string>
+    <string name="restore_purchase_failed">Aucun achat trouvé pour ce compte.\n\nSi vous avez acheté Felicity avec un compte Google différent, veuillez basculer sur ce compte dans le Play Store et réessayer. Si vous pensez qu\'il s\'agit d\'une erreur, contactez le support.</string>
+    <string name="restore_purchase_restoring">Restauration\u2026</string>
+</resources>
