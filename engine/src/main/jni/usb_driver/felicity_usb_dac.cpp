@@ -363,4 +363,19 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeFlushStream(
     LOGD("nativeFlushStream — ring buffer cleared after seek");
 }
 
+JNIEXPORT void JNICALL
+Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeSetVolume(
+        JNIEnv * /*env*/, jobject /*thiz*/,
+        jshort volumeDb256) {
+
+    if (g_usb_handle == nullptr || !g_device_info_valid) {
+        LOGD("nativeSetVolume — no active DAC to set volume on, ignoring");
+        return;
+    }
+
+    LOGI("nativeSetVolume — pushing %d/256 dB (≈ %.1f dB) to DAC",
+         volumeDb256, static_cast<float>(volumeDb256) / 256.0f);
+    uac_set_volume(g_usb_handle, &g_device_info, static_cast<int16_t>(volumeDb256));
+}
+
 } // extern "C"

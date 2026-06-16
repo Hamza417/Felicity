@@ -438,7 +438,17 @@ class FelicityAudioSink(
 
                 @Suppress("KotlinConstantConditions")
                 when {
-                    usbActive -> UsbDacDriver.getInstance(context).nativePushPcm(floatScratchBuffer, 0, sampleCount)
+                    usbActive -> {
+                        // Apply software volume attenuation for DACs that lack hardware
+                        // volume control. The gain is always ≤ 1.0 so no clipping occurs.
+                        val gain = UsbDacDriver.getInstance(context).softwareVolumeGain
+                        if (gain < 0.999f) {
+                            for (i in 0 until sampleCount) {
+                                floatScratchBuffer[i] *= gain
+                            }
+                        }
+                        UsbDacDriver.getInstance(context).nativePushPcm(floatScratchBuffer, 0, sampleCount)
+                    }
                     aaudioReady -> aaudioStream?.write(floatScratchBuffer, sampleCount)
                     oboeReady -> oboeStream?.write(floatScratchBuffer, sampleCount)
                 }

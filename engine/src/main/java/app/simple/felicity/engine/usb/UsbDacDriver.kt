@@ -9,8 +9,11 @@ import android.content.IntentFilter
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbManager
+import android.media.AudioManager
 import android.os.Build
 import android.util.Log
+import app.simple.felicity.engine.usb.UsbDacDriver.Companion.MAX_ATTENUATION_DB
+import kotlin.math.pow
 
 /**
  * Manages the full lifecycle of a USB audio DAC from the Android side: asking the user
@@ -165,6 +168,8 @@ class UsbDacDriver private constructor(private val context: Context) {
         // With the device claimed, immediately negotiate the format.
         // We default to 24-bit / 96 kHz stereo — the negotiator will fall back to
         // the best available alt-setting if the device does not support that exactly.
+        // negotiateFormat() also syncs the DAC hardware volume to the current system
+        // volume so the user does not get blasted at 100% when plugging in a DAC.
         negotiateFormat(sampleRate = 96_000, bitDepth = 24, channels = 2)
 
         // Notify the audio sink and service that the DAC is live. They will
@@ -205,6 +210,9 @@ class UsbDacDriver private constructor(private val context: Context) {
         val ok = nativeNegotiateFormat(sampleRate, bitDepth, channels)
         if (ok) {
             Log.i(TAG, "Format negotiation succeeded — call startStream() to begin playback")
+            // The native negotiator resets volume to unity (0 dB). Re-apply the
+            // current system volume so the DAC does not suddenly blast at 100%.
+            syncSystemVolumeToDac()
         } else {
             Log.w(TAG, "Format negotiation failed — DAC may use a fallback format")
         }
@@ -299,12 +307,128 @@ class UsbDacDriver private constructor(private val context: Context) {
      */
     external fun nativePushPcm(samples: FloatArray, offset: Int, count: Int): Int
 
+    /**
+     * Sends a volume control transfer to the DAC's Feature Unit in 1/256 dB steps.
+     * 0x0000 = 0 dB (unity gain), negative values = attenuation.
+     *
+     * This is a best-effort call — many DACs with physical volume knobs ignore
+     * software volume requests. Failure is logged but playback continues normally.
+     *
+     * @param volumeDb256 Signed 16-bit value in Q8.8 fixed-point (1/256 dB steps).
+     */
+    private external fun nativeSetVolume(volumeDb256: Short)
+
+    /**
+     * Public wrapper around [nativeSetVolume] that guards against calls when no
+     * DAC is connected. Safe to call from any thread at any time.
+     *
+     * @param volumeDb256 Signed 16-bit value in 1/256 dB steps (Q8.8).
+     */
+    fun setHardwareVolume(volumeDb256: Short) {
+        if (connection != null) {
+            nativeSetVolume(volumeDb256)
+        }
+    }
+
+    /**
+     * Reads the current system music stream volume from [AudioManager] and pushes
+     * the equivalent attenuation to the DAC's Feature Unit so the DAC output level
+     * tracks the system volume.
+     *
+     * Call this whenever the system volume may have changed — on DAC attach, after
+     * volume button presses, and on app startup.
+     */
+    fun syncSystemVolumeToDac() {
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+        val currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+        val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        val volumeDb256 = mapSystemVolumeToDacVolume(currentVolume, maxVolume)
+        val approxDb = volumeDb256.toFloat() / 256f
+        Log.d(TAG, "Syncing system volume ($currentVolume/$maxVolume) → DAC ${volumeDb256}/256 dB (≈ ${"%.1f".format(approxDb)} dB)")
+        setHardwareVolume(volumeDb256)
+
+        // Always update the software gain as well. For DACs that support hardware
+        // volume this is harmless (gain stays at 1.0). For DACs without hardware
+        // volume control, this is the fallback that actually makes volume work.
+        softwareVolumeGain = mapSystemVolumeToLinearGain(currentVolume, maxVolume)
+    }
+
+    /**
+     * Linear gain factor applied to PCM samples in the DSP thread before they are
+     * pushed to the USB DAC. Ranges from ~0.001 (−60 dB, near-silent) to 1.0 (unity).
+     *
+     * Updated by [syncSystemVolumeToDac] and read by the audio sink's [handleBuffer]
+     * on the ExoPlayer render thread. Marked [Volatile] so a write on the main thread
+     * is eventually visible to the audio thread without heavyweight synchronization.
+     */
+    @Volatile
+    var softwareVolumeGain: Float = 1f
+
     /** Tells the native layer to stop the stream, release libusb, and exit. */
     private external fun nativeReleaseUsb()
 
     companion object {
         private const val TAG = "UsbDacDriver"
         private const val ACTION_USB_PERMISSION = "app.simple.felicity.USB_PERMISSION"
+
+        /**
+         * Maximum attenuation in dB to apply at the lowest system volume step.
+         * -60 dB is effectively silent for most practical listening scenarios while
+         * still leaving enough headroom for the DAC's internal amp to operate.
+         */
+        private const val MAX_ATTENUATION_DB = -60f
+
+        /**
+         * Maps an Android system volume index to a UAC hardware volume value in
+         * 1/256 dB steps (Q8.8 fixed-point).
+         *
+         * The mapping is linear across the system volume range:
+         *   - max system volume → 0 dB (0x0000, unity gain)
+         *   - min system volume → [MAX_ATTENUATION_DB] dB
+         *
+         * Android's own volume curve already applies logarithmic scaling to the
+         * step indices, so a linear mapping here produces a natural-sounding ramp
+         * without double-log compensation.
+         *
+         * @param current Current stream volume index (0..max).
+         * @param max     Maximum stream volume index.
+         * @return Signed 16-bit Q8.8 volume value for the DAC Feature Unit.
+         */
+        fun mapSystemVolumeToDacVolume(current: Int, max: Int): Short {
+            if (max <= 0 || current <= 0) return (MAX_ATTENUATION_DB * 256f).toInt().toShort()
+            if (current >= max) return 0 // 0 dB = unity
+
+            val fraction = current.toFloat() / max.toFloat()
+            // Linear mapping: fraction 0→1 maps to attenuation MAX_ATTENUATION_DB→0 dB
+            val db = MAX_ATTENUATION_DB * (1f - fraction)
+            val db256 = (db * 256f).toInt()
+            return db256.toShort()
+        }
+
+        /**
+         * Maps an Android system volume index to a linear gain multiplier for
+         * software volume control. Used as a fallback when the DAC does not support
+         * hardware (UAC Feature Unit) volume control.
+         *
+         * The mapping converts the linear volume fraction to dB attenuation, then
+         * to a linear gain using gain = 10^(dB/20). This produces a logarithmic
+         * taper that matches human loudness perception:
+         *   - max system volume → 0 dB → gain = 1.0 (no change)
+         *   - 50% system volume → −30 dB → gain ≈ 0.032
+         *   - min system volume → −60 dB → gain ≈ 0.001 (near-silent)
+         *
+         * @param current Current stream volume index (0..max).
+         * @param max     Maximum stream volume index.
+         * @return Linear gain multiplier in the range (0.0, 1.0].
+         */
+        fun mapSystemVolumeToLinearGain(current: Int, max: Int): Float {
+            if (max <= 0 || current <= 0) return Math.pow(10.0, MAX_ATTENUATION_DB / 20.0).toFloat()
+            if (current >= max) return 1f
+
+            val fraction = current.toFloat() / max.toFloat()
+            val db = MAX_ATTENUATION_DB * (1f - fraction)
+            return 10.0.pow(db.toDouble() / 20.0).toFloat()
+        }
 
         @SuppressLint("StaticFieldLeak")
         @Volatile

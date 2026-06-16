@@ -35,6 +35,7 @@ import app.simple.felicity.dialogs.app.VolumeKnob.Companion.showVolumeKnob
 import app.simple.felicity.dialogs.playlists.AddMultipleToPlaylistDialog.Companion.showAddMultipleToPlaylistDialog
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.engine.managers.PlaybackStateManager
+import app.simple.felicity.engine.usb.UsbDacDriver
 import app.simple.felicity.extensions.activities.BaseActivity
 import app.simple.felicity.extensions.fragments.BasePlayerFragment
 import app.simple.felicity.extensions.fragments.MediaFragment
@@ -537,7 +538,12 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
                     openVolumeKnobDialog()
                     true
                 } else {
-                    super.onKeyDown(keyCode, event)
+                    val handled = super.onKeyDown(keyCode, event)
+                    // When Android handles the volume key natively, the system
+                    // volume changes but the USB DAC does not know about it.
+                    // Sync the DAC so its hardware volume tracks the system.
+                    UsbDacDriver.getInstance(this).syncSystemVolumeToDac()
+                    handled
                 }
             }
 
@@ -546,7 +552,9 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
                     openVolumeKnobDialog()
                     true
                 } else {
-                    super.onKeyDown(keyCode, event)
+                    val handled = super.onKeyDown(keyCode, event)
+                    UsbDacDriver.getInstance(this).syncSystemVolumeToDac()
+                    handled
                 }
             }
 
