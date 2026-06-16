@@ -117,6 +117,7 @@ class VolumeKnob : ScopedBottomSheetFragment() {
             }
 
             override fun onUserInteractionStart(value: Float) {
+                stopCloseRunnable()
                 requireContext().contentResolver.unregisterContentObserver(volumeObserver)
             }
 
@@ -125,6 +126,8 @@ class VolumeKnob : ScopedBottomSheetFragment() {
                     requireContext().contentResolver.registerContentObserver(
                             Settings.System.CONTENT_URI, true, volumeObserver)
                 }
+
+                startCloseRunnable()
             }
         })
 
@@ -221,7 +224,7 @@ class VolumeKnob : ScopedBottomSheetFragment() {
 
     private fun startCloseRunnable() {
         stopCloseRunnable()
-        closeRunnable = Runnable { dismiss() }
+        closeRunnable = Runnable { dismissAllowingStateLoss() }
         closeHandler.postDelayed(closeRunnable!!, VOLUME_CLOSE_DELAY_MS)
     }
 
