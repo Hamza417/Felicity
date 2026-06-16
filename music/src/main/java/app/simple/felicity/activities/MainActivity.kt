@@ -608,7 +608,9 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
             AudioPreferences.IS_USB_DAC -> {
                 // If the user toggled the USB DAC preference, we need to re-check for a DAC
                 // and re-initialize the audio output path accordingly.
-                UsbDacDriver.getInstance(this).checkForExistingDac()
+                if (AudioPreferences.isUsbDacEnabled()) {
+                    UsbDacDriver.getInstance(this).checkForExistingDac()
+                }
             }
         }
     }

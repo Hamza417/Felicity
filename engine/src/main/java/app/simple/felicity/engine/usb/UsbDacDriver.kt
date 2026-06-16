@@ -178,6 +178,11 @@ class UsbDacDriver private constructor(private val context: Context) {
      * show the system dialog and wait for [permissionReceiver] to fire.
      */
     fun onDeviceAttached(device: UsbDevice) {
+        if (AudioPreferences.isUsbDacEnabled().not()) {
+            Log.d(TAG, "USB DAC support is disabled in preferences — ignoring device ${device.deviceName}")
+            return
+        }
+
         val usbManager = context.getSystemService(Context.USB_SERVICE) as UsbManager
 
         if (usbManager.hasPermission(device)) {
