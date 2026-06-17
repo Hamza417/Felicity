@@ -1,15 +1,27 @@
+#### DAC and DSP
+
+- Fixed DAC driver crashing on init. #55
+- Fixed DAC negotiator failing to reciprocate sample rate changes. #55
+- Fixed DAC driver lifecycle management. #55
+- Fixed DAC driver using a wrong thread for processing. #55
+- Added support for HW and SW volume control. #55
+- Added DAC check pulse on app start to auto-detect DAC devices. #55
+- Added a toggle for USB DAC. #55
+
+#### User Interface
+
+- Added support for multiple queues in the **Playing Queue** panel.
+- Added option to create a playlist from the current queue. #114
+
 #### Bug Fixes
 
-- Fixed playback state reshuffling on launch when shuffle is on. #106
+- Fixed horizontal lists losing scroll positions after panel switch.
+- Fixed crash in page panels caused by faulty state restore.
+- Fixed M3U playlists showing in playlists dialogs.
+- Fixed volume knob crashing.
+- Fixed inconsistent auto-hide for volume knob.
+- Fixed minor UI issues.
 
-#### Improvements
+#### Removed
 
-- Open IMEs automatically when **Preferences Search** panel is opened. #76
-
-#### Translations
-
-- Added **Polish** translations. (by [@awchx](https://crowdin.com/profile/awchx))
-
-#### Development
-
-- Fixed broken reproducibility causing F-Droid build failure.
+- Removed immersive mode.
