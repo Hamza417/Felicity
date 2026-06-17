@@ -25,3 +25,7 @@
 #### Removed
 
 - Removed immersive mode.
+
+#### Translations
+
+- Updated **French** and **Polish** translations.
