@@ -183,14 +183,40 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeNegotiateFormat(
 
     LOGI("nativeNegotiateFormat — %d Hz / %d-bit / %d ch", sampleRate, bitDepth, channels);
 
-    // Parse descriptors once per device session. The data is in kernel memory so
-    // the call is cheap and safe; we still cache the result to avoid redundant work
-    // when the DSP engine changes format mid-session (e.g. sample rate switch).
+    // Parse descriptors once per device session.
     if (!g_device_info_valid) {
         if (!uac_parse_device(g_usb_handle, &g_device_info)) {
             LOGE("Descriptor parse failed — cannot negotiate format");
             return JNI_FALSE;
         }
+
+        // --- DIRECTION VERIFICATION FIX ---
+        // Filter out any alt settings that map to IN/Capture endpoints (bit 7 of address is set).
+        // This stops the engine from picking up the recording topology of the DAC.
+        int playbackSettingCount = 0;
+        for (int i = 0; i < g_device_info.altSettingCount; i++) {
+            uint8_t epAddr = g_device_info.altSettings[i].endpointAddress;
+
+            // 0x80 is the LIBUSB_ENDPOINT_IN mask.
+            // If (epAddr & 0x80) == 0, it is a host-to-device OUT (Playback) endpoint.
+            if ((epAddr & 0x80) == 0) {
+                if (playbackSettingCount != i) {
+                    g_device_info.altSettings[playbackSettingCount] = g_device_info.altSettings[i];
+                }
+                playbackSettingCount++;
+            } else {
+                LOGD("Filtering out recording/capture alt-setting index %d (endpoint=0x%02X)", i,
+                     epAddr);
+            }
+        }
+
+        g_device_info.altSettingCount = playbackSettingCount;
+
+        if (g_device_info.altSettingCount == 0) {
+            LOGE("Sanitization error: No valid OUT/Playback interfaces found on this DAC.");
+            return JNI_FALSE;
+        }
+
         g_device_info_valid = true;
     }
 
