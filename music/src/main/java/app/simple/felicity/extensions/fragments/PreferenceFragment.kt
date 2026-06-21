@@ -863,7 +863,9 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(fallbackToSWToggle)
         preferences.add(outputHeader)
         preferences.add(sinkPopup)
-        preferences.add(usbDacControl)
+        if (BuildConfig.DEBUG) {
+            preferences.add(usbDacControl)
+        }
         preferences.add(hiresToggle)
         preferences.add(playbackHeader)
         preferences.add(stereoDownmixing)
