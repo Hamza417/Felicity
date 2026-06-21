@@ -99,7 +99,7 @@ This feature list is not exhaustive and only main features are listed.
 - [x] Embedded lyrics support
 - [x] Realtime audio visualizer
 - [x] Milkdrop visualizer support
-- [ ] Crossfade support
+- [ ] ~Crossfade support~
 - [ ] Multiple Player interface styles. _(partially fulfilled)_
 - [x] Playlist support
 - [x] LRC Editor
@@ -122,7 +122,7 @@ This feature list is not exhaustive and only main features are listed.
 Features that are planned but will not be a priority.
 
 - [ ] Cue sheet support
-- [x] Native USB DAC support (more tests needed)
+- [x] ~Native USB DAC support~
 - [x] Oboe
 - [x] AAudio
 
