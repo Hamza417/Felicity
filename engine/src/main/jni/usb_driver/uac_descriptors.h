@@ -44,11 +44,11 @@ static constexpr uint8_t AC_SUBTYPE_OUTPUT_TERMINAL = 0x03;
 static constexpr uint8_t AC_SUBTYPE_MIXER_UNIT = 0x04;
 static constexpr uint8_t AC_SUBTYPE_SELECTOR_UNIT = 0x05;
 static constexpr uint8_t AC_SUBTYPE_FEATURE_UNIT = 0x06;
-static constexpr uint8_t AC_SUBTYPE_PROCESSING_UNIT = 0x07;  // UAC1
+static constexpr uint8_t AC_SUBTYPE_PROCESSING_UNIT = 0x07; // UAC1
 static constexpr uint8_t AC_SUBTYPE_EXTENSION_UNIT = 0x08;
-static constexpr uint8_t AC_SUBTYPE_CLOCK_SOURCE = 0x0A;  // UAC2
-static constexpr uint8_t AC_SUBTYPE_CLOCK_SELECTOR = 0x0B;  // UAC2
-static constexpr uint8_t AC_SUBTYPE_CLOCK_MULTIPLIER = 0x0C;  // UAC2
+static constexpr uint8_t AC_SUBTYPE_CLOCK_SOURCE = 0x0A;     // UAC2
+static constexpr uint8_t AC_SUBTYPE_CLOCK_SELECTOR = 0x0B;   // UAC2
+static constexpr uint8_t AC_SUBTYPE_CLOCK_MULTIPLIER = 0x0C; // UAC2
 
 // ------------------------------------------------------------------ //
 //  AS Interface descriptor sub-types (bDescriptorSubtype, subclass = AS)
@@ -61,8 +61,8 @@ static constexpr uint8_t AS_SUBTYPE_FORMAT_TYPE = 0x02;
 //  UAC Format Type codes (bFormatType in AS_FORMAT_TYPE)
 // ------------------------------------------------------------------ //
 
-static constexpr uint8_t FORMAT_TYPE_I = 0x01; // PCM / linear audio
-static constexpr uint8_t FORMAT_TYPE_II = 0x02; // compressed (MP3, AC3 …)
+static constexpr uint8_t FORMAT_TYPE_I = 0x01;   // PCM / linear audio
+static constexpr uint8_t FORMAT_TYPE_II = 0x02;  // compressed (MP3, AC3 …)
 static constexpr uint8_t FORMAT_TYPE_III = 0x03; // IEC 60958 pass-through
 
 // ------------------------------------------------------------------ //
@@ -198,8 +198,8 @@ struct UacAltSetting {
     uint32_t formatTag;
 
     uint8_t bNrChannels;
-    uint8_t bSubslotSize;    // bytes per sample slot (e.g. 3 for 24-bit packed)
-    uint8_t bBitResolution;  // actual significant bits  (e.g. 24 inside a 3-byte slot)
+    uint8_t bSubslotSize;   // bytes per sample slot (e.g. 3 for 24-bit packed)
+    uint8_t bBitResolution; // actual significant bits  (e.g. 24 inside a 3-byte slot)
 
     /**
      * UAC1: 0 = continuous range (rates[0]=min, rates[1]=max, rates[2]=step).
@@ -209,6 +209,15 @@ struct UacAltSetting {
     uint8_t bSamFreqType;
     uint32_t sampleRates[UAC_MAX_SAMPLE_RATES];
     int sampleRateCount;
+
+    /**
+     * The USB interface number (bInterfaceNumber) this alt-setting belongs to.
+     * We store this per alt-setting rather than relying on a single device-level
+     * field because some DACs expose multiple AudioStreaming interfaces — for
+     * instance one for playback and one for capture — and the negotiator needs
+     * the exact interface number to call libusb_set_interface_alt_setting().
+     */
+    uint8_t asInterfaceNumber;
 
     /** Address of the isochronous OUT endpoint that carries audio to the DAC. */
     uint8_t endpointAddress;
@@ -254,8 +263,7 @@ struct UacDeviceInfo {
  * (or defaulted by the negotiator) and passed into format negotiation.
  */
 struct UacFormatRequest {
-    uint32_t sampleRate;  // e.g. 48000, 96000
+    uint32_t sampleRate; // e.g. 48000, 96000
     uint8_t bitDepth;    // e.g. 16, 24, 32
     uint8_t channels;    // e.g. 2
 };
-

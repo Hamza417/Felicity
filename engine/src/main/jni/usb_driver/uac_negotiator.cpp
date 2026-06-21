@@ -378,17 +378,17 @@ int uac_negotiate_format(libusb_device_handle *handle,
     // This is the USB operation that tells the device "switch to this format now".
     int ret = libusb_set_interface_alt_setting(
             handle,
-            info->asInterfaceNumber,
+            chosen.asInterfaceNumber,
             chosen.bAlternateSetting);
 
     if (ret != LIBUSB_SUCCESS) {
         LOGE("libusb_set_interface_alt_setting(%d, %d) failed: %s",
-             info->asInterfaceNumber, chosen.bAlternateSetting,
+             chosen.asInterfaceNumber, chosen.bAlternateSetting,
              libusb_strerror((libusb_error) ret));
         return -1;
     }
     LOGI("Alt-setting %d activated on AS interface %d",
-         chosen.bAlternateSetting, info->asInterfaceNumber);
+         chosen.bAlternateSetting, chosen.asInterfaceNumber);
 
     // Step 2 — Program the clock / sample rate.
     // The mechanism differs between UAC1 and UAC2.

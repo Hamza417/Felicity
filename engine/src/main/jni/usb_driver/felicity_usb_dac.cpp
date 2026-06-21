@@ -3,6 +3,8 @@
 #include "uac_negotiator.h"
 #include "usb_iso_stream.h"
 
+#include <atomic>
+
 static const int audio_interfaces[] = {USB_AUDIO_CONTROL_INTERFACE, USB_AUDIO_STREAMING_INTERFACE};
 
 // These globals live for the duration of a single DAC session.
@@ -22,6 +24,17 @@ static bool g_device_info_valid = false;
 // Using a pointer so its constructor does not run at static-init time.
 static UsbIsoStream *g_iso_stream = nullptr;
 
+/**
+ * Atomic flag that gates PCM pushes so the DSP thread never feeds audio into
+ * a stream that hasn't finished spinning up its URBs.  It is set to true only
+ * after nativeStartStream() has successfully submitted all isochronous transfers
+ * and the USB event thread is running.  Without this guard the DSP can flood the
+ * log with "ISO stream not running" errors during the brief window between
+ * negotiation and the actual stream start — a window that widens significantly
+ * on slower DACs like the HiBy FC3 and Fiio K3.
+ */
+static std::atomic<bool> g_iso_stream_ready{false};
+
 // The sample rate last negotiated with the DAC.  nativeStartStream() reads this to
 // tell the isochronous stream how many audio frames belong in each 125 µs USB
 // microframe.  Stored separately from the alt-setting because UacAltSetting only
@@ -37,6 +50,18 @@ static int g_negotiated_sample_rate = 0;
  * refuse to run in that state rather than silently picking the wrong alt-setting.
  */
 static int g_active_alt_idx = -1;
+
+/**
+ * Snapshot of the most recent successful format negotiation.  When the audio engine
+ * pauses and resumes (or transitions between tracks that share the same sample rate),
+ * we reuse the cached alt-setting instead of hitting the DAC with another
+ * libusb_set_interface_alt_setting() handshake.  This avoids transient "Entity not
+ * found" errors some DACs return when asked to re-activate an already-active
+ * alt-setting, and it makes pause/resume effectively instant.
+ */
+static int g_cached_sample_rate = 0;
+static int g_cached_bit_depth = 0;
+static int g_cached_channels = 0;
 
 /**
  * Attempts to detach a kernel driver from the given interface, if one is attached.
@@ -107,6 +132,10 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeInitUsb(
     g_device_info_valid = false;
     g_active_alt_idx = -1;
     g_negotiated_sample_rate = 0;
+    g_iso_stream_ready.store(false, std::memory_order_release);
+    g_cached_sample_rate = 0;
+    g_cached_bit_depth = 0;
+    g_cached_channels = 0;
 
     // --- CRITICAL FIX FOR ANDROID SELINUX ---
     // Prevent libusb from scanning the device tree, which is blocked by Android.
@@ -155,7 +184,8 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeInitUsb(
     // --- FIX FOR COMPOSITE HEADSET DACS ---
     for (int i = 0; i < num_interfaces; i++) {
         const libusb_interface *iface = &config->interface[i];
-        if (iface->num_altsetting == 0) continue;
+        if (iface->num_altsetting == 0)
+            continue;
 
         const libusb_interface_descriptor *desc = &iface->altsetting[0];
 
@@ -259,7 +289,33 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeNegotiateFormat(
             return JNI_FALSE;
         }
 
+        // Correct the device-level asInterfaceNumber to match the remaining
+        // playback alt-settings.  The parser naively stores the *last* AS
+        // interface it encounters, which is wrong for DACs that expose
+        // separate playback and capture AudioStreaming interfaces (e.g.
+        // HiBy FC3 where playback is on interface 1 but capture is on
+        // interface 2).  Since we just filtered out all capture alt-settings,
+        // every remaining entry points at the playback AS interface.
+        if (g_device_info.altSettingCount > 0) {
+            g_device_info.asInterfaceNumber =
+                    g_device_info.altSettings[0].asInterfaceNumber;
+            LOGD("Corrected asInterfaceNumber to %d based on filtered alt-settings",
+                 g_device_info.asInterfaceNumber);
+        }
+
         g_device_info_valid = true;
+    }
+
+    // Smart re-negotiation: if the requested format exactly matches the last
+    // successful negotiation, skip the USB handshake entirely.  Some DACs
+    // (notably the HiBy FC3) return "Entity not found" when asked to
+    // re-activate an already-active alt-setting via libusb_set_interface_alt_setting.
+    // Reusing the cached state avoids that error and makes pause/resume gapless.
+    if (g_active_alt_idx >= 0 && g_cached_sample_rate == sampleRate &&
+        g_cached_bit_depth == bitDepth && g_cached_channels == channels) {
+        LOGI("Format unchanged (%d Hz / %d-bit / %d ch) — reusing cached alt-setting %d",
+             sampleRate, bitDepth, channels, g_active_alt_idx);
+        return JNI_TRUE;
     }
 
     UacFormatRequest req{};
@@ -271,7 +327,14 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeNegotiateFormat(
     if (chosenIdx >= 0) {
         g_active_alt_idx = chosenIdx;
         g_negotiated_sample_rate = sampleRate;
+        g_cached_sample_rate = sampleRate;
+        g_cached_bit_depth = bitDepth;
+        g_cached_channels = channels;
         uac_set_volume(g_usb_handle, &g_device_info, /*0 dB in Q8.8 =*/0x0000);
+    } else {
+        LOGE("Format negotiation failed — DAC cannot stream at %d Hz / %d-bit / %d ch. "
+             "Check that the requested format is supported and the DAC is still connected.",
+             sampleRate, bitDepth, channels);
     }
     return chosenIdx >= 0 ? JNI_TRUE : JNI_FALSE;
 }
@@ -281,6 +344,10 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeReleaseUsb(
         JNIEnv * /*env*/, jobject /*thiz*/) {
 
     LOGI("nativeReleaseUsb — tearing down USB DAC session");
+
+    // Clear the ready flag before touching the stream so any concurrent
+    // PCM pushes bail out immediately.
+    g_iso_stream_ready.store(false, std::memory_order_release);
 
     // Phase 5 teardown: stop the ISO stream and cancel all pending transfers
     if (g_iso_stream != nullptr) {
@@ -315,6 +382,10 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeReleaseUsb(
     g_device_info_valid = false;
     g_active_alt_idx = -1;
     g_negotiated_sample_rate = 0;
+    g_iso_stream_ready.store(false, std::memory_order_release);
+    g_cached_sample_rate = 0;
+    g_cached_bit_depth = 0;
+    g_cached_channels = 0;
 }
 
 JNIEXPORT jboolean JNICALL
@@ -335,6 +406,7 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeStartStream(
     }
 
     if (g_iso_stream != nullptr) {
+        g_iso_stream_ready.store(false, std::memory_order_release);
         g_iso_stream->stop();
         delete g_iso_stream;
         g_iso_stream = nullptr;
@@ -357,6 +429,11 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeStartStream(
         return JNI_FALSE;
     }
 
+    // Mark the stream as fully ready only after URBs are in flight.
+    // This is the synchronization point that gates nativePushPcm so the DSP
+    // thread never tries to feed audio into a half-initialized pipeline.
+    g_iso_stream_ready.store(true, std::memory_order_release);
+
     LOGI("Isochronous USB audio stream started");
     return JNI_TRUE;
 }
@@ -364,6 +441,10 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeStartStream(
 JNIEXPORT void JNICALL
 Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeStopStream(
         JNIEnv * /*env*/, jobject /*thiz*/) {
+
+    // Clear the ready flag first so any in-flight PCM pushes bail out
+    // immediately instead of racing with the teardown below.
+    g_iso_stream_ready.store(false, std::memory_order_release);
 
     if (g_iso_stream == nullptr)
         return;
@@ -380,8 +461,13 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativePushPcm(
         JNIEnv *env, jobject /*thiz*/,
         jfloatArray samples, jint offset, jint count) {
 
-    if (g_iso_stream == nullptr || !g_iso_stream->isRunning()) {
-        LOGE("nativePushPcm called but ISO stream is not running");
+    // Use the atomic ready flag as the primary gate.  This is more precise
+    // than checking g_iso_stream->isRunning() because it guarantees the
+    // stream object exists AND all URBs are in flight.  Dropping PCM frames
+    // here is harmless — the ring buffer will fill once the DSP restarts
+    // after the stream comes online, and logging every dropped frame at
+    // ERROR level (as we used to) flooded logcat on slower DACs.
+    if (!g_iso_stream_ready.load(std::memory_order_acquire)) {
         return 0;
     }
 
@@ -400,7 +486,7 @@ JNIEXPORT void JNICALL
 Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeFlushStream(
         JNIEnv * /*env*/, jobject /*thiz*/) {
 
-    if (g_iso_stream == nullptr || !g_iso_stream->isRunning()) {
+    if (!g_iso_stream_ready.load(std::memory_order_acquire) || g_iso_stream == nullptr) {
         LOGD("nativeFlushStream — stream not running, nothing to flush");
         return;
     }

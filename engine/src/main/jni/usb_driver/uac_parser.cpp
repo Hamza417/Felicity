@@ -13,16 +13,13 @@ static inline uint16_t read_u16(const uint8_t *p) {
 }
 
 static inline uint32_t read_u24(const uint8_t *p) {
-    return static_cast<uint32_t>(p[0])
-           | (static_cast<uint32_t>(p[1]) << 8)
-           | (static_cast<uint32_t>(p[2]) << 16);
+    return static_cast<uint32_t>(p[0]) | (static_cast<uint32_t>(p[1]) << 8) |
+           (static_cast<uint32_t>(p[2]) << 16);
 }
 
 static inline uint32_t read_u32(const uint8_t *p) {
-    return static_cast<uint32_t>(p[0])
-           | (static_cast<uint32_t>(p[1]) << 8)
-           | (static_cast<uint32_t>(p[2]) << 16)
-           | (static_cast<uint32_t>(p[3]) << 24);
+    return static_cast<uint32_t>(p[0]) | (static_cast<uint32_t>(p[1]) << 8) |
+           (static_cast<uint32_t>(p[2]) << 16) | (static_cast<uint32_t>(p[3]) << 24);
 }
 
 // ------------------------------------------------------------------ //
@@ -35,7 +32,8 @@ static inline uint32_t read_u32(const uint8_t *p) {
  * so a device with extra UAC 3.0 or vendor-specific descriptors does not crash us.
  */
 static void parse_ac_cs_descriptor(const uint8_t *p, UacDeviceInfo *info) {
-    if (p[0] < 3) return; // bLength, bDescriptorType, bDescriptorSubtype minimum
+    if (p[0] < 3)
+        return; // bLength, bDescriptorType, bDescriptorSubtype minimum
 
     const uint8_t subtype = p[2];
 
@@ -44,7 +42,8 @@ static void parse_ac_cs_descriptor(const uint8_t *p, UacDeviceInfo *info) {
             // The AC Header is the first descriptor in the AC interface's extra bytes.
             // It tells us the UAC version (bcdADC) and — for UAC1 — which other
             // interface numbers belong to the audio function.
-            if (p[0] < 8) return;
+            if (p[0] < 8)
+                return;
             info->bcdADC = read_u16(p + 3);
             info->uacVersion = (info->bcdADC >= 0x0200) ? 2 : 1;
             LOGI("UAC Header: bcdADC=0x%04X → UAC %d", info->bcdADC, info->uacVersion);
@@ -52,8 +51,10 @@ static void parse_ac_cs_descriptor(const uint8_t *p, UacDeviceInfo *info) {
         }
 
         case AC_SUBTYPE_INPUT_TERMINAL: {
-            if (info->inputTerminalCount >= UAC_MAX_TERMINALS) return;
-            if (p[0] < 12) return;
+            if (info->inputTerminalCount >= UAC_MAX_TERMINALS)
+                return;
+            if (p[0] < 12)
+                return;
 
             UacInputTerminal &t = info->inputTerminals[info->inputTerminalCount++];
             t.bTerminalID = p[3];
@@ -71,8 +72,10 @@ static void parse_ac_cs_descriptor(const uint8_t *p, UacDeviceInfo *info) {
         }
 
         case AC_SUBTYPE_OUTPUT_TERMINAL: {
-            if (info->outputTerminalCount >= UAC_MAX_TERMINALS) return;
-            if (p[0] < 9) return;
+            if (info->outputTerminalCount >= UAC_MAX_TERMINALS)
+                return;
+            if (p[0] < 9)
+                return;
 
             UacOutputTerminal &t = info->outputTerminals[info->outputTerminalCount++];
             t.bTerminalID = p[3];
@@ -89,8 +92,10 @@ static void parse_ac_cs_descriptor(const uint8_t *p, UacDeviceInfo *info) {
         }
 
         case AC_SUBTYPE_FEATURE_UNIT: {
-            if (info->featureUnitCount >= UAC_MAX_FEATURE_UNITS) return;
-            if (p[0] < 7) return;
+            if (info->featureUnitCount >= UAC_MAX_FEATURE_UNITS)
+                return;
+            if (p[0] < 7)
+                return;
 
             UacFeatureUnit &fu = info->featureUnits[info->featureUnitCount++];
             fu.bUnitID = p[3];
@@ -119,9 +124,12 @@ static void parse_ac_cs_descriptor(const uint8_t *p, UacDeviceInfo *info) {
 
         case AC_SUBTYPE_CLOCK_SOURCE: {
             // Only exists in UAC2. Stores the programmable clock that drives sample rate.
-            if (info->uacVersion != 2) return;
-            if (info->clockSourceCount >= UAC_MAX_CLOCK_SOURCES) return;
-            if (p[0] < 8) return;
+            if (info->uacVersion != 2)
+                return;
+            if (info->clockSourceCount >= UAC_MAX_CLOCK_SOURCES)
+                return;
+            if (p[0] < 8)
+                return;
 
             UacClockSource &cs = info->clockSources[info->clockSourceCount++];
             cs.bClockID = p[3];
@@ -160,7 +168,8 @@ static void parse_ac_interface(const libusb_interface_descriptor *alt, UacDevice
         const uint8_t bLength = p[0];
         const uint8_t bDescType = p[1];
 
-        if (bLength < 3 || bLength > rem) break;
+        if (bLength < 3 || bLength > rem)
+            break;
 
         if (bDescType == CS_INTERFACE) {
             parse_ac_cs_descriptor(p, info);
@@ -183,12 +192,15 @@ static void parse_ac_interface(const libusb_interface_descriptor *alt, UacDevice
  * callers skip it before calling here.
  */
 static void parse_as_alt_setting(const libusb_interface_descriptor *alt,
-                                 UacDeviceInfo *info) {
-    if (info->altSettingCount >= UAC_MAX_ALT_SETTINGS) return;
+                                 UacDeviceInfo *info,
+                                 uint8_t interfaceNumber) {
+    if (info->altSettingCount >= UAC_MAX_ALT_SETTINGS)
+        return;
 
     UacAltSetting &as = info->altSettings[info->altSettingCount];
     memset(&as, 0, sizeof(UacAltSetting));
     as.bAlternateSetting = alt->bAlternateSetting;
+    as.asInterfaceNumber = interfaceNumber;
 
     const uint8_t *p = alt->extra;
     int rem = alt->extra_length;
@@ -201,7 +213,8 @@ static void parse_as_alt_setting(const libusb_interface_descriptor *alt,
         const uint8_t bDescType = p[1];
         const uint8_t bSubtype = p[2];
 
-        if (bLength < 3 || bLength > rem) break;
+        if (bLength < 3 || bLength > rem)
+            break;
 
         if (bDescType == CS_INTERFACE) {
             if (bSubtype == AS_SUBTYPE_GENERAL && !foundGeneral) {
@@ -258,7 +271,8 @@ static void parse_as_alt_setting(const libusb_interface_descriptor *alt,
                                 const int count = as.bSamFreqType;
                                 for (int i = 0; i < count && i < UAC_MAX_SAMPLE_RATES; i++) {
                                     const int offset = 8 + i * 3;
-                                    if (offset + 3 > bLength) break;
+                                    if (offset + 3 > bLength)
+                                        break;
                                     as.sampleRates[as.sampleRateCount++] = read_u24(p + offset);
                                 }
                             }
@@ -286,8 +300,7 @@ static void parse_as_alt_setting(const libusb_interface_descriptor *alt,
         // Isochronous transfer type = bits 1:0 of bmAttributes set to 0b01 (0x01).
         // OUT direction = bit 7 of bEndpointAddress is 0 (host-to-device).
         const bool isIsochronous = (ep.bmAttributes & 0x03) == LIBUSB_TRANSFER_TYPE_ISOCHRONOUS;
-        const bool isOut = (ep.bEndpointAddress & LIBUSB_ENDPOINT_DIR_MASK)
-                           == LIBUSB_ENDPOINT_OUT;
+        const bool isOut = (ep.bEndpointAddress & LIBUSB_ENDPOINT_DIR_MASK) == LIBUSB_ENDPOINT_OUT;
 
         if (isIsochronous && isOut) {
             as.endpointAddress = ep.bEndpointAddress;
@@ -346,7 +359,8 @@ bool uac_parse_device(libusb_device_handle *handle, UacDeviceInfo *info) {
             const libusb_interface_descriptor &alt = iface->altsetting[a];
 
             // Skip interfaces that are not USB Audio Class.
-            if (alt.bInterfaceClass != LIBUSB_CLASS_AUDIO) continue;
+            if (alt.bInterfaceClass != LIBUSB_CLASS_AUDIO)
+                continue;
 
             const uint8_t ifaceNum = alt.bInterfaceNumber;
             const uint8_t subClass = alt.bInterfaceSubClass;
@@ -358,7 +372,6 @@ bool uac_parse_device(libusb_device_handle *handle, UacDeviceInfo *info) {
                 LOGI("Parsing AC interface %d (alt %d)", ifaceNum, altIndex);
                 parse_ac_interface(&alt, info, ifaceNum);
                 info->asInterfaceNumber = ifaceNum + 1; // sensible default; overwritten below
-
             } else if (subClass == UAC_SUBCLASS_AUDIOSTREAMING) {
                 // Record which interface carries the stream.
                 info->asInterfaceNumber = ifaceNum;
@@ -369,7 +382,7 @@ bool uac_parse_device(libusb_device_handle *handle, UacDeviceInfo *info) {
                 }
 
                 LOGI("Parsing AS interface %d alt-setting %d", ifaceNum, altIndex);
-                parse_as_alt_setting(&alt, info);
+                parse_as_alt_setting(&alt, info, ifaceNum);
             }
         }
     }
