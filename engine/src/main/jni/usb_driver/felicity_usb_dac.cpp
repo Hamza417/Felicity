@@ -412,15 +412,23 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeStartStream(
         g_iso_stream = nullptr;
     }
 
+    // Determine physical USB bus speed to calculate accurate frame intervals
+    libusb_device *dev = libusb_get_device(g_usb_handle);
+    int device_speed = libusb_get_device_speed(dev);
+
+    const char *speed_desc = (device_speed == LIBUSB_SPEED_FULL) ? "Full Speed (1ms)" :
+                             (device_speed >= LIBUSB_SPEED_HIGH) ? "High Speed (125µs)" : "Unknown";
+
     const UacAltSetting &chosen = g_device_info.altSettings[g_active_alt_idx];
-    LOGI("Starting stream with negotiated alt-setting %d (endpoint=0x%02X, subslot=%d, bits=%d, rate=%d Hz)",
+    LOGI("Starting stream with negotiated alt-setting %d (endpoint=0x%02X, subslot=%d, bits=%d, rate=%d Hz) via %s",
          chosen.bAlternateSetting, chosen.endpointAddress,
-         chosen.bSubslotSize, chosen.bBitResolution, g_negotiated_sample_rate);
+         chosen.bSubslotSize, chosen.bBitResolution, g_negotiated_sample_rate, speed_desc);
 
     g_iso_stream = new UsbIsoStream();
+
     const bool ok = g_iso_stream->start(
             g_usb_ctx, g_usb_handle, chosen,
-            chosen.bSubslotSize, chosen.bBitResolution, g_negotiated_sample_rate);
+            chosen.bSubslotSize, chosen.bBitResolution, g_negotiated_sample_rate, device_speed);
 
     if (!ok) {
         delete g_iso_stream;
@@ -430,8 +438,6 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeStartStream(
     }
 
     // Mark the stream as fully ready only after URBs are in flight.
-    // This is the synchronization point that gates nativePushPcm so the DSP
-    // thread never tries to feed audio into a half-initialized pipeline.
     g_iso_stream_ready.store(true, std::memory_order_release);
 
     LOGI("Isochronous USB audio stream started");

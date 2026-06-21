@@ -64,12 +64,9 @@ public:
      *                       endpoint bandwidth.
      * @return true if all URBs were submitted and the event thread started.
      */
-    bool start(libusb_context *ctx,
-               libusb_device_handle *handle,
-               const UacAltSetting &alt,
+    bool start(libusb_context *ctx, libusb_device_handle *handle, const UacAltSetting &alt,
                int subslotSize,
-               int bitResolution,
-               int sampleRate);
+               int bitResolution, int sampleRate, int i);
 
     /**
      * Cancels all pending transfers and joins the event thread.
@@ -147,6 +144,10 @@ private:
     uint16_t maxPacketSize_ = 0;
     int channels_ = 2;
 
+    // Cache the physical bus speed divisor for the accumulator
+    int packetsPerSecond_ = 8000; // Default to High Speed (UAC 2.0)
+    int packetFraction_ = 0;      // Replaces uframeFraction_
+
     /**
      * The sample rate negotiated with the DAC, used to calculate the exact number
      * of audio frames that should be packed into each 125 µs USB microframe.
@@ -166,4 +167,6 @@ private:
      * preventing the ring buffer from draining faster than the DAC plays.
      */
     uint32_t uframeFraction_ = 0;
+
+    int framesForCurrentPacket();
 };

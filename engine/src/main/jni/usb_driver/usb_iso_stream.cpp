@@ -132,10 +132,9 @@ void UsbIsoStream::fillTransferBuffer(libusb_transfer *transfer) {
     for (int p = 0; p < transfer->num_iso_packets; p++) {
         libusb_iso_packet_descriptor &pkt = transfer->iso_packet_desc[p];
 
-        // Determine how many audio frames belong in this microframe based on the
-        // negotiated sample rate — NOT the endpoint's wMaxPacketSize which is
-        // typically 10-50× larger than what the audio clock actually needs.
-        const int framesInPkt = framesForCurrentUframe();
+        // Determine how many audio frames belong in this packet based on the
+        // negotiated sample rate and the physical bus speed (Full vs High).
+        const int framesInPkt = framesForCurrentPacket();
         const int packetBytes = framesInPkt * bytesPerFrame;
 
         // Guard against exceeding the endpoint's hardware limit.
@@ -148,22 +147,50 @@ void UsbIsoStream::fillTransferBuffer(libusb_transfer *transfer) {
         }
 
         if (framesInPkt > 0 && packetBytes > 0) {
-            // Temporary scratch buffer for the float data.  Stack allocation is
-            // fine because with correct sample-rate-based sizing each packet
-            // carries at most ~12 frames (for 96000 Hz stereo) — well under 512.
-            float scratch[512]{};
-            const int samplesNeeded = framesInPkt * channels_;
+            // Increased stack buffer. At Full Speed (1ms), 96kHz stereo requires 192 samples.
+            // 2048 provides massive headroom for 8-channel or exotic sample rates.
+            const int MAX_SAMPLES = 2048;
+            float scratch[MAX_SAMPLES]{};
+
+            int samplesNeeded = framesInPkt * channels_;
+
+            // Hardware clamp to prevent stack corruption
+            if (samplesNeeded > MAX_SAMPLES) {
+                LOGE("CRITICAL: samplesNeeded (%d) exceeds scratch buffer (%d). Truncating.",
+                     samplesNeeded, MAX_SAMPLES);
+                samplesNeeded = MAX_SAMPLES;
+            }
 
             const uint32_t got = ringBuffer_.read(scratch, static_cast<uint32_t>(samplesNeeded));
             (void) got; // silence is already padded by UsbRingBuffer::read when got < samplesNeeded
 
-            // Convert float → packed PCM (zeros produce silence on underrun because
-            // UsbRingBuffer::read already zero-filled the scratch buffer).
-            convertAndPack(scratch, bufferPtr, framesInPkt);
+            // Convert float → packed PCM
+            convertAndPack(scratch, bufferPtr, samplesNeeded / channels_);
         }
 
         bufferPtr += pkt.length;
     }
+}
+
+int UsbIsoStream::framesForCurrentPacket() {
+    // packetsPerSecond_ must be cached in start()
+    // 1000 for LIBUSB_SPEED_FULL, 8000 for LIBUSB_SPEED_HIGH
+
+    const int baseFrames = sampleRate_ / packetsPerSecond_;
+    const int remainder = sampleRate_ % packetsPerSecond_;
+
+    if (remainder == 0) {
+        return baseFrames; // Clean integer division (e.g. 96000 / 1000 = 96)
+    }
+
+    // Bresenham fractional accumulator for odd rates (e.g. 44100)
+    packetFraction_ += remainder;
+    if (packetFraction_ >= packetsPerSecond_) {
+        packetFraction_ -= packetsPerSecond_;
+        return baseFrames + 1;
+    }
+
+    return baseFrames;
 }
 
 // ------------------------------------------------------------------ //
@@ -302,12 +329,9 @@ void UsbIsoStream::eventThreadLoop() {
 //  Public API
 // ------------------------------------------------------------------ //
 
-bool UsbIsoStream::start(libusb_context *ctx,
-                         libusb_device_handle *handle,
-                         const UacAltSetting &alt,
-                         int subslotSize,
-                         int bitResolution,
-                         int sampleRate) {
+bool
+UsbIsoStream::start(libusb_context *ctx, libusb_device_handle *handle, const UacAltSetting &alt,
+                    int subslotSize, int bitResolution, int sampleRate, int deviceSpeed) {
     if (alt.endpointAddress == 0 || alt.wMaxPacketSize == 0) {
         LOGE("Cannot start ISO stream — alt-setting has no valid endpoint");
         return false;
@@ -323,20 +347,20 @@ bool UsbIsoStream::start(libusb_context *ctx,
     maxPacketSize_ = alt.wMaxPacketSize;
     channels_ = (alt.bNrChannels > 0) ? alt.bNrChannels : 2;
     sampleRate_ = sampleRate;
-    uframeFraction_ = 0;
 
-    // Compute frames-per-microframe so we can size each USB packet to match the
-    // DAC's actual audio clock rather than the endpoint's maximum bandwidth.
-    // USB high-speed = 8000 microframes per second.
-    // For integer ratios (e.g. 48000/8000=6) every packet gets the same size.
-    // For fractional ratios (e.g. 44100/8000=5.5125) we use a Bresenham
-    // accumulator so the long-term average is exact.
-    const int baseFramesPerUframe = sampleRate_ / 8000;
+    // Reset the accumulator
+    packetFraction_ = 0;
+
+    // Cache the packet rate based on physical bus speed
+    // Full Speed = 1000 frames/sec | High Speed = 8000 microframes/sec
+    packetsPerSecond_ = (deviceSpeed == LIBUSB_SPEED_FULL) ? 1000 : 8000;
+
+    const int baseFramesPerPacket = sampleRate_ / packetsPerSecond_;
 
     LOGI("Starting ISO stream: ep=0x%02X maxPkt=%d subslot=%d bits=%d ch=%d rate=%dHz "
-         "baseFramesPerUframe=%d",
+         "baseFramesPerPacket=%d (via %d pkts/sec)",
          alt.endpointAddress, maxPacketSize_, subslotSize_, bitResolution_, channels_,
-         sampleRate_, baseFramesPerUframe);
+         sampleRate_, baseFramesPerPacket, packetsPerSecond_);
 
     if (!allocateTransfers(handle, alt.endpointAddress, maxPacketSize_)) {
         freeTransfers();
