@@ -37,6 +37,7 @@ import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.shared.utils.ViewUtils.visible
 import app.simple.felicity.ui.pages.AlbumPage
 import app.simple.felicity.ui.pages.ArtistPage
+import app.simple.felicity.ui.panels.PlayingQueue
 import app.simple.felicity.viewmodels.panels.DashboardViewModel
 import app.simple.felicity.viewmodels.panels.DashboardViewModel.LibraryStats
 import app.simple.felicity.viewmodels.panels.DashboardViewModel.RecommendedSpanConfig
@@ -129,6 +130,18 @@ class Dashboard : BaseHomeFragment() {
                 ServerModeService.isRunning.collect { running ->
                     if (running) binding.serverActiveChip.visible(true)
                     else binding.serverActiveChip.gone()
+                }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                dashboardViewModel.activeQueue.collect { idx ->
+                    binding.activeQueue.text = getString(R.string.current_queue, idx + 1)
+
+                    binding.activeQueue.setOnClickListener {
+                        openFragment(PlayingQueue.newInstance(), PlayingQueue.TAG)
+                    }
                 }
             }
         }

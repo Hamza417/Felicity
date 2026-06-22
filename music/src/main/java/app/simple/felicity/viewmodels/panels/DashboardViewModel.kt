@@ -133,6 +133,10 @@ class DashboardViewModel @Inject constructor(
     /** Active coroutine job collecting the recommended combined flow. */
     private var recommendedJob: Job? = null
 
+    private val _activeQueue = MutableStateFlow<Int>(0)
+
+    val activeQueue: StateFlow<Int> = _activeQueue.asStateFlow()
+
     /**
      * Builds the list of panel navigation icons that should actually appear in the browse grid,
      * respecting the user's visibility preferences. Songs, Albums, and Artists are sacred — they
@@ -212,6 +216,7 @@ class DashboardViewModel @Inject constructor(
         startLibraryStatsFlow()
         startTopArtistsFlow()
         startTopAlbumsFlow()
+        fetchActiveQueue()
     }
 
     private fun startRecentlyPlayedFlow() {
@@ -497,6 +502,18 @@ class DashboardViewModel @Inject constructor(
             )
         } else {
             _recommendedSpanConfig.value ?: buildPortraitSpanConfig()
+        }
+    }
+
+    fun fetchActiveQueue() {
+        viewModelScope.launch {
+            audioRepository.getPlaybackStateDao().getActiveQueueIdFlow()
+                .catch { e -> Log.e(TAG, "Error fetching active queue id", e) }
+                .flowOn(Dispatchers.IO)
+                .collect { queueId ->
+                    _activeQueue.value = queueId
+                    Log.d(TAG, "activeQueue updated: $queueId")
+                }
         }
     }
 

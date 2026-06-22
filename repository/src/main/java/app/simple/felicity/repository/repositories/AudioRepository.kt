@@ -5,6 +5,7 @@ import android.provider.DocumentsContract
 import androidx.core.net.toUri
 import androidx.sqlite.db.SimpleSQLiteQuery
 import app.simple.felicity.preferences.LibraryPreferences
+import app.simple.felicity.repository.database.dao.PlaybackStateDao
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
@@ -896,6 +897,15 @@ class AudioRepository @Inject constructor(
                     // artists = artistsMap
             )
         } ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
+     * Get the PlaybackStateDao for managing playback state in the database.
+     *
+     * @return PlaybackStateDao instance for accessing playback state data.
+     */
+    fun getPlaybackStateDao(): PlaybackStateDao {
+        return audioDatabase.playbackStateDao()
     }
 
     /**

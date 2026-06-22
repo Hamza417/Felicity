@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import app.simple.felicity.repository.models.PlaybackState
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PlaybackStateDao {
@@ -14,6 +15,12 @@ interface PlaybackStateDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun save(state: PlaybackState)
+
+    /**
+     * Get active queue id else 0
+     */
+    @Query("SELECT active_queue_id FROM playback_state WHERE id = 1")
+    fun getActiveQueueIdFlow(): Flow<Int>
 
     @Query("DELETE FROM playback_state")
     suspend fun clear()
