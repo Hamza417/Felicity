@@ -163,7 +163,8 @@ class WidgetActionReceiver : BroadcastReceiver() {
                                 audios = savedQueue,
                                 position = restoredIndex,
                                 startPositionMs = playbackState.position,
-                                autoPlay = true
+                                autoPlay = true,
+                                isRestore = true
                         )
                     }
                 } else {

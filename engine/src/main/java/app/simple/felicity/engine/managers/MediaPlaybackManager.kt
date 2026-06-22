@@ -254,7 +254,7 @@ object MediaPlaybackManager {
      * Note: Emission order between list and position is not strictly guaranteed due to coroutines,
      * but replay=1 on both flows ensures UI will observe the latest of each.
      */
-    fun setSongs(audios: List<Audio>, position: Int = 0, startPositionMs: Long = 0L, autoPlay: Boolean = false) {
+    fun setSongs(audios: List<Audio>, position: Int = 0, startPositionMs: Long = 0L, autoPlay: Boolean = false, isRestore: Boolean = false) {
         Log.d(
                 TAG,
                 "setSongs called: count=${audios.size}, position=$position, startPositionMs=$startPositionMs, autoPlay=$autoPlay"
@@ -326,7 +326,7 @@ object MediaPlaybackManager {
                 val activeQueue: List<Audio>
                 val newShuffledQueue: List<Audio>
 
-                if (shuffleOn) {
+                if (shuffleOn && isRestore.not()) {
                     // Smart shuffle keeps artists spread out and anchors the tapped song first.
                     val startSong = audios.getOrNull(position)
                     val shuffled = smartShuffle(audios, { it.artist ?: "" }, startSong)

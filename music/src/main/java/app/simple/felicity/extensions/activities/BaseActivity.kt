@@ -282,6 +282,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
                                 audios = lastSongs,
                                 position = restoredIndex,
                                 startPositionMs = playbackState.position.coerceAtLeast(0L),
+                                isRestore = true
                         )
                         Log.d(TAG, "Playback state restored successfully (shuffle=${playbackState.shuffle}, queue=${playbackState.activeQueueId})")
                         onStateReady()
@@ -302,6 +303,7 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
                                             audios = firstSongs,
                                             position = 0,
                                             startPositionMs = 0L,
+                                            isRestore = true
                                     )
                                     Log.d(TAG, "Default queue loaded on first launch: ${firstSongs.size} songs")
                                     onStateReady()
