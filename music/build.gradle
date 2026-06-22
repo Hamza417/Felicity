@@ -136,10 +136,10 @@ dependencies {
     // AndroidX
     implementation 'androidx.fragment:fragment-ktx:1.8.9'
     implementation 'androidx.activity:activity-ktx:1.13.0'
-    implementation 'androidx.lifecycle:lifecycle-viewmodel-savedstate:2.10.0'
-    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0'
-    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.10.0'
-    implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.10.0'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-savedstate:2.11.0'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.11.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.11.0'
+    implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.11.0'
     implementation 'androidx.documentfile:documentfile:1.1.0'
     implementation 'androidx.media:media:1.8.0'
     implementation 'androidx.security:security-crypto:1.1.0'
@@ -157,7 +157,7 @@ dependencies {
 
     // Google
     implementation 'com.google.android.flexbox:flexbox:3.0.0'
-    playImplementation 'com.android.billingclient:billing-ktx:9.0.0'
+    playImplementation 'com.android.billingclient:billing-ktx:9.1.0'
 
     // Third party
 
@@ -201,8 +201,13 @@ static def getEnvOrProperty(envKey, properties) {
     return System.getenv(envKey) ?: properties.get(envKey)
 }
 
-// afterEvaluate ensures the android {} block has been fully parsed
-// so we can read the correct versionCode.
+/**
+ * Automatically clones the latest Fastlane changelog to the current versionCode's
+ * changelog file during Android Studio Sync.
+ *
+ * afterEvaluate ensures the android {} block has been fully parsed
+ * so we can read the correct versionCode.
+ */
 afterEvaluate {
     // Detect if Android Studio is currently running a Sync
     def isSyncing = System.getProperty("idea.sync.active") == "true"
