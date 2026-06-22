@@ -90,8 +90,8 @@ class PlayingQueue : BasePanelFragment() {
 
             val activeQueueId = MediaPlaybackManager.getActiveQueueId()
             val labels = mutableListOf<String>().apply {
-                for (i in PlaybackStateManager.QUEUE_LABELS.indices) {
-                    add(getString(R.string.current_queue, i + 1))
+                for (i in 1..PlaybackStateManager.QUEUE_COUNT) {
+                    add(getString(R.string.current_queue, i))
                 }
             }
 

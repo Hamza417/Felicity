@@ -36,10 +36,7 @@ object PlaybackStateManager {
     private const val TAG = "PlaybackStateManager"
 
     /** Number of independent queue slots available to the user. */
-    const val QUEUE_COUNT = 5
-
-    // Human-readable labels shown in the queue-switcher popup.
-    val QUEUE_LABELS = listOf("Queue 1", "Queue 2", "Queue 3", "Queue 4", "Queue 5")
+    const val QUEUE_COUNT = 10
 
     /**
      * Saves the current playback state from [MediaPlaybackManager] to the database.
