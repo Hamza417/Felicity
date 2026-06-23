@@ -16,11 +16,13 @@
         app:vizMaxRenderHeight="0.45"
         app:vizParticlesEnabled="true" />
 
-    <LinearLayout
+    <app.simple.felicity.decorations.padding.NonThemePaddingAwareLinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:clipChildren="false"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        app:navigationPaddingRequired="true"
+        app:statusPaddingRequired="false">
 
         <FrameLayout
             android:layout_width="match_parent"
@@ -285,6 +287,6 @@
 
         </LinearLayout>
 
-    </LinearLayout>
+    </app.simple.felicity.decorations.padding.NonThemePaddingAwareLinearLayout>
 
 </app.simple.felicity.decorations.theme.ThemeFrameLayout>

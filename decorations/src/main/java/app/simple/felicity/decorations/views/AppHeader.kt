@@ -12,13 +12,15 @@ import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.view.animation.DecelerateInterpolator
 import androidx.annotation.LayoutRes
 import androidx.annotation.MainThread
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.children
 import androidx.recyclerview.widget.RecyclerView
+import app.simple.felicity.core.singletons.AppOrientation
 import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.itemdecorations.HeaderSpacingItemDecoration
 import app.simple.felicity.decorations.theme.ThemeFrameLayout
 import app.simple.felicity.shared.utils.UnitUtils.dpToPx
-import app.simple.felicity.shared.utils.WindowUtil
 import kotlin.math.max
 import kotlin.math.min
 
@@ -98,12 +100,39 @@ class AppHeader @JvmOverloads constructor(
                 inflateContent(contentLayout)
             }
 
-            WindowUtil.getStatusBarHeightWhenAvailable(this@AppHeader) { height ->
-                if (!statusBarPaddingApplied) {
-                    setPadding(paddingLeft, height + paddingTop, paddingRight, paddingBottom)
-                    post { updateSpacingDecoration() }
-                }
-                statusBarPaddingApplied = true
+            // Capture the initial padding of the header exactly once before applying insets.
+            // Do this during your view's initialization.
+            val basePaddingLeft = this@AppHeader.paddingLeft
+            val basePaddingTop = this@AppHeader.paddingTop
+            val basePaddingRight = this@AppHeader.paddingRight
+            val basePaddingBottom = this@AppHeader.paddingBottom
+
+            // Set the unified listener
+            ViewCompat.setOnApplyWindowInsetsListener(this@AppHeader) { v, insets ->
+                // Get both system bar insets simultaneously
+                val statusBars = insets.getInsets(WindowInsetsCompat.Type.statusBars())
+                val navBars = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+
+                // Use your utility or standard Android Configuration to check for landscape
+                val isLandscape = AppOrientation.isLandscape()
+                // Alternatively: resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+                // Calculate dynamic left/right nav padding (only apply in landscape)
+                val navPaddingLeft = if (isLandscape) navBars.left else 0
+                val navPaddingRight = if (isLandscape) navBars.right else 0
+
+                // Apply combined paddings
+                v.setPadding(
+                        basePaddingLeft + navPaddingLeft,
+                        basePaddingTop + statusBars.top,        // Status bar always applied to top
+                        basePaddingRight + navPaddingRight,
+                        basePaddingBottom                       // No bottom nav padding for a header
+                )
+
+                // Trigger spacing decoration update
+                v.post { updateSpacingDecoration() }
+
+                insets
             }
         }
 

@@ -38,8 +38,8 @@ public class NonThemePaddingAwareLinearLayout extends LinearLayout implements Sh
     @SuppressLint ("CustomViewStyleable")
     private void init(AttributeSet attrs) {
         try (TypedArray typedArray = getContext().obtainStyledAttributes(attrs, R.styleable.PaddingAwareLinearLayout)) {
-            statusPaddingRequired = typedArray.getBoolean(R.styleable.PaddingAwareLinearLayout_statusPaddingRequired, true);
-            navigationPaddingRequired = typedArray.getBoolean(R.styleable.PaddingAwareLinearLayout_navigationPaddingRequired, true);
+            statusPaddingRequired = typedArray.getBoolean(R.styleable.NonThemePaddingAwareLinearLayout_statusPaddingRequired, true);
+            navigationPaddingRequired = typedArray.getBoolean(R.styleable.NonThemePaddingAwareLinearLayout_navigationPaddingRequired, true);
             
             Utils.applySystemBarPadding(this, statusPaddingRequired, navigationPaddingRequired);
         }

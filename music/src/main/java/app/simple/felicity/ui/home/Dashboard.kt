@@ -35,6 +35,7 @@ import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.server.ServerModeService
 import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.shared.utils.ViewUtils.visible
+import app.simple.felicity.shared.utils.WindowUtil.applyLandscapeNavBarPadding
 import app.simple.felicity.ui.pages.AlbumPage
 import app.simple.felicity.ui.pages.ArtistPage
 import app.simple.felicity.ui.panels.PlayingQueue
@@ -115,6 +116,10 @@ class Dashboard : BaseHomeFragment() {
         binding.refreshRecommended.setOnClickListener {
             dashboardViewModel.refreshRecommended()
         }
+
+        // Insets
+        binding.header.applyLandscapeNavBarPadding()
+        binding.strip.applyLandscapeNavBarPadding()
     }
 
     private fun setupHeader() {

@@ -2866,14 +2866,19 @@ class MiniPlayer @JvmOverloads constructor(
 
         ViewCompat.setOnApplyWindowInsetsListener(this) { v, insets ->
             val nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
-            navBarInsetPx = nav.bottom
+
             if (!isFlatMode) {
                 val lp = v.layoutParams as? ViewGroup.MarginLayoutParams
                     ?: return@setOnApplyWindowInsetsListener insets
-                lp.bottomMargin = baseSideMarginPx + navBarInsetPx
-                lp.setMargins(baseSideMarginPx, baseSideMarginPx, baseSideMarginPx, baseSideMarginPx + navBarInsetPx)
-                lp.marginStart = baseSideMarginPx
-                lp.marginEnd = baseSideMarginPx
+
+                // Dynamically add the inset for each specific edge to your base margin.
+                // Portrait: nav.bottom has a value, nav.left/right are 0.
+                // Landscape: nav.right (or nav.left) has a value, nav.bottom is 0.
+                lp.leftMargin = baseSideMarginPx + nav.left
+                lp.topMargin = baseSideMarginPx // Assuming no top inset needed here
+                lp.rightMargin = baseSideMarginPx + nav.right
+                lp.bottomMargin = baseSideMarginPx + nav.bottom
+
                 v.layoutParams = lp
             }
             insets

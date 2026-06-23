@@ -21,7 +21,7 @@ import app.simple.felicity.preferences.AccessibilityPreferences
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.shared.utils.BarHeight
 import app.simple.felicity.shared.utils.ConditionUtils.invert
-import app.simple.felicity.shared.utils.WindowUtil
+import app.simple.felicity.shared.utils.WindowUtil.applyBarPadding
 import app.simple.felicity.theme.managers.ThemeManager
 
 /**
@@ -66,18 +66,7 @@ open class CustomVerticalRecyclerView(context: Context, attrs: AttributeSet?) : 
                     if (statusBarPaddingRequired && navigationBarPaddingRequired) {
                         fitsSystemWindows = true
                     } else {
-                        if (statusBarPaddingRequired) {
-                            WindowUtil.getStatusBarHeightWhenAvailable(this@CustomVerticalRecyclerView) { height ->
-                                setPadding(paddingLeft, height + paddingTop, paddingRight, paddingBottom)
-                            }
-                        }
-
-                        if (navigationBarPaddingRequired) {
-                            WindowUtil.getNavigationBarHeightWhenAvailable(this@CustomVerticalRecyclerView) { height ->
-                                setPadding(paddingLeft, paddingTop, paddingRight, height + paddingBottom)
-                            }
-                        }
-
+                        applyBarPadding(applyStatusBar = statusBarPaddingRequired, applyNavigationBar = navigationBarPaddingRequired)
                     }
 
                     if (AccessibilityPreferences.isAnimationReduced()) {
