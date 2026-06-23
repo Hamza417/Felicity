@@ -1,5 +1,6 @@
 package app.simple.felicity.shared.utils
 
+import android.content.res.Configuration
 import android.view.View
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -65,6 +66,41 @@ object WindowUtil {
 
             // Return the insets untouched so child views can also consume them.
             // If you return WindowInsetsCompat.CONSUMED, children won't get inset callbacks.
+            windowInsets
+        }
+    }
+
+    /**
+     * Applies navigation bar insets as padding to the view ONLY when the device
+     * is in landscape orientation. In portrait, it retains its original XML padding.
+     */
+    fun View.applyLandscapeNavBarPadding() {
+        // Snapshot the initial baseline padding
+        val baseLeft = paddingLeft
+        val baseTop = paddingTop
+        val baseRight = paddingRight
+        val baseBottom = paddingBottom
+
+        ViewCompat.setOnApplyWindowInsetsListener(this) { view, windowInsets ->
+            val navBars = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars())
+
+            // Check current orientation dynamically on every inset dispatch
+            val isLandscape = view.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+            // Extract insets if landscaped, otherwise use 0
+            val leftInset = if (isLandscape) navBars.left else 0
+            val rightInset = if (isLandscape) navBars.right else 0
+            val bottomInset = if (isLandscape) navBars.bottom else 0
+
+            // Apply the padding safely using the baseline
+            view.setPadding(
+                    baseLeft + leftInset,
+                    baseTop,                // Touches no top/status bar padding
+                    baseRight + rightInset,
+                    baseBottom + bottomInset
+            )
+
+            // Return insets so children can still consume them
             windowInsets
         }
     }
