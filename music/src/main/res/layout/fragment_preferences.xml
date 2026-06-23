@@ -12,6 +12,7 @@
         android:layout_height="match_parent"
         android:layoutAnimation="@anim/list_animation_controller"
         android:layout_weight="1"
+        app:navigationPaddingRequired="true"
         app:statusPaddingRequired="false" />
 
     <app.simple.felicity.decorations.views.AppHeader

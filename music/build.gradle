@@ -162,7 +162,7 @@ dependencies {
     // Third party
 
     // My Own
-    implementation 'io.github.hamza417:Amplituda:3.3.0'
+    implementation 'io.github.hamza417:Amplituda:3.3.1'
 
     // NanoHTTPD — lightweight embedded HTTP server for the local WiFi server mode
     implementation 'org.nanohttpd:nanohttpd:2.3.1'
