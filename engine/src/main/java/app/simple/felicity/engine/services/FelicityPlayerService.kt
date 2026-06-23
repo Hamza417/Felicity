@@ -86,6 +86,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.math.pow
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Service responsible for managing audio playback using ExoPlayer with dynamic decoder switching support.
@@ -891,7 +892,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                     // The track ended and the player paused itself automatically.
                     // Now we introduce our artificial gap.
                     serviceScope.launch(Dispatchers.Main) {
-                        delay(GAP_DURATION_MS) // time of silence
+                        delay(GAP_DURATION_MS.milliseconds) // time of silence
                         player.play() // Move on to the next track
                     }
                 }
@@ -1483,7 +1484,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         snapshotPulseJob = serviceScope.launch(Dispatchers.Main.immediate) {
             buildAndPushSnapshot() // fire once immediately so the UI never waits
             while (isActive) {
-                delay(3_000L)
+                delay(3_000L.milliseconds)
                 buildAndPushSnapshot()
             }
         }
@@ -1523,7 +1524,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         if (!::player.isInitialized) return
         snapshotDebounceJob?.cancel()
         snapshotDebounceJob = serviceScope.launch(Dispatchers.Main) {
-            delay(SNAPSHOT_DEBOUNCE_MS)
+            delay(SNAPSHOT_DEBOUNCE_MS.milliseconds)
             buildAndPushSnapshotNow()
         }
     }
@@ -1810,7 +1811,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
      * @return The best-matching [AudioDeviceInfo], or `null` if no output devices are found.
      */
     private fun detectActiveOutputDevice(): AudioDeviceInfo? {
-        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
         val devices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
         return devices.maxByOrNull { outputDevicePriority(it.type) }
     }
@@ -1884,7 +1885,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
         periodicStateSaveJob = serviceScope.launch {
             while (isActive) {
-                delay(10000) // Save every 10 seconds
+                delay(10000.milliseconds) // Save every 10 seconds
                 savePlaybackStateToDatabase()
             }
         }
