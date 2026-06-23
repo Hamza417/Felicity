@@ -45,7 +45,9 @@
         android:orientation="vertical"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/right_content"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toTopOf="parent"
+        app:navigationPaddingRequired="false"
+        app:statusPaddingRequired="true">
 
         <app.simple.felicity.decorations.views.FavoriteButton
             android:id="@+id/favorite"
@@ -117,7 +119,7 @@
         uses match_parent width, which inherently makes it 60% of the screen width
         aligned to the right — overlapping the faded portion of the pager.
     -->
-    <LinearLayout
+    <app.simple.felicity.decorations.padding.NonThemePaddingAwareLinearLayout
         android:id="@+id/right_content"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -128,7 +130,7 @@
         app:layout_constraintStart_toEndOf="@id/guideline_40"
         app:layout_constraintTop_toTopOf="parent">
 
-        <app.simple.felicity.decorations.padding.NonThemePaddingAwareLinearLayout
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom"
@@ -261,7 +263,7 @@
                 app:appFontStyle="regular"
                 app:textColorStyle="secondary" />
 
-        </app.simple.felicity.decorations.padding.NonThemePaddingAwareLinearLayout>
+        </LinearLayout>
 
         <!--
             The seekbar spans the full width of this right-side container,
@@ -317,6 +319,6 @@
 
         </LinearLayout>
 
-    </LinearLayout>
+    </app.simple.felicity.decorations.padding.NonThemePaddingAwareLinearLayout>
 
 </app.simple.felicity.decorations.theme.ThemeConstraintLayout>
