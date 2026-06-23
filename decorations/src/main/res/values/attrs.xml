@@ -101,6 +101,11 @@
         <attr name="navigationPaddingRequired" />
     </declare-styleable>
 
+    <declare-styleable name="NonThemePaddingAwareLinearLayout">
+        <attr name="statusPaddingRequired" />
+        <attr name="navigationPaddingRequired" />
+    </declare-styleable>
+
     <declare-styleable name="InsetLinearLayout">
         <attr name="statusPaddingRequired" />
         <attr name="navigationPaddingRequired" />
