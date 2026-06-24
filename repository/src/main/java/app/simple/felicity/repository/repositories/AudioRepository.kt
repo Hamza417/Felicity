@@ -771,63 +771,76 @@ class AudioRepository @Inject constructor(
      * @return Flow of PageData with songs, albums, artists, and genres
      */
     fun getFolderPageData(folder: Folder): Flow<PageData> {
-        return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
-            // Filter songs whose parent document ID matches the folder's path.
-            // folder.path is a document ID like "primary:Music/Artist/Album".
-            val folderAudios = audioList.filter { audio ->
-                val docId = docIdOf(audio.uri) ?: return@filter false
-                docId.substringBeforeLast('/') == folder.path
-            }
+        val dao = audioDatabase.audioDao() ?: throw IllegalStateException("AudioDao is null")
 
-            // Extract unique albums from folder songs
-            val albumsMap = folderAudios.groupBy { it.album }
-                .mapNotNull { (albumName, albumSongs) ->
-                    if (albumName.isNullOrEmpty()) return@mapNotNull null
-                    val primaryArtist = albumSongs.firstOrNull()?.artist ?: ""
-                    Album(
-                            id = albumName.hashCode().toLong(),
-                            name = albumName,
-                            artist = primaryArtist,
-                            artistId = primaryArtist.hashCode().toLong(),
-                            songCount = albumSongs.size,
-                            songPaths = albumSongs.map { it.uri }
-                    )
+        // Grab the last segment of the path (the actual folder name)
+        // and URL-encode it so spaces and symbols match Android's raw URI format.
+        val folderName = folder.path.substringAfterLast('/')
+        val encodedSearchTerm = android.net.Uri.encode(folderName)
+
+        // Ask SQLite to filter using the ENCODED folder name
+        return dao.getCandidateTracksForFolder(encodedSearchTerm, minDurationMs(), minSizeBytes())
+            .map { candidateAudios ->
+
+                // Now run exact URI parser on the matching files.
+                // Because Kotlin's docIdOf() decodes the URI back to normal text,
+                // we compare it against the original, un-encoded folder.path!
+                val folderAudios = candidateAudios.filter { audio ->
+                    val docId = docIdOf(audio.uri) ?: return@filter false
+                    docId.substringBeforeLast('/') == folder.path
                 }
 
-            // Extract unique artists from folder songs, counting their full library totals.
-            val fullArtistMap = buildArtistSongMap(audioList)
-            val artistsMap = buildArtistSongMap(folderAudios).keys.mapNotNull { artistName ->
-                val allSongs = fullArtistMap[artistName] ?: return@mapNotNull null
-                val uniqueAlbums = allSongs.mapNotNull { it.album }.distinct().size
-                Artist(
-                        id = artistName.hashCode().toLong(),
-                        name = artistName,
-                        albumCount = uniqueAlbums,
-                        trackCount = allSongs.size,
-                        songPaths = allSongs.map { it.uri }
+                // Extract unique albums
+                val albumsMap = folderAudios.groupBy { it.album }
+                    .mapNotNull { (albumName, albumSongs) ->
+                        if (albumName.isNullOrEmpty()) return@mapNotNull null
+                        val primaryArtist = albumSongs.firstOrNull()?.artist ?: ""
+                        Album(
+                                id = albumName.hashCode().toLong(),
+                                name = albumName,
+                                artist = primaryArtist,
+                                artistId = primaryArtist.hashCode().toLong(),
+                                songCount = albumSongs.size,
+                                songPaths = albumSongs.map { it.uri }
+                        )
+                    }
+
+                // Extract unique artists present in this folder
+                val uniqueFolderArtists = buildArtistSongMap(folderAudios).keys
+                val artistsMap = uniqueFolderArtists.map { artistName ->
+                    val trackCount = dao.getTrackCountForArtist(artistName)
+                    val albumCount = dao.getAlbumCountForArtist(artistName)
+                    val trackPaths = dao.getTrackPathsForArtist(artistName)
+
+                    Artist(
+                            id = artistName.hashCode().toLong(),
+                            name = artistName,
+                            albumCount = albumCount,
+                            trackCount = trackCount,
+                            songPaths = trackPaths
+                    )
+                }.sortedBy { it.name?.lowercase() }
+
+                // Extract unique genres using the optimized DAO query
+                val genresMap = folderAudios.mapNotNull { it.genre }
+                    .distinct()
+                    .map { genreName ->
+                        val genrePaths = dao.getTrackPathsForGenre(genreName)
+                        Genre(
+                                id = genreName.hashCode().toLong(),
+                                name = genreName,
+                                songPaths = genrePaths,
+                                songCount = genrePaths.size
+                        )
+                    }
+
+                PageData(
+                        songs = folderAudios,
+                        albums = albumsMap,
+                        artists = artistsMap,
+                        genres = genresMap
                 )
             }
-
-            // Extract unique genres from folder songs
-            val genresMap = folderAudios.groupBy { it.genre }
-                .mapNotNull { (genreName, _) ->
-                    if (genreName.isNullOrEmpty()) return@mapNotNull null
-                    val genreAllSongs = audioList.filter { it.genre == genreName }
-                    Genre(
-                            id = genreName.hashCode().toLong(),
-                            name = genreName,
-                            songPaths = genreAllSongs.map { it.uri },
-                            songCount = genreAllSongs.size
-                    )
-                }
-
-            PageData(
-                    songs = folderAudios,
-                    albums = albumsMap,
-                    artists = artistsMap,
-                    genres = genresMap
-            )
-        } ?: throw IllegalStateException("AudioDao is null")
     }
 
     /**
