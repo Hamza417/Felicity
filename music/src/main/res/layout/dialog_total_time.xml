@@ -27,13 +27,13 @@
             android:orientation="horizontal">
 
             <app.simple.felicity.decorations.ripple.DynamicRippleTextView
-                android:id="@+id/sure"
+                android:id="@+id/close"
                 android:gravity="center"
                 android:layout_gravity="end|center_vertical"
                 android:layout_height="wrap_content"
                 android:layout_width="wrap_content"
                 android:padding="@dimen/padding_15"
-                android:text="@string/ok"
+                android:text="@string/close"
                 android:textSize="@dimen/text_size_14"
                 app:appFontStyle="bold"
                 app:textColorStyle="accent" />

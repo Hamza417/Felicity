@@ -36,6 +36,10 @@ class TotalTime : ScopedBottomSheetFragment() {
             append(totalTime.toLocalizedExactDuration())
             append(")")
         }
+
+        binding.close.setOnClickListener {
+            dismiss()
+        }
     }
 
     /**
