@@ -93,6 +93,38 @@ interface AudioDao {
     @Query("SELECT * FROM audio WHERE artist = :artist AND is_available = 1 ORDER BY title COLLATE NOCASE ASC")
     fun getAudioByArtist(artist: String): Flow<MutableList<Audio>>
 
+    // Fetch only the tracks for the specific album
+    @Query("""
+        SELECT * FROM audio 
+        WHERE album = :albumName 
+        AND duration >= :minDuration 
+        AND size >= :minSize
+    """)
+    fun getTracksForAlbum(albumName: String, minDuration: Long, minSize: Long): Flow<List<Audio>>
+
+    // Get global track and unique album counts for specific artists
+    @Query("""
+        SELECT COUNT(id) FROM audio WHERE album_artist LIKE :artistName
+    """)
+    fun getTrackCountForArtist(artistName: String): Int
+
+    @Query("""
+        SELECT COUNT(DISTINCT album) FROM audio WHERE album_artist LIKE :artistName
+    """)
+    fun getAlbumCountForArtist(artistName: String): Int
+
+    // Get all track paths for an artist (for the Artist object map)
+    @Query("""
+        SELECT uri FROM audio WHERE album_artist LIKE :artistName
+    """)
+    fun getTrackPathsForArtist(artistName: String): List<String>
+
+    // Get global track paths for a specific genre
+    @Query("""
+        SELECT uri FROM audio WHERE genre = :genreName
+    """)
+    fun getTrackPathsForGenre(genreName: String): List<String>
+
     // get all audio files by artist name with filtering
     @Query("SELECT * FROM audio WHERE artist = :artist AND is_available = 1 AND duration >= :minDuration AND size >= :minSize ORDER BY title COLLATE NOCASE ASC")
     fun getFilteredAudioByArtist(artist: String, minDuration: Long, minSize: Long): Flow<MutableList<Audio>>
