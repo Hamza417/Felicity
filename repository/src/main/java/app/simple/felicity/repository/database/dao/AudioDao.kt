@@ -125,6 +125,16 @@ interface AudioDao {
     """)
     fun getTrackPathsForGenre(genreName: String): List<String>
 
+    // Fetches only tracks that contain the artist name somewhere in the field.
+    // This allows the DB to instantly discard 99% of the library before Kotlin touches it.
+    @Query("""
+    SELECT * FROM audio 
+    WHERE artist LIKE '%' || :artistName || '%' 
+    AND duration >= :minDuration 
+    AND size >= :minSize
+    """)
+    fun getCandidateTracksForArtist(artistName: String, minDuration: Long, minSize: Long): Flow<List<Audio>>
+
     // get all audio files by artist name with filtering
     @Query("SELECT * FROM audio WHERE artist = :artist AND is_available = 1 AND duration >= :minDuration AND size >= :minSize ORDER BY title COLLATE NOCASE ASC")
     fun getFilteredAudioByArtist(artist: String, minDuration: Long, minSize: Long): Flow<MutableList<Audio>>
