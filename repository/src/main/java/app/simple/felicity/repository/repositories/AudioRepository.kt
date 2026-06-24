@@ -609,42 +609,49 @@ class AudioRepository @Inject constructor(
      * @return Flow of [PageData] with songs, albums, and genres for this composer.
      */
     fun getComposerPageData(composer: Artist): Flow<PageData> {
-        return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
-            val composerAudios = audioList.filter { audio ->
-                audio.composer?.trim().equals(composer.name?.trim(), ignoreCase = true)
+        val dao = audioDatabase.audioDao() ?: throw IllegalStateException("AudioDao is null")
+        val composerName = composer.name?.trim() ?: return emptyFlow()
+
+        // Fetch ONLY the tracks where the composer matches (case-insensitive)
+        return dao.getTracksForComposer(composerName, minDurationMs(), minSizeBytes())
+            .map { composerAudios ->
+
+                // Extract unique albums from this already-filtered list
+                val albumsMap = composerAudios.groupBy { it.album }
+                    .mapNotNull { (albumName, albumSongs) ->
+                        if (albumName.isNullOrEmpty()) return@mapNotNull null
+
+                        Album(
+                                id = albumName.hashCode().toLong(),
+                                name = albumName,
+                                artist = composerName,
+                                artistId = composer.id,
+                                songCount = albumSongs.size,
+                                songPaths = albumSongs.map { it.uri }
+                        )
+                    }
+
+                // Extract unique genres using our optimized DAO query
+                val genresMap = composerAudios.mapNotNull { it.genre }
+                    .distinct()
+                    .map { genreName ->
+                        // Reusing the same O(1) database query!
+                        val genrePaths = dao.getTrackPathsForGenre(genreName)
+
+                        Genre(
+                                id = genreName.hashCode().toLong(),
+                                name = genreName,
+                                songPaths = genrePaths,
+                                songCount = genrePaths.size
+                        )
+                    }
+
+                PageData(
+                        songs = composerAudios,
+                        albums = albumsMap,
+                        genres = genresMap
+                )
             }
-
-            val albumsMap = composerAudios.groupBy { it.album }
-                .mapNotNull { (albumName, albumSongs) ->
-                    if (albumName.isNullOrEmpty()) return@mapNotNull null
-                    Album(
-                            id = albumName.hashCode().toLong(),
-                            name = albumName,
-                            artist = composer.name ?: "",
-                            artistId = composer.id,
-                            songCount = albumSongs.size,
-                            songPaths = albumSongs.map { it.uri }
-                    )
-                }
-
-            val genresMap = composerAudios.groupBy { it.genre }
-                .mapNotNull { (genreName, _) ->
-                    if (genreName.isNullOrEmpty()) return@mapNotNull null
-                    val genreAllSongs = audioList.filter { it.genre == genreName }
-                    Genre(
-                            id = genreName.hashCode().toLong(),
-                            name = genreName,
-                            songPaths = genreAllSongs.map { it.uri },
-                            songCount = genreAllSongs.size
-                    )
-                }
-
-            PageData(
-                    songs = composerAudios,
-                    albums = albumsMap,
-                    genres = genresMap
-            )
-        } ?: throw IllegalStateException("AudioDao is null")
     }
 
     /**
