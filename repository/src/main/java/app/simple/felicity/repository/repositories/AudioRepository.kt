@@ -266,47 +266,52 @@ class AudioRepository @Inject constructor(
      * @return Flow of [PageData] with songs, albums, and genres for this album artist.
      */
     fun getAlbumArtistPageData(albumArtist: Artist): Flow<PageData> {
-        return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
-            // Use the same split-based lookup as the list so the song count always matches.
-            // We look the name up in the pre-built map rather than doing a raw equals check.
-            val artistAudios = buildAlbumArtistSongMap(audioList)[albumArtist.name] ?: emptyList()
+        val dao = audioDatabase.audioDao() ?: throw IllegalStateException("AudioDao is null")
+        val artistName = albumArtist.name ?: return emptyFlow()
 
-            // Pull out unique albums from those songs
-            val albumsMap = artistAudios.groupBy { it.album }
-                .mapNotNull { (albumName, albumSongs) ->
-                    if (albumName.isNullOrEmpty()) return@mapNotNull null
+        // Fetch only tracks that might contain this album artist string
+        return dao.getCandidateTracksForAlbumArtist(artistName, minDurationMs(), minSizeBytes())
+            .map { candidateAudios ->
 
-                    Album(
-                            id = albumName.hashCode().toLong(),
-                            name = albumName,
-                            artist = albumArtist.name ?: "",
-                            artistId = albumArtist.id,
-                            songCount = albumSongs.size,
-                            songPaths = albumSongs.map { it.uri }
-                    )
-                }
+                // Feed the tiny candidate list into the map builder.
+                val artistAudios = buildAlbumArtistSongMap(candidateAudios)[artistName] ?: emptyList()
 
-            // Pull out unique genres from those songs
-            val genresMap = artistAudios.groupBy { it.genre }
-                .mapNotNull { (genreName, _) ->
-                    if (genreName.isNullOrEmpty()) return@mapNotNull null
+                // Extract unique albums
+                val albumsMap = artistAudios.groupBy { it.album }
+                    .mapNotNull { (albumName, albumSongs) ->
+                        if (albumName.isNullOrEmpty()) return@mapNotNull null
 
-                    val genreAllSongs = audioList.filter { it.genre == genreName }
+                        Album(
+                                id = albumName.hashCode().toLong(),
+                                name = albumName,
+                                artist = artistName,
+                                artistId = albumArtist.id,
+                                songCount = albumSongs.size,
+                                songPaths = albumSongs.map { it.uri }
+                        )
+                    }
 
-                    Genre(
-                            id = genreName.hashCode().toLong(),
-                            name = genreName,
-                            songPaths = genreAllSongs.map { it.uri },
-                            songCount = genreAllSongs.size
-                    )
-                }
+                // Extract unique genres using the optimized DAO query
+                val genresMap = artistAudios.mapNotNull { it.genre }
+                    .distinct() // Get only unique genres present in these tracks
+                    .map { genreName ->
+                        // Reusing the O(1) database query!
+                        val genrePaths = dao.getTrackPathsForGenre(genreName)
 
-            PageData(
-                    songs = artistAudios,
-                    albums = albumsMap,
-                    genres = genresMap
-            )
-        } ?: throw IllegalStateException("AudioDao is null")
+                        Genre(
+                                id = genreName.hashCode().toLong(),
+                                name = genreName,
+                                songPaths = genrePaths,
+                                songCount = genrePaths.size
+                        )
+                    }
+
+                PageData(
+                        songs = artistAudios,
+                        albums = albumsMap,
+                        genres = genresMap
+                )
+            }
     }
 
     /**

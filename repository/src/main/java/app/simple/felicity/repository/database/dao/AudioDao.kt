@@ -135,6 +135,14 @@ interface AudioDao {
     """)
     fun getCandidateTracksForArtist(artistName: String, minDuration: Long, minSize: Long): Flow<List<Audio>>
 
+    @Query("""
+    SELECT * FROM audio 
+    WHERE album_artist LIKE '%' || :artistName || '%' 
+    AND duration >= :minDuration 
+    AND size >= :minSize
+    """)
+    fun getCandidateTracksForAlbumArtist(artistName: String, minDuration: Long, minSize: Long): Flow<List<Audio>>
+
     // get all audio files by artist name with filtering
     @Query("SELECT * FROM audio WHERE artist = :artist AND is_available = 1 AND duration >= :minDuration AND size >= :minSize ORDER BY title COLLATE NOCASE ASC")
     fun getFilteredAudioByArtist(artist: String, minDuration: Long, minSize: Long): Flow<MutableList<Audio>>
