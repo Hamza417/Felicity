@@ -38,6 +38,8 @@ class YearViewerViewModel @AssistedInject constructor(
 
     private fun loadYearData() {
         viewModelScope.launch {
+            val startTime = System.currentTimeMillis()
+
             audioRepository.getYearPageData(yearGroup)
                 .catch { exception ->
                     Log.e(TAG, "Error loading year data for: ${yearGroup.year}", exception)
@@ -48,6 +50,8 @@ class YearViewerViewModel @AssistedInject constructor(
                     Log.d(TAG, "loadYearData: Loaded ${pageData.songs.size} songs for year: ${yearGroup.year}")
                     rawSongs = pageData.songs
                     _data.value = pageData.copy(songs = rawSongs.sortedForYearPage())
+
+                    Log.d(TAG, "loadYearData: Loaded year data in ${System.currentTimeMillis() - startTime} ms")
                 }
         }
     }

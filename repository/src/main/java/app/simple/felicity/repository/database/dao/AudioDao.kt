@@ -167,6 +167,24 @@ interface AudioDao {
     """)
     fun getTracksForGenre(genreName: String, minDuration: Long, minSize: Long): Flow<List<Audio>>
 
+    // Query for a specific year
+    @Query("""
+    SELECT * FROM audio 
+    WHERE year = :year 
+    AND duration >= :minDuration 
+    AND size >= :minSize
+    """)
+    fun getTracksForYear(year: String, minDuration: Long, minSize: Long): Flow<List<Audio>>
+
+    // 2. Query for tracks with missing year data
+    @Query("""
+    SELECT * FROM audio 
+    WHERE (year IS NULL OR year = '') 
+    AND duration >= :minDuration 
+    AND size >= :minSize
+    """)
+    fun getTracksForUnknownYear(minDuration: Long, minSize: Long): Flow<List<Audio>>
+
     // get all audio files by artist name with filtering
     @Query("SELECT * FROM audio WHERE artist = :artist AND is_available = 1 AND duration >= :minDuration AND size >= :minSize ORDER BY title COLLATE NOCASE ASC")
     fun getFilteredAudioByArtist(artist: String, minDuration: Long, minSize: Long): Flow<MutableList<Audio>>

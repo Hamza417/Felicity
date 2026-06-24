@@ -881,13 +881,17 @@ class AudioRepository @Inject constructor(
      * @return Flow of PageData with songs, albums, and artists
      */
     fun getYearPageData(yearGroup: YearGroup): Flow<PageData> {
-        return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
-            val yearAudios = if (yearGroup.year == "Unknown") {
-                audioList.filter { it.year.isNullOrBlank() }
-            } else {
-                audioList.filter { it.year == yearGroup.year }
-            }
+        val dao = audioDatabase.audioDao() ?: throw IllegalStateException("AudioDao is null")
 
+        // Ask SQLite to give us ONLY the tracks for this year
+        val yearFlow = if (yearGroup.year == "Unknown") {
+            dao.getTracksForUnknownYear(minDurationMs(), minSizeBytes())
+        } else {
+            dao.getTracksForYear(yearGroup.year, minDurationMs(), minSizeBytes())
+        }
+
+        return yearFlow.map { yearAudios ->
+            // Extract unique albums from these tracks
             val albumsMap = yearAudios.groupBy { it.album }
                 .mapNotNull { (albumName, albumSongs) ->
                     if (albumName.isNullOrEmpty()) return@mapNotNull null
@@ -902,25 +906,30 @@ class AudioRepository @Inject constructor(
                     )
                 }
 
-            val fullArtistMap = buildArtistSongMap(audioList)
-            val artistsMap = buildArtistSongMap(yearAudios).keys.mapNotNull { artistName ->
-                val allSongs = fullArtistMap[artistName] ?: return@mapNotNull null
-                val uniqueAlbums = allSongs.mapNotNull { it.album }.distinct().size
+            // Extract unique artists present ONLY in this year.
+            val uniqueYearArtists = buildArtistSongMap(yearAudios).keys
+
+            val artistsMap = uniqueYearArtists.map { artistName ->
+                // Ask the database for the global totals directly
+                val trackCount = dao.getTrackCountForArtist(artistName)
+                val albumCount = dao.getAlbumCountForArtist(artistName)
+                val trackPaths = dao.getTrackPathsForArtist(artistName)
+
                 Artist(
                         id = artistName.hashCode().toLong(),
                         name = artistName,
-                        albumCount = uniqueAlbums,
-                        trackCount = allSongs.size,
-                        songPaths = allSongs.map { it.uri }
+                        albumCount = albumCount,
+                        trackCount = trackCount,
+                        songPaths = trackPaths
                 )
-            }
+            }.sortedBy { it.name?.lowercase() }
 
             PageData(
                     songs = yearAudios,
                     albums = albumsMap,
-                    // artists = artistsMap
+                    artists = artistsMap
             )
-        } ?: throw IllegalStateException("AudioDao is null")
+        }
     }
 
     /**
