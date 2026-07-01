@@ -84,9 +84,13 @@ class Setup : MediaFragment() {
             requestNotificationPermission()
         }
 
-        // The second row now opens the SAF folder picker instead of the All Files settings page.
         binding.grantManageAllFiles.setOnClickListener {
-            safFolderPickerLauncher.launch(null)
+            runCatching {
+                safFolderPickerLauncher.launch(null)
+            }.onFailure {
+                Log.e(TAG, "Failed to launch SAF folder picker", it)
+                showWarning("Failed to launch folder picker:" + it.message)
+            }
         }
 
         binding.grantReadMediaAudio.setOnClickListener {
