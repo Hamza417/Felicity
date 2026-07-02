@@ -666,36 +666,33 @@ object MediaPlaybackManager {
 
         scope.launch {
             try {
-                val targetSongs = withContext(Dispatchers.IO) {
-                    PlaybackStateManager.switchToQueue(context, previousQueueId, queueId)
+                // Capture the current playback position on the main thread BEFORE
+                // switching to the IO dispatcher — getSeekPosition() reads from
+                // the media controller which must only be touched on the main thread.
+                val capturedPosition = currentSongPosition
+                val capturedSeek = getSeekPosition()
+
+                val switchResult = withContext(Dispatchers.IO) {
+                    PlaybackStateManager.switchToQueue(
+                            context, previousQueueId, queueId,
+                            capturedPosition, capturedSeek
+                    )
                 }
 
                 withContext(Dispatchers.Main) {
-                    if (targetSongs.isNotEmpty()) {
-                        val currentSong = getCurrentSong()
+                    if (switchResult.songs.isNotEmpty()) {
+                        val targetSongs = switchResult.songs
+
+                        // Use the restored playback position from when the user
+                        // last left this queue, clamped to the valid range.
+                        val newPosition = switchResult.lastPosition
+                        val newSeek = switchResult.lastSeek
 
                         // Replace the internal queue state with the loaded songs.
                         // Shuffle is reset — the loaded queue appears in its saved order.
                         originalQueue = targetSongs
                         shuffledQueue = emptyList()
                         songs = targetSongs
-
-                        // Find where the currently playing song lives in the new queue.
-                        // If it doesn't exist there, position 0 is a safe fallback.
-                        val newPosition = if (currentSong != null) {
-                            targetSongs.indexOfFirst { it.id == currentSong.id }
-                                .takeIf { it >= 0 } ?: 0
-                        } else {
-                            0
-                        }
-
-                        // Only preserve the seek position when the same song is actually
-                        // present in the target queue. If the song isn't there, start the
-                        // first song from the beginning — leaking the old seek offset into
-                        // an unrelated track would jump to an arbitrary timestamp.
-                        val sameSongFound = currentSong != null
-                                && targetSongs.any { it.id == currentSong.id }
-                        val currentSeek = if (sameSongFound) getSeekPosition() else 0L
 
                         suppressPositionEmit = true
                         currentSongPosition = newPosition
@@ -720,12 +717,11 @@ object MediaPlaybackManager {
                                 // change the current playback index — ExoPlayer keeps
                                 // playing whatever sits at the old index number in the
                                 // new queue. We must explicitly seekTo so ExoPlayer
-                                // jumps to where the currently playing song actually
-                                // lives in the new queue, at the same seek position.
+                                // jumps to the restored position in the new queue.
                                 controller.replaceMediaItems(0, oldCount, mediaItems)
-                                controller.seekTo(newPosition, currentSeek)
+                                controller.seekTo(newPosition, newSeek)
                             } else {
-                                controller.setMediaItems(mediaItems, newPosition, currentSeek)
+                                controller.setMediaItems(mediaItems, newPosition, newSeek)
                                 controller.prepare()
                             }
                         }
@@ -735,7 +731,7 @@ object MediaPlaybackManager {
                         _songPositionFlow.emit(newPosition)
 
                         Log.d(TAG, "switchToQueue: queue $queueId loaded with ${targetSongs.size} songs, " +
-                                "position=$newPosition")
+                                "position=$newPosition, seek=$newSeek")
                     } else {
                         // Target queue is empty — clear everything so the UI shows blank.
                         songs = emptyList()

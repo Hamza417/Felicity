@@ -39,6 +39,17 @@ object PlaybackStateManager {
     const val QUEUE_COUNT = 10
 
     /**
+     * Bundles a restored queue together with the playback position the user was at
+     * when they last left that queue, so [MediaPlaybackManager] can resume exactly
+     * where they left off instead of resetting to song 0 every time.
+     */
+    data class QueueSwitchResult(
+            val songs: List<Audio>,
+            val lastPosition: Int,
+            val lastSeek: Long
+    )
+
+    /**
      * Saves the current playback state from [MediaPlaybackManager] to the database.
      *
      * <p>This writes two things atomically:</p>
@@ -149,8 +160,9 @@ object PlaybackStateManager {
         db.playbackStateDao().save(state)
 
         // Mirror the queue into the saved_queue archive so queue-switching always
-        // has an up-to-date copy of the active slot.
-        saveQueueToSlot(db, activeQueueId, queueHash)
+        // has an up-to-date copy of the active slot, including the current playback
+        // position so we can resume at the right song later.
+        saveQueueToSlot(db, activeQueueId, queueHash, index, position)
     }
 
     /**
@@ -159,18 +171,33 @@ object PlaybackStateManager {
      * <p>Any previous contents for this slot are cleared first so the archive
      * never contains stale remnants from an older version of the same queue.</p>
      *
+     * <p>The current [position] (song index) and [seek] (milliseconds into that
+     * song) are stored on every row so the restore position survives even when
+     * individual songs are cascade-deleted — the first surviving row still carries
+     * the correct values.</p>
+     *
      * @param db        The open [AudioDatabase] instance.
      * @param queueId   The slot to save into (0–4).
      * @param queueHash Ordered list of audio hashes.
+     * @param position  The song index that is currently playing.
+     * @param seek      The seek offset in milliseconds within the current song.
      */
     suspend fun saveQueueToSlot(
             db: AudioDatabase,
             queueId: Int,
-            queueHash: List<Long>
+            queueHash: List<Long>,
+            position: Int = 0,
+            seek: Long = 0L
     ) {
         if (queueHash.isEmpty()) return
         val entries = queueHash.mapIndexed { pos, hash ->
-            SavedQueueEntry(queueId = queueId, queuePos = pos, audioHash = hash)
+            SavedQueueEntry(
+                    queueId = queueId,
+                    queuePos = pos,
+                    audioHash = hash,
+                    lastPosition = position,
+                    lastSeek = seek
+            )
         }
         db.savedQueueDao().clear(queueId)
         db.savedQueueDao().insertAll(entries)
@@ -202,40 +229,56 @@ object PlaybackStateManager {
      * <p>This performs three steps atomically:</p>
      * <ol>
      *   <li>Saves the currently active queue into its own {@code saved_queue} slot
-     *       (so nothing is lost).</li>
+     *       (so nothing is lost), including the current playback position.</li>
      *   <li>Loads the target queue from {@code saved_queue} and writes it into
      *       {@code playback_queue} so the rest of the app sees it.</li>
      *   <li>Updates {@code playback_state.active_queue_id} so the correct slot
      *       is restored on the next cold launch.</li>
      * </ol>
      *
-     * <p>The currently playing song is NOT interrupted — the caller
-     * ([MediaPlaybackManager]) decides whether to keep playing the current song
-     * or switch to the new queue.</p>
+     * <p>The returned [QueueSwitchResult] carries both the loaded songs and the
+     * last-known playback position for that queue so the caller can seek to the
+     * exact song and offset the user left off at.</p>
      *
-     * @param context        The application context.
-     * @param currentQueueId The queue ID we are switching FROM (captured before
-     *                       the caller updates its in-memory state).
-     * @param targetQueueId  The slot to switch to (0–4).
-     * @return The loaded queue as a list of [Audio], or an empty list if the
-     *         target slot has no saved songs.
+     * @param context         The application context.
+     * @param currentQueueId  The queue ID we are switching FROM (captured before
+     *                        the caller updates its in-memory state).
+     * @param targetQueueId   The slot to switch to (0–4).
+     * @param currentPosition The song index currently playing (captured on main
+     *                        thread before entering IO context).
+     * @param currentSeek     The seek offset currently playing (captured on main
+     *                        thread before entering IO context).
+     * @return A [QueueSwitchResult] with the loaded songs and the last playback
+     *         position/seek for the target queue.
      */
     suspend fun switchToQueue(
             context: Context,
             currentQueueId: Int,
-            targetQueueId: Int
-    ): List<Audio> {
+            targetQueueId: Int,
+            currentPosition: Int = 0,
+            currentSeek: Long = 0L
+    ): QueueSwitchResult {
         val db = AudioDatabase.getInstance(context)
 
-        // Step 1: Archive the currently active queue into its saved slot.
+        // Step 1: Archive the currently active queue into its saved slot,
+        //         including the current playback position so we can resume
+        //         exactly where we left off when switching back later.
         val currentSongs = MediaPlaybackManager.getSongs()
         if (currentSongs.isNotEmpty()) {
-            saveQueueToSlot(db, currentQueueId, currentSongs.map { it.hash })
-            Log.d(TAG, "switchToQueue: archived queue $currentQueueId (${currentSongs.size} songs)")
+            saveQueueToSlot(db, currentQueueId, currentSongs.map { it.hash }, currentPosition, currentSeek)
+            Log.d(TAG, "switchToQueue: archived queue $currentQueueId (${currentSongs.size} songs) " +
+                    "at position=$currentPosition, seek=$currentSeek")
         }
 
         // Step 2: Load the target queue from its saved slot.
         val targetSongs = loadQueueFromSlot(db, targetQueueId)
+
+        // Read the last playback position stored for this queue.
+        // The values are denormalized across all rows of the same queue so
+        // the first entry (lowest queue_pos) carries the correct restore data.
+        val firstEntry = db.savedQueueDao().getQueue(targetQueueId).firstOrNull()
+        val restoredPosition = firstEntry?.lastPosition ?: 0
+        val restoredSeek = firstEntry?.lastSeek ?: 0L
 
         // Step 3: Update the active queue ID in playback_state so the correct
         //         slot is restored on the next cold launch.
@@ -251,8 +294,12 @@ object PlaybackStateManager {
 
         if (targetSongs.isNullOrEmpty()) {
             Log.d(TAG, "switchToQueue: queue $targetQueueId is empty, returning empty list")
-            return emptyList()
+            return QueueSwitchResult(emptyList(), 0, 0L)
         }
+
+        // Clamp the restored position to the valid range — cascade-deleted songs
+        // may have shrunk the queue since the last save.
+        val clampedPosition = restoredPosition.coerceIn(0, (targetSongs.size - 1).coerceAtLeast(0))
 
         // Write the loaded queue into playback_queue so every other part of the
         // app that reads from there (BaseActivity restore, widget, etc.) sees it.
@@ -264,9 +311,10 @@ object PlaybackStateManager {
 
         Log.d(
                 TAG, "switchToQueue: switched from queue $currentQueueId to $targetQueueId " +
-                "(${targetSongs.size} songs loaded)"
+                "(${targetSongs.size} songs loaded), " +
+                "restoredPosition=$clampedPosition, restoredSeek=$restoredSeek"
         )
-        return targetSongs
+        return QueueSwitchResult(targetSongs, clampedPosition, restoredSeek)
     }
 
     /**

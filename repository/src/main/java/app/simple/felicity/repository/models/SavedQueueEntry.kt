@@ -35,5 +35,19 @@ data class SavedQueueEntry(
         @ColumnInfo(name = "queue_pos")
         val queuePos: Int,
         @ColumnInfo(name = "audio_hash")
-        val audioHash: Long
+        val audioHash: Long,
+        /**
+         * The song index within this queue that was playing when the queue was
+         * last archived. Stored on every row of the same queue so it survives
+         * even when individual songs are cascade-deleted — the first remaining
+         * row still carries the correct restore position.
+         */
+        @ColumnInfo(name = "last_position", defaultValue = "0")
+        val lastPosition: Int = 0,
+        /**
+         * The seek offset in milliseconds within the song at [lastPosition] when
+         * the queue was last archived. Same redundancy strategy as [lastPosition].
+         */
+        @ColumnInfo(name = "last_seek", defaultValue = "0")
+        val lastSeek: Long = 0L
 )

@@ -54,6 +54,10 @@ import app.simple.felicity.repository.models.SavedQueueEntry
  *   and the {@code audio_hash} of the track at that position. The active queue is
  *   still mirrored in {@code playback_queue} for backward compatibility with every
  *   other part of the app that reads the queue from there.
+ *   19 → 20: Added {@code last_position} and {@code last_seek} columns to
+ *   {@code saved_queue} so that switching between queues restores the exact song
+ *   index and playback position the user left off at, instead of resetting to the
+ *   first song every time.
  *
  * @author Hamza417
  */
@@ -70,7 +74,7 @@ import app.simple.felicity.repository.models.SavedQueueEntry
             AudioBookmark::class,
             SavedQueueEntry::class
         ],
-        version = 19,
+        version = 20,
         exportSchema = true
 )
 abstract class AudioDatabase : RoomDatabase() {
@@ -252,6 +256,30 @@ abstract class AudioDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Adds per-queue playback position tracking so that switching between queues
+         * restores the exact song and seek offset the user was at when they last left
+         * that queue.
+         *
+         * <p>Two columns are added to {@code saved_queue}:</p>
+         * <ol>
+         *   <li>{@code last_position} — the song index within the queue that was
+         *       playing when the queue was archived (default 0).</li>
+         *   <li>{@code last_seek} — the seek offset in milliseconds within that
+         *       song (default 0).</li>
+         * </ol>
+         *
+         * <p>Both values are stored on every row belonging to the same queue so
+         * the restore position survives even when individual songs are cascade-
+         * deleted — the first surviving row still carries the correct values.</p>
+         */
+        private val MIGRATION_19_20 = object : Migration(19, 20) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `saved_queue` ADD COLUMN `last_position` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `saved_queue` ADD COLUMN `last_seek` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun getInstance(context: Context): AudioDatabase {
             return instance ?: synchronized(this) {
                 instance ?: buildDatabase(context.applicationContext).also {
@@ -292,7 +320,7 @@ abstract class AudioDatabase : RoomDatabase() {
         private fun buildDatabase(context: Context): AudioDatabase {
             expandCursorWindowSize()
             return Room.databaseBuilder(context, AudioDatabase::class.java, DB_NAME)
-                .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19)
+                .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20)
                 .fallbackToDestructiveMigration(dropAllTables = true)
                 .build()
         }
