@@ -1034,7 +1034,7 @@ class MiniPlayer @JvmOverloads constructor(
     private fun applyMarginMode() {
         isFlatMode = !UserInterfacePreferences.isMarginAroundMiniplayer()
         val targetSideMargin = if (isFlatMode) 0 else baseSideMarginPx
-        val targetBottomMargin = if (isFlatMode) 0 else baseSideMarginPx + navBarInsetPx
+        val targetBottomMargin = baseSideMarginPx + navBarInsetPx
         val targetRadius = if (isFlatMode) 0f else baseCornerRadiusPx
 
         val lp = layoutParams as? ViewGroup.MarginLayoutParams ?: run {
@@ -2866,6 +2866,7 @@ class MiniPlayer @JvmOverloads constructor(
 
         ViewCompat.setOnApplyWindowInsetsListener(this) { v, insets ->
             val nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+            navBarInsetPx = nav.bottom
 
             if (!isFlatMode) {
                 val lp = v.layoutParams as? ViewGroup.MarginLayoutParams
@@ -2880,7 +2881,20 @@ class MiniPlayer @JvmOverloads constructor(
                 lp.bottomMargin = baseSideMarginPx + nav.bottom
 
                 v.layoutParams = lp
+            } else {
+                // In flat mode we zero out the side margins but still leave a small gap
+                // below the card so it does not sit flush against the navigation bar.
+                val lp = v.layoutParams as? ViewGroup.MarginLayoutParams
+                    ?: return@setOnApplyWindowInsetsListener insets
+
+                lp.leftMargin = nav.left
+                lp.topMargin = baseSideMarginPx // Assuming no top inset needed here
+                lp.rightMargin = nav.right
+                lp.bottomMargin = nav.bottom
+
+                v.layoutParams = lp
             }
+
             insets
         }
 
