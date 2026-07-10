@@ -24,7 +24,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:chipSpacingVertical="-5dp"
-            app:selectionRequired="true"
+            app:selectionRequired="false"
             app:singleSelection="false">
 
             <app.simple.felicity.decorations.views.Chip
