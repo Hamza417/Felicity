@@ -73,16 +73,17 @@ class SearchViewModel @Inject constructor(
                     flowOf(SearchResults.empty())
                 } else {
                     combine(
-                            audioRepository.searchByTitleFlow(query),
-                            audioRepository.searchArtistsFlow(query),
-                            audioRepository.searchByAlbumFlow(query),
-                            audioRepository.searchByGenreFlow(query),
-                            audioRepository.searchByComposerFlow(query)
+                            audioRepository.searchByTitleFlow(query).catch { emit(mutableListOf()) },
+                            audioRepository.searchArtistsFlow(query).catch { emit(emptyList()) },
+                            audioRepository.searchByAlbumFlow(query).catch { emit(mutableListOf()) },
+                            audioRepository.searchByGenreFlow(query).catch { emit(mutableListOf()) },
+                            audioRepository.searchByComposerFlow(query).catch { emit(mutableListOf()) }
                     ) { byTitle, artists, byAlbum, byGenre, byComposer ->
                         buildSearchResults(byTitle, artists, byAlbum, byGenre, byComposer, filter)
                     }.catch { e ->
-                        // Prevents the main pipeline from dying.
-                        Log.e(TAG, "Error searching", e)
+                        // Catch anything thrown inside buildSearchResults itself
+                        // to ensure the main pipeline never dies.
+                        Log.e(TAG, "Error in search aggregation", e)
                         emit(SearchResults.empty())
                     }
                 }

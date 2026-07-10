@@ -13,10 +13,10 @@ object SearchPreferences {
     const val GRID_SIZE_PORTRAIT = "search_grid_size_portrait1"
     const val GRID_SIZE_LANDSCAPE = "search_grid_size_landscape1"
 
-    const val FILTER_SONGS = "search_filter_songs"
-    const val FILTER_ALBUMS = "search_filter_albums"
-    const val FILTER_ARTISTS = "search_filter_artists"
-    const val FILTER_GENRES = "search_filter_genres"
+    const val FILTER_SONGS = "search_filter_songs_"
+    const val FILTER_ALBUMS = "search_filter_albums_"
+    const val FILTER_ARTISTS = "search_filter_artists_"
+    const val FILTER_GENRES = "search_filter_genres_"
 
     // ----------------------------------------------------------------------------------------- //
 
