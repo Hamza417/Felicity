@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * ViewModel for the Search panel. Searches all audio fields (title, artist, album,
@@ -61,7 +62,7 @@ class SearchViewModel @Inject constructor(
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     private fun observeSearchQuery() {
         val debouncedQuery = _searchQuery
-            .debounce(300L)
+            .debounce(300L.milliseconds)
             .distinctUntilChanged()
 
         viewModelScope.launch {
@@ -79,15 +80,16 @@ class SearchViewModel @Inject constructor(
                             audioRepository.searchByComposerFlow(query)
                     ) { byTitle, artists, byAlbum, byGenre, byComposer ->
                         buildSearchResults(byTitle, artists, byAlbum, byGenre, byComposer, filter)
+                    }.catch { e ->
+                        // Prevents the main pipeline from dying.
+                        Log.e(TAG, "Error searching", e)
+                        emit(SearchResults.empty())
                     }
                 }
-            }.catch { e ->
-                Log.e(TAG, "Error searching", e)
-                emit(SearchResults.empty())
             }.flowOn(Dispatchers.IO)
                 .collect { results ->
                     _searchResults.value = results
-                    Log.d(TAG, "observeSearchQuery: songs=${results.songs.size}, albums=${results.albums.size}, artists=${results.artists.size}, genres=${results.genres.size}")
+                    Log.d(TAG, "observeSearchQuery: songs=${results.songs.size}")
                 }
         }
     }

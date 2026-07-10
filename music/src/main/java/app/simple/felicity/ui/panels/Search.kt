@@ -2,8 +2,6 @@ package app.simple.felicity.ui.panels
 
 import android.content.SharedPreferences
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -19,6 +17,7 @@ import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentSearchBinding
 import app.simple.felicity.databinding.HeaderSearchBinding
 import app.simple.felicity.decorations.highlight.HighlightTextView
+import app.simple.felicity.decorations.utils.TextViewUtils.doOnTextChanged
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.app.GenericListStyleDialog
 import app.simple.felicity.dialogs.app.GenericListStyleDialog.Companion.showListStyleDialog
@@ -85,8 +84,7 @@ class Search : PanelFragment() {
         headerBinding.editText.showInput()
 
         gridLayoutManager = GridLayoutManager(
-                requireContext(), SearchPreferences.getGridSize().spanCount
-        )
+                requireContext(), SearchPreferences.getGridSize().spanCount)
         binding.recyclerView.layoutManager = gridLayoutManager
 
         setupAdapters()
@@ -166,17 +164,9 @@ class Search : PanelFragment() {
     }
 
     private fun setupClickListeners() {
-        headerBinding.editText.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) =
-                Unit
-
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) =
-                Unit
-
-            override fun afterTextChanged(s: Editable?) {
-                searchViewModel.setSearchQuery(s?.toString() ?: "")
-            }
-        })
+        headerBinding.editText.doOnTextChanged { text, start, before, count ->
+            searchViewModel.setSearchQuery(text?.toString() ?: "")
+        }
 
         headerBinding.filter.setOnClickListener {
             childFragmentManager.showSearchFilter()
