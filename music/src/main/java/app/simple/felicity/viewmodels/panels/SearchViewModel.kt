@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * ViewModel for the Search panel. Searches all audio fields (title, artist, album,
@@ -61,7 +62,7 @@ class SearchViewModel @Inject constructor(
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     private fun observeSearchQuery() {
         val debouncedQuery = _searchQuery
-            .debounce(300L)
+            .debounce(300L.milliseconds)
             .distinctUntilChanged()
 
         viewModelScope.launch {

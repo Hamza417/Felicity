@@ -199,20 +199,23 @@ interface AudioDao {
     @Query("SELECT * FROM audio WHERE is_available = 1 AND album LIKE '%' || :query || '%' ORDER BY title COLLATE NOCASE ASC")
     fun searchByAlbum(query: String): Flow<MutableList<Audio>>
 
-    // Reactive search with filtering
-    @Query("SELECT * FROM audio WHERE is_available = 1 AND duration >= :minDuration AND size >= :minSize AND title LIKE '%' || :query || '%' ORDER BY title COLLATE NOCASE ASC")
+    // Reactive search with filtering.
+    // Each query also checks the `name` column (the raw filename) as a fallback so that
+    // audio files with no embedded tags can still be found — on some devices all tag
+    // fields are NULL, which would make a tags-only LIKE return nothing.
+    @Query("SELECT * FROM audio WHERE is_available = 1 AND duration >= :minDuration AND size >= :minSize AND (title LIKE '%' || :query || '%' OR name LIKE '%' || :query || '%') ORDER BY title COLLATE NOCASE ASC")
     fun searchByTitleFiltered(query: String, minDuration: Long, minSize: Long): Flow<MutableList<Audio>>
 
-    @Query("SELECT * FROM audio WHERE is_available = 1 AND duration >= :minDuration AND size >= :minSize AND artist LIKE '%' || :query || '%' ORDER BY title COLLATE NOCASE ASC")
+    @Query("SELECT * FROM audio WHERE is_available = 1 AND duration >= :minDuration AND size >= :minSize AND (artist LIKE '%' || :query || '%' OR name LIKE '%' || :query || '%') ORDER BY title COLLATE NOCASE ASC")
     fun searchByArtistFiltered(query: String, minDuration: Long, minSize: Long): Flow<MutableList<Audio>>
 
-    @Query("SELECT * FROM audio WHERE is_available = 1 AND duration >= :minDuration AND size >= :minSize AND album LIKE '%' || :query || '%' ORDER BY title COLLATE NOCASE ASC")
+    @Query("SELECT * FROM audio WHERE is_available = 1 AND duration >= :minDuration AND size >= :minSize AND (album LIKE '%' || :query || '%' OR name LIKE '%' || :query || '%') ORDER BY title COLLATE NOCASE ASC")
     fun searchByAlbumFiltered(query: String, minDuration: Long, minSize: Long): Flow<MutableList<Audio>>
 
-    @Query("SELECT * FROM audio WHERE is_available = 1 AND duration >= :minDuration AND size >= :minSize AND genre LIKE '%' || :query || '%' ORDER BY title COLLATE NOCASE ASC")
+    @Query("SELECT * FROM audio WHERE is_available = 1 AND duration >= :minDuration AND size >= :minSize AND (genre LIKE '%' || :query || '%' OR name LIKE '%' || :query || '%') ORDER BY title COLLATE NOCASE ASC")
     fun searchByGenreFiltered(query: String, minDuration: Long, minSize: Long): Flow<MutableList<Audio>>
 
-    @Query("SELECT * FROM audio WHERE is_available = 1 AND duration >= :minDuration AND size >= :minSize AND composer LIKE '%' || :query || '%' ORDER BY title COLLATE NOCASE ASC")
+    @Query("SELECT * FROM audio WHERE is_available = 1 AND duration >= :minDuration AND size >= :minSize AND (composer LIKE '%' || :query || '%' OR name LIKE '%' || :query || '%') ORDER BY title COLLATE NOCASE ASC")
     fun searchByComposerFiltered(query: String, minDuration: Long, minSize: Long): Flow<MutableList<Audio>>
 
     @Query("SELECT id FROM audio WHERE uri = :path AND is_available = 1")
