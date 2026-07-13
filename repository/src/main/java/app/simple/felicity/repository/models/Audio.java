@@ -190,7 +190,7 @@ public class Audio implements Parcelable {
         uri = in.readString();
         track = in.readInt();
         author = in.readString();
-        size = in.readLong();
+        size = in.readInt();
         albumArtist = in.readString();
         year = in.readString();
         bitrate = in.readLong();

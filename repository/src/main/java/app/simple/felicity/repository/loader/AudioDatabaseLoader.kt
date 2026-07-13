@@ -5,6 +5,7 @@ import android.provider.DocumentsContract
 import android.util.Log
 import androidx.annotation.WorkerThread
 import androidx.core.net.toUri
+import androidx.documentfile.provider.DocumentFile
 import app.simple.felicity.repository.database.dao.AudioDao
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.loader.MediaStorePaths.buildMediaStorePathMap
@@ -312,13 +313,6 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                 notification.updateProgress(allSAFFiles.size)
             }
 
-            // Post-scan cleanup: remove DB entries for files that no longer exist on disk.
-            // We use the SAF directory listing collected earlier instead of per-file
-            // DocumentFile.exists() calls — the directory listing is the real source of truth
-            // and avoids the reliability issues that exist() has on some OEM devices.
-            Log.d(TAG, "Running post-scan cleanup for deleted files...")
-            cleanupDeletedFiles(dao, allSAFFiles.map { it.uri.toString() }.toSet(), treeUriStrings)
-
             // Post-processing: fill in real filesystem paths for any audio rows that are missing one.
             // We query each content URI directly for the DATA column — same way MediaStoreCover
             // fetches album IDs — and batch-update the rows in one final write.
@@ -345,15 +339,13 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
     }
 
     /**
-     * Removes entries whose SAF tree permission has been explicitly revoked, and deduplicates
-     * any rows that share the same URI.
+     * Removes entries from the database that no longer exist on disk or have been excluded
+     * by the current filter preferences. Works with SAF content URIs stored as paths.
      *
-     * We intentionally do NOT call DocumentFile.exists here to check individual files.
-     * That method queries the ContentResolver per-document and is unreliable on some OEM
-     * devices — it can return false for files that actually exist, which would wipe the
-     * entire database on those devices. File-level cleanup is instead handled in
-     * [cleanupDeletedFiles] after the scan completes, where we compare DB entries against
-     * the SAF directory listing (the actual source of truth).
+     * For each audio row in the database:
+     * - If its path is a content URI, we check whether the document still exists.
+     * - If the SAF tree that granted us access has been revoked entirely, we remove
+     *   everything that lived inside that tree so the library doesn't ghost.
      */
     private suspend fun reconcileDatabase(grantedTreeUriStrings: Set<String>) {
         val dao = audioDatabase.audioDao() ?: return
@@ -362,79 +354,55 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
         Log.d(TAG, "Stale path-duplicate purge complete.")
 
         val allAudio = dao.getAllAudioListAll()
+
         val toDelete = mutableListOf<Audio>()
+        val toUpdate = mutableListOf<Audio>()
 
         allAudio.forEach { audio ->
             val path = audio.uri
-            if (!path.startsWith("content://")) return@forEach
 
-            // Check if the tree that was covering this file is still in our granted list.
-            // We compare the tree document IDs directly using DocumentsContract so that
-            // encoding differences (e.g. %3A vs :) can never cause a false mismatch.
-            val isTreeStillGranted = grantedTreeUriStrings.any { treeUriStr ->
-                try {
-                    val docTreeId = DocumentsContract.getTreeDocumentId(path.toUri())
-                    val grantedTreeId = DocumentsContract.getTreeDocumentId(treeUriStr.toUri())
-                    docTreeId == grantedTreeId
-                } catch (_: Exception) {
-                    false
+            if (path.startsWith("content://")) {
+                val docFile = DocumentFile.fromSingleUri(context, path.toUri())
+
+                // Check if the tree that was covering this file is still in our granted list.
+                // We compare the tree document IDs directly using DocumentsContract so that
+                // encoding differences (e.g. %3A vs :) can never cause a false mismatch.
+                val isTreeStillGranted = grantedTreeUriStrings.any { treeUriStr ->
+                    try {
+                        val docTreeId = DocumentsContract.getTreeDocumentId(path.toUri())
+                        val grantedTreeId = DocumentsContract.getTreeDocumentId(treeUriStr.toUri())
+                        docTreeId == grantedTreeId
+                    } catch (_: Exception) {
+                        false
+                    }
                 }
-            }
 
-            if (!isTreeStillGranted) {
-                Log.d(TAG, "SAF tree revoked, removing: $path")
-                toDelete.add(audio)
-                indexedMap.remove(path)
+                when {
+                    !isTreeStillGranted -> {
+                        Log.d(TAG, "SAF tree revoked, removing: $path")
+                        toDelete.add(audio)
+                        indexedMap.remove(path)
+                    }
+                    docFile == null || !docFile.exists() -> {
+                        if (audio.isAvailable) {
+                            Log.d(TAG, "SAF document gone, deleting: $path")
+                            toDelete.add(audio)
+                            indexedMap.remove(path)
+                        }
+                    }
+                    !audio.isAvailable -> {
+                        Log.d(TAG, "Restoring available SAF file: $path")
+                        audio.isAvailable = true
+                        toUpdate.add(audio)
+                    }
+                }
             }
         }
 
         if (toDelete.isNotEmpty()) dao.delete(toDelete)
+        if (toUpdate.isNotEmpty()) dao.update(toUpdate)
 
-        Log.d(TAG, "Reconcile complete: Removed ${toDelete.size} tree-revoked entries")
-    }
-
-    /**
-     * Removes database entries for SAF files that were not found during the current scan.
-     *
-     * Because [allScannedUris] comes directly from the SAF directory listing, it is the
-     * ground truth for what actually exists on disk — no per-file ContentResolver pings
-     * needed. Only entries under still-granted trees are considered; those under revoked
-     * trees are already gone thanks to [reconcileDatabase].
-     *
-     * @param dao             The DAO to use for deletes.
-     * @param allScannedUris  Complete set of content-URI strings found during this scan.
-     * @param grantedTreeUriStrings Trees whose permissions are still active.
-     */
-    private suspend fun cleanupDeletedFiles(
-            dao: AudioDao?,
-            allScannedUris: Set<String>,
-            grantedTreeUriStrings: Set<String>
-    ) {
-        if (dao == null || allScannedUris.isEmpty()) return
-
-        val allDbEntries = dao.getAllAudioListAll()
-        val toDelete = allDbEntries.filter { audio ->
-            val uri = audio.uri
-            if (!uri.startsWith("content://")) return@filter false
-            if (allScannedUris.contains(uri)) return@filter false
-
-            // Only remove if the file belongs to a tree we still have access to.
-            grantedTreeUriStrings.any { treeUriStr ->
-                try {
-                    val docTreeId = DocumentsContract.getTreeDocumentId(uri.toUri())
-                    val grantedTreeId = DocumentsContract.getTreeDocumentId(treeUriStr.toUri())
-                    docTreeId == grantedTreeId
-                } catch (_: Exception) {
-                    false
-                }
-            }
-        }
-
-        if (toDelete.isNotEmpty()) {
-            Log.d(TAG, "Post-scan cleanup: removed ${toDelete.size} files no longer on disk")
-            dao.delete(toDelete)
-            toDelete.forEach { indexedMap.remove(it.uri) }
-        }
+        Log.d(TAG, "Reconcile complete: Deleted ${toDelete.size}, Updated status for ${toUpdate.size}")
     }
 
     /**
