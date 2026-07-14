@@ -17,9 +17,12 @@ import app.simple.felicity.decorations.views.PopupMenuItem
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.app.TotalTime.Companion.showTotalTime
 import app.simple.felicity.dialogs.playlists.AddMultipleToPlaylistDialog.Companion.showAddMultipleToPlaylistDialog
+import app.simple.felicity.dialogs.queue.QueueLabel
+import app.simple.felicity.dialogs.queue.QueueLabel.Companion.openQueueLabel
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.engine.managers.PlaybackStateManager
 import app.simple.felicity.extensions.fragments.BasePanelFragment
+import app.simple.felicity.preferences.QueueLabelPreferences
 import app.simple.felicity.repository.managers.SelectionManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.shared.utils.TimeUtils.toDynamicTimeString
@@ -90,8 +93,10 @@ class PlayingQueue : BasePanelFragment() {
 
             val activeQueueId = MediaPlaybackManager.getActiveQueueId()
             val labels = mutableListOf<String>().apply {
-                for (i in 1..PlaybackStateManager.QUEUE_COUNT) {
-                    add(getString(R.string.current_queue, i))
+                for (i in 0 until PlaybackStateManager.QUEUE_COUNT) {
+                    add(QueueLabelPreferences.getDisplayLabel(i) { n ->
+                        getString(R.string.current_queue, n)
+                    })
                 }
             }
 
@@ -113,6 +118,18 @@ class PlayingQueue : BasePanelFragment() {
             ).show()
         }
 
+        headerBinding.renameQueue.setOnClickListener {
+            val activeQueueId = MediaPlaybackManager.getActiveQueueId()
+            childFragmentManager.openQueueLabel(QueueLabelPreferences.getDisplayLabel(activeQueueId) { n ->
+                getString(R.string.current_queue, n)
+            }).setOnQueueLabelChangedListener(object : QueueLabel.Companion.QueueLabelCallbacks {
+                override fun onQueueLabelChanged(label: String) {
+                    QueueLabelPreferences.setLabel(activeQueueId, label)
+                    updateQueueHeaderLabel()
+                }
+            })
+        }
+
         headerBinding.createPlaylist.setOnClickListener {
             childFragmentManager.showAddMultipleToPlaylistDialog(MediaPlaybackManager.getSongs())
         }
@@ -120,10 +137,14 @@ class PlayingQueue : BasePanelFragment() {
 
     /**
      * Updates the header label to show the name of the currently active queue.
+     * When the user has assigned a custom label via [QueueLabelPreferences]
+     * that name is shown; otherwise the default "Queue N" is used.
      */
     private fun updateQueueHeaderLabel() {
         val activeId = MediaPlaybackManager.getActiveQueueId()
-        val label = getString(R.string.current_queue, activeId + 1)
+        val label = QueueLabelPreferences.getDisplayLabel(activeId) { n ->
+            getString(R.string.current_queue, n)
+        }
         headerBinding.currentQueue.text = label
     }
 

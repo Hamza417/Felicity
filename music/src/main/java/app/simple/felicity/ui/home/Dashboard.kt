@@ -28,6 +28,7 @@ import app.simple.felicity.decorations.layoutmanager.spanned.SpannedGridLayoutMa
 import app.simple.felicity.dialogs.app.AppLabel.Companion.showAppLabel
 import app.simple.felicity.extensions.fragments.BaseHomeFragment
 import app.simple.felicity.preferences.MainPreferences
+import app.simple.felicity.preferences.QueueLabelPreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
@@ -142,7 +143,9 @@ class Dashboard : BaseHomeFragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 dashboardViewModel.activeQueue.collect { idx ->
-                    binding.activeQueue.text = getString(R.string.current_queue, idx + 1)
+                    binding.activeQueue.text = QueueLabelPreferences.getDisplayLabel(idx) { _ ->
+                        getString(R.string.current_queue, idx + 1)
+                    }
 
                     binding.activeQueue.setOnClickListener {
                         openFragment(PlayingQueue.newInstance(), PlayingQueue.TAG)

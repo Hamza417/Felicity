@@ -474,6 +474,7 @@
     <string name="carousel_ui_desc">Prosty styl odtwarzacza z okładkami w stylu karuzeli.</string>
     <string name="caps">Wielkie litery</string>
     <string name="current_queue">Kolejka %1$d</string>
+    <string name="rename">Zmień nazwę</string>
     <string name="volume_controls">Regulacja głośności</string>
     <string name="volume_controls_summary">Pokaż regulację głośności po naciśnięciu przycisków głośności.</string>
     <string name="usb_dac_control_summary">Użyj sterownika DAC wbudowanego w aplikację, aby utworzyć bezpośrednie wyjście audio przez DAC.</string>
