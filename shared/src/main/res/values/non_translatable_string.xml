@@ -63,6 +63,4 @@
     <string name="rg_album_peak" translatable="false">Album Peak</string>
     <string name="active_years">%1$s – %2$s</string>
     <string name="usb_dac">USB DAC</string>
-    <string name="fallback_search_mode">Fallback Search Mode</string>
-    <string name="fallback_search_mode_summary">Use different search approach for devices where original search methods shows no results.</string>
 </resources>

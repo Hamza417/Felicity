@@ -29,7 +29,6 @@ import app.simple.felicity.preferences.ConfigurationPreferences
 import app.simple.felicity.preferences.EqualizerPreferences
 import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.preferences.PlayerPreferences
-import app.simple.felicity.preferences.SearchPreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.repositories.SongStatRepository
 import app.simple.felicity.repository.services.AudioDatabaseService
@@ -1087,19 +1086,6 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
-        val fallbackSearchModeToggle = Preference(
-                title = R.string.fallback_search_mode,
-                summary = R.string.fallback_search_mode_summary,
-                icon = R.drawable.ic_search,
-                type = PreferenceType.SWITCH,
-                onPreferenceAction = { view, callback ->
-                    SearchPreferences.setFallbackSearchMode((view as FelicitySwitch).isChecked)
-                },
-                valueProvider = Supplier {
-                    SearchPreferences.isFallbackSearchMode()
-                }
-        )
-
         val cacheHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.cache)
 
         val clearImageCache = Preference(
@@ -1141,7 +1127,6 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(filtersHeader)
         preferences.add(skipHiddenFilesToggle)
         preferences.add(skipHiddenFoldersToggle)
-        preferences.add(fallbackSearchModeToggle)
         preferences.add(cacheHeader)
         preferences.add(clearImageCache)
 

@@ -1219,7 +1219,7 @@ class AudioRepository @Inject constructor(
          * contain these characters (such as "AC/DC", "Earth, Wind & Fire", or "Florence + The Machine"),
          * the raw string should be evaluated against an artist whitelist prior to executing this regex.
          */
-        const val ARTIST_SEPARATOR_REGEX = "\\s*[;,+/\\\\|]\\s*|\\s+&\\s+|\\s+and\\s+|\\s+with\\s+|\\s+w/\\s+|\\s+vs\\.?\\s+|\\s+x\\s+" +
+        private const val ARTIST_SEPARATOR_REGEX = "\\s*[;,+/\\\\|]\\s*|\\s+&\\s+|\\s+and\\s+|\\s+with\\s+|\\s+w/\\s+|\\s+vs\\.?\\s+|\\s+x\\s+" +
                 "|\\s+feat\\.?\\s+|\\s+ft\\.?\\s+|\\s+featuring\\s+|\\s+pres\\.?\\s+|\\s+starring\\s+"
 
         private const val ARTIST_WHITELIST = "/artist_whitelist.txt"
