@@ -12,11 +12,25 @@ object SearchPreferences {
     const val SORTING_STYLE = "search_sorting_style_"
     const val GRID_SIZE_PORTRAIT = "search_grid_size_portrait1"
     const val GRID_SIZE_LANDSCAPE = "search_grid_size_landscape1"
+    const val FALLBACK_SEARCH_MODE = "search_fallback_search_mode"
 
     const val FILTER_SONGS = "search_filter_songs"
     const val FILTER_ALBUMS = "search_filter_albums"
     const val FILTER_ARTISTS = "search_filter_artists"
     const val FILTER_GENRES = "search_filter_genres"
+
+    // ----------------------------------------------------------------------------------------- //
+
+    fun isFallbackSearchMode(): Boolean {
+        return SharedPreferences.getSharedPreferences()
+            .getBoolean(FALLBACK_SEARCH_MODE, false)
+    }
+
+    fun setFallbackSearchMode(value: Boolean) {
+        SharedPreferences.getSharedPreferences().edit {
+            putBoolean(FALLBACK_SEARCH_MODE, value)
+        }
+    }
 
     // ----------------------------------------------------------------------------------------- //
 
