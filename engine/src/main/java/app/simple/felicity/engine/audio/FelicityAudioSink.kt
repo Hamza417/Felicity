@@ -179,13 +179,28 @@ class FelicityAudioSink(
                 startClock()
             }
 
+            // If paused, only accept the very first buffer to establish the base presentation time.
+            // Reject everything else so ExoPlayer stops decoding and feeding the void.
+            if (isPaused && !isFirstBuffer) {
+                return false
+            }
+
             if (isFirstBuffer) {
                 basePresentationTimeUs = presentationTimeUs
                 isFirstBuffer = false
-                startClock()
+
+                // Only start the clock if we are actually playing.
+                // If paused, play() will call startClock() later.
+                if (!isPaused) {
+                    startClock()
+                }
+
+                // For UsbNativeSink, adjust the latency calculation line accordingly as per your original code
                 val latencyMs = stream.getLatencyMs().coerceAtLeast(10)
                 audioSinkListener?.onPositionAdvancing(System.currentTimeMillis() + latencyMs)
             }
+
+            Log.d(TAG, "AAudioNativeSink.handleBuffer: writing ${buffer.remaining()} bytes at $presentationTimeUs us")
 
             val snapshot = buffer.slice().order(buffer.order())
             val sampleCount = snapshotToFloat(snapshot, currentEncoding)
@@ -286,10 +301,23 @@ class FelicityAudioSink(
                 startClock()
             }
 
+            // If paused, only accept the very first buffer to establish the base presentation time.
+            // Reject everything else so ExoPlayer stops decoding and feeding the void.
+            if (isPaused && !isFirstBuffer) {
+                return false
+            }
+
             if (isFirstBuffer) {
                 basePresentationTimeUs = presentationTimeUs
                 isFirstBuffer = false
-                startClock()
+
+                // Only start the clock if we are actually playing.
+                // If paused, play() will call startClock() later.
+                if (!isPaused) {
+                    startClock()
+                }
+
+                // For UsbNativeSink, adjust the latency calculation line accordingly as per your original code
                 val latencyMs = stream.getLatencyMs().coerceAtLeast(10)
                 audioSinkListener?.onPositionAdvancing(System.currentTimeMillis() + latencyMs)
             }
@@ -388,10 +416,22 @@ class FelicityAudioSink(
         override fun hasPendingData(): Boolean = !isFirstBuffer
 
         override fun handleBuffer(buffer: ByteBuffer, presentationTimeUs: Long, encodedAccessUnitCount: Int): Boolean {
+            // If paused, only accept the very first buffer to establish the base presentation time.
+            // Reject everything else so ExoPlayer stops decoding and feeding the void.
+            if (isPaused && !isFirstBuffer) {
+                return false
+            }
+
             if (isFirstBuffer) {
                 basePresentationTimeUs = presentationTimeUs
                 isFirstBuffer = false
-                startClock()
+
+                // Only start the clock if we are actually playing.
+                // If paused, play() will call startClock() later.
+                if (!isPaused) {
+                    startClock()
+                }
+
                 audioSinkListener?.onPositionAdvancing(System.currentTimeMillis() + 50)
             }
 
