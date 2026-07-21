@@ -103,6 +103,9 @@ class FelicityAudioSink(
         /** Returns the estimated playback position in microseconds. */
         fun getCurrentPositionUs(sourceEnded: Boolean): Long
 
+        // Tells ExoPlayer if the hardware buffer contains audio that hasn't played out yet.
+        fun hasPendingData(): Boolean
+
         /** Starts or resumes the output stream. */
         fun play()
 
@@ -133,16 +136,10 @@ class FelicityAudioSink(
      */
     private inner class DefaultSinkWrapper : InternalSink {
         override val isReady = true
-
-        override fun configure(inputFormat: Format, specifiedBufferSize: Int, outputChannels: IntArray?) {
-            defaultSink.configure(inputFormat, specifiedBufferSize, outputChannels)
-        }
-
-        override fun handleBuffer(buffer: ByteBuffer, presentationTimeUs: Long, encodedAccessUnitCount: Int): Boolean {
-            return defaultSink.handleBuffer(buffer, presentationTimeUs, encodedAccessUnitCount)
-        }
-
+        override fun configure(inputFormat: Format, specifiedBufferSize: Int, outputChannels: IntArray?) = defaultSink.configure(inputFormat, specifiedBufferSize, outputChannels)
+        override fun handleBuffer(buffer: ByteBuffer, presentationTimeUs: Long, encodedAccessUnitCount: Int) = defaultSink.handleBuffer(buffer, presentationTimeUs, encodedAccessUnitCount)
         override fun getCurrentPositionUs(sourceEnded: Boolean): Long = defaultSink.getCurrentPositionUs(sourceEnded)
+        override fun hasPendingData(): Boolean = defaultSink.hasPendingData()
         override fun play() = defaultSink.play()
         override fun pause() = defaultSink.pause()
         override fun flush() = defaultSink.flush()
@@ -161,25 +158,59 @@ class FelicityAudioSink(
     ) : InternalSink {
         override val isReady get() = stream.isReady
 
-        override fun configure(inputFormat: Format, specifiedBufferSize: Int, outputChannels: IntArray?) {
-            // Stream was already opened with the correct format at construction time.
+        private var isFirstBuffer = true
+        private var basePresentationTimeUs = 0L
+        private var framesWrittenTotal = 0L
+
+        override fun configure(inputFormat: Format, specifiedBufferSize: Int, outputChannels: IntArray?) {}
+
+        override fun hasPendingData(): Boolean {
+            // If we have started writing data, there is audio pending in the hardware queue
+            return !isFirstBuffer
         }
 
         override fun handleBuffer(buffer: ByteBuffer, presentationTimeUs: Long, encodedAccessUnitCount: Int): Boolean {
+            if (!stream.isRunning) stream.start()
+
+            if (isFirstBuffer) {
+                basePresentationTimeUs = presentationTimeUs
+                isFirstBuffer = false
+                val latencyMs = stream.getLatencyMs().coerceAtLeast(10)
+                audioSinkListener?.onPositionAdvancing(System.currentTimeMillis() + latencyMs)
+            }
+
             val snapshot = buffer.slice().order(buffer.order())
             val sampleCount = snapshotToFloat(snapshot, currentEncoding)
             if (sampleCount > 0) {
                 nativeDsp.processInPlace(floatScratchBuffer, sampleCount)
                 visualizer.feedFloat(floatScratchBuffer, sampleCount, channelCount)
                 stream.write(floatScratchBuffer, sampleCount)
+
+                // Keep track of total frames so our Kotlin-based media clock advances!
+                framesWrittenTotal += (sampleCount / channelCount)
             }
             buffer.position(buffer.limit())
             return true
         }
 
-        override fun getCurrentPositionUs(sourceEnded: Boolean): Long = stream.getPlaybackPositionUs(sourceEnded)
+        override fun getCurrentPositionUs(sourceEnded: Boolean): Long {
+            // Return Long.MIN_VALUE (ExoPlayer's C.POSITION_NOT_SET) before audio starts
+            if (isFirstBuffer) return Long.MIN_VALUE
+
+            // Calculate how much audio we have physically pushed into the hardware
+            val writtenTimeUs = (framesWrittenTotal * 1_000_000L) / currentSampleRate
+
+            // Subtract the hardware latency to get the exact time being heard out of the speaker
+            val latencyUs = stream.getLatencyMs().coerceAtLeast(0) * 1000L
+
+            // Guard against negative elapsed time right at the very start of the track
+            val actualElapsedUs = (writtenTimeUs - latencyUs).coerceAtLeast(0L)
+
+            return basePresentationTimeUs + actualElapsedUs
+        }
+
         override fun play() {
-            stream.start()
+            if (!stream.isRunning) stream.start()
         }
 
         override fun pause() {
@@ -188,6 +219,8 @@ class FelicityAudioSink(
 
         override fun flush() {
             stream.stop()
+            isFirstBuffer = true
+            framesWrittenTotal = 0L
             if (!isPaused) stream.start()
         }
 
@@ -212,25 +245,48 @@ class FelicityAudioSink(
     ) : InternalSink {
         override val isReady get() = stream.isReady
 
-        override fun configure(inputFormat: Format, specifiedBufferSize: Int, outputChannels: IntArray?) {
-            // Stream already configured at construction.
-        }
+        private var isFirstBuffer = true
+        private var basePresentationTimeUs = 0L
+        private var framesWrittenTotal = 0L
+
+        override fun configure(inputFormat: Format, specifiedBufferSize: Int, outputChannels: IntArray?) {}
+
+        override fun hasPendingData(): Boolean = !isFirstBuffer
 
         override fun handleBuffer(buffer: ByteBuffer, presentationTimeUs: Long, encodedAccessUnitCount: Int): Boolean {
+            if (!stream.isRunning) stream.start()
+
+            if (isFirstBuffer) {
+                basePresentationTimeUs = presentationTimeUs
+                isFirstBuffer = false
+                val latencyMs = stream.getLatencyMs().coerceAtLeast(10)
+                audioSinkListener?.onPositionAdvancing(System.currentTimeMillis() + latencyMs)
+            }
+
             val snapshot = buffer.slice().order(buffer.order())
             val sampleCount = snapshotToFloat(snapshot, currentEncoding)
             if (sampleCount > 0) {
                 nativeDsp.processInPlace(floatScratchBuffer, sampleCount)
                 visualizer.feedFloat(floatScratchBuffer, sampleCount, channelCount)
                 stream.write(floatScratchBuffer, sampleCount)
+                framesWrittenTotal += (sampleCount / channelCount)
             }
             buffer.position(buffer.limit())
             return true
         }
 
-        override fun getCurrentPositionUs(sourceEnded: Boolean): Long = stream.getPlaybackPositionUs(sourceEnded)
+        override fun getCurrentPositionUs(sourceEnded: Boolean): Long {
+            if (isFirstBuffer) return Long.MIN_VALUE
+
+            val writtenTimeUs = (framesWrittenTotal * 1_000_000L) / currentSampleRate
+            val latencyUs = stream.getLatencyMs().coerceAtLeast(0) * 1000L
+            val actualElapsedUs = (writtenTimeUs - latencyUs).coerceAtLeast(0L)
+
+            return basePresentationTimeUs + actualElapsedUs
+        }
+
         override fun play() {
-            stream.start()
+            if (!stream.isRunning) stream.start()
         }
 
         override fun pause() {
@@ -239,6 +295,8 @@ class FelicityAudioSink(
 
         override fun flush() {
             stream.stop()
+            isFirstBuffer = true
+            framesWrittenTotal = 0L
             if (!isPaused) stream.start()
         }
 
@@ -264,24 +322,41 @@ class FelicityAudioSink(
     ) : InternalSink {
         override val isReady = true
 
-        override fun configure(inputFormat: Format, specifiedBufferSize: Int, outputChannels: IntArray?) {
-            // Format was negotiated before this sink was created.
-        }
+        private var isFirstBuffer = true
+        private var basePresentationTimeUs = 0L
+        private var framesWrittenTotal = 0L
+
+        override fun configure(inputFormat: Format, specifiedBufferSize: Int, outputChannels: IntArray?) {}
+
+        override fun hasPendingData(): Boolean = !isFirstBuffer
 
         override fun handleBuffer(buffer: ByteBuffer, presentationTimeUs: Long, encodedAccessUnitCount: Int): Boolean {
+            if (isFirstBuffer) {
+                basePresentationTimeUs = presentationTimeUs
+                isFirstBuffer = false
+                audioSinkListener?.onPositionAdvancing(System.currentTimeMillis() + 50)
+            }
+
             val snapshot = buffer.slice().order(buffer.order())
             val sampleCount = snapshotToFloat(snapshot, currentEncoding)
             if (sampleCount > 0) {
                 nativeDsp.processInPlace(floatScratchBuffer, sampleCount)
                 visualizer.feedFloat(floatScratchBuffer, sampleCount, channelCount)
                 driver.nativePushPcm(floatScratchBuffer, 0, sampleCount)
+                framesWrittenTotal += (sampleCount / channelCount)
             }
             buffer.position(buffer.limit())
             return true
         }
 
         override fun getCurrentPositionUs(sourceEnded: Boolean): Long {
-            return driver.getPlaybackPositionUs(channelCount, sampleRate)
+            if (isFirstBuffer) return Long.MIN_VALUE
+
+            val writtenTimeUs = (framesWrittenTotal * 1_000_000L) / sampleRate
+            val latencyUs = 50_000L // 50ms estimated USB latency
+            val actualElapsedUs = (writtenTimeUs - latencyUs).coerceAtLeast(0L)
+
+            return basePresentationTimeUs + actualElapsedUs
         }
 
         override fun play() = driver.startStream()
@@ -292,6 +367,8 @@ class FelicityAudioSink(
             // A full stop/start cycle takes 20–500 ms and creates an audible gap
             // on every seek; flushing plays silence seamlessly until fresh audio arrives.
             driver.flushRingBuffer()
+            isFirstBuffer = true
+            framesWrittenTotal = 0L
         }
 
         override fun release() {
@@ -324,6 +401,14 @@ class FelicityAudioSink(
 
     /** Which type of route [activeSink] represents. */
     private var activeSinkType = SinkType.DEFAULT
+
+    /**
+     * The listener that ExoPlayer's audio renderer registered via [setListener].
+     * Stored here so native sinks can forward position and state callbacks directly
+     * instead of routing them through the idle [DefaultAudioSink], which would never
+     * fire those callbacks when a native route is active.
+     */
+    private var audioSinkListener: AudioSink.Listener? = null
 
     // -----------------------------------------------------------------------------------------
     // Format state
@@ -598,6 +683,10 @@ class FelicityAudioSink(
     // -----------------------------------------------------------------------------------------
 
     override fun setListener(listener: AudioSink.Listener) {
+        // Store the listener locally so native sinks (AAudio, Oboe, USB) can forward
+        // position and state callbacks directly. We still delegate to DefaultAudioSink
+        // so that the DEFAULT route works exactly as before.
+        audioSinkListener = listener
         defaultSink.setListener(listener)
     }
 
@@ -610,17 +699,16 @@ class FelicityAudioSink(
     }
 
     override fun hasPendingData(): Boolean {
-        // Native writes are synchronous, so there is no pending data waiting in a hardware
-        // buffer from ExoPlayer's perspective once handleBuffer returns true.
-        return if (activeSinkType == SinkType.DEFAULT) defaultSink.hasPendingData() else false
+        // Delegate to the active route so ExoPlayer knows the hardware buffer isn't empty
+        return activeSink.hasPendingData()
     }
 
     override fun setPlaybackParameters(playbackParameters: PlaybackParameters) {
-        defaultSink.setPlaybackParameters(playbackParameters)
+        defaultSink.playbackParameters = playbackParameters
     }
 
     override fun getPlaybackParameters(): PlaybackParameters {
-        return defaultSink.getPlaybackParameters()
+        return defaultSink.playbackParameters
     }
 
     override fun setSkipSilenceEnabled(skipSilenceEnabled: Boolean) {
@@ -628,11 +716,18 @@ class FelicityAudioSink(
     }
 
     override fun getSkipSilenceEnabled(): Boolean {
-        return defaultSink.getSkipSilenceEnabled()
+        return defaultSink.skipSilenceEnabled
     }
 
     override fun handleDiscontinuity() {
-        if (activeSinkType == SinkType.DEFAULT) defaultSink.handleDiscontinuity()
+        if (activeSinkType == SinkType.DEFAULT) {
+            defaultSink.handleDiscontinuity()
+        } else {
+            // Notify ExoPlayer that the audio position has jumped (e.g. after a seek).
+            // Without this the renderer may continue to report the old position and
+            // the seekbar will not update until new audio data arrives.
+            audioSinkListener?.onPositionDiscontinuity()
+        }
     }
 
     override fun setAudioAttributes(audioAttributes: AudioAttributes) {
@@ -652,7 +747,20 @@ class FelicityAudioSink(
     }
 
     override fun getAudioTrackBufferSizeUs(): Long {
-        return if (activeSinkType == SinkType.DEFAULT) defaultSink.getAudioTrackBufferSizeUs() else 0L
+        return when (activeSinkType) {
+            SinkType.DEFAULT -> defaultSink.getAudioTrackBufferSizeUs()
+            SinkType.AAUDIO -> (activeSink as? AaudioNativeSink)
+                ?.stream?.getLatencyMs()
+                ?.coerceAtLeast(10)
+                ?.let { it * 1000L }
+                ?: 40_000L // ~40ms default for AAudio
+            SinkType.OBOE -> (activeSink as? OboeNativeSink)
+                ?.stream?.getLatencyMs()
+                ?.coerceAtLeast(10)
+                ?.let { it * 1000L }
+                ?: 40_000L // ~40ms default for Oboe
+            SinkType.USB -> 200_000L // ~200ms estimate for USB isochronous pipeline
+        }
     }
 
     override fun enableTunnelingV21() {

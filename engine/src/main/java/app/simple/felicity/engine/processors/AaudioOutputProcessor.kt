@@ -47,6 +47,13 @@ class AaudioOutputProcessor(
 
     private var nativeHandle: Long = 0L
 
+    /** Tracks whether the native stream has been started and is currently running.
+     *  Updated synchronously by [start] and [stop] so callers on any thread can
+     *  check this without a JNI round-trip. */
+    @Volatile
+    var isRunning: Boolean = false
+        private set
+
     init {
         nativeHandle = nativeAaudioCreate(sampleRate, channelCount, useSafeBuffers)
         if (nativeHandle == 0L) {
@@ -65,7 +72,9 @@ class AaudioOutputProcessor(
      */
     fun start(): Boolean {
         if (nativeHandle == 0L) return false
-        return nativeAaudioStart(nativeHandle)
+        val ok = nativeAaudioStart(nativeHandle)
+        if (ok) isRunning = true
+        return ok
     }
 
     /**
@@ -142,6 +151,7 @@ class AaudioOutputProcessor(
      */
     fun stop() {
         if (nativeHandle == 0L) return
+        isRunning = false
         nativeAaudioStop(nativeHandle)
     }
 
@@ -150,6 +160,7 @@ class AaudioOutputProcessor(
      */
     fun release() {
         if (nativeHandle == 0L) return
+        isRunning = false
         nativeAaudioDestroy(nativeHandle)
         nativeHandle = 0L
         Log.i(TAG, "AaudioOutputProcessor released")

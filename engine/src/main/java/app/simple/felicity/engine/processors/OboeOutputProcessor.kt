@@ -38,6 +38,13 @@ class OboeOutputProcessor(
 
     private var nativeHandle: Long = 0L
 
+    /** Tracks whether the native stream has been started and is currently running.
+     *  Updated synchronously by [start] and [stop] so callers on any thread can
+     *  check this without a JNI round-trip. */
+    @Volatile
+    var isRunning: Boolean = false
+        private set
+
     init {
         nativeHandle = nativeOboeCreate(sampleRate, channelCount, useSafeBuffers)
         if (nativeHandle == 0L) {
@@ -56,7 +63,9 @@ class OboeOutputProcessor(
      */
     fun start(): Boolean {
         if (nativeHandle == 0L) return false
-        return nativeOboeStart(nativeHandle)
+        val ok = nativeOboeStart(nativeHandle)
+        if (ok) isRunning = true
+        return ok
     }
 
     /**
@@ -105,12 +114,14 @@ class OboeOutputProcessor(
     /** Pauses output without closing the stream. Safe to restart via [start]. */
     fun stop() {
         if (nativeHandle == 0L) return
+        isRunning = false
         nativeOboeStop(nativeHandle)
     }
 
     /** Stops, closes, and frees all native resources. Must not be used after this call. */
     fun release() {
         if (nativeHandle == 0L) return
+        isRunning = false
         nativeOboeDestroy(nativeHandle)
         nativeHandle = 0L
         Log.i(TAG, "OboeOutputProcessor released")
