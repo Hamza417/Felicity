@@ -15,6 +15,7 @@ import app.simple.felicity.decorations.views.FavoriteButton
 import app.simple.felicity.decorations.views.FelicityMediaControls
 import app.simple.felicity.decorations.views.FelicityVisualizer
 import app.simple.felicity.extensions.fragments.BasePlayerFragment
+import app.simple.felicity.preferences.UserInterfacePreferences
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
@@ -97,6 +98,14 @@ class DefaultPlayer : BasePlayerFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         lrc.setShowBackground(true)
+
+        binding.seekbarContainer.isOverlapping = UserInterfacePreferences.isStackMediaControls()
+
+        binding.seekbar.labelGravity = if (binding.seekbarContainer.isOverlapping) {
+            WaveformSeekbar.LABEL_GRAVITY_BOTTOM
+        } else {
+            WaveformSeekbar.LABEL_GRAVITY_CENTER
+        }
     }
 
     companion object {
