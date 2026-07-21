@@ -25,6 +25,7 @@ import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithFade
 import app.simple.felicity.decorations.views.FavoriteButton
 import app.simple.felicity.decorations.views.FelicityMediaControls
 import app.simple.felicity.decorations.views.FelicityVisualizer
+import app.simple.felicity.decorations.views.FlexStackLayout
 import app.simple.felicity.dialogs.app.AudioPipelineDialog.Companion.showAudioPipeline
 import app.simple.felicity.dialogs.player.VisualizerConfig.Companion.showVisualizerConfig
 import app.simple.felicity.engine.managers.MediaPlaybackManager
@@ -149,6 +150,9 @@ abstract class BasePlayerFragment : MediaFragment() {
     /** LRC view that shows synced lyrics lines. */
     protected abstract val lrc: LrcLineView
 
+    /** Seekbar container that holds the waveform seekbar and media controls. */
+    protected abstract val seekbarContainer: FlexStackLayout
+
     /**
      * The five-button media control bar. Providing this lets the base class drive
      * the grow/shrink animation on the play button whenever the playback state changes.
@@ -165,6 +169,7 @@ abstract class BasePlayerFragment : MediaFragment() {
         setVisualizerState()
         setVisualizerCapsState()
         setLyricsState()
+        updateMediaControlOverlap()
 
         // Mirror swipe-down-to-close behavior on the album art pager so that a downward
         // swipe on the cover image dismisses the player, exactly like swiping on any other
@@ -457,6 +462,16 @@ abstract class BasePlayerFragment : MediaFragment() {
                         imageView = null // No shared element transition on the faded player variant
                 )
             }
+        }
+    }
+
+    private fun updateMediaControlOverlap() {
+        seekbarContainer.isOverlapping = UserInterfacePreferences.isStackMediaControls()
+
+        seekbar.labelGravity = if (seekbarContainer.isOverlapping) {
+            WaveformSeekbar.LABEL_GRAVITY_BOTTOM
+        } else {
+            WaveformSeekbar.LABEL_GRAVITY_CENTER
         }
     }
 

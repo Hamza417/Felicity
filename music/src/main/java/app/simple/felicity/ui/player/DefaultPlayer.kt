@@ -14,8 +14,8 @@ import app.simple.felicity.decorations.seekbars.WaveformSeekbar
 import app.simple.felicity.decorations.views.FavoriteButton
 import app.simple.felicity.decorations.views.FelicityMediaControls
 import app.simple.felicity.decorations.views.FelicityVisualizer
+import app.simple.felicity.decorations.views.FlexStackLayout
 import app.simple.felicity.extensions.fragments.BasePlayerFragment
-import app.simple.felicity.preferences.UserInterfacePreferences
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
@@ -89,6 +89,9 @@ class DefaultPlayer : BasePlayerFragment() {
     override val lrc: LrcLineView
         get() = binding.lrc
 
+    override val seekbarContainer: FlexStackLayout
+        get() = binding.seekbarContainer
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentDefaultPlayerBinding.inflate(inflater, container, false)
         return binding.root
@@ -98,14 +101,6 @@ class DefaultPlayer : BasePlayerFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         lrc.setShowBackground(true)
-
-        binding.seekbarContainer.isOverlapping = UserInterfacePreferences.isStackMediaControls()
-
-        binding.seekbar.labelGravity = if (binding.seekbarContainer.isOverlapping) {
-            WaveformSeekbar.LABEL_GRAVITY_BOTTOM
-        } else {
-            WaveformSeekbar.LABEL_GRAVITY_CENTER
-        }
     }
 
     companion object {
