@@ -160,7 +160,9 @@ class FelicityAudioSink(
 
         private var isFirstBuffer = true
         private var basePresentationTimeUs = 0L
-        private var framesWrittenTotal = 0L
+        private var startSystemTimeUs = 0L
+        private var accumulatedPlayedUs = 0L
+        private var isClockRunning = false
 
         override fun configure(inputFormat: Format, specifiedBufferSize: Int, outputChannels: IntArray?) {}
 
@@ -174,11 +176,13 @@ class FelicityAudioSink(
             // If paused, we still process and write the data (pre-buffering), but keep the hardware asleep.
             if (!isPaused && !stream.isRunning) {
                 stream.start()
+                startClock()
             }
 
             if (isFirstBuffer) {
                 basePresentationTimeUs = presentationTimeUs
                 isFirstBuffer = false
+                startClock()
                 val latencyMs = stream.getLatencyMs().coerceAtLeast(10)
                 audioSinkListener?.onPositionAdvancing(System.currentTimeMillis() + latencyMs)
             }
@@ -189,43 +193,59 @@ class FelicityAudioSink(
                 nativeDsp.processInPlace(floatScratchBuffer, sampleCount)
                 visualizer.feedFloat(floatScratchBuffer, sampleCount, channelCount)
                 stream.write(floatScratchBuffer, sampleCount)
-
-                // Keep track of total frames so our Kotlin-based media clock advances!
-                framesWrittenTotal += (sampleCount / channelCount)
             }
             buffer.position(buffer.limit())
             return true
         }
 
+        private fun startClock() {
+            if (!isClockRunning) {
+                startSystemTimeUs = System.nanoTime() / 1000L
+                isClockRunning = true
+            }
+        }
+
+        private fun pauseClock() {
+            if (isClockRunning) {
+                val nowUs = System.nanoTime() / 1000L
+                accumulatedPlayedUs += (nowUs - startSystemTimeUs)
+                isClockRunning = false
+            }
+        }
+
         override fun getCurrentPositionUs(sourceEnded: Boolean): Long {
-            // Return Long.MIN_VALUE (ExoPlayer's C.POSITION_NOT_SET) before audio starts
             if (isFirstBuffer) return Long.MIN_VALUE
 
-            // Calculate how much audio we have physically pushed into the hardware
-            val writtenTimeUs = (framesWrittenTotal * 1_000_000L) / currentSampleRate
+            val currentElapsedUs = if (isClockRunning) {
+                (System.nanoTime() / 1000L) - startSystemTimeUs
+            } else 0L
 
-            // Subtract the hardware latency to get the exact time being heard out of the speaker
+            val totalPlayedUs = accumulatedPlayedUs + currentElapsedUs
             val latencyUs = stream.getLatencyMs().coerceAtLeast(0) * 1000L
-
-            // Guard against negative elapsed time right at the very start of the track
-            val actualElapsedUs = (writtenTimeUs - latencyUs).coerceAtLeast(0L)
+            val actualElapsedUs = (totalPlayedUs - latencyUs).coerceAtLeast(0L)
 
             return basePresentationTimeUs + actualElapsedUs
         }
 
         override fun play() {
             if (!stream.isRunning) stream.start()
+            startClock()
         }
 
         override fun pause() {
             stream.stop()
+            pauseClock()
         }
 
         override fun flush() {
             stream.stop()
             isFirstBuffer = true
-            framesWrittenTotal = 0L
-            if (!isPaused) stream.start()
+            accumulatedPlayedUs = 0L
+            isClockRunning = false
+            if (!isPaused) {
+                stream.start()
+                startClock()
+            }
         }
 
         override fun release() {
@@ -251,7 +271,9 @@ class FelicityAudioSink(
 
         private var isFirstBuffer = true
         private var basePresentationTimeUs = 0L
-        private var framesWrittenTotal = 0L
+        private var startSystemTimeUs = 0L
+        private var accumulatedPlayedUs = 0L
+        private var isClockRunning = false
 
         override fun configure(inputFormat: Format, specifiedBufferSize: Int, outputChannels: IntArray?) {}
 
@@ -261,11 +283,13 @@ class FelicityAudioSink(
             // Respect the paused state to prevent micro-stutters
             if (!isPaused && !stream.isRunning) {
                 stream.start()
+                startClock()
             }
 
             if (isFirstBuffer) {
                 basePresentationTimeUs = presentationTimeUs
                 isFirstBuffer = false
+                startClock()
                 val latencyMs = stream.getLatencyMs().coerceAtLeast(10)
                 audioSinkListener?.onPositionAdvancing(System.currentTimeMillis() + latencyMs)
             }
@@ -276,35 +300,59 @@ class FelicityAudioSink(
                 nativeDsp.processInPlace(floatScratchBuffer, sampleCount)
                 visualizer.feedFloat(floatScratchBuffer, sampleCount, channelCount)
                 stream.write(floatScratchBuffer, sampleCount)
-                framesWrittenTotal += (sampleCount / channelCount)
             }
             buffer.position(buffer.limit())
             return true
         }
 
+        private fun startClock() {
+            if (!isClockRunning) {
+                startSystemTimeUs = System.nanoTime() / 1000L
+                isClockRunning = true
+            }
+        }
+
+        private fun pauseClock() {
+            if (isClockRunning) {
+                val nowUs = System.nanoTime() / 1000L
+                accumulatedPlayedUs += (nowUs - startSystemTimeUs)
+                isClockRunning = false
+            }
+        }
+
         override fun getCurrentPositionUs(sourceEnded: Boolean): Long {
             if (isFirstBuffer) return Long.MIN_VALUE
 
-            val writtenTimeUs = (framesWrittenTotal * 1_000_000L) / currentSampleRate
+            val currentElapsedUs = if (isClockRunning) {
+                (System.nanoTime() / 1000L) - startSystemTimeUs
+            } else 0L
+
+            val totalPlayedUs = accumulatedPlayedUs + currentElapsedUs
             val latencyUs = stream.getLatencyMs().coerceAtLeast(0) * 1000L
-            val actualElapsedUs = (writtenTimeUs - latencyUs).coerceAtLeast(0L)
+            val actualElapsedUs = (totalPlayedUs - latencyUs).coerceAtLeast(0L)
 
             return basePresentationTimeUs + actualElapsedUs
         }
 
         override fun play() {
             if (!stream.isRunning) stream.start()
+            startClock()
         }
 
         override fun pause() {
             stream.stop()
+            pauseClock()
         }
 
         override fun flush() {
             stream.stop()
             isFirstBuffer = true
-            framesWrittenTotal = 0L
-            if (!isPaused) stream.start()
+            accumulatedPlayedUs = 0L
+            isClockRunning = false
+            if (!isPaused) {
+                stream.start()
+                startClock()
+            }
         }
 
         override fun release() {
@@ -331,7 +379,9 @@ class FelicityAudioSink(
 
         private var isFirstBuffer = true
         private var basePresentationTimeUs = 0L
-        private var framesWrittenTotal = 0L
+        private var startSystemTimeUs = 0L
+        private var accumulatedPlayedUs = 0L
+        private var isClockRunning = false
 
         override fun configure(inputFormat: Format, specifiedBufferSize: Int, outputChannels: IntArray?) {}
 
@@ -341,6 +391,7 @@ class FelicityAudioSink(
             if (isFirstBuffer) {
                 basePresentationTimeUs = presentationTimeUs
                 isFirstBuffer = false
+                startClock()
                 audioSinkListener?.onPositionAdvancing(System.currentTimeMillis() + 50)
             }
 
@@ -350,24 +401,49 @@ class FelicityAudioSink(
                 nativeDsp.processInPlace(floatScratchBuffer, sampleCount)
                 visualizer.feedFloat(floatScratchBuffer, sampleCount, channelCount)
                 driver.nativePushPcm(floatScratchBuffer, 0, sampleCount)
-                framesWrittenTotal += (sampleCount / channelCount)
             }
             buffer.position(buffer.limit())
             return true
         }
 
+        private fun startClock() {
+            if (!isClockRunning) {
+                startSystemTimeUs = System.nanoTime() / 1000L
+                isClockRunning = true
+            }
+        }
+
+        private fun pauseClock() {
+            if (isClockRunning) {
+                val nowUs = System.nanoTime() / 1000L
+                accumulatedPlayedUs += (nowUs - startSystemTimeUs)
+                isClockRunning = false
+            }
+        }
+
         override fun getCurrentPositionUs(sourceEnded: Boolean): Long {
             if (isFirstBuffer) return Long.MIN_VALUE
 
-            val writtenTimeUs = (framesWrittenTotal * 1_000_000L) / sampleRate
+            val currentElapsedUs = if (isClockRunning) {
+                (System.nanoTime() / 1000L) - startSystemTimeUs
+            } else 0L
+
+            val totalPlayedUs = accumulatedPlayedUs + currentElapsedUs
             val latencyUs = 50_000L // 50ms estimated USB latency
-            val actualElapsedUs = (writtenTimeUs - latencyUs).coerceAtLeast(0L)
+            val actualElapsedUs = (totalPlayedUs - latencyUs).coerceAtLeast(0L)
 
             return basePresentationTimeUs + actualElapsedUs
         }
 
-        override fun play() = driver.startStream()
-        override fun pause() = driver.stopStream()
+        override fun play() {
+            driver.startStream()
+            startClock()
+        }
+
+        override fun pause() {
+            driver.stopStream()
+            pauseClock()
+        }
 
         override fun flush() {
             // Keep the isochronous pipeline running — just drain the ring buffer.
@@ -375,7 +451,8 @@ class FelicityAudioSink(
             // on every seek; flushing plays silence seamlessly until fresh audio arrives.
             driver.flushRingBuffer()
             isFirstBuffer = true
-            framesWrittenTotal = 0L
+            accumulatedPlayedUs = 0L
+            isClockRunning = false
         }
 
         override fun release() {
