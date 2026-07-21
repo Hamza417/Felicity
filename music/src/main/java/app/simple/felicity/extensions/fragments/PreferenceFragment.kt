@@ -380,6 +380,19 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val stackMediaControlsToggle = Preference(
+                title = R.string.stack_media_controls,
+                summary = R.string.stack_media_controls_summary,
+                icon = R.drawable.ic_play,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    UserInterfacePreferences.setStackMediaControls((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    UserInterfacePreferences.isStackMediaControls()
+                }
+        )
+
         val applicationHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.application)
 
         val likeButton = Preference(
@@ -414,6 +427,7 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(playerHeader)
         preferences.add(playerInterface)
         preferences.add(lyricsToggle)
+        preferences.add(stackMediaControlsToggle)
         preferences.add(miniPlayerHeader)
         preferences.add(marginAroundMiniplayerToggle)
         preferences.add(applicationHeader)

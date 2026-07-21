@@ -39,6 +39,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom"
+            android:clipChildren="false"
             android:orientation="vertical">
 
             <app.simple.felicity.decorations.lrc.view.LrcLineView
@@ -180,54 +181,62 @@
                 app:layout_constraintTop_toBottomOf="@+id/mime_artist"
                 app:textColorStyle="secondary" />
 
-            <app.simple.felicity.decorations.seekbars.WaveformSeekbar
-                android:id="@+id/seekbar"
+            <app.simple.felicity.decorations.views.FlexStackLayout
+                android:id="@+id/seekbar_container"
                 android:layout_width="match_parent"
-                android:layout_height="150dp"
-                android:layout_gravity="bottom"
-                app:wsbBarWidth="7dp"
-                app:wsbLabelEdgeMargin="@dimen/padding_20"
-                app:wsbLabelGravity="center"
-                app:wsbLabelHighlightMode="both"
-                app:wsbWaveformMode="full" />
+                android:layout_height="wrap_content">
 
-        </LinearLayout>
+                <app.simple.felicity.decorations.seekbars.WaveformSeekbar
+                    android:id="@+id/seekbar"
+                    android:layout_width="match_parent"
+                    android:layout_height="150dp"
+                    android:layout_gravity="bottom"
+                    app:wsbBarWidth="7dp"
+                    app:wsbLabelEdgeMargin="@dimen/padding_20"
+                    app:wsbLabelGravity="center"
+                    app:wsbLabelHighlightMode="both"
+                    app:wsbWaveformMode="full" />
 
-        <LinearLayout
-            android:id="@+id/linearLayout2"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="@dimen/padding_10"
-            android:orientation="horizontal"
-            android:clipChildren="false"
-            android:clipToPadding="false"
-            android:gravity="center_vertical">
+                <LinearLayout
+                    android:id="@+id/linearLayout2"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="@dimen/padding_10"
+                    android:orientation="horizontal"
+                    android:clipChildren="false"
+                    android:clipToPadding="false"
+                    android:gravity="center_vertical">
 
-            <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
-                android:id="@+id/repeat"
-                android:layout_width="@dimen/button_size"
-                android:layout_height="@dimen/button_size"
-                android:layout_marginEnd="@dimen/padding_1"
-                android:src="@drawable/ic_repeat"
-                android:layout_gravity="center_vertical"
-                app:buttonTintType="regular" />
+                    <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+                        android:id="@+id/repeat"
+                        android:layout_width="@dimen/button_size"
+                        android:layout_height="@dimen/button_size"
+                        android:layout_marginEnd="@dimen/padding_1"
+                        android:src="@drawable/ic_repeat"
+                        android:layout_gravity="center_vertical"
+                        app:buttonTintType="regular" />
 
-            <app.simple.felicity.decorations.views.FelicityMediaControls
-                android:id="@+id/mediaControls"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="3"
-                android:clipChildren="false"
-                android:clipToPadding="false" />
+                    <app.simple.felicity.decorations.views.FelicityMediaControls
+                        android:id="@+id/mediaControls"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="3"
+                        android:clipToOutline="false"
+                        android:clipChildren="false"
+                        android:clipToPadding="false" />
 
-            <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
-                android:id="@+id/queue"
-                android:layout_width="@dimen/button_size"
-                android:layout_height="@dimen/button_size"
-                android:layout_gravity="center_vertical"
-                android:layout_marginEnd="@dimen/padding_1"
-                android:src="@drawable/ic_queue"
-                app:buttonTintType="regular" />
+                    <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+                        android:id="@+id/queue"
+                        android:layout_width="@dimen/button_size"
+                        android:layout_height="@dimen/button_size"
+                        android:layout_gravity="center_vertical"
+                        android:layout_marginEnd="@dimen/padding_1"
+                        android:src="@drawable/ic_queue"
+                        app:buttonTintType="regular" />
+
+                </LinearLayout>
+
+            </app.simple.felicity.decorations.views.FlexStackLayout>
 
         </LinearLayout>
 

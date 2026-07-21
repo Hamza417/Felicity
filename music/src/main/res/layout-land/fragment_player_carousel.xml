@@ -270,54 +270,61 @@
             which is 60% of the total screen width (from the 40% guideline to the
             right edge), naturally creating the 60%-from-right overlap effect.
             -->
-        <app.simple.felicity.decorations.seekbars.WaveformSeekbar
-            android:id="@+id/seekbar"
+        <app.simple.felicity.decorations.views.FlexStackLayout
+            android:id="@+id/seekbar_container"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:layout_gravity="bottom"
-            app:wsbBarWidth="7dp"
-            app:wsbLabelEdgeMargin="@dimen/padding_20"
-            app:wsbLabelGravity="center"
-            app:wsbLabelHighlightMode="both"
-            app:wsbWaveformMode="full" />
+            android:layout_gravity="bottom">
 
-        <LinearLayout
-            android:id="@+id/linearLayout2"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/padding_20"
-            android:layout_marginHorizontal="@dimen/padding_10"
-            android:clipToPadding="false"
-            android:clipChildren="false"
-            android:orientation="horizontal">
+            <app.simple.felicity.decorations.seekbars.WaveformSeekbar
+                android:id="@+id/seekbar"
+                android:layout_width="match_parent"
+                android:layout_height="150dp"
+                app:wsbBarWidth="7dp"
+                app:wsbLabelEdgeMargin="@dimen/padding_20"
+                app:wsbLabelGravity="center"
+                app:wsbLabelHighlightMode="both"
+                app:wsbWaveformMode="full" />
 
-            <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
-                android:id="@+id/repeat"
-                android:layout_width="@dimen/button_size"
-                android:layout_height="@dimen/button_size"
-                android:layout_gravity="center_vertical"
-                android:layout_marginEnd="@dimen/padding_1"
-                android:src="@drawable/ic_repeat"
-                app:buttonTintType="regular" />
-
-            <app.simple.felicity.decorations.views.FelicityMediaControls
-                android:id="@+id/mediaControls"
-                android:layout_width="0dp"
+            <LinearLayout
+                android:id="@+id/linearLayout2"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="3"
+                android:layout_marginBottom="@dimen/padding_20"
+                android:layout_marginHorizontal="@dimen/padding_10"
+                android:clipToPadding="false"
                 android:clipChildren="false"
-                android:clipToPadding="false" />
+                android:orientation="horizontal">
 
-            <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
-                android:id="@+id/queue"
-                android:layout_width="@dimen/button_size"
-                android:layout_height="@dimen/button_size"
-                android:layout_gravity="center_vertical"
-                android:src="@drawable/ic_queue"
-                app:buttonTintType="regular" />
+                <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+                    android:id="@+id/repeat"
+                    android:layout_width="@dimen/button_size"
+                    android:layout_height="@dimen/button_size"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginEnd="@dimen/padding_1"
+                    android:src="@drawable/ic_repeat"
+                    app:buttonTintType="regular" />
 
-        </LinearLayout>
+                <app.simple.felicity.decorations.views.FelicityMediaControls
+                    android:id="@+id/mediaControls"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="3"
+                    android:clipChildren="false"
+                    android:clipToPadding="false" />
+
+                <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+                    android:id="@+id/queue"
+                    android:layout_width="@dimen/button_size"
+                    android:layout_height="@dimen/button_size"
+                    android:layout_gravity="center_vertical"
+                    android:src="@drawable/ic_queue"
+                    app:buttonTintType="regular" />
+
+            </LinearLayout>
+
+        </app.simple.felicity.decorations.views.FlexStackLayout>
 
     </app.simple.felicity.decorations.padding.NonThemePaddingAwareLinearLayout>
 

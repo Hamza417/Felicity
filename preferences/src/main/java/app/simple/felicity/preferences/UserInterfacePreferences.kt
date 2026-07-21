@@ -21,6 +21,7 @@ object UserInterfacePreferences {
     const val PLAYER_INTERFACE = "player_interface_"
 
     private const val VOLUME_CONTROLS = "volume_controls"
+    private const val STACK_MEDIA_CONTROLS = "stack_media_controls"
 
     const val HOME_INTERFACE_DASHBOARD = 1
     const val HOME_INTERFACE_TILED = 2
@@ -93,6 +94,18 @@ object UserInterfacePreferences {
         getSharedPreferences()
             .edit {
                 putBoolean(VOLUME_CONTROLS, enabled)
+            }
+    }
+
+    fun isStackMediaControls(): Boolean {
+        return getSharedPreferences()
+            .getBoolean(STACK_MEDIA_CONTROLS, false)
+    }
+
+    fun setStackMediaControls(enabled: Boolean) {
+        getSharedPreferences()
+            .edit {
+                putBoolean(STACK_MEDIA_CONTROLS, enabled)
             }
     }
 

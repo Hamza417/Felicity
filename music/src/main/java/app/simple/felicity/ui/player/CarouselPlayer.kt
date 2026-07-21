@@ -17,6 +17,7 @@ import app.simple.felicity.decorations.views.FavoriteButton
 import app.simple.felicity.decorations.views.FelicityMediaControls
 import app.simple.felicity.decorations.views.FelicityVisualizer
 import app.simple.felicity.extensions.fragments.BasePlayerFragment
+import app.simple.felicity.preferences.UserInterfacePreferences
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
@@ -98,6 +99,14 @@ class CarouselPlayer : BasePlayerFragment() {
 
         binding.pager.setCarouselSidePagesVisible(visible = true)
         binding.pager.carouselPageTransformer = CarouselTransformers.depth
+
+        binding.seekbarContainer.isOverlapping = UserInterfacePreferences.isStackMediaControls()
+
+        binding.seekbar.labelGravity = if (binding.seekbarContainer.isOverlapping) {
+            WaveformSeekbar.LABEL_GRAVITY_BOTTOM
+        } else {
+            WaveformSeekbar.LABEL_GRAVITY_CENTER
+        }
     }
 
     companion object {
