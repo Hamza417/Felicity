@@ -170,7 +170,11 @@ class FelicityAudioSink(
         }
 
         override fun handleBuffer(buffer: ByteBuffer, presentationTimeUs: Long, encodedAccessUnitCount: Int): Boolean {
-            if (!stream.isRunning) stream.start()
+            // Only auto-start the stream if ExoPlayer is actively playing.
+            // If paused, we still process and write the data (pre-buffering), but keep the hardware asleep.
+            if (!isPaused && !stream.isRunning) {
+                stream.start()
+            }
 
             if (isFirstBuffer) {
                 basePresentationTimeUs = presentationTimeUs
@@ -254,7 +258,10 @@ class FelicityAudioSink(
         override fun hasPendingData(): Boolean = !isFirstBuffer
 
         override fun handleBuffer(buffer: ByteBuffer, presentationTimeUs: Long, encodedAccessUnitCount: Int): Boolean {
-            if (!stream.isRunning) stream.start()
+            // Respect the paused state to prevent micro-stutters
+            if (!isPaused && !stream.isRunning) {
+                stream.start()
+            }
 
             if (isFirstBuffer) {
                 basePresentationTimeUs = presentationTimeUs
