@@ -494,4 +494,6 @@
     <string name="usb_dac_control_summary">Use app\'s internal DAC driver to create a direct audio output via DAC.</string>
     <string name="stack_media_controls">Stack Media Controls</string>
     <string name="stack_media_controls_summary">Stack media controls with waveform to create more vertical space.</string>
+    <string name="timer_position">Timer Position</string>
+    <string name="waveform_menu">Waveform Menu</string>
 </resources>

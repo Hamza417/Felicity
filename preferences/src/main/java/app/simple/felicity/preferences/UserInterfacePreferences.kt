@@ -22,6 +22,7 @@ object UserInterfacePreferences {
 
     private const val VOLUME_CONTROLS = "volume_controls"
     const val STACK_MEDIA_CONTROLS = "stack_media_controls"
+    const val TIMER_POSITION = "timer_position"
 
     const val HOME_INTERFACE_DASHBOARD = 1
     const val HOME_INTERFACE_TILED = 2
@@ -31,6 +32,10 @@ object UserInterfacePreferences {
     const val PLAYER_INTERFACE_DEFAULT = 0
     const val PLAYER_INTERFACE_FADED = 1
     const val PLAYER_INTERFACE_CAROUSEL = 2
+
+    const val TIMER_POSITION_TOP = 0
+    const val TIMER_POSITION_CENTER = 1
+    const val TIMER_POSITION_BOTTOM = 2
 
     fun setLikeIconInsteadOfThumb(value: Boolean) {
         getSharedPreferences().edit { putBoolean(LIKE_ICON_INSTEAD_OF_HEART, value) }
@@ -106,6 +111,18 @@ object UserInterfacePreferences {
         getSharedPreferences()
             .edit {
                 putBoolean(STACK_MEDIA_CONTROLS, enabled)
+            }
+    }
+
+    fun getTimerPosition(): Int {
+        return getSharedPreferences()
+            .getInt(TIMER_POSITION, TIMER_POSITION_CENTER)
+    }
+
+    fun setTimerPosition(position: Int) {
+        getSharedPreferences()
+            .edit {
+                putInt(TIMER_POSITION, position)
             }
     }
 

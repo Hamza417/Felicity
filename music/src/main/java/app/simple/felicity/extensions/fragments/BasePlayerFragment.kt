@@ -470,9 +470,18 @@ abstract class BasePlayerFragment : MediaFragment() {
         seekbarContainer.isOverlapping = UserInterfacePreferences.isStackMediaControls()
 
         seekbar.labelGravity = if (seekbarContainer.isOverlapping) {
-            WaveformSeekbar.LABEL_GRAVITY_BOTTOM
+            when (UserInterfacePreferences.getTimerPosition()) {
+                UserInterfacePreferences.TIMER_POSITION_TOP -> WaveformSeekbar.LABEL_GRAVITY_TOP
+                UserInterfacePreferences.TIMER_POSITION_BOTTOM -> WaveformSeekbar.LABEL_GRAVITY_BOTTOM
+                else -> WaveformSeekbar.LABEL_GRAVITY_BOTTOM
+            }
         } else {
-            WaveformSeekbar.LABEL_GRAVITY_CENTER
+            when (UserInterfacePreferences.getTimerPosition()) {
+                UserInterfacePreferences.TIMER_POSITION_TOP -> WaveformSeekbar.LABEL_GRAVITY_TOP
+                UserInterfacePreferences.TIMER_POSITION_CENTER -> WaveformSeekbar.LABEL_GRAVITY_CENTER
+                UserInterfacePreferences.TIMER_POSITION_BOTTOM -> WaveformSeekbar.LABEL_GRAVITY_BOTTOM
+                else -> WaveformSeekbar.LABEL_GRAVITY_CENTER
+            }
         }
     }
 
@@ -672,6 +681,9 @@ abstract class BasePlayerFragment : MediaFragment() {
                 pcmInfo.setTextWithFade(PcmInfoFormatter.formatPcmInfo(audio))
             }
             UserInterfacePreferences.STACK_MEDIA_CONTROLS -> {
+                updateMediaControlOverlap()
+            }
+            UserInterfacePreferences.TIMER_POSITION -> {
                 updateMediaControlOverlap()
             }
         }
