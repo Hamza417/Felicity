@@ -19,6 +19,12 @@ class FlexStackLayout @JvmOverloads constructor(
         defStyleAttr: Int = 0
 ) : ViewGroup(context, attrs, defStyleAttr) {
 
+    init {
+        clipChildren = false
+        clipToPadding = false
+        clipToOutline = false
+    }
+
     /**
      * Toggles the layout configuration.
      * - `true`: Children overlap and center vertically.
