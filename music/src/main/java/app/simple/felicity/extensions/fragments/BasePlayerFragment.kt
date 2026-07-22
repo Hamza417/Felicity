@@ -28,6 +28,7 @@ import app.simple.felicity.decorations.views.FelicityVisualizer
 import app.simple.felicity.decorations.views.FlexStackLayout
 import app.simple.felicity.dialogs.app.AudioPipelineDialog.Companion.showAudioPipeline
 import app.simple.felicity.dialogs.player.VisualizerConfig.Companion.showVisualizerConfig
+import app.simple.felicity.dialogs.player.WaveformMenu.Companion.showWaveformMenu
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.engine.managers.VisualizerManager
 import app.simple.felicity.engine.usb.UsbDacManager
@@ -670,6 +671,9 @@ abstract class BasePlayerFragment : MediaFragment() {
                 val audio = MediaPlaybackManager.getCurrentSong() ?: return
                 pcmInfo.setTextWithFade(PcmInfoFormatter.formatPcmInfo(audio))
             }
+            UserInterfacePreferences.STACK_MEDIA_CONTROLS -> {
+                updateMediaControlOverlap()
+            }
         }
     }
 
@@ -719,6 +723,11 @@ abstract class BasePlayerFragment : MediaFragment() {
             binding.viewBookmarks.setOnClickListener {
                 dismiss()
                 openBookmarksList()
+            }
+
+            binding.waveformMenu.setOnClickListener {
+                dismiss()
+                childFragmentManager.showWaveformMenu()
             }
         }
 
