@@ -437,6 +437,31 @@ Java_app_simple_felicity_engine_processors_OboeOutputProcessor_nativeOboeGetPlay
 }
 
 /**
+ * Gracefully pauses the stream without tearing it down. Safe to restart via [nativeOboeStart].
+ *
+ * @param env    JNI environment pointer.
+ * @param thiz   Calling object (unused).
+ * @param handle Opaque pointer from [nativeOboeCreate].
+ */
+JNIEXPORT void JNICALL
+Java_app_simple_felicity_engine_processors_OboeOutputProcessor_nativeOboePause(
+        JNIEnv * /*env*/, jobject /*thiz*/, jlong handle) {
+
+    auto *ctx = reinterpret_cast<OboeContext *>(handle);
+    if (!ctx || !ctx->stream) return;
+
+    ctx->running.store(false);
+
+    // Use requestPause instead of requestStop
+    const oboe::Result result = ctx->stream->requestPause();
+    if (result != oboe::Result::OK) {
+        OBOE_LOGW("nativeOboePause: requestPause returned (%s)",
+                  oboe::convertToText(result));
+    }
+    OBOE_LOGI("Oboe stream paused");
+}
+
+/**
  * Gracefully stops the stream without closing it. Safe to restart via [nativeOboeStart].
  *
  * @param env    JNI environment pointer.

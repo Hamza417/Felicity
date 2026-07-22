@@ -112,6 +112,13 @@ class OboeOutputProcessor(
     }
 
     /** Pauses output without closing the stream. Safe to restart via [start]. */
+    fun pause() {
+        if (nativeHandle == 0L) return
+        isRunning = false
+        nativeOboePause(nativeHandle)
+    }
+
+    /** Pauses output without closing the stream. Safe to restart via [start]. */
     fun stop() {
         if (nativeHandle == 0L) return
         isRunning = false
@@ -133,6 +140,7 @@ class OboeOutputProcessor(
     private external fun nativeOboeGetLatencyMs(handle: Long): Int
     private external fun nativeOboeGetPlaybackPositionUs(handle: Long, sourceEnded: Boolean): Long
     private external fun nativeOboeGetApiName(handle: Long): String
+    private external fun nativeOboePause(handle: Long)
     private external fun nativeOboeStop(handle: Long)
     private external fun nativeOboeDestroy(handle: Long)
 

@@ -368,7 +368,7 @@ class FelicityAudioSink(
         }
 
         override fun pause() {
-            stream.stop()
+            stream.pause()
             pauseClock()
         }
 
