@@ -439,6 +439,30 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioGet
 }
 
 /**
+ * Gracefully pauses the stream without tearing it down or flushing the buffers.
+ *
+ * @param env    JNI environment pointer.
+ * @param thiz   Calling object (unused).
+ * @param handle Opaque pointer from [nativeAaudioCreate].
+ */
+JNIEXPORT void JNICALL
+Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioPause(
+        JNIEnv * /*env*/, jobject /*thiz*/, jlong handle) {
+
+    auto *ctx = reinterpret_cast<AaudioContext *>(handle);
+    if (!ctx || !ctx->stream) return;
+
+    ctx->running.store(false);
+
+    // Use requestPause instead of requestStop to avoid HAL teardown latency
+    const aaudio_result_t result = AAudioStream_requestPause(ctx->stream);
+    if (result != AAUDIO_OK) {
+        AAUDIO_LOGW("nativeAaudioPause: requestPause returned (%d)", result);
+    }
+    AAUDIO_LOGI("AAudio stream paused");
+}
+
+/**
  * Gracefully stops the stream without closing it.
  *
  * @param env    JNI environment pointer.

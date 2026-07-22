@@ -323,7 +323,11 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                  * only used when the AudioTrack path is active; for native paths it is kept
                  * idle (via the factory) so no AudioTrack is ever created unnecessarily.
                  */
-                return FelicityAudioSink({ audioSink }, context, audioProcessorManager.nativeDspProcessor, audioProcessorManager.visualizerProcessor)
+                return FelicityAudioSink(
+                        defaultSinkProvider = { audioSink },
+                        context = context,
+                        nativeDsp = audioProcessorManager.nativeDspProcessor,
+                        visualizer = audioProcessorManager.visualizerProcessor)
             }
 
             override fun buildAudioRenderers(

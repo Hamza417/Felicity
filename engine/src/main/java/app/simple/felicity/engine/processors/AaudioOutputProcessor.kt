@@ -146,6 +146,12 @@ class AaudioOutputProcessor(
         else                    -> "Unknown"
     }
 
+    fun pause() {
+        if (nativeHandle != 0L) {
+            nativeAaudioPause(nativeHandle)
+        }
+    }
+
     /**
      * Stops the stream without closing it. Safe to restart via [start].
      */
@@ -195,7 +201,7 @@ class AaudioOutputProcessor(
      *         or -1 if the stream is not open.
      */
     private external fun nativeAaudioGetActualFormat(handle: Long): Int
-
+    private external fun nativeAaudioPause(handle: Long)
     private external fun nativeAaudioStop(handle: Long)
     private external fun nativeAaudioDestroy(handle: Long)
 
