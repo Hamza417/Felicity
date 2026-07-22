@@ -381,6 +381,87 @@ Java_app_simple_felicity_engine_processors_OboeOutputProcessor_nativeOboeGetApiN
 }
 
 /**
+ * Returns the estimated playback position in microseconds using Oboe's
+ * [getTimestamp] API to find the most recently presented frame and its
+ * wall-clock time, then extrapolating to the current moment.
+ *
+ * Falls back to a simple buffer-depth estimate when the timestamp is
+ * unavailable (typically during the first few frames after stream start).
+ *
+ * @param env         JNI environment pointer.
+ * @param thiz        Calling object (unused).
+ * @param handle      Opaque pointer from [nativeOboeCreate].
+ * @param sourceEnded JNI_TRUE when the source has no more data to deliver.
+ * @return Playback position in microseconds, or -1 if the stream is not ready.
+ */
+JNIEXPORT jlong JNICALL
+Java_app_simple_felicity_engine_processors_OboeOutputProcessor_nativeOboeGetPlaybackPositionUs(
+        JNIEnv * /*env*/, jobject /*thiz*/, jlong handle, jboolean /*sourceEnded*/) {
+
+    auto *ctx = reinterpret_cast<OboeContext *>(handle);
+    if (!ctx || !ctx->stream) return -1L;
+
+    const int64_t framesWritten = ctx->stream->getFramesWritten();
+    if (framesWritten <= 0) return -1L;
+
+    auto tsResult = ctx->stream->getTimestamp(CLOCK_MONOTONIC);
+    if (!tsResult || tsResult.value().position <= 0) {
+        /** Timestamp not yet available — estimate from frames written minus buffer depth. */
+        const int32_t bufFrames = ctx->stream->getBufferSizeInFrames();
+        const int64_t estimated = framesWritten - bufFrames;
+        return (estimated > 0 && ctx->sampleRate > 0)
+               ? (estimated * 1000000LL / ctx->sampleRate)
+               : -1L;
+    }
+
+    const int64_t presentedFrames = tsResult.value().position;
+    const int64_t presentationTimeNanos = tsResult.value().timestamp;
+
+    /**
+     * Extrapolate forward from the last known presented-frame timestamp to now,
+     * so the reported position advances smoothly even between callbacks.
+     */
+    struct timespec ts{};
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    const int64_t nowNanos = static_cast<int64_t>(ts.tv_sec) * 1000000000LL + ts.tv_nsec;
+    const int64_t elapsedNanos = nowNanos - presentationTimeNanos;
+    const int64_t extraFrames = (elapsedNanos > 0 && ctx->sampleRate > 0)
+                                ? (elapsedNanos * ctx->sampleRate / 1000000000LL)
+                                : 0;
+
+    int64_t currentFrames = presentedFrames + extraFrames;
+    if (currentFrames > framesWritten) currentFrames = framesWritten;
+    if (currentFrames < 0) currentFrames = 0;
+
+    return (ctx->sampleRate > 0) ? (currentFrames * 1000000LL / ctx->sampleRate) : -1L;
+}
+
+/**
+ * Gracefully pauses the stream without tearing it down. Safe to restart via [nativeOboeStart].
+ *
+ * @param env    JNI environment pointer.
+ * @param thiz   Calling object (unused).
+ * @param handle Opaque pointer from [nativeOboeCreate].
+ */
+JNIEXPORT void JNICALL
+Java_app_simple_felicity_engine_processors_OboeOutputProcessor_nativeOboePause(
+        JNIEnv * /*env*/, jobject /*thiz*/, jlong handle) {
+
+    auto *ctx = reinterpret_cast<OboeContext *>(handle);
+    if (!ctx || !ctx->stream) return;
+
+    ctx->running.store(false);
+
+    // Use requestPause instead of requestStop
+    const oboe::Result result = ctx->stream->requestPause();
+    if (result != oboe::Result::OK) {
+        OBOE_LOGW("nativeOboePause: requestPause returned (%s)",
+                  oboe::convertToText(result));
+    }
+    OBOE_LOGI("Oboe stream paused");
+}
+
+/**
  * Gracefully stops the stream without closing it. Safe to restart via [nativeOboeStart].
  *
  * @param env    JNI environment pointer.

@@ -47,6 +47,13 @@ class AaudioOutputProcessor(
 
     private var nativeHandle: Long = 0L
 
+    /** Tracks whether the native stream has been started and is currently running.
+     *  Updated synchronously by [start] and [stop] so callers on any thread can
+     *  check this without a JNI round-trip. */
+    @Volatile
+    var isRunning: Boolean = false
+        private set
+
     init {
         nativeHandle = nativeAaudioCreate(sampleRate, channelCount, useSafeBuffers)
         if (nativeHandle == 0L) {
@@ -65,7 +72,9 @@ class AaudioOutputProcessor(
      */
     fun start(): Boolean {
         if (nativeHandle == 0L) return false
-        return nativeAaudioStart(nativeHandle)
+        val ok = nativeAaudioStart(nativeHandle)
+        if (ok) isRunning = true
+        return ok
     }
 
     /**
@@ -95,6 +104,18 @@ class AaudioOutputProcessor(
     }
 
     /**
+     * Returns the estimated playback position in microseconds using AAudio's
+     * hardware timestamp API. Returns [androidx.media3.common.C.TIME_UNSET] (-1)
+     * when the stream is not running or the timestamp is not yet available.
+     *
+     * @param sourceEnded True when the audio source has finished delivering data.
+     */
+    fun getPlaybackPositionUs(sourceEnded: Boolean): Long {
+        if (nativeHandle == 0L) return -1L
+        return nativeAaudioGetPlaybackPositionUs(nativeHandle, sourceEnded)
+    }
+
+    /**
      * Returns the estimated output latency in milliseconds, or -1 if unavailable.
      */
     fun getLatencyMs(): Int {
@@ -121,8 +142,15 @@ class AaudioOutputProcessor(
      */
     fun getActualFormatName(): String = when (getActualFormat()) {
         AAUDIO_FORMAT_PCM_FLOAT -> "PCM_FLOAT (32-bit)"
-        AAUDIO_FORMAT_PCM_I16   -> "PCM_I16 (16-bit, converted)"
-        else                    -> "Unknown"
+        AAUDIO_FORMAT_PCM_I16 -> "PCM_I16 (16-bit, converted)"
+        else -> "Unknown"
+    }
+
+    fun pause() {
+        if (nativeHandle != 0L) {
+            isRunning = false
+            nativeAaudioPause(nativeHandle)
+        }
     }
 
     /**
@@ -130,6 +158,7 @@ class AaudioOutputProcessor(
      */
     fun stop() {
         if (nativeHandle == 0L) return
+        isRunning = false
         nativeAaudioStop(nativeHandle)
     }
 
@@ -138,6 +167,7 @@ class AaudioOutputProcessor(
      */
     fun release() {
         if (nativeHandle == 0L) return
+        isRunning = false
         nativeAaudioDestroy(nativeHandle)
         nativeHandle = 0L
         Log.i(TAG, "AaudioOutputProcessor released")
@@ -162,6 +192,7 @@ class AaudioOutputProcessor(
     private external fun nativeAaudioStart(handle: Long): Boolean
     private external fun nativeAaudioWrite(handle: Long, pcmBuffer: FloatArray)
     private external fun nativeAaudioGetLatencyMs(handle: Long): Int
+    private external fun nativeAaudioGetPlaybackPositionUs(handle: Long, sourceEnded: Boolean): Long
 
     /**
      * Returns the [aaudio_format_t] constant the HAL actually used after opening the stream.
@@ -171,7 +202,7 @@ class AaudioOutputProcessor(
      *         or -1 if the stream is not open.
      */
     private external fun nativeAaudioGetActualFormat(handle: Long): Int
-
+    private external fun nativeAaudioPause(handle: Long)
     private external fun nativeAaudioStop(handle: Long)
     private external fun nativeAaudioDestroy(handle: Long)
 
@@ -179,7 +210,7 @@ class AaudioOutputProcessor(
         private const val TAG = "AaudioOutputProcessor"
 
         /** Matches [AAUDIO_FORMAT_PCM_I16] in [aaudio/AAudio.h]. */
-        const val AAUDIO_FORMAT_PCM_I16   = 1
+        const val AAUDIO_FORMAT_PCM_I16 = 1
 
         /** Matches [AAUDIO_FORMAT_PCM_FLOAT] in [aaudio/AAudio.h]. */
         const val AAUDIO_FORMAT_PCM_FLOAT = 2

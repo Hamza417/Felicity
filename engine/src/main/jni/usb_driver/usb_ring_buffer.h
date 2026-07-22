@@ -28,7 +28,7 @@ public:
     static constexpr uint32_t CAPACITY = 65536u;
     static constexpr uint32_t MASK = CAPACITY - 1u;
 
-    UsbRingBuffer() : writeIdx_(0), readIdx_(0) {
+    UsbRingBuffer() : writeIdx_(0), readIdx_(0), totalWritten_(0) {
         memset(data_, 0, sizeof(data_));
     }
 
@@ -49,6 +49,7 @@ public:
             data_[(w + i) & MASK] = src[i];
         }
         writeIdx_.store(w + n, std::memory_order_release);
+        totalWritten_.fetch_add(n, std::memory_order_relaxed);
         return n;
     }
 
@@ -95,6 +96,24 @@ public:
     }
 
     /**
+     * How many interleaved float samples have ever been written to this buffer
+     * since construction (or since the last [flush] that resets totalWritten_).
+     * The USB position estimator uses this together with [available()] to
+     * calculate how far ahead of the hardware speaker the DSP has written.
+     */
+    uint64_t totalWritten() const {
+        return totalWritten_.load(std::memory_order_relaxed);
+    }
+
+    /**
+     * Resets the lifetime write counter. Call this alongside [flush] when
+     * starting a new track so the position estimate starts from zero.
+     */
+    void resetWriteCounter() {
+        totalWritten_.store(0, std::memory_order_relaxed);
+    }
+
+    /**
      * Pre-fills the ring buffer with [sampleCount] zeros (digital silence).
      * This is called right before the first URBs are submitted so the USB
      * pipeline has immediate data to drain — avoiding an initial waterfall of
@@ -119,5 +138,9 @@ private:
     // producer (DSP thread) and consumer (USB callback thread).
     alignas(64) std::atomic<uint32_t> writeIdx_;
     alignas(64) std::atomic<uint32_t> readIdx_;
+
+    /** Lifetime sample write counter, used by the position estimator. */
+    alignas(64) std::atomic<uint64_t> totalWritten_;
+
     alignas(64) float data_[CAPACITY];
 };

@@ -516,4 +516,29 @@ Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeSetVolume(
     uac_set_volume(g_usb_handle, &g_device_info, static_cast<int16_t>(volumeDb256));
 }
 
+/**
+ * Returns the estimated playback position for the active USB DAC stream in
+ * microseconds. Delegates to [UsbIsoStream::getPlaybackPositionUs] which
+ * computes the position from the ring buffer's write counter and current fill.
+ *
+ * @param env          JNI environment pointer.
+ * @param thiz         Calling object (unused).
+ * @param channelCount Number of interleaved output channels.
+ * @param sampleRate   Negotiated sample rate in Hz.
+ * @return Position in microseconds, or -1 if the stream is not running.
+ */
+JNIEXPORT jlong JNICALL
+Java_app_simple_felicity_engine_usb_UsbDacDriver_nativeGetPlaybackPositionUs(
+        JNIEnv * /*env*/, jobject /*thiz*/,
+        jint channelCount, jint sampleRate) {
+
+    if (g_iso_stream == nullptr || !g_iso_stream->isRunning()) {
+        return -1L;
+    }
+    return static_cast<jlong>(
+            g_iso_stream->getPlaybackPositionUs(
+                    static_cast<int>(channelCount),
+                    static_cast<int>(sampleRate)));
+}
+
 } // extern "C"

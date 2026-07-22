@@ -97,6 +97,24 @@ public:
     bool isRunning() const { return running_.load(std::memory_order_acquire); }
 
     /**
+     * Estimates the playback position in microseconds based on how many samples
+     * have been pushed into the ring buffer versus how many are still waiting
+     * to be sent over USB.
+     *
+     * The position represents audio that has already left the ring buffer and
+     * is either in-flight in a URB or already at the DAC's speaker output.
+     * It intentionally does not attempt to account for the small USB pipeline
+     * depth (a few ms) because that constant offset is negligible for seek/
+     * progress display purposes and would require per-packet accounting.
+     *
+     * @param channelCount Number of interleaved channels (matches how samples were pushed).
+     * @param sampleRate   Negotiated sample rate in Hz.
+     * @return Estimated playback position in microseconds, or -1 if the stream
+     *         has not yet produced any frames.
+     */
+    int64_t getPlaybackPositionUs(int channelCount, int sampleRate) const;
+
+    /**
      * Called from the libusb transfer callback — not for external use.
      * Refills and resubmits the transfer, or decrements the pending count if
      * we are shutting down.

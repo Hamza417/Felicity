@@ -380,6 +380,89 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioGet
 }
 
 /**
+ * Returns the estimated playback position in microseconds by asking AAudio for the
+ * most recently presented frame and its wall-clock timestamp, then extrapolating
+ * forward to the current moment. This gives a smooth, low-jitter position that
+ * ExoPlayer can use for seeking and progress display.
+ *
+ * Falls back to a buffer-depth estimate when the timestamp API is unavailable
+ * (e.g., during the first few milliseconds after a stream is started).
+ *
+ * @param env         JNI environment pointer.
+ * @param thiz        Calling object (unused).
+ * @param handle      Opaque pointer from [nativeAaudioCreate].
+ * @param sourceEnded JNI_TRUE when the source has finished delivering data.
+ * @return Playback position in microseconds, or -1 if the stream is not ready.
+ */
+JNIEXPORT jlong JNICALL
+Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioGetPlaybackPositionUs(
+        JNIEnv * /*env*/, jobject /*thiz*/, jlong handle, jboolean sourceEnded) {
+
+    auto *ctx = reinterpret_cast<AaudioContext *>(handle);
+    if (!ctx || !ctx->stream) return -1L;
+
+    const int64_t framesWritten = AAudioStream_getFramesWritten(ctx->stream);
+    if (framesWritten <= 0) return -1L;
+
+    int64_t presentedFrames = 0;
+    int64_t presentationTimeNanos = 0;
+    const aaudio_result_t tsResult = AAudioStream_getTimestamp(
+            ctx->stream, CLOCK_MONOTONIC, &presentedFrames, &presentationTimeNanos);
+
+    if (tsResult != AAUDIO_OK || presentedFrames <= 0) {
+        /** Timestamp not yet available — estimate from frames written minus buffer depth. */
+        const int32_t bufFrames = AAudioStream_getBufferSizeInFrames(ctx->stream);
+        const int64_t estimated = framesWritten - bufFrames;
+        return (estimated > 0 && ctx->sampleRate > 0)
+               ? (estimated * 1000000LL / ctx->sampleRate)
+               : -1L;
+    }
+
+    /**
+     * Interpolate from the last known presentation timestamp to "right now".
+     * The HAL tells us "frame N was at the speakers at time T". We find out
+     * how much time has passed since T and add those extra frames on top.
+     */
+    struct timespec ts{};
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    const int64_t nowNanos = static_cast<int64_t>(ts.tv_sec) * 1000000000LL + ts.tv_nsec;
+    const int64_t elapsedNanos = nowNanos - presentationTimeNanos;
+    const int64_t extraFrames = (elapsedNanos > 0 && ctx->sampleRate > 0)
+                                ? (elapsedNanos * ctx->sampleRate / 1000000000LL)
+                                : 0;
+
+    int64_t currentFrames = presentedFrames + extraFrames;
+    if (currentFrames > framesWritten) currentFrames = framesWritten;
+    if (currentFrames < 0) currentFrames = 0;
+
+    return (ctx->sampleRate > 0) ? (currentFrames * 1000000LL / ctx->sampleRate) : -1L;
+}
+
+/**
+ * Gracefully pauses the stream without tearing it down or flushing the buffers.
+ *
+ * @param env    JNI environment pointer.
+ * @param thiz   Calling object (unused).
+ * @param handle Opaque pointer from [nativeAaudioCreate].
+ */
+JNIEXPORT void JNICALL
+Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioPause(
+        JNIEnv * /*env*/, jobject /*thiz*/, jlong handle) {
+
+    auto *ctx = reinterpret_cast<AaudioContext *>(handle);
+    if (!ctx || !ctx->stream) return;
+
+    ctx->running.store(false);
+
+    // Use requestPause instead of requestStop to avoid HAL teardown latency
+    const aaudio_result_t result = AAudioStream_requestPause(ctx->stream);
+    if (result != AAUDIO_OK) {
+        AAUDIO_LOGW("nativeAaudioPause: requestPause returned (%d)", result);
+    }
+    AAUDIO_LOGI("AAudio stream paused");
+}
+
+/**
  * Gracefully stops the stream without closing it.
  *
  * @param env    JNI environment pointer.
