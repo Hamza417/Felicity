@@ -142,12 +142,13 @@ class AaudioOutputProcessor(
      */
     fun getActualFormatName(): String = when (getActualFormat()) {
         AAUDIO_FORMAT_PCM_FLOAT -> "PCM_FLOAT (32-bit)"
-        AAUDIO_FORMAT_PCM_I16   -> "PCM_I16 (16-bit, converted)"
-        else                    -> "Unknown"
+        AAUDIO_FORMAT_PCM_I16 -> "PCM_I16 (16-bit, converted)"
+        else -> "Unknown"
     }
 
     fun pause() {
         if (nativeHandle != 0L) {
+            isRunning = false
             nativeAaudioPause(nativeHandle)
         }
     }
@@ -209,7 +210,7 @@ class AaudioOutputProcessor(
         private const val TAG = "AaudioOutputProcessor"
 
         /** Matches [AAUDIO_FORMAT_PCM_I16] in [aaudio/AAudio.h]. */
-        const val AAUDIO_FORMAT_PCM_I16   = 1
+        const val AAUDIO_FORMAT_PCM_I16 = 1
 
         /** Matches [AAUDIO_FORMAT_PCM_FLOAT] in [aaudio/AAudio.h]. */
         const val AAUDIO_FORMAT_PCM_FLOAT = 2

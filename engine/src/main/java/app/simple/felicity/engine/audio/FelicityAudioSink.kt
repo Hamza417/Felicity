@@ -772,7 +772,7 @@ class FelicityAudioSink(
      * [playToEndOfStream] is called, once the hardware latency window elapses.
      */
     override fun isEnded(): Boolean {
-        if (activeSinkType == SinkType.DEFAULT) return defaultSink.isEnded()
+        if (activeSinkType == SinkType.DEFAULT) return defaultSink.isEnded
         return nativeSourceEnded && System.currentTimeMillis() >= nativeEndDeadlineMs
     }
 
@@ -859,7 +859,7 @@ class FelicityAudioSink(
     }
 
     override fun getAudioAttributes(): AudioAttributes {
-        return defaultSink.getAudioAttributes()
+        return defaultSink.audioAttributes
     }
 
     override fun setAudioSessionId(audioSessionId: Int) {
@@ -926,11 +926,11 @@ class FelicityAudioSink(
             if (stream.isReady) {
                 currentStreamSafeBufferMode = useSafeBuffers
                 isAAudioStreamActive = true
-                Log.i(TAG, "AAudio route created — ${sr} Hz / ${ch} ch / " +
+                Log.i(TAG, "AAudio route created — $sr Hz / $ch ch / " +
                         "${stream.getActualFormatName()} / safeBuffers=$useSafeBuffers")
                 AaudioNativeSink(stream, ch)
             } else {
-                Log.e(TAG, "AAudio stream creation failed for ${sr} Hz / ${ch} ch — falling back to AudioTrack")
+                Log.e(TAG, "AAudio stream creation failed for $sr Hz / $ch ch — falling back to AudioTrack")
                 isAAudioStreamActive = false
                 DefaultSinkWrapper()
             }
@@ -943,11 +943,11 @@ class FelicityAudioSink(
             if (stream.isReady) {
                 currentStreamSafeBufferMode = useSafeBuffers
                 isOboeStreamActive = true
-                Log.i(TAG, "Oboe route created — ${sr} Hz / ${ch} ch / " +
+                Log.i(TAG, "Oboe route created — $sr Hz / $ch ch / " +
                         "api=${stream.getActualApiName()} / safeBuffers=$useSafeBuffers")
                 OboeNativeSink(stream, ch)
             } else {
-                Log.e(TAG, "Oboe stream creation failed for ${sr} Hz / ${ch} ch — falling back to AudioTrack")
+                Log.e(TAG, "Oboe stream creation failed for $sr Hz / $ch ch — falling back to AudioTrack")
                 isOboeStreamActive = false
                 DefaultSinkWrapper()
             }
@@ -957,7 +957,7 @@ class FelicityAudioSink(
             val bitDepth = encodingToBitDepth(currentEncoding)
             val driver = UsbDacDriver.getInstance(context)
             driver.negotiateFormat(sr, bitDepth, ch)
-            Log.i(TAG, "USB DAC route created — ${sr} Hz / ${bitDepth}-bit / ${ch} ch")
+            Log.i(TAG, "USB DAC route created — $sr Hz / ${bitDepth}-bit / $ch ch")
             UsbNativeSink(driver, sr, ch)
         }
     }
