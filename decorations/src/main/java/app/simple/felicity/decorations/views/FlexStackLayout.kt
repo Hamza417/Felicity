@@ -5,6 +5,11 @@ import android.util.AttributeSet
 import android.view.ViewGroup
 import androidx.core.content.withStyledAttributes
 import androidx.core.view.isGone
+import androidx.core.view.isVisible
+import androidx.interpolator.view.animation.FastOutSlowInInterpolator
+import androidx.transition.ChangeBounds
+import androidx.transition.TransitionManager
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * A custom [ViewGroup] that seamlessly toggles between two layout modes:
@@ -35,7 +40,22 @@ class FlexStackLayout @JvmOverloads constructor(
     var isOverlapping: Boolean = false
         set(value) {
             if (field != value) {
+                // Only animate if the view is currently visible and attached to the screen
+                if (isAttachedToWindow && isVisible) {
+                    val changeBounds = ChangeBounds().apply {
+                        duration = 500.milliseconds.inWholeMilliseconds
+                        interpolator = FastOutSlowInInterpolator()
+                    }
+
+                    // Tell the parent to animate so the height change
+                    // of this FlexStackLayout is captured and smoothed out.
+                    val transitionRoot = (parent as? ViewGroup) ?: this
+                    TransitionManager.beginDelayedTransition(transitionRoot, changeBounds)
+                }
+
                 field = value
+
+                // Trigger the new measure and layout pass
                 requestLayout()
             }
         }
