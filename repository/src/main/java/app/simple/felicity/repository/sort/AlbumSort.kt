@@ -11,13 +11,13 @@ object AlbumSort {
     fun List<Album>.sorted(): List<Album> {
         return when (AlbumPreferences.getAlbumSort()) {
             CommonPreferencesConstants.BY_ALBUM_NAME -> when (AlbumPreferences.getSortingStyle()) {
-                CommonPreferencesConstants.ASCENDING -> sortedBy { it.name }
-                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.name }
+                CommonPreferencesConstants.ASCENDING -> sortedBy { it.name?.lowercase() }
+                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.name?.lowercase() }
                 else -> this
             }
             CommonPreferencesConstants.BY_ARTIST -> when (AlbumPreferences.getSortingStyle()) {
-                CommonPreferencesConstants.ASCENDING -> sortedBy { it.artist }
-                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.artist }
+                CommonPreferencesConstants.ASCENDING -> sortedBy { it.artist?.lowercase() }
+                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.artist?.lowercase() }
                 else -> this
             }
             CommonPreferencesConstants.BY_NUMBER_OF_SONGS -> when (AlbumPreferences.getSortingStyle()) {

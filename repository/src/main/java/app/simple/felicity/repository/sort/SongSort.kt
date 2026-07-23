@@ -11,23 +11,23 @@ object SongSort {
     fun List<Audio>.sorted(): List<Audio> {
         return when (SongsPreferences.getSongSort()) {
             CommonPreferencesConstants.BY_TITLE -> when (SongsPreferences.getSortingStyle()) {
-                CommonPreferencesConstants.ASCENDING -> sortedBy { it.title }
-                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.title }
+                CommonPreferencesConstants.ASCENDING -> sortedBy { it.title?.lowercase() }
+                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.title?.lowercase() }
                 else -> this
             }
             CommonPreferencesConstants.BY_ARTIST -> when (SongsPreferences.getSortingStyle()) {
-                CommonPreferencesConstants.ASCENDING -> sortedBy { it.artist }
-                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.artist }
+                CommonPreferencesConstants.ASCENDING -> sortedBy { it.artist?.lowercase() }
+                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.artist?.lowercase() }
                 else -> this
             }
             CommonPreferencesConstants.BY_ALBUM -> when (SongsPreferences.getSortingStyle()) {
-                CommonPreferencesConstants.ASCENDING -> sortedBy { it.album }
-                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.album }
+                CommonPreferencesConstants.ASCENDING -> sortedBy { it.album?.lowercase() }
+                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.album?.lowercase() }
                 else -> this
             }
             CommonPreferencesConstants.BY_PATH -> when (SongsPreferences.getSortingStyle()) {
-                CommonPreferencesConstants.ASCENDING -> sortedBy { it.uri }
-                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.uri }
+                CommonPreferencesConstants.ASCENDING -> sortedBy { it.uri?.lowercase() }
+                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.uri?.lowercase() }
                 else -> this
             }
             CommonPreferencesConstants.BY_DATE_ADDED -> when (SongsPreferences.getSortingStyle()) {
@@ -56,8 +56,8 @@ object SongSort {
                 else -> this
             }
             CommonPreferencesConstants.BY_COMPOSER -> when (SongsPreferences.getSortingStyle()) {
-                CommonPreferencesConstants.ASCENDING -> sortedBy { it.composer }
-                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.composer }
+                CommonPreferencesConstants.ASCENDING -> sortedBy { it.composer?.lowercase() }
+                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.composer?.lowercase() }
                 else -> this
             }
             else -> this

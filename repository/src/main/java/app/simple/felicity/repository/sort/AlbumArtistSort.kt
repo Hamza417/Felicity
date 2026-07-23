@@ -22,8 +22,8 @@ object AlbumArtistSort {
     fun List<Artist>.sortedAlbumArtists(): List<Artist> {
         return when (AlbumArtistPreferences.getAlbumArtistSort()) {
             CommonPreferencesConstants.BY_NAME -> when (AlbumArtistPreferences.getSortingStyle()) {
-                CommonPreferencesConstants.ASCENDING -> sortedBy { it.name }
-                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.name }
+                CommonPreferencesConstants.ASCENDING -> sortedBy { it.name?.lowercase() }
+                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.name?.lowercase() }
                 else -> this
             }
             CommonPreferencesConstants.BY_NUMBER_OF_ALBUMS -> when (AlbumArtistPreferences.getSortingStyle()) {
