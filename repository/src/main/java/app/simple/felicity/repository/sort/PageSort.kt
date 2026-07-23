@@ -63,10 +63,10 @@ object PageSort {
     private fun List<Audio>.applySort(sortField: Int, order: Int): List<Audio> {
         val ascending = order == CommonPreferencesConstants.ASCENDING
         return when (sortField) {
-            CommonPreferencesConstants.BY_TITLE -> if (ascending) sortedBy { it.title } else sortedByDescending { it.title }
-            CommonPreferencesConstants.BY_ARTIST -> if (ascending) sortedBy { it.artist } else sortedByDescending { it.artist }
-            CommonPreferencesConstants.BY_ALBUM -> if (ascending) sortedBy { it.album } else sortedByDescending { it.album }
-            CommonPreferencesConstants.BY_PATH -> if (ascending) sortedBy { it.uri } else sortedByDescending { it.uri }
+            CommonPreferencesConstants.BY_TITLE -> if (ascending) sortedBy { it.title?.lowercase() } else sortedByDescending { it.title?.lowercase() }
+            CommonPreferencesConstants.BY_ARTIST -> if (ascending) sortedBy { it.artist?.lowercase() } else sortedByDescending { it.artist?.lowercase() }
+            CommonPreferencesConstants.BY_ALBUM -> if (ascending) sortedBy { it.album?.lowercase() } else sortedByDescending { it.album?.lowercase() }
+            CommonPreferencesConstants.BY_PATH -> if (ascending) sortedBy { it.uri?.lowercase() } else sortedByDescending { it.uri?.lowercase() }
             CommonPreferencesConstants.BY_DATE_ADDED -> if (ascending) sortedBy { it.dateAdded } else sortedByDescending { it.dateAdded }
             CommonPreferencesConstants.BY_DATE_MODIFIED -> if (ascending) sortedBy { it.dateModified } else sortedByDescending { it.dateModified }
             CommonPreferencesConstants.BY_DURATION -> if (ascending) sortedBy { it.duration } else sortedByDescending { it.duration }
@@ -79,7 +79,7 @@ object PageSort {
                 }
                 if (ascending) sortedBy(trackInt) else sortedByDescending(trackInt)
             }
-            CommonPreferencesConstants.BY_COMPOSER -> if (ascending) sortedBy { it.composer } else sortedByDescending { it.composer }
+            CommonPreferencesConstants.BY_COMPOSER -> if (ascending) sortedBy { it.composer?.lowercase() } else sortedByDescending { it.composer?.lowercase() }
             else -> this
         }
     }

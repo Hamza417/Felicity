@@ -11,8 +11,8 @@ object ComposerSort {
     fun List<Artist>.sortedComposers(): List<Artist> {
         return when (ComposerPreferences.getComposerSort()) {
             CommonPreferencesConstants.BY_NAME -> when (ComposerPreferences.getSortingStyle()) {
-                CommonPreferencesConstants.ASCENDING -> sortedBy { it.name }
-                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.name }
+                CommonPreferencesConstants.ASCENDING -> sortedBy { it.name?.lowercase() }
+                CommonPreferencesConstants.DESCENDING -> sortedByDescending { it.name?.lowercase() }
                 else -> this
             }
             CommonPreferencesConstants.BY_NUMBER_OF_SONGS -> when (ComposerPreferences.getSortingStyle()) {
