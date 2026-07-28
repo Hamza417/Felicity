@@ -1,13 +1,15 @@
 #### User Interface
 
-- Added option to change/rename queue labels. #134
+- Added toggle to stack **Waveform** and **Media Controls** in **Now Playing** screen.
 
-#### Bug Fixes
+#### Playback
 
-- Fixed crash in devices with no SAF activity. #132
-- Fixed **Mini Player** overlapping with navigation bar.
+- Added a route based audio sink to create exclusive audio playback pipeline. #137
+    - Also, possibly fix the rainy audio issues in some devices due to exclusive audio output fixing
+      many audio underrun issues.
+    - Eliminates the need for double clock sync architecture reducing half the CPU load and saves
+      battery.
 
-#### Improvements
+#### Translations
 
-- Save/restore seek and position for each queue and switch them seamlessly when switching between
-  queues.
+- Added **Spanish** translations.
