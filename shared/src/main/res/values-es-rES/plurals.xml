@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="number_of_songs">
+        <item quantity="one">%d Canción</item>
+        <item quantity="other">%d Canciones</item>
+    </plurals>
+    <plurals name="songs_selected">
+        <item quantity="one">%d Canción Seleccionada</item>
+        <item quantity="other">%d Canciones Seleccionadas</item>
+    </plurals>
+    <plurals name="number_of_albums">
+        <item quantity="one">%d Álbum</item>
+        <item quantity="other">%d Álbumes</item>
+    </plurals>
+    <plurals name="total_times">
+        <item quantity="one">%d Vez</item>
+        <item quantity="other">%d Veces</item>
+    </plurals>
+    <plurals name="number_of_bookmarks">
+        <item quantity="one">%d Marcador</item>
+        <item quantity="other">%d Marcadores</item>
+    </plurals>
+</resources>
