@@ -213,7 +213,7 @@
         <attr name="springStiffness" format="float" />
         <!-- Spring damping ratio. <1 = bouncy. Default: 0.62. -->
         <attr name="springDamping" format="float" />
-        <!-- Whether to show the bottom dot indicator. Default: true. -->
+        <!-- Whether to show the dot indicator. Default: true. -->
         <attr name="showIndicator" format="boolean" />
         <!-- Whether to apply a directional edge fade-out effect. Default: false. -->
         <attr name="fadeEnabled" format="boolean" />
@@ -237,6 +237,43 @@
             <enum name="left_to_right" value="2" />
             <enum name="right_to_left" value="3" />
         </attr>
+        <!--
+            Which axis pages scroll along.
+            horizontal (0) – pages slide left and right (default).
+            vertical   (1) – pages slide up and down; the dot indicator moves to the right
+                             edge and rotates 90 degrees to stay parallel to the scroll axis.
+        -->
+        <attr name="slideDirection" />
+        <!--
+            Pager display mode.
+            normal   (0) – each page fills the full pager size (default).
+            carousel (1) – a square card is centered with neighbor pages peeking in from both sides.
+        -->
+        <attr name="pagerMode" />
+        <!--
+            How many pixels of the neighboring card peek in from each side in carousel mode.
+            When absent the pager defaults to 48 dp. Only used when carouselCardSize is 0.
+        -->
+        <attr name="carouselPeekMargin" />
+        <!--
+            Fixed pixel size of the square carousel card. When absent (or 0) the card size is
+            auto-computed. Only used in carousel mode.
+        -->
+        <attr name="carouselCardSize" />
+        <!--
+            Pixel gap between adjacent cards in carousel mode. Defaults to 16 dp.
+        -->
+        <attr name="carouselPageSpacing" />
+        <!--
+            Whether the neighbor cards are visible in carousel mode.
+            true = neighbors peek in (default); false = only the center card is shown.
+        -->
+        <attr name="carouselShowSidePages" />
+        <!--
+            How many dp to shrink side cards relative to the center card in carousel mode.
+            0 (default) disables the built-in scaling. Good starting values: 24 dp–64 dp.
+        -->
+        <attr name="carouselSideScaleDp" />
     </declare-styleable>
 
     <!--

@@ -15,11 +15,16 @@ import app.simple.felicity.shared.utils.UnitUtils.dpToPx
  *
  * ## Features
  * - Auto-slides through pages with a configurable delay.
- * - Dot indicators at the bottom center; the highlighted dot chases the current page
- *   using an underdamped spring for an elastic, droppy feel.
+ * - Dot indicators that follow the scroll direction; the highlighted dot chases the current
+ *   page using an underdamped spring for an elastic, droppy feel.
  * - A physics "swiftness" parameter controls the slide animation speed.
  * - User swipe support inherited from [FelicityPager].
  * - Optional directional edge-fade that grades the content from full alpha down to 0 %.
+ * - Supports [PagerMode.NORMAL] (full-size pages) and [PagerMode.CAROUSEL] (centered square
+ *   cards with neighbors peeking in from the sides).
+ * - Supports [SlideDirection.HORIZONTAL] (left/right) and [SlideDirection.VERTICAL] (up/down)
+ *   scrolling in both pager modes. The dot indicator repositions itself automatically to match
+ *   the chosen scroll axis.
  *
  * ## Usage (XML)
  * ```xml
@@ -34,12 +39,16 @@ import app.simple.felicity.shared.utils.UnitUtils.dpToPx
  *     app:showIndicator="true"
  *     app:fadeEnabled="true"
  *     app:fadeStartFraction="0.5"
- *     app:fadeDirection="top_to_bottom" />
+ *     app:fadeDirection="top_to_bottom"
+ *     app:slideDirection="vertical"
+ *     app:pagerMode="carousel" />
  * ```
  *
  * ## Usage (code)
  * ```kotlin
  * slider.setAdapter(myPageAdapter)
+ * slider.slideDirection = SlideDirection.VERTICAL
+ * slider.pagerMode = PagerMode.CAROUSEL
  * slider.start()   // begin auto-sliding
  * slider.stop()    // pause
  * ```
@@ -58,6 +67,9 @@ import app.simple.felicity.shared.utils.UnitUtils.dpToPx
  *                           opaque edge; 0.5 = the first half is fully visible, the second
  *                           half fades out (default); 1.0 = no visible fade.
  * @param fadeDirection      The direction the gradient travels (default [FadeDirection.TOP_TO_BOTTOM]).
+ * @param slideDirection     Which axis pages scroll along (default [SlideDirection.HORIZONTAL]).
+ * @param pagerMode          Whether pages fill the full view ([PagerMode.NORMAL]) or appear as
+ *                           centered cards ([PagerMode.CAROUSEL]) (default [PagerMode.NORMAL]).
  *
  * @author Hamza417
  */
@@ -162,6 +174,83 @@ class FelicitySlider @JvmOverloads constructor(
             pager.fadeDirection = v
         }
 
+    /**
+     * Which axis pages scroll along. Switching this at runtime repositions the dot indicator
+     * so it always appears parallel to the scroll axis — bottom-center for horizontal paging,
+     * right-center for vertical paging. Delegates to the underlying [FelicityPager].
+     *
+     * Default: [SlideDirection.HORIZONTAL].
+     */
+    var slideDirection: SlideDirection = SlideDirection.HORIZONTAL
+        set(v) {
+            field = v
+            pager.slideDirection = v
+            repositionDots(v)
+        }
+
+    /**
+     * Whether pages fill the entire pager ([PagerMode.NORMAL]) or appear as centered square
+     * cards with neighbors peeking in from the sides ([PagerMode.CAROUSEL]). Delegates to
+     * the underlying [FelicityPager].
+     *
+     * Default: [PagerMode.NORMAL].
+     */
+    var pagerMode: PagerMode = PagerMode.NORMAL
+        set(v) {
+            field = v
+            pager.pagerMode = v
+        }
+
+    /**
+     * Pixel gap between adjacent cards in carousel mode. Delegates to [FelicityPager].
+     * Default: 16 dp (applied automatically by the pager if never set).
+     */
+    var carouselPageSpacingPx: Float
+        get() = pager.carouselPageSpacingPx
+        set(v) {
+            pager.carouselPageSpacingPx = v
+        }
+
+    /**
+     * How many pixels of each neighboring card peek in from the sides in carousel mode.
+     * Delegates to [FelicityPager]. Default: 48 dp.
+     */
+    var carouselPeekPx: Float
+        get() = pager.carouselPeekPx
+        set(v) {
+            pager.carouselPeekPx = v
+        }
+
+    /**
+     * Fixed pixel size of the square carousel card. Set to 0 for auto-sizing.
+     * Delegates to [FelicityPager]. Default: 0 (auto).
+     */
+    var carouselCardSizePx: Int
+        get() = pager.carouselCardSizePx
+        set(v) {
+            pager.carouselCardSizePx = v
+        }
+
+    /**
+     * Whether the neighbor cards are visible in carousel mode. When false, only the center
+     * card is shown. Delegates to [FelicityPager]. Default: true.
+     */
+    var carouselShowSidePages: Boolean
+        get() = pager.carouselShowSidePages
+        set(v) {
+            pager.carouselShowSidePages = v
+        }
+
+    /**
+     * How many dp to shrink side cards relative to the center card in carousel mode.
+     * 0 disables the built-in scaling. Delegates to [FelicityPager]. Default: 0.
+     */
+    var carouselSideScaleDp: Float
+        get() = pager.carouselSideScaleDp
+        set(v) {
+            pager.carouselSideScaleDp = v
+        }
+
     private var isRunning = false
 
     // ── Initialisation ───────────────────────────────────────────────────────────
@@ -180,6 +269,24 @@ class FelicitySlider @JvmOverloads constructor(
                 fadeDirection = FadeDirection.fromInt(
                         getInt(R.styleable.FelicitySlider_fadeDirection, 0)
                 )
+                slideDirection = SlideDirection.fromInt(
+                        getInt(R.styleable.FelicitySlider_slideDirection, 0)
+                )
+                pagerMode = PagerMode.fromInt(
+                        getInt(R.styleable.FelicitySlider_pagerMode, 0)
+                )
+                if (hasValue(R.styleable.FelicitySlider_carouselPageSpacing)) {
+                    carouselPageSpacingPx = getDimension(R.styleable.FelicitySlider_carouselPageSpacing, 0f)
+                }
+                if (hasValue(R.styleable.FelicitySlider_carouselPeekMargin)) {
+                    carouselPeekPx = getDimension(R.styleable.FelicitySlider_carouselPeekMargin, 0f)
+                }
+                carouselCardSizePx = getDimensionPixelSize(R.styleable.FelicitySlider_carouselCardSize, 0)
+                carouselShowSidePages = getBoolean(R.styleable.FelicitySlider_carouselShowSidePages, true)
+                if (hasValue(R.styleable.FelicitySlider_carouselSideScaleDp)) {
+                    val rawPx = getDimension(R.styleable.FelicitySlider_carouselSideScaleDp, 0f)
+                    carouselSideScaleDp = rawPx / resources.displayMetrics.density
+                }
             }
         }
 
@@ -192,10 +299,7 @@ class FelicitySlider @JvmOverloads constructor(
         addView(pager, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
 
         val dotsPadding = dpToPx(12f).toInt()
-        val dotsParams = LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-            gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-            bottomMargin = dotsPadding
-        }
+        val dotsParams = buildDotsParams(slideDirection, dotsPadding)
         addView(dots, dotsParams)
         dots.visibility = if (showIndicator) View.VISIBLE else View.GONE
 
@@ -287,6 +391,35 @@ class FelicitySlider @JvmOverloads constructor(
     private fun swiftnessToDurationMs(swiftness: Float): Long {
         val ms = 900f - swiftness * (900f - 220f)
         return ms.toLong().coerceIn(100L, 1200L)
+    }
+
+    /**
+     * Builds the [LayoutParams] that pin the dot indicator to the correct edge for
+     * the given [direction]. For horizontal scrolling the dots sit at the bottom center.
+     * For vertical scrolling they move to the end (right) edge, centered vertically, and
+     * are rotated 90 degrees so the dot row runs parallel to the scroll axis.
+     */
+    private fun buildDotsParams(direction: SlideDirection, padding: Int): LayoutParams {
+        return LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            if (direction == SlideDirection.VERTICAL) {
+                gravity = Gravity.END or Gravity.CENTER_VERTICAL
+                marginEnd = padding
+            } else {
+                gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+                bottomMargin = padding
+            }
+        }
+    }
+
+    /**
+     * Moves the dot indicator to the right edge (with 90-degree rotation) when [direction]
+     * is vertical, or back to the bottom center when it is horizontal. Also resets the
+     * rotation so a dot row that was previously tilted returns to its natural orientation.
+     */
+    private fun repositionDots(direction: SlideDirection) {
+        val padding = dpToPx(12f).toInt()
+        dots.layoutParams = buildDotsParams(direction, padding)
+        dots.rotation = if (direction == SlideDirection.VERTICAL) 90f else 0f
     }
 }
 
