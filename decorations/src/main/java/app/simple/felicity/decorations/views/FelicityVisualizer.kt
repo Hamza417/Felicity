@@ -383,12 +383,19 @@ class FelicityVisualizer @JvmOverloads constructor(
     }
 
     /**
-     * Hides or shows the peak-hold caps by making their paint fully transparent
-     * or restoring it to the normal opacity.
+     * Whether the peak-hold cap pills above each bar should be drawn.
+     * Unlike toggling the paint alpha, this flag survives accent color changes
+     * because the draw call is skipped entirely when false.
      */
+    var capsEnabled: Boolean = true
+        set(value) {
+            field = value
+            invalidate()
+        }
+
+    /** Convenience setter that mirrors the [capsEnabled] property. */
     fun setCapsEnabled(enabled: Boolean) {
-        capPaint.alpha = if (enabled) 220 else 0
-        invalidate()
+        capsEnabled = enabled
     }
 
     /**
@@ -648,7 +655,7 @@ class FelicityVisualizer @JvmOverloads constructor(
                             (peakPos + capPillDim / 2f).coerceAtMost(viewBottom)
                     )
                 }
-                canvas.drawRoundRect(drawRect, cornerRadius, cornerRadius, capPaint)
+                if (capsEnabled) canvas.drawRoundRect(drawRect, cornerRadius, cornerRadius, capPaint)
             }
         }
 
@@ -907,6 +914,8 @@ class FelicityVisualizer @JvmOverloads constructor(
             applyModePreferences()
             visibility = if (PlayerPreferences.isVisualizerEnabled()) VISIBLE else GONE
             particlesEnabled = VisualizerPreferences.areParticlesEnabled()
+            capsEnabled = VisualizerPreferences.areCapsEnabled()
+            barsEnabled = VisualizerPreferences.areBarsEnabled()
             capPaint.color = ThemeManager.accent.primaryAccentColor
         }
     }
