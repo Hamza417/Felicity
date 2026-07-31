@@ -102,9 +102,20 @@ class UsbDacDriver private constructor(private val context: Context) {
      * Call this when the service is destroyed.
      */
     fun detach() {
+        // Prevent double-detachment if this is called multiple times
+        if (!isAttached) return
         isAttached = false
+
         runCatching { context.unregisterReceiver(permissionReceiver) }
-        UsbDacManager.notifyDetached()
+
+        // Catch the Media3 IllegalStateException so it doesn't crash the Service
+        runCatching {
+            UsbDacManager.notifyDetached()
+        }.onFailure { e ->
+            Log.w(TAG, "Media3 threw an exception during detach, ignoring.", e)
+        }
+
+        // Guarantee these run even if notifyDetached() fails
         nativeStopStream()
         releaseConnection()
         Log.d(TAG, "UsbDacDriver detached")
