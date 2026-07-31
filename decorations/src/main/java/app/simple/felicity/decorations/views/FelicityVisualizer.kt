@@ -233,6 +233,12 @@ class FelicityVisualizer @JvmOverloads constructor(
             VisualizerPreferences.PARTICLES_ENABLED -> {
                 particlesEnabled = VisualizerPreferences.areParticlesEnabled()
             }
+            VisualizerPreferences.CAPS_ENABLED -> {
+                setCapsEnabled(VisualizerPreferences.areCapsEnabled())
+            }
+            VisualizerPreferences.BARS_ENABLED -> {
+                barsEnabled = VisualizerPreferences.areBarsEnabled()
+            }
         }
     }
 
@@ -377,12 +383,24 @@ class FelicityVisualizer @JvmOverloads constructor(
     }
 
     /**
-     * Toggle cap visibility
+     * Hides or shows the peak-hold caps by making their paint fully transparent
+     * or restoring it to the normal opacity.
      */
     fun setCapsEnabled(enabled: Boolean) {
         capPaint.alpha = if (enabled) 220 else 0
         invalidate()
     }
+
+    /**
+     * Whether the frequency bars themselves should be drawn.
+     * When set to false the bars disappear but caps and particles still
+     * follow their own toggle — useful for a "caps-only" look.
+     */
+    var barsEnabled: Boolean = true
+        set(value) {
+            field = value
+            invalidate()
+        }
 
     /** Animates all bars and peaks down to zero by zeroing the back buffer and swapping. */
     fun clear() {
@@ -569,7 +587,7 @@ class FelicityVisualizer @JvmOverloads constructor(
 
             barPath.reset()
             barPath.addRoundRect(drawRect, barCornerRadii, Path.Direction.CW)
-            canvas.drawPath(barPath, barPaint)
+            if (barsEnabled) canvas.drawPath(barPath, barPaint)
 
             if (particlesEnabled && particleCooldowns[i] > 0) particleCooldowns[i]--
 

@@ -12,6 +12,7 @@ object VisualizerPreferences {
     const val VISUALIZER_TYPE = "visualizer_type"
     const val PARTICLES_ENABLED = "visualizer_particles_enabled"
     const val CAPS_ENABLED = "visualizer_caps_enabled"
+    const val BARS_ENABLED = "visualizer_bars_enabled"
 
     /** SharedPreferences key for the active FelicityVisualizer bar-growth direction. */
     const val VISUALIZER_DIRECTION = "visualizer_direction"
@@ -62,6 +63,17 @@ object VisualizerPreferences {
     fun areCapsEnabled(): Boolean {
         return SharedPreferences.getSharedPreferences()
             .getBoolean(CAPS_ENABLED, true)
+    }
+
+    fun setBarsEnabled(enabled: Boolean) {
+        SharedPreferences.getSharedPreferences().edit {
+            putBoolean(BARS_ENABLED, enabled)
+        }
+    }
+
+    fun areBarsEnabled(): Boolean {
+        return SharedPreferences.getSharedPreferences()
+            .getBoolean(BARS_ENABLED, true)
     }
 
     /**

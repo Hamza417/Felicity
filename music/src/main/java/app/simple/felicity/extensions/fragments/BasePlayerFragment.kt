@@ -169,6 +169,7 @@ abstract class BasePlayerFragment : MediaFragment() {
         updateState()
         setVisualizerState()
         setVisualizerCapsState()
+        setVisualizerBarsState()
         setLyricsState()
         updateMediaControlOverlap()
 
@@ -444,6 +445,10 @@ abstract class BasePlayerFragment : MediaFragment() {
         visualizer.setCapsEnabled(VisualizerPreferences.areCapsEnabled())
     }
 
+    private fun setVisualizerBarsState() {
+        visualizer.barsEnabled = VisualizerPreferences.areBarsEnabled()
+    }
+
     private fun setLyricsState() {
         lrc.visibility = if (PlayerPreferences.isShowLyrics()) View.VISIBLE else View.GONE
     }
@@ -676,6 +681,9 @@ abstract class BasePlayerFragment : MediaFragment() {
             }
             VisualizerPreferences.CAPS_ENABLED -> {
                 setVisualizerCapsState()
+            }
+            VisualizerPreferences.BARS_ENABLED -> {
+                setVisualizerBarsState()
             }
             PlayerPreferences.WAVEFORM_MODE -> {
                 seekbar.waveformMode = PlayerPreferences.getWaveformMode()
