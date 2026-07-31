@@ -8,6 +8,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import app.simple.felicity.repository.database.dao.AlbumArtColorsDao
 import app.simple.felicity.repository.database.dao.AlbumInfoCacheDao
 import app.simple.felicity.repository.database.dao.ArtistInfoCacheDao
 import app.simple.felicity.repository.database.dao.AudioDao
@@ -17,6 +18,7 @@ import app.simple.felicity.repository.database.dao.PlaybackStateDao
 import app.simple.felicity.repository.database.dao.PlaylistDao
 import app.simple.felicity.repository.database.dao.SavedQueueDao
 import app.simple.felicity.repository.database.dao.SongStatDao
+import app.simple.felicity.repository.models.AlbumArtColors
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.AudioBookmark
 import app.simple.felicity.repository.models.AudioStat
@@ -58,6 +60,10 @@ import app.simple.felicity.repository.models.SavedQueueEntry
  *   {@code saved_queue} so that switching between queues restores the exact song
  *   index and playback position the user left off at, instead of resetting to the
  *   first song every time.
+ *   20 → 21: Created the {@code album_art_colors} table that caches the full set of
+ *   light and dark theme colors decoded from each track's album art palette. This
+ *   means the app only needs to extract the bitmap once per track — every subsequent
+ *   song change just does a cheap database lookup instead of re-decoding the image.
  *
  * @author Hamza417
  */
@@ -72,9 +78,10 @@ import app.simple.felicity.repository.models.SavedQueueEntry
             MusicBrainzArtistInfo::class,
             MusicBrainzAlbumInfo::class,
             AudioBookmark::class,
-            SavedQueueEntry::class
+            SavedQueueEntry::class,
+            AlbumArtColors::class
         ],
-        version = 20,
+        version = 21,
         exportSchema = true
 )
 abstract class AudioDatabase : RoomDatabase() {
@@ -88,6 +95,7 @@ abstract class AudioDatabase : RoomDatabase() {
     abstract fun artistInfoCacheDao(): ArtistInfoCacheDao
     abstract fun albumInfoCacheDao(): AlbumInfoCacheDao
     abstract fun bookmarkDao(): BookmarkDao
+    abstract fun albumArtColorsDao(): AlbumArtColorsDao
 
     companion object {
         private const val DB_NAME = "audio.db"
@@ -280,6 +288,54 @@ abstract class AudioDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Creates the [album_art_colors] table so the app can cache every track's
+         * decoded light and dark palette colors. Once a track's colors are stored here,
+         * switching to that song is just a single SELECT — no bitmap is decoded again.
+         *
+         * Each row is uniquely identified by [audioHash], mirroring the same fingerprint
+         * strategy used by [song_stats]. No foreign key is used so the cache survives
+         * library deletions and re-associates automatically on the next rescan.
+         */
+        private val MIGRATION_20_21 = object : Migration(20, 21) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `album_art_colors` (
+                        `audioHash` INTEGER NOT NULL PRIMARY KEY,
+                        `heading_text_color` INTEGER NOT NULL,
+                        `primary_text_color` INTEGER NOT NULL,
+                        `secondary_text_color` INTEGER NOT NULL,
+                        `tertiary_text_color` INTEGER NOT NULL,
+                        `quaternary_text_color` INTEGER NOT NULL,
+                        `background` INTEGER NOT NULL,
+                        `highlight_background` INTEGER NOT NULL,
+                        `selected_background` INTEGER NOT NULL,
+                        `divider_background` INTEGER NOT NULL,
+                        `spot_color` INTEGER NOT NULL,
+                        `switch_off_color` INTEGER NOT NULL,
+                        `regular_icon_color` INTEGER NOT NULL,
+                        `secondary_icon_color` INTEGER NOT NULL,
+                        `disabled_icon_color` INTEGER NOT NULL,
+                        `heading_text_color_dark` INTEGER NOT NULL,
+                        `primary_text_color_dark` INTEGER NOT NULL,
+                        `secondary_text_color_dark` INTEGER NOT NULL,
+                        `tertiary_text_color_dark` INTEGER NOT NULL,
+                        `quaternary_text_color_dark` INTEGER NOT NULL,
+                        `background_dark` INTEGER NOT NULL,
+                        `highlight_background_dark` INTEGER NOT NULL,
+                        `selected_background_dark` INTEGER NOT NULL,
+                        `divider_background_dark` INTEGER NOT NULL,
+                        `spot_color_dark` INTEGER NOT NULL,
+                        `switch_off_color_dark` INTEGER NOT NULL,
+                        `regular_icon_color_dark` INTEGER NOT NULL,
+                        `secondary_icon_color_dark` INTEGER NOT NULL,
+                        `disabled_icon_color_dark` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_album_art_colors_audioHash` ON `album_art_colors` (`audioHash`)")
+            }
+        }
+
         fun getInstance(context: Context): AudioDatabase {
             return instance ?: synchronized(this) {
                 instance ?: buildDatabase(context.applicationContext).also {
@@ -320,7 +376,7 @@ abstract class AudioDatabase : RoomDatabase() {
         private fun buildDatabase(context: Context): AudioDatabase {
             expandCursorWindowSize()
             return Room.databaseBuilder(context, AudioDatabase::class.java, DB_NAME)
-                .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20)
+                .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21)
                 .fallbackToDestructiveMigration(dropAllTables = true)
                 .build()
         }
