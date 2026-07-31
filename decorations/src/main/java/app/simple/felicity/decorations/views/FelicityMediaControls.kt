@@ -135,6 +135,13 @@ class FelicityMediaControls @JvmOverloads constructor(
         }
     }
 
+    /**
+     * The resolved visibility of the seek buttons after factoring in the available width.
+     * Even if [showSeekButtons] is true, this will flip to false when the view is too narrow
+     * to draw all five buttons without them overlapping or getting clipped.
+     */
+    private var effectiveShowSeekButtons = true
+
     // Playback state
     private var isPlaying = false
 
@@ -310,7 +317,14 @@ class FelicityMediaControls @JvmOverloads constructor(
         val midY = paddingTop + contentH / 2f
         contentCenterX = paddingLeft + contentW / 2f
 
-        if (showSeekButtons) {
+        // Figure out the narrowest width where all five buttons still fit comfortably.
+        // If the parent gives us less than that, we quietly drop the seek buttons so
+        // nothing gets clipped or squished together.
+        val ref = resources.getDimensionPixelSize(R.dimen.play_button_size) * buttonsSizePercent
+        val minWidthFor5 = ref * (FWD_REW_RATIO + PREV_NEXT_RATIO + PLAY_RATIO + PREV_NEXT_RATIO + FWD_REW_RATIO) + 4 * gapPx
+        effectiveShowSeekButtons = showSeekButtons && (contentW >= minWidthFor5)
+
+        if (effectiveShowSeekButtons) {
             // 5 slots — total weight = 0.6 + 0.7 + 1.0 + 0.7 + 0.6 = 3.6
             val totalWeight = FWD_REW_RATIO + PREV_NEXT_RATIO + PLAY_RATIO + PREV_NEXT_RATIO + FWD_REW_RATIO
             val totalGaps = 4 * gapPx
@@ -322,7 +336,9 @@ class FelicityMediaControls @JvmOverloads constructor(
             btnHalf[BTN_NEXT] = base * PREV_NEXT_RATIO / 2f
             btnHalf[BTN_FORWARD] = base * FWD_REW_RATIO / 2f
         } else {
-            // 3 slots — total weight = 0.7 + 1.0 + 0.7 = 2.4; seek buttons take zero space
+            // 3 slots — total weight = 0.7 + 1.0 + 0.7 = 2.4
+            // Seek buttons are either hidden by the caller or auto-hidden because there isn't
+            // enough room, so they contribute zero width here.
             val totalWeight = PREV_NEXT_RATIO + PLAY_RATIO + PREV_NEXT_RATIO
             val totalGaps = 2 * gapPx
             val base = minOf(contentH, (contentW - totalGaps) / totalWeight) * buttonsSizePercent
@@ -348,7 +364,7 @@ class FelicityMediaControls @JvmOverloads constructor(
      * call so positions always match the live scale values.
      */
     private fun computeDynamicCenters() {
-        val slots = if (showSeekButtons) intArrayOf(BTN_REWIND, BTN_PREVIOUS, BTN_PLAY, BTN_NEXT, BTN_FORWARD)
+        val slots = if (effectiveShowSeekButtons) intArrayOf(BTN_REWIND, BTN_PREVIOUS, BTN_PLAY, BTN_NEXT, BTN_FORWARD)
         else intArrayOf(BTN_PREVIOUS, BTN_PLAY, BTN_NEXT)
 
         // Total pixel width occupied by all buttons at their current scale + gaps
@@ -372,7 +388,7 @@ class FelicityMediaControls @JvmOverloads constructor(
         super.onDraw(canvas)
         // Recompute positions so every button slides on X to maintain exact gaps
         computeDynamicCenters()
-        val slots = if (showSeekButtons) intArrayOf(0, 1, 2, 3, 4) else intArrayOf(1, 2, 3)
+        val slots = if (effectiveShowSeekButtons) intArrayOf(0, 1, 2, 3, 4) else intArrayOf(1, 2, 3)
         for (btn in slots) {
             drawSlot(canvas, btn)
         }
@@ -591,7 +607,7 @@ class FelicityMediaControls @JvmOverloads constructor(
      * same dynamic centers as drawing so touch targets are always where you see them.
      */
     private fun hitTest(x: Float, y: Float): Int {
-        val slots = if (showSeekButtons) intArrayOf(0, 1, 2, 3, 4) else intArrayOf(1, 2, 3)
+        val slots = if (effectiveShowSeekButtons) intArrayOf(0, 1, 2, 3, 4) else intArrayOf(1, 2, 3)
         for (btn in slots) {
             val hs = btnHalf[btn] * currentScale(btn)
             if (x in (dynCx[btn] - hs)..(dynCx[btn] + hs) &&
