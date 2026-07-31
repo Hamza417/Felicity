@@ -339,7 +339,11 @@ abstract class BasePlayerFragment : MediaFragment() {
 
         // When the user taps a bar (no drag) we show the bookmark context menu
         // anchored to the tapped position so they can add or remove a bookmark there.
-        seekbar.setOnBarTapListener { positionMs ->
+        //        seekbar.setOnBarTapListener { positionMs ->
+        //            openBookmarkMenu(positionMs)
+        //        }
+
+        seekbar.setOnBarLongTapListener { positionMs ->
             openBookmarkMenu(positionMs)
         }
 

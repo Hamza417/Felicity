@@ -121,6 +121,23 @@ class WaveformSeekbar @JvmOverloads constructor(
     }
 
     /**
+     * Notified when the user presses and holds on a specific bar in the waveform without dragging.
+     * Similar to [OnBarTapListener], but triggered by a long press instead of a quick tap.
+     *
+     * Use this to show an extended options menu or perform a special action at the held position.
+     */
+    fun interface OnBarLongTapListener {
+        /**
+         * Called once when the user holds their finger on a bar long enough to trigger a long press,
+         * without having moved past the tap-slop threshold.
+         *
+         * @param positionMs the playback position in milliseconds that corresponds
+         *                   to the bar the user long-pressed
+         */
+        fun onBarLongTapped(positionMs: Long)
+    }
+
+    /**
      * Notified on each animation frame while a fling gesture is actively scrolling the waveform.
      * While any registered [OnFlingRunningListener] is active, [setProgress] will not accept
      * external updates to prevent the song position from snapping back mid-fling.
@@ -201,6 +218,30 @@ class WaveformSeekbar @JvmOverloads constructor(
     private var leftLabelProvider: LeftLabelProvider? = null
     private var rightLabelProvider: RightLabelProvider? = null
     private var barTapListener: OnBarTapListener? = null
+    private var barLongTapListener: OnBarLongTapListener? = null
+
+    // Posted in ACTION_DOWN and cancelled in ACTION_MOVE / ACTION_UP to detect long presses.
+    private val longPressRunnable = Runnable {
+        if (!isDragging) return@Runnable
+        val barStep = barWidthPx + barSpacingPx
+        val totalScrollRange = amplitudes.size * barStep
+        val displayProgress = animatedProgressMs
+        val progressFraction = displayProgress.toFloat().coerceIn(0f, durationMs.toFloat()) / durationMs.toFloat()
+        val scrollOffset = progressFraction * totalScrollRange
+        val centerX = width / 2f
+        val tapScrollPos = touchDownX - centerX + scrollOffset
+        val tappedMs = if (totalScrollRange > 0f && durationMs > 0L) {
+            (tapScrollPos / totalScrollRange * durationMs).toLong().coerceIn(0L, durationMs)
+        } else {
+            displayProgress
+        }
+        isDragging = false
+        parent?.requestDisallowInterceptTouchEvent(false)
+        animateLabelVisibility(true)
+        animateSeekLine(false)
+        barLongTapListener?.onBarLongTapped(tappedMs)
+        performClick()
+    }
 
     private var playedColor: Int = Color.WHITE
     private var unplayedColor: Int = Color.GRAY
@@ -870,6 +911,9 @@ class WaveformSeekbar @JvmOverloads constructor(
                 animateLabelVisibility(false)
                 animateSeekLine(true)
                 seekListener?.onSeekStart()
+                if (barLongTapListener != null) {
+                    postDelayed(longPressRunnable, ViewConfiguration.getLongPressTimeout().toLong())
+                }
                 invalidate()
                 return true
             }
@@ -879,6 +923,10 @@ class WaveformSeekbar @JvmOverloads constructor(
                     velocityTracker?.addMovement(event)
 
                     val deltaX = event.x - dragStartX
+                    // Cancel the long-press timer as soon as the finger travels past the slop boundary
+                    if (abs(event.x - touchDownX) > TAP_SLOP_PX || abs(event.y - touchDownY) > TAP_SLOP_PX) {
+                        removeCallbacks(longPressRunnable)
+                    }
                     val barStep = barWidthPx + barSpacingPx
                     val deltaMs = if (amplitudes.isNotEmpty() && barStep > 0f) {
                         // Swiping left → seeking forward; swiping right → seeking backward
@@ -895,6 +943,7 @@ class WaveformSeekbar @JvmOverloads constructor(
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 if (isDragging) {
+                    removeCallbacks(longPressRunnable)
                     velocityTracker?.addMovement(event)
                     velocityTracker?.computeCurrentVelocity(FLING_VELOCITY_UNITS)
                     val xVelocity = velocityTracker?.xVelocity ?: 0f
@@ -1369,6 +1418,17 @@ class WaveformSeekbar @JvmOverloads constructor(
     }
 
     /**
+     * Registers a listener that fires when the user long-presses on a bar without dragging.
+     * The long-pressed bar's playback position (in milliseconds) is passed to the callback.
+     * Use this to open an extended options menu or trigger a special action at the held position.
+     *
+     * @param listener the [OnBarLongTapListener] to register, or `null` to unregister
+     */
+    fun setOnBarLongTapListener(listener: OnBarLongTapListener?) {
+        barLongTapListener = listener
+    }
+
+    /**
      * Sets the provider for the left-side (elapsed) time label.
      *
      * @param provider label string provider, or `null` to hide the label
@@ -1408,6 +1468,7 @@ class WaveformSeekbar @JvmOverloads constructor(
         labelAnimator?.cancel()
         leftFadeAnimator?.cancel()
         seekLineAnimator?.cancel()
+        removeCallbacks(longPressRunnable)
         overScroller.abortAnimation()
         isFling = false
         velocityTracker?.recycle()
