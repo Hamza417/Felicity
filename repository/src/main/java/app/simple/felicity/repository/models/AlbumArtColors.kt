@@ -116,5 +116,15 @@ data class AlbumArtColors(
 
         @ColumnInfo(name = "disabled_icon_color_dark")
         val disabledIconColorDark: Int,
+
+        /**
+         * The two raw accent tones from the MonetPalette that drive the album art accent color.
+         * Storing them here means we can restore the accent chip without touching the bitmap again.
+         */
+        @ColumnInfo(name = "accent1_500")
+        val accent1_500: Int,
+
+        @ColumnInfo(name = "accent1_300")
+        val accent1_300: Int,
 )
 

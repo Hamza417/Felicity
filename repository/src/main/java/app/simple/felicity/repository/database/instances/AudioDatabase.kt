@@ -329,7 +329,9 @@ abstract class AudioDatabase : RoomDatabase() {
                         `switch_off_color_dark` INTEGER NOT NULL,
                         `regular_icon_color_dark` INTEGER NOT NULL,
                         `secondary_icon_color_dark` INTEGER NOT NULL,
-                        `disabled_icon_color_dark` INTEGER NOT NULL
+                        `disabled_icon_color_dark` INTEGER NOT NULL,
+                        `accent1_500` INTEGER NOT NULL,
+                        `accent1_300` INTEGER NOT NULL
                     )
                 """.trimIndent())
                 db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_album_art_colors_audioHash` ON `album_art_colors` (`audioHash`)")
