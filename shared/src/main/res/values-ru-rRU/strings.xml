@@ -415,6 +415,8 @@
     <string name="clear_image_cache">Очистить кэш изображений</string>
     <string name="clear_image_cache_summary">Очистить весь кэш изображений. Кэш будет воссоздан. Используйте, если видите неверные обложки.</string>
     <string name="done">Готово</string>
+    <string name="manage_music_folders">Управление папками с музыкой</string>
+    <string name="manage_music_folders_desc">Управление локальными каталогами для индексирования библиотеки.</string>
     <!-- Dashboard section titles and chips -->
     <string name="top_artists">Топ исполнителей</string>
     <string name="top_albums">Топ альбомов</string>
@@ -471,4 +473,13 @@
     <string name="carousel">Карусель</string>
     <string name="carousel_ui_desc">Простой стиль плеера с типом карусели обложки.</string>
     <string name="caps">Капс</string>
+    <string name="current_queue">Очередь %1$d</string>
+    <string name="rename">Переименовать</string>
+    <string name="volume_controls">Регуляторы громкости</string>
+    <string name="volume_controls_summary">Показывать регуляторы громкости при нажатии кнопок громкости.</string>
+    <string name="usb_dac_control_summary">Используйте внутренний драйвер ЦАП приложения для создания прямого аудиовыхода через ЦАП.</string>
+    <string name="stack_media_controls">Сложить элементы управления медиа</string>
+    <string name="stack_media_controls_summary">Сложить элементы управления медиа с формой волны для создания большего вертикального пространства.</string>
+    <string name="timer_position">Позиция таймера</string>
+    <string name="waveform_menu">Меню формы волны</string>
 </resources>

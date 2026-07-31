@@ -473,4 +473,13 @@
     <string name="carousel">Carousel</string>
     <string name="carousel_ui_desc">Einfache Player-Stil mit Karussell-Art Albumkunst.</string>
     <string name="caps">Caps</string>
+    <string name="current_queue">Warteschlange %1$d</string>
+    <string name="rename">Umbenennen</string>
+    <string name="volume_controls">Lautstärkeregler</string>
+    <string name="volume_controls_summary">Lautstärkeregler anzeigen, wenn die Lautstärketasten gedrückt werden.</string>
+    <string name="usb_dac_control_summary">Verwende den internen DAC-Treiber der App, um eine direkte Audioausgabe über DAC zu erstellen.</string>
+    <string name="stack_media_controls">Mediensteuerung stapeln</string>
+    <string name="stack_media_controls_summary">Mediensteuerung mit Wellenform stapeln, um mehr vertikalen Platz zu schaffen.</string>
+    <string name="timer_position">Timer-Position</string>
+    <string name="waveform_menu">Wellenform-Menü</string>
 </resources>
