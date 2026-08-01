@@ -473,6 +473,7 @@
     <string name="carousel">Karuzela</string>
     <string name="carousel_ui_desc">Prosty styl odtwarzacza z okładkami w stylu karuzeli.</string>
     <string name="caps">Wielkie litery</string>
+    <string name="bars">Paski</string>
     <string name="current_queue">Kolejka %1$d</string>
     <string name="rename">Zmień nazwę</string>
     <string name="volume_controls">Regulacja głośności</string>
