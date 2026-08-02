@@ -234,7 +234,7 @@ class FelicityVisualizer @JvmOverloads constructor(
                 particlesEnabled = VisualizerPreferences.areParticlesEnabled()
             }
             VisualizerPreferences.CAPS_ENABLED -> {
-                setCapsEnabled(VisualizerPreferences.areCapsEnabled())
+                capsEnabled = VisualizerPreferences.areCapsEnabled()
             }
             VisualizerPreferences.BARS_ENABLED -> {
                 barsEnabled = VisualizerPreferences.areBarsEnabled()
@@ -392,11 +392,6 @@ class FelicityVisualizer @JvmOverloads constructor(
             field = value
             invalidate()
         }
-
-    /** Convenience setter that mirrors the [capsEnabled] property. */
-    fun setCapsEnabled(enabled: Boolean) {
-        capsEnabled = enabled
-    }
 
     /**
      * Whether the frequency bars themselves should be drawn.
