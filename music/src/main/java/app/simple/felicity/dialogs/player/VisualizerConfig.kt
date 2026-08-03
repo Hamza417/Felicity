@@ -42,11 +42,6 @@ class VisualizerConfig : MediaBottomDialogFragment() {
         binding.capsToggle.setOnCheckedChangeListener { _, isChecked ->
             VisualizerPreferences.setCapsEnabled(isChecked)
         }
-
-        binding.barsToggle.isChecked = VisualizerPreferences.areBarsEnabled()
-        binding.barsToggle.setOnCheckedChangeListener { _, isChecked ->
-            VisualizerPreferences.setBarsEnabled(isChecked)
-        }
     }
 
     fun updateVizStyleState() {

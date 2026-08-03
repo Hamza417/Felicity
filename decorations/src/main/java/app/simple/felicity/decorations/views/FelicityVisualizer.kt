@@ -236,9 +236,6 @@ class FelicityVisualizer @JvmOverloads constructor(
             VisualizerPreferences.CAPS_ENABLED -> {
                 capsEnabled = VisualizerPreferences.areCapsEnabled()
             }
-            VisualizerPreferences.BARS_ENABLED -> {
-                barsEnabled = VisualizerPreferences.areBarsEnabled()
-            }
         }
     }
 
@@ -910,7 +907,6 @@ class FelicityVisualizer @JvmOverloads constructor(
             visibility = if (PlayerPreferences.isVisualizerEnabled()) VISIBLE else GONE
             particlesEnabled = VisualizerPreferences.areParticlesEnabled()
             capsEnabled = VisualizerPreferences.areCapsEnabled()
-            barsEnabled = VisualizerPreferences.areBarsEnabled()
             capPaint.color = ThemeManager.accent.primaryAccentColor
         }
     }
