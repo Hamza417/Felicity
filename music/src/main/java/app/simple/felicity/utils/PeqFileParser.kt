@@ -1,31 +1,36 @@
 package app.simple.felicity.utils
 
+import org.json.JSONArray
+import org.json.JSONException
+import org.json.JSONObject
+
 /**
- * Parses the standard AutoEQ / ParametricEQ plain-text format that tools like CrinGraph,
- * SquigLink, and most online EQ generators produce. A typical file looks like this:
+ * Parses parametric EQ presets from two different file formats so the user can import
+ * presets from a wide range of tools without worrying about which format they used.
  *
- * ```
- * Preamp: -3.5 dB
- * Filter 1: ON PK  Fc 80   Hz Gain  4.2 dB Q 0.8
- * Filter 2: ON LSC Fc 30   Hz Gain -5.0 dB Q 0.7
- * Filter 3: ON HSC Fc 8000 Hz Gain -2.5 dB Q 0.7
- * Filter 4: OFF PK Fc 400  Hz Gain  0.0 dB Q 1.0
- * ```
+ * The two supported formats are:
  *
- * Recognized filter type keywords (case-insensitive):
- *   PK  — peaking (bell) filter
- *   LSC or LS — low-shelf filter
- *   HSC or HS — high-shelf filter
+ * 1. The AutoEQ / ParametricEQ plain-text format produced by tools like CrinGraph and
+ *    SquigLink. A typical file looks like:
+ *    ```
+ *    Preamp: -3.5 dB
+ *    Filter 1: ON PK  Fc 80   Hz Gain  4.2 dB Q 0.8
+ *    Filter 2: ON LSC Fc 30   Hz Gain -5.0 dB Q 0.7
+ *    Filter 3: ON HSC Fc 8000 Hz Gain -2.5 dB Q 0.7
+ *    Filter 4: OFF PK Fc 400  Hz Gain  0.0 dB Q 1.0
+ *    ```
+ *    Recognized type keywords (case-insensitive): PK, LSC/LS (low-shelf), HSC/HS (high-shelf).
+ *    Filters marked OFF are silently skipped.
  *
- * Any filter whose status token is not "ON" is silently skipped, so disabled
- * filters from the source file are never imported. Lines that are completely
- * unrecognized are also ignored, which keeps the parser tolerant of comments
- * or extra metadata some tools may add.
+ * 2. A JSON array format where each element is a preset object with a `name`, `preamp`,
+ *    and `bands` array. Each band carries `type` (0 = low-shelf, 1 = high-shelf, 3 = peak),
+ *    `frequency`, `q`, and `gain` fields. The first element in the array is used.
+ *
+ * The format is detected automatically by checking whether the content starts with `[` or `{`.
  *
  * Note: the current DSP engine handles all parametric bands as peaking filters.
- * Low-shelf and high-shelf entries from the file are imported with their gain,
- * Q, and frequency preserved, but their exact shelf curve shape is not replicated
- * by the engine at this time.
+ * Low-shelf and high-shelf entries are imported with their gain, Q, and frequency intact,
+ * but the exact shelf curve shape is not replicated by the engine at this time.
  *
  * @author Hamza417
  */
@@ -48,13 +53,70 @@ object PeqFileParser {
 
     /**
      * Parses [text] as a ParametricEQ file and returns a [ParsedPreset], or null if no
-     * valid, enabled filter lines could be found. The [fileName] is used to derive the
-     * human-readable preset name — the extension is stripped automatically.
+     * valid filter data could be found. The [fileName] is used to derive the human-readable
+     * preset name when the file itself does not supply one — the extension is stripped automatically.
+     *
+     * The format is detected automatically: if the content starts with `[` or `{` the JSON
+     * path is tried first; otherwise the plain-text AutoEQ path is used.
      *
      * @param text     The full text content of the imported file.
      * @param fileName The original file name (with or without an extension).
      */
     fun parse(text: String, fileName: String): ParsedPreset? {
+        val trimmed = text.trimStart()
+        return if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+            parseJson(trimmed, fileName)
+        } else {
+            parsePlainText(text, fileName)
+        }
+    }
+
+    /**
+     * Handles the JSON array preset format where the file contains one or more preset
+     * objects. Only the first preset in the array is imported. Each band object must
+     * have `frequency`, `q`, and `gain` fields; bands where the gain is exactly 0 and
+     * the type is a shelf (0 or 1) are still included so the user can see all nodes.
+     */
+    private fun parseJson(text: String, fileName: String): ParsedPreset? {
+        return try {
+            // The format is always a JSON array at the top level, but guard against a
+            // bare object just in case some tools omit the outer brackets.
+            val root: JSONObject = if (text.startsWith("[")) {
+                val arr = JSONArray(text)
+                if (arr.length() == 0) return null
+                arr.getJSONObject(0)
+            } else {
+                JSONObject(text)
+            }
+
+            val name = root.optString("name", fileName.substringBeforeLast(".", fileName))
+            val preampDb = root.optDouble("preamp", 0.0).toFloat()
+            val bandsJson = root.optJSONArray("bands") ?: return null
+
+            val bands = mutableListOf<Triple<Float, Float, Float>>()
+            for (i in 0 until bandsJson.length()) {
+                val band = bandsJson.getJSONObject(i)
+                val freq = band.optDouble("frequency", Double.NaN).toFloat()
+                val q = band.optDouble("q", 1.0).toFloat()
+                val gain = band.optDouble("gain", 0.0).toFloat()
+
+                // Skip bands with invalid frequency values.
+                if (freq.isNaN() || freq <= 0f) continue
+
+                bands.add(Triple(gain, q, freq))
+            }
+
+            if (bands.isEmpty()) return null
+            ParsedPreset(name = name, preampDb = preampDb, bands = bands)
+        } catch (_: JSONException) {
+            null
+        }
+    }
+
+    /**
+     * Handles the standard AutoEQ / ParametricEQ plain-text format.
+     */
+    private fun parsePlainText(text: String, fileName: String): ParsedPreset? {
         var preampDb = 0f
         val bands = mutableListOf<Triple<Float, Float, Float>>()
 

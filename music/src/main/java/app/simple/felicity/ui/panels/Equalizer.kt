@@ -69,7 +69,7 @@ class Equalizer : MediaFragment() {
     private val peqFilePicker = registerForActivityResult(
             ActivityResultContracts.OpenDocument()
     ) { uri ->
-        if (uri == null) return@registerForActivityResult
+        if (uri == null) throw NullPointerException("URI is null")
         val fileName = uri.lastPathSegment?.substringAfterLast("/") ?: "Imported Preset"
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             try {
@@ -77,15 +77,18 @@ class Equalizer : MediaFragment() {
                     .openInputStream(uri)
                     ?.bufferedReader()
                     ?.use { it.readText() }
-                    ?: return@launch
+                    ?: throw IllegalArgumentException("Failed to read PEQ file")
 
-                val preset = PeqFileParser.parse(text, fileName) ?: return@launch
+                val preset = PeqFileParser.parse(text, fileName)
+                    ?: throw IllegalArgumentException("File contains no valid enabled filter lines")
 
                 withContext(Dispatchers.Main) {
                     applyParsedPreset(preset)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to read or parse PEQ file", e)
+            } catch (e: NullPointerException) {
+                Log.e(TAG, "Failed to read PEQ file: URI is null", e)
             }
         }
     }
