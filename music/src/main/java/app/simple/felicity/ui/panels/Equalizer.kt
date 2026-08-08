@@ -5,6 +5,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -21,11 +22,15 @@ import app.simple.felicity.dialogs.player.SaveEqualizerPreset.Companion.showSave
 import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.EqualizerPreferences
+import app.simple.felicity.repository.models.EqualizerPreset
 import app.simple.felicity.ui.subpanels.EqualizerPresets
+import app.simple.felicity.utils.PeqFileParser
 import app.simple.felicity.viewmodels.panels.EqualizerViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.ln
 import kotlin.math.log2
 import kotlin.math.pow
@@ -56,6 +61,38 @@ class Equalizer : MediaFragment() {
     private lateinit var binding: FragmentEqualizerBinding
     private val viewModel: EqualizerViewModel by viewModels()
 
+    /**
+     * Document picker launched when the user chooses "Import PEQ File" from the menu.
+     * Accepts any file type so the user can pick .txt, .peq, or whatever extension their
+     * EQ tool happened to produce. The actual format validation happens in [PeqFileParser].
+     */
+    private val peqFilePicker = registerForActivityResult(
+            ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) throw NullPointerException("URI is null")
+        val fileName = uri.lastPathSegment?.substringAfterLast("/") ?: "Imported Preset"
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val text = requireContext().contentResolver
+                    .openInputStream(uri)
+                    ?.bufferedReader()
+                    ?.use { it.readText() }
+                    ?: throw IllegalArgumentException("Failed to read PEQ file")
+
+                val preset = PeqFileParser.parse(text, fileName)
+                    ?: throw IllegalArgumentException("File contains no valid enabled filter lines")
+
+                withContext(Dispatchers.Main) {
+                    applyParsedPreset(preset)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to read or parse PEQ file", e)
+            } catch (e: NullPointerException) {
+                Log.e(TAG, "Failed to read PEQ file: URI is null", e)
+            }
+        }
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentEqualizerBinding.inflate(inflater, container, false)
         return binding.root
@@ -82,6 +119,7 @@ class Equalizer : MediaFragment() {
                                 PopupMenuItem(title = R.string.enable_equalizer)
                             },
                             PopupMenuItem(title = R.string.save_preset),
+                            PopupMenuItem(title = R.string.import_peq_file),
                             PopupMenuItem(title = R.string.reset),
                             if (isParametric) {
                                 PopupMenuItem(title = R.string.switch_to_graphic_eq)
@@ -126,6 +164,11 @@ class Equalizer : MediaFragment() {
                                         )
                                     }
                                 }
+                            }
+                            R.string.import_peq_file -> {
+                                // Open the system document picker and let the user pick any file.
+                                // The actual parsing happens when the picker returns a URI.
+                                peqFilePicker.launch(arrayOf("*/*"))
                             }
                             R.string.reset -> withSureDialog { sure ->
                                 if (sure) {
@@ -226,13 +269,40 @@ class Equalizer : MediaFragment() {
     }
 
     /**
+     * Takes a successfully parsed PEQ preset and applies it to the EQ engine and slider view.
+     *
+     * The EQ is automatically switched to parametric mode so the user can immediately see
+     * and interact with the imported bands. The preamp from the file is applied as-is, and
+     * all parsed bands are pushed to the DSP engine so the sound changes straight away
+     * without the user having to do anything extra.
+     *
+     * @param preset The fully parsed preset returned by [PeqFileParser.parse].
+     */
+    private fun applyParsedPreset(preset: PeqFileParser.ParsedPreset) {
+        // Switch to PEQ mode so the imported bands show up on the slider.
+        EqualizerManager.setEqMode(EqualizerPreferences.EQ_MODE_PARAMETRIC)
+
+        // Persist the bands and preamp so they survive app restarts.
+        val raw = EqualizerPreset.peqBandsToRaw(preset.bands)
+        EqualizerPreferences.setPeqBandsRaw(raw)
+        EqualizerPreferences.setPreampDb(preset.preampDb)
+
+        // Push everything to the live audio engine.
+        EqualizerManager.setPeqBands(preset.bands)
+        EqualizerManager.setPreamp(preset.preampDb)
+
+        Log.d(TAG, "Imported PEQ preset '${preset.name}' — " +
+                "${preset.bands.size} bands, preamp ${preset.preampDb} dB")
+    }
+
+    /**
      * Reads the current PEQ bands from the slider and saves them to preferences
      * so they survive app restarts and mode switches.
      */
     private fun savePeqBandsToPreferences() {
         val bands = binding.equalizerScreen.equalizerSliders.getPeqBands()
             .map { Triple(it.gain, it.q, it.frequencyHz) }
-        val raw = app.simple.felicity.repository.models.EqualizerPreset.peqBandsToRaw(bands)
+        val raw = EqualizerPreset.peqBandsToRaw(bands)
         EqualizerPreferences.setPeqBandsRaw(raw)
     }
 
