@@ -7,7 +7,9 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
+import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.models.WaveformData
 import com.linc.amplituda.Amplituda
 import com.linc.amplituda.Cache
 import com.linc.amplituda.Compress
@@ -24,9 +26,13 @@ import kotlin.random.Random.Default.nextFloat
  * ViewModel responsible for loading and exposing per-second amplitude data
  * for the currently playing audio track.
  *
- * Uses [Amplituda] to decode the raw PCM waveform and then downsamples the
- * result so that each element of the output array represents the peak amplitude
- * within a single one-second window. Values are normalized to [0.0, 1.0].
+ * Uses a DB-first strategy: when a track changes, the ViewModel checks the
+ * {@code waveform_data} table first. If a row is already there, the stored samples
+ * are used immediately without touching the audio file. Only when no cached
+ * row exists does the ViewModel call [Amplituda] to decode the file, after
+ * which the result is saved to the database so the next play is instant.
+ *
+ * Values are normalized to [0.0, 1.0], with one entry per second of audio.
  *
  * @author Hamza417
  */
@@ -61,14 +67,26 @@ class WaveformViewModel @Inject constructor(
             runCatching {
                 if (currentUri != audio.uri) return@launch
 
-                postFlatData(audio) // Show the ghost waveform immediately while we load the real one in the background
+                postFlatData(audio) // Show the ghost waveform immediately while we load the real one
 
+                val dao = AudioDatabase.getInstance(getApplication()).waveformDao()
+
+                // DB-first: try to get the cached samples before touching the audio file
+                val cached = dao.getWaveformByHash(audio.hash)
+                if (cached != null) {
+                    val samples = cached.toFloatArray()
+                    if (samples.isNotEmpty() && currentUri == audio.uri) {
+                        waveformData.postValue(samples)
+                        return@launch
+                    }
+                }
+
+                // Nothing in the DB yet — decode the file and save the result
                 val parcelFileDescriptor = getApplication<Application>()
                     .contentResolver.openFileDescriptor(audio.uri.toUri(), "r")
                     ?: throw IllegalArgumentException("Unable to open URI: ${audio.uri}")
 
                 try {
-
                     val rawAmplitudes = amplitudaInstance!!
                         .processAudio(
                                 parcelFileDescriptor,
@@ -117,6 +135,9 @@ class WaveformViewModel @Inject constructor(
                     } else {
                         getRandomGhostData(audio.duration) // If all peaks are zero, return random ghost data to avoid a flatline
                     }
+
+                    // Persist to DB so the next play of this track skips decoding entirely
+                    dao.insertWaveform(WaveformData.fromFloatArray(audio.hash, sampled))
 
                     // Push the perfectly scaled array safely to the UI thread
                     waveformData.postValue(sampled)
@@ -194,4 +215,3 @@ class WaveformViewModel @Inject constructor(
         private const val BARS_PER_SECOND = 1
     }
 }
-

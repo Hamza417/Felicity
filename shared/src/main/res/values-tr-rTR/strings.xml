@@ -473,4 +473,13 @@
     <string name="carousel">Karosel</string>
     <string name="carousel_ui_desc">Carousel tipi albüm sanatları ile basit oyuncu tarzı.</string>
     <string name="caps">Caps</string>
+    <string name="current_queue">Kuyruk %1$d</string>
+    <string name="rename">Yeniden Adlandır</string>
+    <string name="volume_controls">Ses Kontrolleri</string>
+    <string name="volume_controls_summary">Ses düğmelerine basıldığında ses kontrollerini göster.</string>
+    <string name="usb_dac_control_summary">Doğrudan DAC üzerinden ses çıkışı oluşturmak için uygulamanın dahili DAC sürücüsünü kullanın.</string>
+    <string name="stack_media_controls">Medya Kontrollerini Yığ</string>
+    <string name="stack_media_controls_summary">Daha fazla dikey alan oluşturmak için medya kontrollerini dalga biçimiyle yığın.</string>
+    <string name="timer_position">Zamanlayıcı Konumu</string>
+    <string name="waveform_menu">Dalga Biçimi Menüsü</string>
 </resources>

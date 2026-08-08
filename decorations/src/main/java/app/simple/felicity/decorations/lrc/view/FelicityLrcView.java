@@ -1225,13 +1225,14 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         }
 
         // All lines share normalTextSize, so no per-line size priming is needed here.
+        float fraction = 0f;
         if (!isStaticMode()) {
             long adjustedTime = timeInMillis + data.getOffset();
             currentLineIndex = findLineIndexByTime(adjustedTime);
         } else if (durationMs > 0) {
             float maxScroll = getMaxScrollY();
             if (maxScroll > 0) {
-                float fraction = Math.max(0f, Math.min(1f, (float) timeInMillis / (float) durationMs));
+                fraction = Math.max(0f, Math.min(1f, (float) timeInMillis / (float) durationMs));
                 scrollY = fraction * maxScroll;
                 targetScrollY = scrollY;
             }
@@ -1239,12 +1240,23 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
 
         invalidate();
         
-        // Post so layout heights are measured before we snap the scroll or animate.
-        final int anchorLine = currentLineIndex;
+        // For plain (static) lyrics there is no real "current line", so we estimate
+        // which line would be near the middle of the viewport based on the playback
+        // fraction. This way the curtain reveal radiates outward from where the user
+        // is actually looking instead of always starting from the very first line.
+        final int anchorLine;
+        if (isStaticMode() && data.size() > 0 && durationMs > 0) {
+            anchorLine = Math.round(fraction * (data.size() - 1));
+        } else {
+            anchorLine = currentLineIndex;
+        }
+
         final boolean firstLoad = wasEmpty;
         post(() -> {
             // Snap scroll to the active line now that heights are known.
-            if (anchorLine >= 0) {
+            // For static mode the proportional scroll position is already set above,
+            // so we only snap when there is a real timestamp-based current line.
+            if (!isStaticMode() && anchorLine >= 0) {
                 float targetY = getLineOffset(anchorLine);
                 scrollY = targetY;
                 targetScrollY = targetY;

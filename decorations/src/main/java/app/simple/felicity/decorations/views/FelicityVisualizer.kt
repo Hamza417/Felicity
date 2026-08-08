@@ -233,6 +233,9 @@ class FelicityVisualizer @JvmOverloads constructor(
             VisualizerPreferences.PARTICLES_ENABLED -> {
                 particlesEnabled = VisualizerPreferences.areParticlesEnabled()
             }
+            VisualizerPreferences.CAPS_ENABLED -> {
+                capsEnabled = VisualizerPreferences.areCapsEnabled()
+            }
         }
     }
 
@@ -377,12 +380,26 @@ class FelicityVisualizer @JvmOverloads constructor(
     }
 
     /**
-     * Toggle cap visibility
+     * Whether the peak-hold cap pills above each bar should be drawn.
+     * Unlike toggling the paint alpha, this flag survives accent color changes
+     * because the draw call is skipped entirely when false.
      */
-    fun setCapsEnabled(enabled: Boolean) {
-        capPaint.alpha = if (enabled) 220 else 0
-        invalidate()
-    }
+    var capsEnabled: Boolean = true
+        set(value) {
+            field = value
+            invalidate()
+        }
+
+    /**
+     * Whether the frequency bars themselves should be drawn.
+     * When set to false the bars disappear but caps and particles still
+     * follow their own toggle — useful for a "caps-only" look.
+     */
+    var barsEnabled: Boolean = true
+        set(value) {
+            field = value
+            invalidate()
+        }
 
     /** Animates all bars and peaks down to zero by zeroing the back buffer and swapping. */
     fun clear() {
@@ -569,7 +586,7 @@ class FelicityVisualizer @JvmOverloads constructor(
 
             barPath.reset()
             barPath.addRoundRect(drawRect, barCornerRadii, Path.Direction.CW)
-            canvas.drawPath(barPath, barPaint)
+            if (barsEnabled) canvas.drawPath(barPath, barPaint)
 
             if (particlesEnabled && particleCooldowns[i] > 0) particleCooldowns[i]--
 
@@ -630,7 +647,7 @@ class FelicityVisualizer @JvmOverloads constructor(
                             (peakPos + capPillDim / 2f).coerceAtMost(viewBottom)
                     )
                 }
-                canvas.drawRoundRect(drawRect, cornerRadius, cornerRadius, capPaint)
+                if (capsEnabled) canvas.drawRoundRect(drawRect, cornerRadius, cornerRadius, capPaint)
             }
         }
 
@@ -889,6 +906,7 @@ class FelicityVisualizer @JvmOverloads constructor(
             applyModePreferences()
             visibility = if (PlayerPreferences.isVisualizerEnabled()) VISIBLE else GONE
             particlesEnabled = VisualizerPreferences.areParticlesEnabled()
+            capsEnabled = VisualizerPreferences.areCapsEnabled()
             capPaint.color = ThemeManager.accent.primaryAccentColor
         }
     }

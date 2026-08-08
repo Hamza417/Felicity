@@ -43,6 +43,7 @@ import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.preferences.TrialPreferences
 import app.simple.felicity.repository.covers.AudioCover
 import app.simple.felicity.repository.database.instances.AudioDatabase
+import app.simple.felicity.repository.models.AlbumArtColors
 import app.simple.felicity.shared.utils.BarHeight
 import app.simple.felicity.shared.utils.ContextUtils
 import app.simple.felicity.shared.utils.LocaleUtils
@@ -379,7 +380,44 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
 
         paletteJob = lifecycleScope.launch(Dispatchers.IO) {
             try {
-                // Load raw bitmap on the IO dispatcher (file / MediaMetadataRetriever).
+                val db = AudioDatabase.getInstance(applicationContext)
+
+                // Check the cache before touching the bitmap — a simple row read is far
+                // cheaper than decoding an image and running palette math on it.
+                val cached = db.albumArtColorsDao().getColorsByHash(audio.hash)
+
+                if (cached != null) {
+                    withContext(Dispatchers.Main) {
+                        val stillAlbumArtAccent = AppearancePreferences.getAccentColorName() == AlbumArt.IDENTIFIER
+                        val albumArtThemeActive = ThemeUtils.isEffectiveAlbumArtTheme(resources)
+
+                        if (!stillAlbumArtAccent && !albumArtThemeActive) return@withContext
+
+                        lastPaletteSongId = audio.id
+
+                        if (albumArtThemeActive) {
+                            applyColorsToAlbumArtData(cached)
+                            ThemeManager.theme = if (ThemeUtils.isEffectiveAlbumArtDark(resources)) {
+                                AlbumArtDark()
+                            } else {
+                                AlbumArtLight()
+                            }
+                            Log.d(TAG, "Album art theme applied from cache for song ${audio.id}")
+                        }
+
+                        if (stillAlbumArtAccent) {
+                            val albumArtAccent = AlbumArt().apply {
+                                primaryAccentColor = cached.accent1_500
+                                secondaryAccentColor = cached.accent1_300
+                            }
+                            ThemeManager.accent = albumArtAccent
+                            Log.d(TAG, "Album art accent applied from cache for song ${audio.id}: ${albumArtAccent.hexes}")
+                        }
+                    }
+                    return@launch
+                }
+
+                // Nothing in the cache — load the bitmap and run palette extraction.
                 val rawBitmap: Bitmap = AudioCover.load(this@BaseActivity, audio) ?: return@launch
 
                 // Downscale to a small thumbnail before palette math to keep CPU cost low.
@@ -437,6 +475,48 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
                         ThemeManager.accent = albumArtAccent
                         Log.d(TAG, "Album art accent applied for song ${audio.id}: ${albumArtAccent.hexes}")
                     }
+
+                    // Snapshot the freshly populated colors on the Main thread so there
+                    // is no risk of another coroutine mutating AlbumArtData while we read it.
+                    val snapshot = AlbumArtColors(
+                            audioHash = audio.hash,
+                            headingTextColor = AlbumArtData.headingTextColor,
+                            primaryTextColor = AlbumArtData.primaryTextColor,
+                            secondaryTextColor = AlbumArtData.secondaryTextColor,
+                            tertiaryTextColor = AlbumArtData.tertiaryTextColor,
+                            quaternaryTextColor = AlbumArtData.quaternaryTextColor,
+                            background = AlbumArtData.background,
+                            highlightBackground = AlbumArtData.highlightBackground,
+                            selectedBackground = AlbumArtData.selectedBackground,
+                            dividerBackground = AlbumArtData.dividerBackground,
+                            spotColor = AlbumArtData.spotColor,
+                            switchOffColor = AlbumArtData.switchOffColor,
+                            regularIconColor = AlbumArtData.regularIconColor,
+                            secondaryIconColor = AlbumArtData.secondaryIconColor,
+                            disabledIconColor = AlbumArtData.disabledIconColor,
+                            headingTextColorDark = AlbumArtData.headingTextColorDark,
+                            primaryTextColorDark = AlbumArtData.primaryTextColorDark,
+                            secondaryTextColorDark = AlbumArtData.secondaryTextColorDark,
+                            tertiaryTextColorDark = AlbumArtData.tertiaryTextColorDark,
+                            quaternaryTextColorDark = AlbumArtData.quaternaryTextColorDark,
+                            backgroundDark = AlbumArtData.backgroundDark,
+                            highlightBackgroundDark = AlbumArtData.highlightBackgroundDark,
+                            selectedBackgroundDark = AlbumArtData.selectedBackgroundDark,
+                            dividerBackgroundDark = AlbumArtData.dividerBackgroundDark,
+                            spotColorDark = AlbumArtData.spotColorDark,
+                            switchOffColorDark = AlbumArtData.switchOffColorDark,
+                            regularIconColorDark = AlbumArtData.regularIconColorDark,
+                            secondaryIconColorDark = AlbumArtData.secondaryIconColorDark,
+                            disabledIconColorDark = AlbumArtData.disabledIconColorDark,
+                            accent1_500 = palette.accent1_500,
+                            accent1_300 = palette.accent1_300,
+                    )
+
+                    // Persist on IO without making the user wait for it.
+                    lifecycleScope.launch(Dispatchers.IO) {
+                        db.albumArtColorsDao().insertColors(snapshot)
+                        Log.d(TAG, "Album art colors cached for song ${audio.id} (hash=${audio.hash})")
+                    }
                 }
             } catch (e: FileNotFoundException) {
                 Log.w(TAG, "Album art not found for song ${audio.id}", e)
@@ -444,6 +524,44 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
                 Log.e(TAG, "Error generating album art palette for song ${audio.id}", e)
             }
         }
+    }
+
+    /**
+     * Copies all color values from a cached [AlbumArtColors] row directly into [AlbumArtData]
+     * so the UI picks up the right colors without any bitmap work.
+     *
+     * This is the fast path — called when we already have the palette in the database
+     * from a previous play of the same track.
+     */
+    private fun applyColorsToAlbumArtData(colors: AlbumArtColors) {
+        AlbumArtData.headingTextColor = colors.headingTextColor
+        AlbumArtData.primaryTextColor = colors.primaryTextColor
+        AlbumArtData.secondaryTextColor = colors.secondaryTextColor
+        AlbumArtData.tertiaryTextColor = colors.tertiaryTextColor
+        AlbumArtData.quaternaryTextColor = colors.quaternaryTextColor
+        AlbumArtData.background = colors.background
+        AlbumArtData.highlightBackground = colors.highlightBackground
+        AlbumArtData.selectedBackground = colors.selectedBackground
+        AlbumArtData.dividerBackground = colors.dividerBackground
+        AlbumArtData.spotColor = colors.spotColor
+        AlbumArtData.switchOffColor = colors.switchOffColor
+        AlbumArtData.regularIconColor = colors.regularIconColor
+        AlbumArtData.secondaryIconColor = colors.secondaryIconColor
+        AlbumArtData.disabledIconColor = colors.disabledIconColor
+        AlbumArtData.headingTextColorDark = colors.headingTextColorDark
+        AlbumArtData.primaryTextColorDark = colors.primaryTextColorDark
+        AlbumArtData.secondaryTextColorDark = colors.secondaryTextColorDark
+        AlbumArtData.tertiaryTextColorDark = colors.tertiaryTextColorDark
+        AlbumArtData.quaternaryTextColorDark = colors.quaternaryTextColorDark
+        AlbumArtData.backgroundDark = colors.backgroundDark
+        AlbumArtData.highlightBackgroundDark = colors.highlightBackgroundDark
+        AlbumArtData.selectedBackgroundDark = colors.selectedBackgroundDark
+        AlbumArtData.dividerBackgroundDark = colors.dividerBackgroundDark
+        AlbumArtData.spotColorDark = colors.spotColorDark
+        AlbumArtData.switchOffColorDark = colors.switchOffColorDark
+        AlbumArtData.regularIconColorDark = colors.regularIconColorDark
+        AlbumArtData.secondaryIconColorDark = colors.secondaryIconColorDark
+        AlbumArtData.disabledIconColorDark = colors.disabledIconColorDark
     }
 
     private fun initTheme() {

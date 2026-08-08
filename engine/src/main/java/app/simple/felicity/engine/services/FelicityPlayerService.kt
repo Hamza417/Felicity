@@ -1405,10 +1405,9 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         savePlaybackStateToDatabase()
         unregisterSharedPreferenceChangeListener()
 
-        // Unregister the USB DAC driver and release any open USB connection before
-        // the service context disappears, so no dangling file descriptor is left open.
+        // Remove the service-level USB DAC listener first so it no longer receives
+        // attach/detach events during the rest of teardown.
         UsbDacManager.removeListener(usbDacManagerListener)
-        UsbDacDriver.getInstance(applicationContext).detach()
 
         // Stop the periodic snapshot pulse before releasing resources.
         stopSnapshotPulse()
@@ -1428,11 +1427,22 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         // remains after the service has been destroyed.
         VisualizerManager.processor = null
 
+        // Release the player and media session first. ExoPlayer.release() blocks until its
+        // internal playback thread finishes, which includes FelicityAudioSink.release().
+        // That call removes the sink's USB DAC listener from UsbDacManager on the correct
+        // playback thread. Only after this is safe to call UsbDacDriver.detach(), because
+        // notifyDetached() will find no sink listener left and won't try to release
+        // DefaultAudioSink from the wrong thread (which is what was crashing before).
         mediaSession?.run {
             player.release()
             release()
             mediaSession = null
         }
+
+        // Now it is safe to tear down the USB driver. The sink listener is already gone,
+        // so notifyDetached() won't cascade into DefaultAudioSink.release().
+        UsbDacDriver.getInstance(applicationContext).detach()
+
         super.onDestroy()
     }
 

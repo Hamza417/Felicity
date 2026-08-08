@@ -1,15 +1,15 @@
-#### User Interface
+#### Bug Fixes
 
-- Added toggle to stack **Waveform** and **Media Controls** in **Now Playing** screen.
+- Fixed a crash happening while shutting down the audio service in some devices.
+- Fixed caps getting re-enabled after song is changed.
 
-#### Playback
+#### Improvements
 
-- Added a route based audio sink to create exclusive audio playback pipeline. #137
-    - Also, possibly fix the rainy audio issues in some devices due to exclusive audio output fixing
-      many audio underrun issues.
-    - Eliminates the need for double clock sync architecture reducing half the CPU load and saves
-      battery.
+- Save album palettes to the database to avoid recalculating them every time and improve theme
+  reloading speed.
+- Auto hide forward/rewind buttons on smaller screens if the media controls cannot fit in the
+  available space.
 
 #### Translations
 
-- Added **Spanish** translations.
+- Updated all missing translations for all the supported languages.

@@ -473,4 +473,13 @@
     <string name="carousel">Carosello</string>
     <string name="carousel_ui_desc">Semplice stile player con album di tipo carosello.</string>
     <string name="caps">Caps</string>
+    <string name="current_queue">Coda %1$d</string>
+    <string name="rename">Rinomina</string>
+    <string name="volume_controls">Controlli del volume</string>
+    <string name="volume_controls_summary">Mostra i controlli del volume quando vengono premuti i tasti del volume.</string>
+    <string name="usb_dac_control_summary">Utilizza il driver DAC interno dell\'app per creare un\'uscita audio diretta tramite DAC.</string>
+    <string name="stack_media_controls">Impila i controlli multimediali</string>
+    <string name="stack_media_controls_summary">Impila i controlli multimediali con la forma d\'onda per creare più spazio verticale.</string>
+    <string name="timer_position">Posizione del timer</string>
+    <string name="waveform_menu">Menu forma d\'onda</string>
 </resources>

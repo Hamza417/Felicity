@@ -473,4 +473,13 @@
     <string name="carousel">旋转木马</string>
     <string name="carousel_ui_desc">简单的播放器风格和旋转相册艺术。</string>
     <string name="caps">线头圆度</string>
+    <string name="current_queue">队列 %1$d</string>
+    <string name="rename">重命名</string>
+    <string name="volume_controls">音量控制</string>
+    <string name="volume_controls_summary">按下音量键时显示音量控制。</string>
+    <string name="usb_dac_control_summary">使用应用的内置 DAC 驱动程序通过 DAC 创建直接音频输出。</string>
+    <string name="stack_media_controls">堆叠媒体控件</string>
+    <string name="stack_media_controls_summary">将媒体控件与波形堆叠以创建更多垂直空间。</string>
+    <string name="timer_position">计时器位置</string>
+    <string name="waveform_menu">波形菜单</string>
 </resources>

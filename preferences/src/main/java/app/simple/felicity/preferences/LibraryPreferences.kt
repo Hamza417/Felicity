@@ -45,7 +45,7 @@ object LibraryPreferences {
     // ----------------------------------------------------------------------------------------------------- //
 
     fun isSkipHiddenFiles(): Boolean {
-        return SharedPreferences.getSharedPreferences().getBoolean(SKIP_HIDDEN_FILES, true)
+        return SharedPreferences.getSharedPreferences().getBoolean(SKIP_HIDDEN_FILES, false)
     }
 
     fun setSkipHiddenFiles(skip: Boolean) {
@@ -55,7 +55,7 @@ object LibraryPreferences {
     // ----------------------------------------------------------------------------------------------------- //
 
     fun isSkipHiddenFolders(): Boolean {
-        return SharedPreferences.getSharedPreferences().getBoolean(SKIP_HIDDEN_FOLDERS, true)
+        return SharedPreferences.getSharedPreferences().getBoolean(SKIP_HIDDEN_FOLDERS, false)
     }
 
     fun setSkipHiddenFolders(skip: Boolean) {

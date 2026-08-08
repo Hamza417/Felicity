@@ -583,6 +583,14 @@ class FelicityAudioSink(
     private val mainHandler = Handler(Looper.getMainLooper())
 
     /**
+     * Flipped to true at the very start of [release] so that any USB DAC detach
+     * notification that races in during teardown can see we are already shutting down
+     * and skip trying to release the underlying sink a second time from the wrong thread.
+     */
+    @Volatile
+    private var isReleased = false
+
+    /**
      * Set to true when [playToEndOfStream] is called, which signals that no more
      * audio data will be written to this sink for the current track.
      */
@@ -642,6 +650,11 @@ class FelicityAudioSink(
         }
 
         override fun onUsbDacDetached() {
+            // If the sink is already being torn down, skip. The player's own release()
+            // call (which runs on the correct ExoPlayer playback thread) will clean
+            // everything up. Trying to do it here from whatever thread fired the detach
+            // event is what caused the IllegalStateException crash.
+            if (isReleased) return
             Log.i(TAG, "USB DAC detached — reverting to configured output sink")
             activeSink.release()
             if (currentSampleRate > 0 && currentChannelCount > 0) {
@@ -791,6 +804,7 @@ class FelicityAudioSink(
     }
 
     override fun release() {
+        isReleased = true
         UsbDacManager.removeListener(usbDacListener)
         val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
         audioManager?.unregisterAudioDeviceCallback(audioDeviceCallback)

@@ -441,7 +441,7 @@ abstract class BasePlayerFragment : MediaFragment() {
     }
 
     private fun setVisualizerCapsState() {
-        visualizer.setCapsEnabled(VisualizerPreferences.areCapsEnabled())
+        visualizer.capsEnabled = VisualizerPreferences.areCapsEnabled()
     }
 
     private fun setLyricsState() {

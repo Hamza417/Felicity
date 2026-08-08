@@ -8,6 +8,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import app.simple.felicity.repository.database.dao.AlbumArtColorsDao
 import app.simple.felicity.repository.database.dao.AlbumInfoCacheDao
 import app.simple.felicity.repository.database.dao.ArtistInfoCacheDao
 import app.simple.felicity.repository.database.dao.AudioDao
@@ -17,6 +18,8 @@ import app.simple.felicity.repository.database.dao.PlaybackStateDao
 import app.simple.felicity.repository.database.dao.PlaylistDao
 import app.simple.felicity.repository.database.dao.SavedQueueDao
 import app.simple.felicity.repository.database.dao.SongStatDao
+import app.simple.felicity.repository.database.dao.WaveformDao
+import app.simple.felicity.repository.models.AlbumArtColors
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.AudioBookmark
 import app.simple.felicity.repository.models.AudioStat
@@ -27,6 +30,7 @@ import app.simple.felicity.repository.models.PlaybackState
 import app.simple.felicity.repository.models.Playlist
 import app.simple.felicity.repository.models.PlaylistSongCrossRef
 import app.simple.felicity.repository.models.SavedQueueEntry
+import app.simple.felicity.repository.models.WaveformData
 
 /**
  * Room database that holds the entire audio library, playback state, song statistics,
@@ -58,6 +62,14 @@ import app.simple.felicity.repository.models.SavedQueueEntry
  *   {@code saved_queue} so that switching between queues restores the exact song
  *   index and playback position the user left off at, instead of resetting to the
  *   first song every time.
+ *   20 → 21: Created the {@code album_art_colors} table that caches the full set of
+ *   light and dark theme colors decoded from each track's album art palette. This
+ *   means the app only needs to extract the bitmap once per track — every subsequent
+ *   song change just does a cheap database lookup instead of re-decoding the image.
+ *   21 → 22: Created the {@code waveform_data} table that stores per-track amplitude
+ *   samples as a comma-separated TEXT column. On first play the samples are extracted
+ *   from the audio file and saved here; every subsequent play just reads this row
+ *   instead of decoding the file again.
  *
  * @author Hamza417
  */
@@ -72,9 +84,11 @@ import app.simple.felicity.repository.models.SavedQueueEntry
             MusicBrainzArtistInfo::class,
             MusicBrainzAlbumInfo::class,
             AudioBookmark::class,
-            SavedQueueEntry::class
+            SavedQueueEntry::class,
+            AlbumArtColors::class,
+            WaveformData::class
         ],
-        version = 20,
+        version = 22,
         exportSchema = true
 )
 abstract class AudioDatabase : RoomDatabase() {
@@ -88,6 +102,8 @@ abstract class AudioDatabase : RoomDatabase() {
     abstract fun artistInfoCacheDao(): ArtistInfoCacheDao
     abstract fun albumInfoCacheDao(): AlbumInfoCacheDao
     abstract fun bookmarkDao(): BookmarkDao
+    abstract fun albumArtColorsDao(): AlbumArtColorsDao
+    abstract fun waveformDao(): WaveformDao
 
     companion object {
         private const val DB_NAME = "audio.db"
@@ -135,7 +151,7 @@ abstract class AudioDatabase : RoomDatabase() {
         }
 
         /**
-         * Adds four nullable ReplayGain columns to the [audio] table. All existing rows
+         * Adds four nullable ReplayGain columns to the {@code audio} table. All existing rows
          * will have NULL for these columns and will be populated the next time the library
          * is rescanned and the JNI layer reads the REPLAYGAIN_* tags from each file.
          */
@@ -280,6 +296,76 @@ abstract class AudioDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Creates the {@code album_art_colors} table so the app can cache every track's
+         * decoded light and dark palette colors. Once a track's colors are stored here,
+         * switching to that song is just a single SELECT — no bitmap is decoded again.
+         *
+         * Each row is uniquely identified by {@code audioHash}, mirroring the same fingerprint
+         * strategy used by {@code song_stats}. No foreign key is used so the cache survives
+         * library deletions and re-associates automatically on the next rescan.
+         */
+        private val MIGRATION_20_21 = object : Migration(20, 21) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `album_art_colors` (
+                        `audioHash` INTEGER NOT NULL PRIMARY KEY,
+                        `heading_text_color` INTEGER NOT NULL,
+                        `primary_text_color` INTEGER NOT NULL,
+                        `secondary_text_color` INTEGER NOT NULL,
+                        `tertiary_text_color` INTEGER NOT NULL,
+                        `quaternary_text_color` INTEGER NOT NULL,
+                        `background` INTEGER NOT NULL,
+                        `highlight_background` INTEGER NOT NULL,
+                        `selected_background` INTEGER NOT NULL,
+                        `divider_background` INTEGER NOT NULL,
+                        `spot_color` INTEGER NOT NULL,
+                        `switch_off_color` INTEGER NOT NULL,
+                        `regular_icon_color` INTEGER NOT NULL,
+                        `secondary_icon_color` INTEGER NOT NULL,
+                        `disabled_icon_color` INTEGER NOT NULL,
+                        `heading_text_color_dark` INTEGER NOT NULL,
+                        `primary_text_color_dark` INTEGER NOT NULL,
+                        `secondary_text_color_dark` INTEGER NOT NULL,
+                        `tertiary_text_color_dark` INTEGER NOT NULL,
+                        `quaternary_text_color_dark` INTEGER NOT NULL,
+                        `background_dark` INTEGER NOT NULL,
+                        `highlight_background_dark` INTEGER NOT NULL,
+                        `selected_background_dark` INTEGER NOT NULL,
+                        `divider_background_dark` INTEGER NOT NULL,
+                        `spot_color_dark` INTEGER NOT NULL,
+                        `switch_off_color_dark` INTEGER NOT NULL,
+                        `regular_icon_color_dark` INTEGER NOT NULL,
+                        `secondary_icon_color_dark` INTEGER NOT NULL,
+                        `disabled_icon_color_dark` INTEGER NOT NULL,
+                        `accent1_500` INTEGER NOT NULL,
+                        `accent1_300` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_album_art_colors_audioHash` ON `album_art_colors` (`audioHash`)")
+            }
+        }
+
+        /**
+         * Creates the {@code waveform_data} table so each track's extracted amplitude samples
+         * are saved after the first decode and never have to be computed again.
+         *
+         * The amplitudes are stored as a plain comma-separated TEXT string — one
+         * normalized float per bar — keyed by {@code audioHash} so the cache survives
+         * library deletions and automatically re-associates when the file comes back.
+         */
+        private val MIGRATION_21_22 = object : Migration(21, 22) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `waveform_data` (
+                        `audioHash` INTEGER NOT NULL PRIMARY KEY,
+                        `amplitudes` TEXT NOT NULL
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_waveform_data_audioHash` ON `waveform_data` (`audioHash`)")
+            }
+        }
+
         fun getInstance(context: Context): AudioDatabase {
             return instance ?: synchronized(this) {
                 instance ?: buildDatabase(context.applicationContext).also {
@@ -295,7 +381,7 @@ abstract class AudioDatabase : RoomDatabase() {
          * of 2 MB up to 20 MB. Room loads an entire query result into a single cursor window, so
          * when a library has thousands of tracks and each row has many text columns (uri, path,
          * title, artist, album, …) the 2 MB ceiling fills up and Android throws an
-         * [OutOfMemoryError] deep inside [android.database.CursorWindow.nativeGetString].
+         * [OutOfMemoryError] deep inside {@code android.database.CursorWindow.nativeGetString}.
          *
          * The window size is a private static field, so we reach it via reflection. If a future
          * Android release renames or removes the field, we silently carry on with the default
@@ -320,7 +406,18 @@ abstract class AudioDatabase : RoomDatabase() {
         private fun buildDatabase(context: Context): AudioDatabase {
             expandCursorWindowSize()
             return Room.databaseBuilder(context, AudioDatabase::class.java, DB_NAME)
-                .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20)
+                .addMigrations(
+                        MIGRATION_11_12,
+                        MIGRATION_12_13,
+                        MIGRATION_13_14,
+                        MIGRATION_14_15,
+                        MIGRATION_15_16,
+                        MIGRATION_16_17,
+                        MIGRATION_17_18,
+                        MIGRATION_18_19,
+                        MIGRATION_19_20,
+                        MIGRATION_20_21,
+                        MIGRATION_21_22)
                 .fallbackToDestructiveMigration(dropAllTables = true)
                 .build()
         }
