@@ -473,6 +473,7 @@
     <string name="carousel">旋转木马</string>
     <string name="carousel_ui_desc">简单的播放器风格和旋转相册艺术。</string>
     <string name="caps">线头圆度</string>
+    <string name="bars">状态栏</string>
     <string name="current_queue">队列 %1$d</string>
     <string name="rename">重命名</string>
     <string name="volume_controls">音量控制</string>
