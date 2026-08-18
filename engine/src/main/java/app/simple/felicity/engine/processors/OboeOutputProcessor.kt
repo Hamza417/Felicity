@@ -72,13 +72,21 @@ class OboeOutputProcessor(
      * Sends the first [length] samples from [pcmBuffer] to the hardware.
      * The native layer handles any format conversion the HAL requires.
      *
+     * The write is non-blocking: the hardware buffer may be momentarily full,
+     * in which case fewer than [length] samples are accepted. Callers must
+     * check the returned count and retry with the remainder rather than
+     * assuming the whole buffer was consumed — that assumption is what used
+     * to make pause() wait for a whole backlog of already-decoded audio to
+     * drain before it could take effect.
+     *
      * @param pcmBuffer Interleaved float32 PCM scratch buffer.
      * @param length    Number of valid samples to write from the start of the array.
+     * @return Number of samples actually accepted by the hardware, or -1 on error.
      */
-    fun write(pcmBuffer: FloatArray, length: Int) {
-        if (nativeHandle == 0L) return
+    fun write(pcmBuffer: FloatArray, length: Int): Int {
+        if (nativeHandle == 0L) return 0
         val buf = if (pcmBuffer.size == length) pcmBuffer else pcmBuffer.copyOf(length)
-        nativeOboeWrite(nativeHandle, buf)
+        return nativeOboeWrite(nativeHandle, buf)
     }
 
     /**
@@ -136,7 +144,13 @@ class OboeOutputProcessor(
 
     private external fun nativeOboeCreate(sampleRate: Int, channelCount: Int, useSafeBuffers: Boolean): Long
     private external fun nativeOboeStart(handle: Long): Boolean
-    private external fun nativeOboeWrite(handle: Long, pcmBuffer: FloatArray)
+
+    /**
+     * @return Number of samples actually written to the hardware buffer (may be
+     *         less than [pcmBuffer]'s size when the buffer is momentarily full),
+     *         or -1 on error.
+     */
+    private external fun nativeOboeWrite(handle: Long, pcmBuffer: FloatArray): Int
     private external fun nativeOboeGetLatencyMs(handle: Long): Int
     private external fun nativeOboeGetPlaybackPositionUs(handle: Long, sourceEnded: Boolean): Long
     private external fun nativeOboeGetApiName(handle: Long): String

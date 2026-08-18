@@ -262,27 +262,45 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioSta
  * only when the incoming block size exceeds the previous maximum; in steady
  * state no allocation occurs.
  *
+ * **Non-blocking on purpose:** the timeout is zero, so this call returns
+ * immediately with whatever fit in the hardware buffer right now instead of
+ * pausing the calling thread until more room opens up. A blocking write here
+ * would tie up the same thread that ExoPlayer uses to deliver play/pause
+ * commands — if the decoder has queued up several seconds of audio ahead of
+ * time, a blocking write would force pause() to wait for all of that backlog
+ * to physically finish draining out of the speaker before it could even run,
+ * which is what caused the multi-second pause latency this function fixes.
+ * The caller (see [AaudioOutputProcessor.write]) is expected to keep whatever
+ * wasn't written and try again on the next call.
+ *
  * @param env       JNI environment pointer.
  * @param thiz      Calling object (unused).
  * @param handle    Opaque pointer from [nativeAaudioCreate].
  * @param pcmBuffer Interleaved float PCM; length = numFrames × channelCount.
+ * @return Number of samples actually accepted by the hardware buffer (may be
+ *         less than the input length, or 0 if the buffer is currently full),
+ *         or -1 if the stream reported an error.
  */
-JNIEXPORT void JNICALL
+JNIEXPORT jint JNICALL
 Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioWrite(
         JNIEnv *env, jobject /*thiz*/,
         jlong handle, jfloatArray pcmBuffer) {
 
     auto *ctx = reinterpret_cast<AaudioContext *>(handle);
-    if (!ctx || !ctx->stream || !ctx->running.load()) return;
+    if (!ctx || !ctx->stream || !ctx->running.load()) return 0;
 
     const int totalSamples = env->GetArrayLength(pcmBuffer);
-    if (totalSamples <= 0) return;
+    if (totalSamples <= 0) return 0;
 
     const int32_t numFrames = totalSamples / ctx->channelCount;
-    if (numFrames <= 0) return;
+    if (numFrames <= 0) return 0;
 
     jfloat *buf = env->GetFloatArrayElements(pcmBuffer, nullptr);
-    static constexpr int64_t kTimeoutNanos = 100 * 1000000LL;
+
+    // A timeout of zero means "grab whatever room is free right now and
+    // return immediately" instead of waiting for the hardware to catch up.
+    static constexpr int64_t kTimeoutNanos = 0;
+    jint framesWritten = 0;
 
     if (ctx->actualFormat == AAUDIO_FORMAT_PCM_FLOAT) {
         /** Fast path: HAL accepted float — write directly with no conversion. */
@@ -290,6 +308,9 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioWri
                 AAudioStream_write(ctx->stream, buf, numFrames, kTimeoutNanos);
         if (written < 0) {
             AAUDIO_LOGE("nativeAaudioWrite: float write error (%d)", written);
+            framesWritten = -1;
+        } else {
+            framesWritten = written;
         }
     } else {
         /**
@@ -304,7 +325,7 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioWri
                 AAUDIO_LOGE("nativeAaudioWrite: conversion buffer realloc failed "
                             "(%d samples)", totalSamples);
                 env->ReleaseFloatArrayElements(pcmBuffer, buf, JNI_ABORT);
-                return;
+                return -1;
             }
             ctx->conversionBuffer = newBuf;
             ctx->conversionBufferCapacity = totalSamples;
@@ -316,10 +337,16 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioWri
                 AAudioStream_write(ctx->stream, ctx->conversionBuffer, numFrames, kTimeoutNanos);
         if (written < 0) {
             AAUDIO_LOGE("nativeAaudioWrite: int16 write error (%d)", written);
+            framesWritten = -1;
+        } else {
+            framesWritten = written;
         }
     }
 
     env->ReleaseFloatArrayElements(pcmBuffer, buf, JNI_ABORT);
+
+    if (framesWritten < 0) return -1;
+    return framesWritten * ctx->channelCount;
 }
 
 /**

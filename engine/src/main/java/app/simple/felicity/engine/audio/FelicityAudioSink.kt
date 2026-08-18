@@ -207,7 +207,25 @@ class FelicityAudioSink(
             if (sampleCount > 0) {
                 nativeDsp.processInPlace(floatScratchBuffer, sampleCount)
                 visualizer.feedFloat(floatScratchBuffer, sampleCount, channelCount)
-                stream.write(floatScratchBuffer, sampleCount)
+                val samplesWritten = stream.write(floatScratchBuffer, sampleCount)
+
+                // The native write is non-blocking, so it may only take part of the
+                // buffer when the hardware queue is momentarily full. Only advance
+                // past the bytes that were actually accepted and tell ExoPlayer to
+                // retry the rest later. This keeps the render loop from ever blocking
+                // in real time on a full backlog, which is what used to make pause()
+                // wait for the whole backlog to drain before it could take effect.
+                //
+                // This only applies while actually playing. While paused the native
+                // write is a deliberate no-op (see the check above), so forcing the
+                // buffer to be consumed here still lets the pre-buffering base
+                // timestamp get established without retrying forever.
+                if (!isPaused && samplesWritten < sampleCount) {
+                    val accepted = samplesWritten.coerceAtLeast(0)
+                    val bytesPerSample = PcmUtils.bytesPerSample(currentEncoding)
+                    buffer.position(buffer.position() + accepted * bytesPerSample)
+                    return false
+                }
             }
             buffer.position(buffer.limit())
             return true
@@ -327,7 +345,25 @@ class FelicityAudioSink(
             if (sampleCount > 0) {
                 nativeDsp.processInPlace(floatScratchBuffer, sampleCount)
                 visualizer.feedFloat(floatScratchBuffer, sampleCount, channelCount)
-                stream.write(floatScratchBuffer, sampleCount)
+                val samplesWritten = stream.write(floatScratchBuffer, sampleCount)
+
+                // The native write is non-blocking, so it may only take part of the
+                // buffer when the hardware queue is momentarily full. Only advance
+                // past the bytes that were actually accepted and tell ExoPlayer to
+                // retry the rest later. This keeps the render loop from ever blocking
+                // in real time on a full backlog, which is what used to make pause()
+                // wait for the whole backlog to drain before it could take effect.
+                //
+                // This only applies while actually playing. While paused the native
+                // write is a deliberate no-op (see the check above), so forcing the
+                // buffer to be consumed here still lets the pre-buffering base
+                // timestamp get established without retrying forever.
+                if (!isPaused && samplesWritten < sampleCount) {
+                    val accepted = samplesWritten.coerceAtLeast(0)
+                    val bytesPerSample = PcmUtils.bytesPerSample(currentEncoding)
+                    buffer.position(buffer.position() + accepted * bytesPerSample)
+                    return false
+                }
             }
             buffer.position(buffer.limit())
             return true
