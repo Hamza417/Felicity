@@ -43,8 +43,11 @@ import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
 import app.simple.felicity.theme.models.Theme
 import kotlin.math.abs
+import kotlin.math.asin
+import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.roundToLong
+import kotlin.math.sin
 
 /**
  * A horizontally scrolling waveform seekbar that maps audio amplitude data
@@ -59,6 +62,10 @@ import kotlin.math.roundToLong
  *
  * Bars nearest the center playhead are rendered at full opacity and fade toward
  * [HIGHLIGHT_MIN_ALPHA] at the outer edges, creating a spotlight highlight effect.
+ *
+ * An optional fish-eye lens ([optics]) bends the waveform around the playhead so that
+ * the left and right edges appear to curve away like the sides of a cylinder instead
+ * of staying perfectly flat.
  *
  * Horizontal fading edges are applied on both sides using a
  * [PorterDuff.Mode.DST_OUT] gradient layer, following the same technique
@@ -203,6 +210,23 @@ class WaveformSeekbar @JvmOverloads constructor(
         }
 
     /**
+     * Fish-eye lens strength in [0.0, 1.0] that bends the waveform horizontally around the
+     * center playhead, so the left and right edges appear to curve away like the sides of
+     * a cylinder instead of staying perfectly flat.
+     *
+     * At 0.0 (the default) the waveform is completely flat. As the value grows toward 1.0,
+     * bars near the left and right edges are squeezed together and drawn a little shorter,
+     * while bars near the playhead are stretched slightly wider, producing the rounded,
+     * circular look. Can also be set via the [R.styleable.WaveformSeekbar_wsbOptics]
+     * XML attribute.
+     */
+    var optics: Float = DEFAULT_OPTICS
+        set(value) {
+            field = value.coerceIn(0f, 1f)
+            invalidate()
+        }
+
+    /**
      * Vertical placement of the elapsed/total time labels.
      * Use [LABEL_GRAVITY_TOP], [LABEL_GRAVITY_CENTER], or [LABEL_GRAVITY_BOTTOM].
      */
@@ -229,7 +253,7 @@ class WaveformSeekbar @JvmOverloads constructor(
         val progressFraction = displayProgress.toFloat().coerceIn(0f, durationMs.toFloat()) / durationMs.toFloat()
         val scrollOffset = progressFraction * totalScrollRange
         val centerX = width / 2f
-        val tapScrollPos = touchDownX - centerX + scrollOffset
+        val tapScrollPos = uncurveOffset(touchDownX - centerX) + scrollOffset
         val tappedMs = if (totalScrollRange > 0f && durationMs > 0L) {
             (tapScrollPos / totalScrollRange * durationMs).toLong().coerceIn(0L, durationMs)
         } else {
@@ -475,6 +499,7 @@ class WaveformSeekbar @JvmOverloads constructor(
                 reflectionTopGapPx = ta.getDimension(R.styleable.WaveformSeekbar_wsbReflectionTopGap, reflectionTopGapPx)
                 reflectionBottomGapPx = ta.getDimension(R.styleable.WaveformSeekbar_wsbReflectionBottomGap, reflectionBottomGapPx)
                 reflectionAlpha = ta.getFloat(R.styleable.WaveformSeekbar_wsbReflectionAlpha, DEFAULT_REFLECTION_ALPHA)
+                optics = ta.getFloat(R.styleable.WaveformSeekbar_wsbOptics, DEFAULT_OPTICS)
             } finally {
                 ta.recycle()
             }
@@ -555,6 +580,53 @@ class WaveformSeekbar @JvmOverloads constructor(
         setMeasuredDimension(resolvedW, resolvedH)
     }
 
+    /**
+     * Bends a horizontal offset measured from the flat waveform's playhead into its
+     * on-screen position. The lens is fixed on the view center, so bars scroll through
+     * it: they are stretched near the middle and squeezed near the left and right edges,
+     * exactly like looking at the waveform through a fish-eye lens.
+     *
+     * When [optics] is 0 this simply returns the same value, keeping the waveform flat.
+     */
+    private fun curvedOffset(rawOffset: Float): Float {
+        if (optics <= 0f) return rawOffset
+        val halfWidth = width / 2f
+        if (halfWidth <= 0f) return rawOffset
+        // A wider lens angle means a stronger, rounder bend. Normalizing by sin(lensArc)
+        // keeps the outer edges of the visible area anchored at the view edges.
+        val lensArc = optics * FISH_EYE_LENS_ARC
+        val u = rawOffset / halfWidth
+        return sin(u * lensArc) / sin(lensArc) * halfWidth
+    }
+
+    /**
+     * Calculates how much a bar should shrink vertically because of the fish-eye bend.
+     * Bars near the edges are tilted away from us, like markings on a turning cylinder,
+     * so their heights are foreshortened by the cosine of their lens angle.
+     */
+    private fun barHeightScale(rawOffset: Float): Float {
+        if (optics <= 0f) return 1f
+        val halfWidth = width / 2f
+        if (halfWidth <= 0f) return 1f
+        val lensArc = optics * FISH_EYE_LENS_ARC
+        val u = rawOffset / halfWidth
+        return 1f - optics * (1f - cos(u * lensArc))
+    }
+
+    /**
+     * Reverses [curvedOffset], converting an on-screen horizontal offset back into flat
+     * waveform space. Touch gestures use this so that tapping or dragging a bar under the
+     * lens seeks to the correct position instead of a nearby one.
+     */
+    private fun uncurveOffset(curvedOffset: Float): Float {
+        if (optics <= 0f) return curvedOffset
+        val halfWidth = width / 2f
+        if (halfWidth <= 0f) return curvedOffset
+        val lensArc = optics * FISH_EYE_LENS_ARC
+        val u = curvedOffset / halfWidth
+        return asin((u * sin(lensArc)).coerceIn(-1f, 1f)) / lensArc * halfWidth
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         if (amplitudes.isEmpty() || drawnAmplitudes.isEmpty() || durationMs <= 0L) return
@@ -611,11 +683,17 @@ class WaveformSeekbar @JvmOverloads constructor(
         }
 
         for (i in drawnAmplitudes.indices) {
-            val barCenterX = i * barStep - scrollOffset + centerX
+            // Raw offset is the bar's flat position relative to the playhead. The fish-eye
+            // lens bends it into its on-screen spot, but the raw value is what we cull with.
+            val rawOffset = i * barStep - scrollOffset
+            val barCenterX = centerX + curvedOffset(rawOffset)
             // Cull bars that are fully outside the visible area
-            if (barCenterX + barWidthPx / 2f < 0f || barCenterX - barWidthPx / 2f > w) continue
+            if (rawOffset + barWidthPx / 2f < -centerX || rawOffset - barWidthPx / 2f > centerX) continue
 
             val amp = drawnAmplitudes[i].coerceIn(0f, 1f)
+            // Bars on the far sides of the lens are drawn a little shorter, so the waveform
+            // looks like it wraps around a cylinder and curves away from us.
+            val heightScale = barHeightScale(rawOffset)
 
             // Smoothly crossfade between played and unplayed color over a ±transitionZone window
             // centered on the playhead, so the color change is gradual rather than an instant switch.
@@ -639,7 +717,7 @@ class WaveformSeekbar @JvmOverloads constructor(
             when (waveformMode) {
                 WAVEFORM_MODE_FULL -> {
                     // Symmetric: bar grows from center upward AND downward
-                    val halfH = max(minBarHeightPx / 2f, amp * (effectiveMaxBarArea / 2f))
+                    val halfH = max(minBarHeightPx / 2f, amp * (effectiveMaxBarArea / 2f)) * heightScale
                     barRect.set(
                             barCenterX - barWidthPx / 2f,
                             centerY - halfH,
@@ -649,7 +727,7 @@ class WaveformSeekbar @JvmOverloads constructor(
                 }
                 WAVEFORM_MODE_REFLECTION -> {
                     // Reflection main: bar grows upward from just above the separator gap
-                    val barH = max(minBarHeightPx, amp * maxMainBarArea)
+                    val barH = max(minBarHeightPx, amp * maxMainBarArea) * heightScale
                     barRect.set(
                             barCenterX - barWidthPx / 2f,
                             mainWaveformBottom - barH,
@@ -659,7 +737,7 @@ class WaveformSeekbar @JvmOverloads constructor(
                 }
                 else -> {
                     // Half: bar grows upward from center only
-                    val barH = max(minBarHeightPx, amp * effectiveMaxBarArea)
+                    val barH = max(minBarHeightPx, amp * effectiveMaxBarArea) * heightScale
                     barRect.set(
                             barCenterX - barWidthPx / 2f,
                             centerY - barH,
@@ -678,10 +756,12 @@ class WaveformSeekbar @JvmOverloads constructor(
         if (waveformMode == WAVEFORM_MODE_REFLECTION && maxReflBarArea > 0f) {
 
             for (i in drawnAmplitudes.indices) {
-                val barCenterX = i * barStep - scrollOffset + centerX
-                if (barCenterX + barWidthPx / 2f < 0f || barCenterX - barWidthPx / 2f > w) continue
+                val rawOffset = i * barStep - scrollOffset
+                val barCenterX = centerX + curvedOffset(rawOffset)
+                if (rawOffset + barWidthPx / 2f < -centerX || rawOffset - barWidthPx / 2f > centerX) continue
 
                 val amp = drawnAmplitudes[i].coerceIn(0f, 1f)
+                val heightScale = barHeightScale(rawOffset)
                 val transitionZone = barStep * TRANSITION_ZONE
                 val distFromCenter = barCenterX - centerX
                 val colorT = ((distFromCenter + transitionZone) / (2f * transitionZone)).coerceIn(0f, 1f)
@@ -698,7 +778,7 @@ class WaveformSeekbar @JvmOverloads constructor(
                 barPaint.alpha = (255 * spotlightAlpha * leftFadeAlpha * reflectionAlpha).toInt()
 
                 // Reflected bar grows downward from the top of the reflection area
-                val reflBarH = max(minBarHeightPx, amp * maxReflBarArea)
+                val reflBarH = max(minBarHeightPx, amp * maxReflBarArea) * heightScale
                 barRect.set(
                         barCenterX - barWidthPx / 2f,
                         reflectionTop,
@@ -732,7 +812,7 @@ class WaveformSeekbar @JvmOverloads constructor(
             for (timestampMs in bookmarks) {
                 val bookmarkFraction = timestampMs.toFloat().coerceIn(0f, durationMs.toFloat()) / durationMs.toFloat()
                 val bookmarkScrollOffset = bookmarkFraction * (amplitudes.size * barStep)
-                val dotX = bookmarkScrollOffset - scrollOffset + centerX
+                val dotX = centerX + curvedOffset(bookmarkScrollOffset - scrollOffset)
                 if (dotX + bookmarkDotRadius < 0f || dotX - bookmarkDotRadius > w) continue
                 canvas.drawCircle(dotX, dotCenterY, bookmarkDotRadius, bookmarkPaint)
             }
@@ -922,7 +1002,11 @@ class WaveformSeekbar @JvmOverloads constructor(
                 if (isDragging) {
                     velocityTracker?.addMovement(event)
 
-                    val deltaX = event.x - dragStartX
+                    // Map both touch positions back into flat-waveform space first, so the
+                    // seek distance always matches the bar the finger is actually grabbing
+                    // even while the fish-eye lens is bending the waveform.
+                    val centerX = width / 2f
+                    val deltaX = uncurveOffset(event.x - centerX) - uncurveOffset(dragStartX - centerX)
                     // Cancel the long-press timer as soon as the finger travels past the slop boundary
                     if (abs(event.x - touchDownX) > TAP_SLOP_PX || abs(event.y - touchDownY) > TAP_SLOP_PX) {
                         removeCallbacks(longPressRunnable)
@@ -970,7 +1054,7 @@ class WaveformSeekbar @JvmOverloads constructor(
                         val progressFraction = displayProgress.toFloat().coerceIn(0f, durationMs.toFloat()) / durationMs.toFloat()
                         val scrollOffset = progressFraction * totalScrollRange
                         val centerX = width / 2f
-                        val tapScrollPos = event.x - centerX + scrollOffset
+                        val tapScrollPos = uncurveOffset(event.x - centerX) + scrollOffset
                         val tappedMs = if (totalScrollRange > 0f && durationMs > 0L) {
                             (tapScrollPos / totalScrollRange * durationMs).toLong().coerceIn(0L, durationMs)
                         } else {
@@ -1634,6 +1718,16 @@ class WaveformSeekbar @JvmOverloads constructor(
          * that does not compete with the main waveform above.
          */
         const val DEFAULT_REFLECTION_ALPHA = 0.4f
+
+        /** Default [optics] strength: 0.0, so the waveform starts perfectly flat. */
+        const val DEFAULT_OPTICS = 0f
+
+        /**
+         * Half-angle of the fish-eye lens (in radians) applied when [optics] is 1.0.
+         * 60 degrees gives a clear rounded bend at the edges while keeping the center
+         * area comfortably readable, without the extreme pinching of a full 90 degree lens.
+         */
+        private const val FISH_EYE_LENS_ARC = 1.0471975f
 
         /**
          * Alpha fraction [0.0, 1.0] for the separator line in reflection mode.
