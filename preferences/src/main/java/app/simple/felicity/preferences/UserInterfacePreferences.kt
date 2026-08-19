@@ -23,6 +23,7 @@ object UserInterfacePreferences {
     private const val VOLUME_CONTROLS = "volume_controls"
     const val STACK_MEDIA_CONTROLS = "stack_media_controls"
     const val TIMER_POSITION = "timer_position"
+    const val WAVEFORM_OPTICS = "waveform_optics"
 
     const val HOME_INTERFACE_DASHBOARD = 1
     const val HOME_INTERFACE_TILED = 2
@@ -123,6 +124,18 @@ object UserInterfacePreferences {
         getSharedPreferences()
             .edit {
                 putInt(TIMER_POSITION, position)
+            }
+    }
+
+    fun getWaveformOptics(): Float {
+        return getSharedPreferences()
+            .getFloat(WAVEFORM_OPTICS, 0f)
+    }
+
+    fun setWaveformOptics(value: Float) {
+        getSharedPreferences()
+            .edit {
+                putFloat(WAVEFORM_OPTICS, value)
             }
     }
 

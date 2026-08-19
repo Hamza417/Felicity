@@ -497,4 +497,5 @@
     <string name="stack_media_controls_summary">Stack media controls with waveform to create more vertical space.</string>
     <string name="timer_position">Timer Position</string>
     <string name="waveform_menu">Waveform Menu</string>
+    <string name="optics">Optics</string>
 </resources>

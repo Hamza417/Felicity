@@ -244,7 +244,7 @@ class WaveformSeekbar @JvmOverloads constructor(
     private var barTapListener: OnBarTapListener? = null
     private var barLongTapListener: OnBarLongTapListener? = null
 
-    // Posted in ACTION_DOWN and cancelled in ACTION_MOVE / ACTION_UP to detect long presses.
+    // Posted in ACTION_DOWN and canceled in ACTION_MOVE / ACTION_UP to detect long presses.
     private val longPressRunnable = Runnable {
         if (!isDragging) return@Runnable
         val barStep = barWidthPx + barSpacingPx
