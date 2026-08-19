@@ -108,6 +108,12 @@ class Search : PanelFragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 searchViewModel.searchResults.collect { results ->
                     updateSearchResults(results)
+
+                    if (results.isEmpty()) {
+                        headerBinding.scroll.gone(true)
+                    } else {
+                        headerBinding.scroll.visible(true)
+                    }
                 }
             }
         }

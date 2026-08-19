@@ -45,6 +45,7 @@
             android:layout_gravity="center_vertical"
             android:layout_width="@dimen/button_size"
             android:src="@drawable/ic_double_arrow_right"
+            android:visibility="gone"
             android:layout_height="@dimen/button_size" />
 
         <app.simple.felicity.decorations.ripple.DynamicRippleImageButton

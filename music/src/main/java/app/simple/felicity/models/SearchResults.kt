@@ -17,11 +17,11 @@ data class SearchResults(
         val artists: List<Artist> = emptyList(),
         val genres: List<Genre> = emptyList()
 ) {
-    fun isEmpty(results: SearchResults): Boolean {
-        return results.songs.isEmpty() &&
-                results.albums.isEmpty() &&
-                results.artists.isEmpty() &&
-                results.genres.isEmpty()
+    fun isEmpty(): Boolean {
+        return songs.isEmpty() &&
+                albums.isEmpty() &&
+                artists.isEmpty() &&
+                genres.isEmpty()
     }
 
     fun isSmallDataSet(): Boolean {
