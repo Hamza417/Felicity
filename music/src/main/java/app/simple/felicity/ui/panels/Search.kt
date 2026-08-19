@@ -81,6 +81,7 @@ class Search : PanelFragment() {
         binding.appHeader.setContentView(headerBinding.root)
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
         binding.recyclerView.attachSlideFastScroller()
+        headerBinding.clearButton.gone()
 
         headerBinding.editText.showInput()
 
@@ -98,6 +99,7 @@ class Search : PanelFragment() {
                 if (headerBinding.editText.text.toString() != query) {
                     headerBinding.editText.setText(query)
                     headerBinding.editText.setSelection(query.length)
+                    headerBinding.clearButton.visible(animate = true)
                 }
             }
         }
@@ -175,6 +177,11 @@ class Search : PanelFragment() {
 
             override fun afterTextChanged(s: Editable?) {
                 searchViewModel.setSearchQuery(s?.toString() ?: "")
+                if (s?.isNotEmpty() == true) {
+                    headerBinding.clearButton.visible(true)
+                } else {
+                    headerBinding.clearButton.gone(true)
+                }
             }
         })
 
@@ -196,6 +203,10 @@ class Search : PanelFragment() {
 
         headerBinding.scroll.setOnClickListener {
             binding.recyclerView.smoothScrollToPosition(0)
+        }
+
+        headerBinding.clearButton.setOnClickListener {
+            headerBinding.editText.text?.clear()
         }
     }
 
