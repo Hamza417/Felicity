@@ -27,6 +27,8 @@ import app.simple.felicity.engine.usb.UsbDacManager
 import app.simple.felicity.engine.utils.PcmUtils
 import app.simple.felicity.preferences.AudioPreferences
 import java.nio.ByteBuffer
+import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -125,6 +127,124 @@ class FelicityAudioSink(
         fun setVolume(volume: Float)
     }
 
+    /**
+     * Feeds a native output stream (AAudio or Oboe) from its own dedicated thread so that
+     * writing to the hardware is never tied to how often ExoPlayer happens to call
+     * [InternalSink.handleBuffer].
+     *
+     * Why this exists: a non-blocking native write only pushes samples into the hardware
+     * ring buffer at the moment [handleBuffer] runs. ExoPlayer does not call that method on
+     * a steady, tight, real-time clock — so the small hardware buffer (tens of milliseconds)
+     * can quietly run dry between calls, and the hardware plays silence or garbage for a
+     * moment. That is what produces the crackling "static between the audio" sound. Giving
+     * the write its own thread that loops continuously, independent of ExoPlayer's render
+     * schedule, keeps the hardware fed without gaps.
+     *
+     * At the same time, [pause] and [play] still take effect immediately: [handleBuffer]
+     * only ever hands a chunk to this class, it never blocks waiting for the hardware, so
+     * the render thread — the same thread ExoPlayer uses to deliver pause/play — is always
+     * free to respond right away.
+     *
+     * @param name      Thread name, useful for spotting this thread in a profiler or ANR trace.
+     * @param writeChunk Performs one native write attempt; returns the number of samples
+     *                   actually accepted by the hardware (may be less than requested, or
+     *                   0 if the buffer is momentarily full), or -1 on a stream error.
+     * @param isPaused  Read on the writer thread before every write attempt so a chunk that
+     *                  is still queued when playback is paused gets dropped instead of
+     *                  spinning forever waiting for a hardware buffer that will not drain.
+     */
+    private class NativeAudioWriter(
+            private val name: String,
+            private val writeChunk: (FloatArray, Int) -> Int,
+            private val isPaused: () -> Boolean
+    ) {
+        /**
+         * Small bounded queue of already-DSP-processed PCM chunks waiting to reach the
+         * hardware. Kept short on purpose — its only job is to absorb brief scheduling
+         * jitter from the render thread, not to build up a long backlog that would make
+         * pause feel slow again.
+         */
+        private val queue = ArrayBlockingQueue<FloatArray>(QUEUE_CAPACITY)
+        private val running = AtomicBoolean(false)
+        private var thread: Thread? = null
+
+        fun start() {
+            if (!running.compareAndSet(false, true)) return
+            thread = Thread({
+                                while (running.get()) {
+                                    val chunk = try {
+                                        queue.poll(POLL_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                                    } catch (_: InterruptedException) {
+                                        null
+                                    } ?: continue
+                                    writeFully(chunk)
+                                }
+                            }, name).apply {
+                isDaemon = true
+                start()
+            }
+        }
+
+        /**
+         * Keeps handing [chunk] to [writeChunk] until every sample has been accepted by
+         * the hardware. If playback is paused midway through, the remainder is simply
+         * dropped rather than kept waiting for room that pausing means will never appear.
+         */
+        private fun writeFully(chunk: FloatArray) {
+            var offset = 0
+            while (offset < chunk.size) {
+                if (isPaused() || !running.get()) return
+
+                val remaining = chunk.size - offset
+                val slice = if (offset == 0) chunk else chunk.copyOfRange(offset, chunk.size)
+                val written = writeChunk(slice, remaining)
+
+                if (written <= 0) {
+                    // Hardware buffer is momentarily full (or the stream errored out).
+                    // A tiny sleep here keeps this thread from busy-spinning the CPU
+                    // while still checking back often enough that no audible gap forms.
+                    try {
+                        Thread.sleep(RETRY_SLEEP_MS)
+                    } catch (_: InterruptedException) {
+                        return
+                    }
+                    continue
+                }
+                offset += written
+            }
+        }
+
+        /**
+         * Hands [length] samples from [buffer] to the writer thread. Returns false when the
+         * queue is already full, telling the caller to hold onto the data and try again on
+         * the next [InternalSink.handleBuffer] call rather than losing audio.
+         */
+        fun enqueue(buffer: FloatArray, length: Int): Boolean {
+            if (!running.get()) return false
+            val copy = buffer.copyOf(length)
+            return queue.offer(copy)
+        }
+
+        /** Drops any chunks that have not reached the hardware yet, e.g. on pause or flush. */
+        fun clear() {
+            queue.clear()
+        }
+
+        /** Stops the thread and discards anything still queued. Safe to call more than once. */
+        fun shutdown() {
+            if (!running.compareAndSet(true, false)) return
+            queue.clear()
+            thread?.interrupt()
+            thread = null
+        }
+
+        companion object {
+            private const val QUEUE_CAPACITY = 16
+            private const val POLL_TIMEOUT_MS = 50L
+            private const val RETRY_SLEEP_MS = 2L
+        }
+    }
+
     // -----------------------------------------------------------------------------------------
     // Route implementations
     // -----------------------------------------------------------------------------------------
@@ -163,6 +283,18 @@ class FelicityAudioSink(
         private var startSystemTimeUs = 0L
         private var accumulatedPlayedUs = 0L
         private var isClockRunning = false
+
+        /**
+         * Feeds [stream] from its own thread so hardware writes never depend on how often
+         * ExoPlayer happens to call [handleBuffer]. See [NativeAudioWriter] for why this
+         * matters — without it the render loop's irregular timing starves the hardware
+         * buffer and you hear it as crackling static.
+         */
+        private val writer = NativeAudioWriter(
+                name = "AaudioWriter",
+                writeChunk = { chunk, length -> stream.write(chunk, length) },
+                isPaused = { isPaused }
+        ).apply { start() }
 
         override fun configure(inputFormat: Format, specifiedBufferSize: Int, outputChannels: IntArray?) {}
 
@@ -207,23 +339,15 @@ class FelicityAudioSink(
             if (sampleCount > 0) {
                 nativeDsp.processInPlace(floatScratchBuffer, sampleCount)
                 visualizer.feedFloat(floatScratchBuffer, sampleCount, channelCount)
-                val samplesWritten = stream.write(floatScratchBuffer, sampleCount)
 
-                // The native write is non-blocking, so it may only take part of the
-                // buffer when the hardware queue is momentarily full. Only advance
-                // past the bytes that were actually accepted and tell ExoPlayer to
-                // retry the rest later. This keeps the render loop from ever blocking
-                // in real time on a full backlog, which is what used to make pause()
-                // wait for the whole backlog to drain before it could take effect.
-                //
-                // This only applies while actually playing. While paused the native
-                // write is a deliberate no-op (see the check above), so forcing the
-                // buffer to be consumed here still lets the pre-buffering base
-                // timestamp get established without retrying forever.
-                if (!isPaused && samplesWritten < sampleCount) {
-                    val accepted = samplesWritten.coerceAtLeast(0)
-                    val bytesPerSample = PcmUtils.bytesPerSample(currentEncoding)
-                    buffer.position(buffer.position() + accepted * bytesPerSample)
+                // While paused, the write is a no-op path handled above (only the first
+                // buffer is ever accepted), so this only runs while actually playing.
+                // Hand the processed chunk to the dedicated writer thread instead of
+                // writing to the hardware right here — that thread keeps the hardware
+                // fed continuously regardless of how often this method gets called.
+                if (!writer.enqueue(floatScratchBuffer, sampleCount)) {
+                    // Writer's queue is momentarily full — let ExoPlayer retry this
+                    // exact same buffer shortly instead of dropping audio.
                     return false
                 }
             }
@@ -266,11 +390,16 @@ class FelicityAudioSink(
         }
 
         override fun pause() {
+            // Drop anything still waiting to reach the hardware — it hasn't been heard yet,
+            // so there is nothing lost by not writing it, and it avoids stale audio playing
+            // the instant playback resumes.
+            writer.clear()
             stream.pause()
             pauseClock()
         }
 
         override fun flush() {
+            writer.clear()
             stream.stop()
             isFirstBuffer = true
             accumulatedPlayedUs = 0L
@@ -282,6 +411,7 @@ class FelicityAudioSink(
         }
 
         override fun release() {
+            writer.shutdown()
             stream.release()
             isAAudioStreamActive = false
             Log.i(TAG, "AAudio native sink released")
@@ -307,6 +437,18 @@ class FelicityAudioSink(
         private var startSystemTimeUs = 0L
         private var accumulatedPlayedUs = 0L
         private var isClockRunning = false
+
+        /**
+         * Feeds [stream] from its own thread so hardware writes never depend on how often
+         * ExoPlayer happens to call [handleBuffer]. See [NativeAudioWriter] for why this
+         * matters — without it the render loop's irregular timing starves the hardware
+         * buffer and you hear it as crackling static.
+         */
+        private val writer = NativeAudioWriter(
+                name = "OboeWriter",
+                writeChunk = { chunk, length -> stream.write(chunk, length) },
+                isPaused = { isPaused }
+        ).apply { start() }
 
         override fun configure(inputFormat: Format, specifiedBufferSize: Int, outputChannels: IntArray?) {}
 
@@ -345,23 +487,15 @@ class FelicityAudioSink(
             if (sampleCount > 0) {
                 nativeDsp.processInPlace(floatScratchBuffer, sampleCount)
                 visualizer.feedFloat(floatScratchBuffer, sampleCount, channelCount)
-                val samplesWritten = stream.write(floatScratchBuffer, sampleCount)
 
-                // The native write is non-blocking, so it may only take part of the
-                // buffer when the hardware queue is momentarily full. Only advance
-                // past the bytes that were actually accepted and tell ExoPlayer to
-                // retry the rest later. This keeps the render loop from ever blocking
-                // in real time on a full backlog, which is what used to make pause()
-                // wait for the whole backlog to drain before it could take effect.
-                //
-                // This only applies while actually playing. While paused the native
-                // write is a deliberate no-op (see the check above), so forcing the
-                // buffer to be consumed here still lets the pre-buffering base
-                // timestamp get established without retrying forever.
-                if (!isPaused && samplesWritten < sampleCount) {
-                    val accepted = samplesWritten.coerceAtLeast(0)
-                    val bytesPerSample = PcmUtils.bytesPerSample(currentEncoding)
-                    buffer.position(buffer.position() + accepted * bytesPerSample)
+                // While paused, the write is a no-op path handled above (only the first
+                // buffer is ever accepted), so this only runs while actually playing.
+                // Hand the processed chunk to the dedicated writer thread instead of
+                // writing to the hardware right here — that thread keeps the hardware
+                // fed continuously regardless of how often this method gets called.
+                if (!writer.enqueue(floatScratchBuffer, sampleCount)) {
+                    // Writer's queue is momentarily full — let ExoPlayer retry this
+                    // exact same buffer shortly instead of dropping audio.
                     return false
                 }
             }
@@ -404,11 +538,16 @@ class FelicityAudioSink(
         }
 
         override fun pause() {
+            // Drop anything still waiting to reach the hardware — it hasn't been heard yet,
+            // so there is nothing lost by not writing it, and it avoids stale audio playing
+            // the instant playback resumes.
+            writer.clear()
             stream.pause()
             pauseClock()
         }
 
         override fun flush() {
+            writer.clear()
             stream.stop()
             isFirstBuffer = true
             accumulatedPlayedUs = 0L
@@ -420,6 +559,7 @@ class FelicityAudioSink(
         }
 
         override fun release() {
+            writer.shutdown()
             stream.release()
             isOboeStreamActive = false
             Log.i(TAG, "Oboe native sink released")
