@@ -262,16 +262,16 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioSta
  * only when the incoming block size exceeds the previous maximum; in steady
  * state no allocation occurs.
  *
- * **Non-blocking on purpose:** the timeout is zero, so this call returns
- * immediately with whatever fit in the hardware buffer right now instead of
- * pausing the calling thread until more room opens up. A blocking write here
- * would tie up the same thread that ExoPlayer uses to deliver play/pause
- * commands — if the decoder has queued up several seconds of audio ahead of
- * time, a blocking write would force pause() to wait for all of that backlog
- * to physically finish draining out of the speaker before it could even run,
- * which is what caused the multi-second pause latency this function fixes.
- * The caller (see [AaudioOutputProcessor.write]) is expected to keep whatever
- * wasn't written and try again on the next call.
+ * **Blocking on purpose:** the write waits (up to [kTimeoutNanos]) for the
+ * hardware to have room, which is what keeps playback smooth and gap-free —
+ * the call naturally paces itself to how fast the hardware actually consumes
+ * audio, instead of depending on how often the caller happens to be invoked.
+ * Pausing quickly is handled separately: [FelicityAudioSink] silences the
+ * stream directly (see its `muteImmediately`) from the app thread the moment
+ * pause is requested, so it never has to wait for this write to return. The
+ * caller (see [AaudioOutputProcessor.write]) still checks the returned count
+ * and retries any remainder, in case the timeout expires before every sample
+ * fits.
  *
  * @param env       JNI environment pointer.
  * @param thiz      Calling object (unused).
@@ -297,9 +297,12 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioWri
 
     jfloat *buf = env->GetFloatArrayElements(pcmBuffer, nullptr);
 
-    // A timeout of zero means "grab whatever room is free right now and
-    // return immediately" instead of waiting for the hardware to catch up.
-    static constexpr int64_t kTimeoutNanos = 0;
+    // Block for up to this long waiting for hardware buffer room. This keeps
+    // consecutive writes paced to real playback speed so the hardware never
+    // runs dry between calls, which is what prevents audible gaps/crackling.
+    // Pause latency is handled separately (see the note above), so blocking
+    // here no longer has any effect on how fast pause() feels.
+    static constexpr int64_t kTimeoutNanos = 100'000'000LL; // 100 ms
     jint framesWritten = 0;
 
     if (ctx->actualFormat == AAUDIO_FORMAT_PCM_FLOAT) {

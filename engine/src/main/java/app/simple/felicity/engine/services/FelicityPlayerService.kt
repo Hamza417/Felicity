@@ -872,6 +872,16 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         }
 
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            if (!playWhenReady) {
+                // Silence the active native route (AAudio/Oboe) right now, on this thread,
+                // instead of waiting for the internal playback thread to get around to its
+                // own queued pause(). That thread may still be working through a backlog of
+                // already-decoded buffers, which is what used to make pause() take seconds
+                // to actually go quiet. See FelicityAudioSink.requestImmediatePause for why
+                // this is safe to call from here.
+                FelicityAudioSink.requestImmediatePause()
+            }
+
             if (playWhenReady) {
                 // If there's a song that was waiting for playback to start, record its play now.
                 // This covers the case where a new queue is created and play() is called after
