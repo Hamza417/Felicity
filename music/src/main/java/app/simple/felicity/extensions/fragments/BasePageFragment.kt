@@ -17,6 +17,7 @@ import app.simple.felicity.dialogs.pages.PageSortDialog.Companion.showPageSortDi
 import app.simple.felicity.dialogs.songs.ShuffleDialog.Companion.showShuffleDialog
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.PagePreferences
+import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
@@ -54,6 +55,9 @@ abstract class BasePageFragment : MediaFragment() {
 
     /** The [app.simple.felicity.adapters.ui.page.PageAdapter] backing the page's RecyclerView. Cleared automatically in [onDestroyView]. */
     protected var pageAdapter: PageAdapter? = null
+
+    /** Remembers the most recent [PageData] so the page can rebuild itself when layout preferences change. */
+    private var latestPageData: PageData? = null
 
     /**
      * The [androidx.recyclerview.widget.RecyclerView] rendered by this page. Typically, sourced
@@ -108,6 +112,9 @@ abstract class BasePageFragment : MediaFragment() {
         if (key != null && key in PagePreferences.ALL_PAGE_PREF_KEYS) {
             resortPageData()
         }
+        if (key == UserInterfacePreferences.SONGS_FIRST_IN_PAGES) {
+            latestPageData?.let { onPageData(it) }
+        }
     }
 
     /**
@@ -136,6 +143,7 @@ abstract class BasePageFragment : MediaFragment() {
      * @param data The latest [PageData] with songs, albums, artists, and genres.
      */
     private fun onPageData(data: PageData) {
+        latestPageData = data
         val horPad = resources.getDimensionPixelSize(R.dimen.padding_10)
         pageRecyclerView.addItemDecorationSafely(
                 PageSpacingItemDecoration(horPad, AppearancePreferences.getListSpacing().toInt()))

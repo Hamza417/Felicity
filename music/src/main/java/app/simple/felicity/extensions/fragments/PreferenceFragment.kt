@@ -393,6 +393,21 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val pagesHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.pages)
+
+        val songsFirstToggle = Preference(
+                title = R.string.show_songs_first,
+                summary = R.string.show_songs_first_summary,
+                icon = R.drawable.ic_sort,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, _ ->
+                    UserInterfacePreferences.setSongsFirstInPages((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    UserInterfacePreferences.isSongsFirstInPages()
+                }
+        )
+
         val applicationHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.application)
 
         val likeButton = Preference(
@@ -428,6 +443,8 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(playerInterface)
         preferences.add(lyricsToggle)
         preferences.add(stackMediaControlsToggle)
+        preferences.add(pagesHeader)
+        preferences.add(songsFirstToggle)
         preferences.add(miniPlayerHeader)
         preferences.add(marginAroundMiniplayerToggle)
         preferences.add(applicationHeader)

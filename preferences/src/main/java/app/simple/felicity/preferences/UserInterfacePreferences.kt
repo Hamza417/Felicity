@@ -25,6 +25,12 @@ object UserInterfacePreferences {
     const val TIMER_POSITION = "timer_position"
     const val WAVEFORM_OPTICS = "waveform_optics"
 
+    /**
+     * Preference key that decides whether the song list leads the detail pages
+     * or trails the album, artist, and genre sections.
+     */
+    const val SONGS_FIRST_IN_PAGES = "songs_first"
+
     const val HOME_INTERFACE_DASHBOARD = 1
     const val HOME_INTERFACE_TILED = 2
     const val HOME_INTERFACE_ARTFLOW = 3
@@ -136,6 +142,28 @@ object UserInterfacePreferences {
         getSharedPreferences()
             .edit {
                 putFloat(WAVEFORM_OPTICS, value)
+            }
+    }
+
+    /**
+     * Returns true when the song list should appear before the album, artist,
+     * and genre sections on detail pages. Songs lead by default.
+     */
+    fun isSongsFirstInPages(): Boolean {
+        return getSharedPreferences()
+            .getBoolean(SONGS_FIRST_IN_PAGES, true)
+    }
+
+    /**
+     * Saves whether the song list should lead the page or trail the other
+     * sections on detail pages.
+     *
+     * @param value true = songs first, false = other sections first.
+     */
+    fun setSongsFirstInPages(value: Boolean) {
+        getSharedPreferences()
+            .edit {
+                putBoolean(SONGS_FIRST_IN_PAGES, value)
             }
     }
 
