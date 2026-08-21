@@ -1,15 +1,28 @@
+#### User Interface
+
+- Added **Shuffle** button in the **Playing Queue** panel.
+- Added optical adjustment option for waveform in **Player Screens**.
+- Added **Clear Button** in **Search** panel.
+- Added toggle to show songs first or after the **Albums**, **Artists** and **Genres** in *
+  *Pages/Details** panel.
+
 #### Bug Fixes
 
-- Fixed a crash happening while shutting down the audio service in some devices.
-- Fixed caps getting re-enabled after song is changed.
+- Fixed curtain animations in lyrics starting from the beginning in plain lyrics mode causing the
+  lyrics taking too long to fully appear on the screen.
+- Fixed critical latency issues when using **AAudio** and **Oboe** audio sinks.
+- Fixed **Bookmarks** list not animating.
+- Fixed irregular fading edges in **Dashboard** strip.
 
 #### Improvements
 
-- Save album palettes to the database to avoid recalculating them every time and improve theme
-  reloading speed.
-- Auto hide forward/rewind buttons on smaller screens if the media controls cannot fit in the
-  available space.
+- Tapping the widget should launch/open the app.
+- Hide fast scroll button when search results are empty.
 
-#### Translations
+#### Changes
 
-- Updated all missing translations for all the supported languages.
+- Changed **Skip .nomedia** and **Skip Hidden Files** to off by default.
+
+#### Removed
+
+- Removed toggle to disable visualizer bars in **Player Screens**.
