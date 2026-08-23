@@ -355,6 +355,12 @@ abstract class BasePlayerFragment : MediaFragment() {
             DateUtils.formatElapsedTime(max / 1000L)
         }
 
+        seekbar.layoutMode = if (UserInterfacePreferences.isWaveformFullMode()) {
+            WaveformSeekbar.LAYOUT_MODE_FULL
+        } else {
+            WaveformSeekbar.LAYOUT_MODE_SCROLLING
+        }
+
         // Observe waveform amplitude data from the ViewModel.
         waveformViewModel.getWaveformData().observe(viewLifecycleOwner) { amplitudes ->
             seekbar.setAmplitudes(amplitudes)
@@ -693,6 +699,13 @@ abstract class BasePlayerFragment : MediaFragment() {
             }
             UserInterfacePreferences.WAVEFORM_OPTICS -> {
                 seekbar.optics = UserInterfacePreferences.getWaveformOptics()
+            }
+            UserInterfacePreferences.WAVEFORM_FULL_MODE -> {
+                seekbar.layoutMode = if (UserInterfacePreferences.isWaveformFullMode()) {
+                    WaveformSeekbar.LAYOUT_MODE_FULL
+                } else {
+                    WaveformSeekbar.LAYOUT_MODE_SCROLLING
+                }
             }
         }
     }

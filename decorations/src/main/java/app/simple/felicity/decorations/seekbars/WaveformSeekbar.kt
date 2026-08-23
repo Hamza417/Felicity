@@ -30,6 +30,8 @@ import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_HIGHLIGHT_FLAT
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_HIGHLIGHT_NONE
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_HIGHLIGHT_OUTLINE
+import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LAYOUT_MODE_FULL
+import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LAYOUT_MODE_SCROLLING
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LEFT_FADE_DURATION_MS
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.WAVEFORM_MODE_FULL
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.WAVEFORM_MODE_HALF
@@ -210,6 +212,34 @@ class WaveformSeekbar @JvmOverloads constructor(
         }
 
     /**
+     * Controls whether the waveform behaves as a horizontally scrolling seekbar with the
+     * playhead pinned to the center ([LAYOUT_MODE_SCROLLING], default) or shows the entire
+     * track laid out across the available width at once, acting like a conventional
+     * non-scrolling seekbar ([LAYOUT_MODE_FULL]).
+     *
+     * Switching between the two smoothly zooms the waveform in or out, always pivoting on
+     * the current playhead position, instead of snapping instantly. Everything else — optics,
+     * bookmarks, spotlight highlighting, labels — keeps working in both modes; bars and their
+     * spacing simply shrink to fit the whole track when [LAYOUT_MODE_FULL] is active.
+     *
+     * Can also be set via the [R.styleable.WaveformSeekbar_wsbLayoutMode] XML attribute.
+     */
+    var layoutMode: Int = LAYOUT_MODE_SCROLLING
+        set(value) {
+            if (field == value) return
+            field = value
+            startLayoutTransition(value)
+        }
+
+    /**
+     * Progress of the scrolling ⇄ full-track zoom transition: `0.0` = fully [LAYOUT_MODE_SCROLLING]
+     * geometry, `1.0` = fully [LAYOUT_MODE_FULL] geometry. Animated by [startLayoutTransition]
+     * whenever [layoutMode] changes; drives the bar position/size lerp in [onDraw].
+     */
+    private var zoomProgress: Float = 0f
+    private var zoomAnimator: ValueAnimator? = null
+
+    /**
      * Fish-eye lens strength in [0.0, 1.0] that bends the waveform horizontally around the
      * center playhead, so the left and right edges appear to curve away like the sides of
      * a cylinder instead of staying perfectly flat.
@@ -247,18 +277,7 @@ class WaveformSeekbar @JvmOverloads constructor(
     // Posted in ACTION_DOWN and canceled in ACTION_MOVE / ACTION_UP to detect long presses.
     private val longPressRunnable = Runnable {
         if (!isDragging) return@Runnable
-        val barStep = barWidthPx + barSpacingPx
-        val totalScrollRange = amplitudes.size * barStep
-        val displayProgress = animatedProgressMs
-        val progressFraction = displayProgress.toFloat().coerceIn(0f, durationMs.toFloat()) / durationMs.toFloat()
-        val scrollOffset = progressFraction * totalScrollRange
-        val centerX = width / 2f
-        val tapScrollPos = uncurveOffset(touchDownX - centerX) + scrollOffset
-        val tappedMs = if (totalScrollRange > 0f && durationMs > 0L) {
-            (tapScrollPos / totalScrollRange * durationMs).toLong().coerceIn(0L, durationMs)
-        } else {
-            displayProgress
-        }
+        val tappedMs = xToMs(touchDownX)
         isDragging = false
         parent?.requestDisallowInterceptTouchEvent(false)
         animateLabelVisibility(true)
@@ -266,6 +285,7 @@ class WaveformSeekbar @JvmOverloads constructor(
         barLongTapListener?.onBarLongTapped(tappedMs)
         performClick()
     }
+
 
     private var playedColor: Int = Color.WHITE
     private var unplayedColor: Int = Color.GRAY
@@ -490,6 +510,7 @@ class WaveformSeekbar @JvmOverloads constructor(
             val ta = context.obtainStyledAttributes(attrs, R.styleable.WaveformSeekbar, defStyleAttr, 0)
             try {
                 waveformMode = ta.getInt(R.styleable.WaveformSeekbar_wsbWaveformMode, WAVEFORM_MODE_HALF)
+                layoutMode = ta.getInt(R.styleable.WaveformSeekbar_wsbLayoutMode, LAYOUT_MODE_SCROLLING)
                 barWidthPx = ta.getDimension(R.styleable.WaveformSeekbar_wsbBarWidth, barWidthPx)
                 barSpacingPx = ta.getDimension(R.styleable.WaveformSeekbar_wsbBarSpacing, barSpacingPx)
                 fadeEdgeLengthPx = ta.getDimension(R.styleable.WaveformSeekbar_wsbFadeEdgeLength, fadeEdgeLengthPx)
@@ -627,6 +648,51 @@ class WaveformSeekbar @JvmOverloads constructor(
         return asin((u * sin(lensArc)).coerceIn(-1f, 1f)) / lensArc * halfWidth
     }
 
+    /** Linearly interpolates between [a] and [b] by [t] in the range [0.0, 1.0]. */
+    private fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t
+
+    /**
+     * Ratio between a bar's pixel step in [LAYOUT_MODE_FULL] (the whole track squeezed into the
+     * current view width) and its pixel step in [LAYOUT_MODE_SCROLLING] (fixed [barWidthPx] +
+     * [barSpacingPx]). Values below 1 mean bars shrink when zooming out to the full track;
+     * values above 1 (short tracks with few bars) mean they grow instead.
+     */
+    private fun fullModeScale(): Float {
+        if (amplitudes.isEmpty() || width <= 0) return 1f
+        val barStep = barWidthPx + barSpacingPx
+        if (barStep <= 0f) return 1f
+        val fullBarStep = width.toFloat() / amplitudes.size
+        return fullBarStep / barStep
+    }
+
+    /**
+     * Starts (or redirects) the smooth zoom animation between [LAYOUT_MODE_SCROLLING] and
+     * [LAYOUT_MODE_FULL] geometry. The transition always pivots visually on the current
+     * playhead: zooming out reveals the entire track around it, zooming back in seamlessly
+     * returns to the centered, scrolling playhead.
+     */
+    private fun startLayoutTransition(mode: Int) {
+        zoomAnimator?.cancel()
+        val to = if (mode == LAYOUT_MODE_FULL) 1f else 0f
+
+        if (!isAttachedToWindow || isInEditMode) {
+            zoomProgress = to
+            invalidate()
+            return
+        }
+
+        val from = zoomProgress
+        zoomAnimator = ValueAnimator.ofFloat(from, to).apply {
+            duration = LAYOUT_TRANSITION_DURATION_MS
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { anim ->
+                zoomProgress = anim.animatedValue as Float
+                invalidate()
+            }
+            start()
+        }
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         if (amplitudes.isEmpty() || drawnAmplitudes.isEmpty() || durationMs <= 0L) return
@@ -646,6 +712,23 @@ class WaveformSeekbar @JvmOverloads constructor(
         val totalScrollRange = amplitudes.size * barStep
         val scrollOffset = progressFraction * totalScrollRange
 
+        // ── Scrolling ⇄ full-track zoom geometry ─────────────────────────────────
+        // fullScale converts a native (scrolling-mode) pixel offset into its equivalent
+        // position when the whole track is squeezed into the view width. effScale/zoomT
+        // blend every size and position value between the two modes so the transition
+        // reads as a continuous zoom rather than an abrupt mode switch.
+        val zoomT = zoomProgress
+        val fullScale = fullModeScale()
+        val effScale = lerp(1f, fullScale, zoomT)
+        val effBarWidthPx = (barWidthPx * effScale).coerceAtLeast(0.5f)
+        val effCornerRadiusPx = (barCornerRadiusPx * effScale).coerceAtLeast(0f)
+        val effMinBarHeightPx = (minBarHeightPx * effScale).coerceAtLeast(1f)
+        val effFadeLengthPx = fadeEdgeLengthPx * (1f - zoomT)
+
+        // The focal point is always the current playhead: pinned to the view center while
+        // scrolling, sliding to its proportional position along the full track as we zoom out.
+        val focalScreenX = lerp(centerX, progressFraction * w, zoomT)
+
         // Preserve a compositing layer so the DST_OUT fades erase bars near the edges
         val layerId = canvas.saveLayer(0f, 0f, w, h, null)
 
@@ -656,7 +739,7 @@ class WaveformSeekbar @JvmOverloads constructor(
         // When bookmarks are present we carve a small strip from the top of the available
         // bar area to house the bookmark dots. Bars grow from a lower baseline so the dots
         // sit cleanly above them without any overlap.
-        val bookmarkDotRadius = if (bookmarks.isNotEmpty()) BOOKMARK_DOT_RADIUS_DP * resources.displayMetrics.density else 0f
+        val bookmarkDotRadius = if (bookmarks.isNotEmpty()) (BOOKMARK_DOT_RADIUS_DP * resources.displayMetrics.density * effScale).coerceAtLeast(1.5f) else 0f
         val bookmarkStripH = if (bookmarks.isNotEmpty()) bookmarkDotRadius * 2f + BOOKMARK_DOT_MARGIN_DP * resources.displayMetrics.density else 0f
         val effectiveMaxBarArea = maxBarArea - bookmarkStripH
 
@@ -683,29 +766,35 @@ class WaveformSeekbar @JvmOverloads constructor(
         }
 
         for (i in drawnAmplitudes.indices) {
-            // Raw offset is the bar's flat position relative to the playhead. The fish-eye
-            // lens bends it into its on-screen spot, but the raw value is what we cull with.
+            // Raw offset is the bar's flat position relative to the playhead in native
+            // (scrolling-mode) pixel space. The fish-eye lens bends it for the scrolling
+            // geometry; the linear term is its equivalent position in full-track geometry.
+            // Blending the two by zoomT produces the seamless zoom transition.
             val rawOffset = i * barStep - scrollOffset
-            val barCenterX = centerX + curvedOffset(rawOffset)
+            val curvedScreenOffset = curvedOffset(rawOffset)
+            val linearScreenOffset = rawOffset * fullScale
+            val barCenterX = focalScreenX + lerp(curvedScreenOffset, linearScreenOffset, zoomT)
             // Cull bars that are fully outside the visible area
-            if (rawOffset + barWidthPx / 2f < -centerX || rawOffset - barWidthPx / 2f > centerX) continue
+            if (barCenterX + effBarWidthPx / 2f < 0f || barCenterX - effBarWidthPx / 2f > w) continue
 
             val amp = drawnAmplitudes[i].coerceIn(0f, 1f)
             // Bars on the far sides of the lens are drawn a little shorter, so the waveform
-            // looks like it wraps around a cylinder and curves away from us.
-            val heightScale = barHeightScale(rawOffset)
+            // looks like it wraps around a cylinder and curves away from us. This fish-eye
+            // foreshortening fades out as we zoom toward the flat, full-track layout.
+            val heightScale = lerp(barHeightScale(rawOffset), 1f, zoomT)
 
             // Smoothly crossfade between played and unplayed color over a ±transitionZone window
             // centered on the playhead, so the color change is gradual rather than an instant switch.
             val transitionZone = barStep * TRANSITION_ZONE
-            val distFromCenter = barCenterX - centerX
+            val distFromCenter = barCenterX - focalScreenX
             val colorT = ((distFromCenter + transitionZone) / (2f * transitionZone)).coerceIn(0f, 1f)
             barPaint.color = blendArgb(playedColor, unplayedColor, colorT)
 
-            // Bars closest to the center playhead render at full opacity; bars toward the outer
-            // edges fade toward HIGHLIGHT_MIN_ALPHA, creating a spotlight effect.
+            // Bars closest to the playhead render at full opacity; bars toward the outer
+            // edges fade toward HIGHLIGHT_MIN_ALPHA, creating a spotlight effect that follows
+            // the focal point in both scrolling and full-track layouts.
             // During a left-fade transition, bars before the pivot additionally fade out to zero.
-            val distFraction = (abs(barCenterX - centerX) / (w / 2f)).coerceIn(0f, 1f)
+            val distFraction = (abs(barCenterX - focalScreenX) / (w / 2f)).coerceIn(0f, 1f)
             val spotlightAlpha = HIGHLIGHT_MIN_ALPHA + (1f - HIGHLIGHT_MIN_ALPHA) * (1f - distFraction)
             val leftFadeAlpha = if (leftFadeProgress >= 0f && i < leftFadePivotIndex) {
                 1f - leftFadeProgress
@@ -717,37 +806,37 @@ class WaveformSeekbar @JvmOverloads constructor(
             when (waveformMode) {
                 WAVEFORM_MODE_FULL -> {
                     // Symmetric: bar grows from center upward AND downward
-                    val halfH = max(minBarHeightPx / 2f, amp * (effectiveMaxBarArea / 2f)) * heightScale
+                    val halfH = max(effMinBarHeightPx / 2f, amp * (effectiveMaxBarArea / 2f)) * heightScale
                     barRect.set(
-                            barCenterX - barWidthPx / 2f,
+                            barCenterX - effBarWidthPx / 2f,
                             centerY - halfH,
-                            barCenterX + barWidthPx / 2f,
+                            barCenterX + effBarWidthPx / 2f,
                             centerY + halfH
                     )
                 }
                 WAVEFORM_MODE_REFLECTION -> {
                     // Reflection main: bar grows upward from just above the separator gap
-                    val barH = max(minBarHeightPx, amp * maxMainBarArea) * heightScale
+                    val barH = max(effMinBarHeightPx, amp * maxMainBarArea) * heightScale
                     barRect.set(
-                            barCenterX - barWidthPx / 2f,
+                            barCenterX - effBarWidthPx / 2f,
                             mainWaveformBottom - barH,
-                            barCenterX + barWidthPx / 2f,
+                            barCenterX + effBarWidthPx / 2f,
                             mainWaveformBottom
                     )
                 }
                 else -> {
                     // Half: bar grows upward from center only
-                    val barH = max(minBarHeightPx, amp * effectiveMaxBarArea) * heightScale
+                    val barH = max(effMinBarHeightPx, amp * effectiveMaxBarArea) * heightScale
                     barRect.set(
-                            barCenterX - barWidthPx / 2f,
+                            barCenterX - effBarWidthPx / 2f,
                             centerY - barH,
-                            barCenterX + barWidthPx / 2f,
+                            barCenterX + effBarWidthPx / 2f,
                             centerY
                     )
                 }
             }
 
-            canvas.drawRoundRect(barRect, barCornerRadiusPx, barCornerRadiusPx, barPaint)
+            canvas.drawRoundRect(barRect, effCornerRadiusPx, effCornerRadiusPx, barPaint)
         }
 
         // Draw the reflected (inverted, alpha-blended) waveform and its separator line in reflection mode.
@@ -757,17 +846,19 @@ class WaveformSeekbar @JvmOverloads constructor(
 
             for (i in drawnAmplitudes.indices) {
                 val rawOffset = i * barStep - scrollOffset
-                val barCenterX = centerX + curvedOffset(rawOffset)
-                if (rawOffset + barWidthPx / 2f < -centerX || rawOffset - barWidthPx / 2f > centerX) continue
+                val curvedScreenOffset = curvedOffset(rawOffset)
+                val linearScreenOffset = rawOffset * fullScale
+                val barCenterX = focalScreenX + lerp(curvedScreenOffset, linearScreenOffset, zoomT)
+                if (barCenterX + effBarWidthPx / 2f < 0f || barCenterX - effBarWidthPx / 2f > w) continue
 
                 val amp = drawnAmplitudes[i].coerceIn(0f, 1f)
-                val heightScale = barHeightScale(rawOffset)
+                val heightScale = lerp(barHeightScale(rawOffset), 1f, zoomT)
                 val transitionZone = barStep * TRANSITION_ZONE
-                val distFromCenter = barCenterX - centerX
+                val distFromCenter = barCenterX - focalScreenX
                 val colorT = ((distFromCenter + transitionZone) / (2f * transitionZone)).coerceIn(0f, 1f)
                 barPaint.color = blendArgb(playedColor, unplayedColor, colorT)
 
-                val distFraction = (abs(barCenterX - centerX) / (w / 2f)).coerceIn(0f, 1f)
+                val distFraction = (abs(barCenterX - focalScreenX) / (w / 2f)).coerceIn(0f, 1f)
                 val spotlightAlpha = HIGHLIGHT_MIN_ALPHA + (1f - HIGHLIGHT_MIN_ALPHA) * (1f - distFraction)
                 val leftFadeAlpha = if (leftFadeProgress >= 0f && i < leftFadePivotIndex) {
                     1f - leftFadeProgress
@@ -778,14 +869,14 @@ class WaveformSeekbar @JvmOverloads constructor(
                 barPaint.alpha = (255 * spotlightAlpha * leftFadeAlpha * reflectionAlpha).toInt()
 
                 // Reflected bar grows downward from the top of the reflection area
-                val reflBarH = max(minBarHeightPx, amp * maxReflBarArea) * heightScale
+                val reflBarH = max(effMinBarHeightPx, amp * maxReflBarArea) * heightScale
                 barRect.set(
-                        barCenterX - barWidthPx / 2f,
+                        barCenterX - effBarWidthPx / 2f,
                         reflectionTop,
-                        barCenterX + barWidthPx / 2f,
+                        barCenterX + effBarWidthPx / 2f,
                         reflectionTop + reflBarH
                 )
-                canvas.drawRoundRect(barRect, barCornerRadiusPx, barCornerRadiusPx, barPaint)
+                canvas.drawRoundRect(barRect, effCornerRadiusPx, effCornerRadiusPx, barPaint)
             }
 
             // Draw the thin horizontal separator line inside the outer compositing layer so the
@@ -812,7 +903,10 @@ class WaveformSeekbar @JvmOverloads constructor(
             for (timestampMs in bookmarks) {
                 val bookmarkFraction = timestampMs.toFloat().coerceIn(0f, durationMs.toFloat()) / durationMs.toFloat()
                 val bookmarkScrollOffset = bookmarkFraction * (amplitudes.size * barStep)
-                val dotX = centerX + curvedOffset(bookmarkScrollOffset - scrollOffset)
+                val bmRawOffset = bookmarkScrollOffset - scrollOffset
+                val bmCurved = curvedOffset(bmRawOffset)
+                val bmLinear = bmRawOffset * fullScale
+                val dotX = focalScreenX + lerp(bmCurved, bmLinear, zoomT)
                 if (dotX + bookmarkDotRadius < 0f || dotX - bookmarkDotRadius > w) continue
                 canvas.drawCircle(dotX, dotCenterY, bookmarkDotRadius, bookmarkPaint)
             }
@@ -820,25 +914,29 @@ class WaveformSeekbar @JvmOverloads constructor(
 
         // Rebuild gradient shaders only when the view width changes
         if (w != lastWidth) rebuildGradients(w)
-        leftGradient?.let { fadePaint.shader = it }
-        canvas.drawRect(0f, 0f, fadeEdgeLengthPx, h, fadePaint)
+        if (effFadeLengthPx > 0f) {
+            leftGradient?.let { fadePaint.shader = it }
+            canvas.drawRect(0f, 0f, effFadeLengthPx, h, fadePaint)
 
-        // Right horizontal fade (transparent → opaque, erasing bars at the right edge)
-        rightGradient?.let { fadePaint.shader = it }
-        canvas.drawRect(w - fadeEdgeLengthPx, 0f, w, h, fadePaint)
+            // Right horizontal fade (transparent → opaque, erasing bars at the right edge)
+            rightGradient?.let { fadePaint.shader = it }
+            canvas.drawRect(w - effFadeLengthPx, 0f, w, h, fadePaint)
+        }
 
         canvas.restoreToCount(layerId)
 
-        // Draw the seek line at the center playhead position while the user is dragging;
-        // rendered outside the compositing layer so fade edges never clip it.
+        // Draw the seek line at the playhead position while the user is dragging; rendered
+        // outside the compositing layer so fade edges never clip it. The line follows the
+        // same focal point as the bars, so it tracks the moving playhead in full-track mode
+        // instead of staying fixed to the view center.
         // Alpha is capped at SEEK_LINE_MAX_ALPHA to keep it visually translucent.
         if (seekLineAlpha > 0f) {
             seekLinePaint.color = playedColor
             seekLinePaint.alpha = (255 * seekLineAlpha * SEEK_LINE_MAX_ALPHA).toInt()
             canvas.drawLine(
-                    centerX,
+                    focalScreenX,
                     seekLineVerticalPaddingPx,
-                    centerX,
+                    focalScreenX,
                     h - seekLineVerticalPaddingPx,
                     seekLinePaint
             )
@@ -847,6 +945,7 @@ class WaveformSeekbar @JvmOverloads constructor(
         // Draw time labels outside the compositing layer so they are never erased
         drawLabels(canvas, displayProgress, w, h)
     }
+
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
@@ -973,6 +1072,13 @@ class WaveformSeekbar @JvmOverloads constructor(
                 isFling = false
                 progressAnimator?.cancel()
 
+                // If a scrolling⇄full zoom transition is mid-flight, snap it straight to its
+                // target so the touch gesture below always sees settled, unambiguous geometry.
+                if (zoomAnimator?.isRunning == true) {
+                    zoomAnimator?.cancel()
+                    zoomProgress = if (layoutMode == LAYOUT_MODE_FULL) 1f else 0f
+                }
+
                 parent?.requestDisallowInterceptTouchEvent(true)
                 isDragging = true
                 dragStartX = event.x
@@ -1002,23 +1108,31 @@ class WaveformSeekbar @JvmOverloads constructor(
                 if (isDragging) {
                     velocityTracker?.addMovement(event)
 
-                    // Map both touch positions back into flat-waveform space first, so the
-                    // seek distance always matches the bar the finger is actually grabbing
-                    // even while the fish-eye lens is bending the waveform.
-                    val centerX = width / 2f
-                    val deltaX = uncurveOffset(event.x - centerX) - uncurveOffset(dragStartX - centerX)
                     // Cancel the long-press timer as soon as the finger travels past the slop boundary
                     if (abs(event.x - touchDownX) > TAP_SLOP_PX || abs(event.y - touchDownY) > TAP_SLOP_PX) {
                         removeCallbacks(longPressRunnable)
                     }
-                    val barStep = barWidthPx + barSpacingPx
-                    val deltaMs = if (amplitudes.isNotEmpty() && barStep > 0f) {
-                        // Swiping left → seeking forward; swiping right → seeking backward
-                        (-deltaX / barStep * (durationMs.toFloat() / amplitudes.size)).roundToLong()
+
+                    if (isFullyInFullLayout()) {
+                        // Full-track layout: the whole timeline maps directly across the width,
+                        // so touch position translates straight to a playback timestamp exactly
+                        // like a conventional (non-scrolling) seekbar.
+                        dragCurrentProgressMs = xToMs(event.x)
                     } else {
-                        0L
+                        // Map both touch positions back into flat-waveform space first, so the
+                        // seek distance always matches the bar the finger is actually grabbing
+                        // even while the fish-eye lens is bending the waveform.
+                        val centerX = width / 2f
+                        val deltaX = uncurveOffset(event.x - centerX) - uncurveOffset(dragStartX - centerX)
+                        val barStep = barWidthPx + barSpacingPx
+                        val deltaMs = if (amplitudes.isNotEmpty() && barStep > 0f) {
+                            // Swiping left → seeking forward; swiping right → seeking backward
+                            (-deltaX / barStep * (durationMs.toFloat() / amplitudes.size)).roundToLong()
+                        } else {
+                            0L
+                        }
+                        dragCurrentProgressMs = (dragStartProgressMs + deltaMs).coerceIn(0L, durationMs)
                     }
-                    dragCurrentProgressMs = (dragStartProgressMs + deltaMs).coerceIn(0L, durationMs)
                     seekListener?.onSeekTo(dragCurrentProgressMs, fromUser = true)
                     invalidate()
                     return true
@@ -1047,19 +1161,8 @@ class WaveformSeekbar @JvmOverloads constructor(
 
                     if (isTap && barTapListener != null) {
                         // Convert the tap's horizontal position to a playback timestamp using the
-                        // same scroll math that onDraw uses, then notify the listener.
-                        val barStep = barWidthPx + barSpacingPx
-                        val totalScrollRange = amplitudes.size * barStep
-                        val displayProgress = animatedProgressMs
-                        val progressFraction = displayProgress.toFloat().coerceIn(0f, durationMs.toFloat()) / durationMs.toFloat()
-                        val scrollOffset = progressFraction * totalScrollRange
-                        val centerX = width / 2f
-                        val tapScrollPos = uncurveOffset(event.x - centerX) + scrollOffset
-                        val tappedMs = if (totalScrollRange > 0f && durationMs > 0L) {
-                            (tapScrollPos / totalScrollRange * durationMs).toLong().coerceIn(0L, durationMs)
-                        } else {
-                            displayProgress
-                        }
+                        // same geometry onDraw uses for the current layout mode.
+                        val tappedMs = xToMs(event.x)
                         animateLabelVisibility(true)
                         animateSeekLine(false)
                         // Restore dragging state back to false before the callback so callers
@@ -1079,8 +1182,10 @@ class WaveformSeekbar @JvmOverloads constructor(
                     // Setting isFling = true here ensures setProgress is blocked during the window
                     // between seekListener.onSeekEnd and the first flingRunnable frame, preventing
                     // the song's playback position from snapping the waveform back mid-fling.
+                    // Full-track layout behaves like a plain seekbar — no momentum fling.
                     val barStep = barWidthPx + barSpacingPx
-                    val willFling = amplitudes.isNotEmpty()
+                    val willFling = !isFullyInFullLayout()
+                            && amplitudes.isNotEmpty()
                             && barStep > 0f
                             && abs(xVelocity) > minFlingVelocity
                     if (willFling) isFling = true
@@ -1109,6 +1214,34 @@ class WaveformSeekbar @JvmOverloads constructor(
             }
         }
         return super.onTouchEvent(event)
+    }
+
+    /** True once [layoutMode] is [LAYOUT_MODE_FULL] and the zoom transition has fully settled. */
+    private fun isFullyInFullLayout(): Boolean = layoutMode == LAYOUT_MODE_FULL && zoomProgress >= 1f
+
+    /**
+     * Converts an on-screen horizontal touch position into a playback timestamp in milliseconds,
+     * using the same geometry [onDraw] uses for the current layout mode: a direct proportional
+     * mapping across the full width in [LAYOUT_MODE_FULL], or the scrolling/fish-eye math
+     * relative to the centered playhead in [LAYOUT_MODE_SCROLLING].
+     */
+    private fun xToMs(x: Float): Long {
+        if (durationMs <= 0L) return animatedProgressMs
+        if (isFullyInFullLayout()) {
+            return (x / width * durationMs).toLong().coerceIn(0L, durationMs)
+        }
+        val barStep = barWidthPx + barSpacingPx
+        val totalScrollRange = amplitudes.size * barStep
+        val displayProgress = animatedProgressMs
+        val progressFraction = displayProgress.toFloat().coerceIn(0f, durationMs.toFloat()) / durationMs.toFloat()
+        val scrollOffset = progressFraction * totalScrollRange
+        val centerX = width / 2f
+        val tapScrollPos = uncurveOffset(x - centerX) + scrollOffset
+        return if (totalScrollRange > 0f) {
+            (tapScrollPos / totalScrollRange * durationMs).toLong().coerceIn(0L, durationMs)
+        } else {
+            displayProgress
+        }
     }
 
     override fun performClick(): Boolean {
@@ -1552,6 +1685,7 @@ class WaveformSeekbar @JvmOverloads constructor(
         labelAnimator?.cancel()
         leftFadeAnimator?.cancel()
         seekLineAnimator?.cancel()
+        zoomAnimator?.cancel()
         removeCallbacks(longPressRunnable)
         overScroller.abortAnimation()
         isFling = false
@@ -1606,6 +1740,23 @@ class WaveformSeekbar @JvmOverloads constructor(
          * separated by a thin line and a small gap.
          */
         const val WAVEFORM_MODE_REFLECTION = 2
+
+        /**
+         * Layout mode: the waveform scrolls horizontally with the playhead pinned to the
+         * center of the view (default). This is the classic behavior of this seekbar.
+         */
+        const val LAYOUT_MODE_SCROLLING = 0
+
+        /**
+         * Layout mode: the entire track is laid out across the available width at once and
+         * does not scroll — the playhead moves across the bars instead, exactly like a
+         * conventional non-scrolling seekbar. Switching to/from [LAYOUT_MODE_SCROLLING] animates
+         * as a smooth zoom pivoted on the current playhead position.
+         */
+        const val LAYOUT_MODE_FULL = 1
+
+        /** Duration of the scrolling ⇄ full-track zoom transition, in milliseconds. */
+        private const val LAYOUT_TRANSITION_DURATION_MS = 420L
 
         /** Labels are positioned at the top edge of the view. */
         const val LABEL_GRAVITY_TOP = 0

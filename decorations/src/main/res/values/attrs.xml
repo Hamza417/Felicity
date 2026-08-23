@@ -9,7 +9,7 @@
     </attr>
 
     <declare-styleable name="DynamicCornerLayout">
-        <!-- At least one of them needs to be true else roundness will be applies to all corners
+        <!-- At least one of them needs to be true else roundness will be applied to all corners
                 default is false for both of them -->
         <attr name="roundTopCorners" format="boolean" />
         <attr name="roundBottomCorners" format="boolean" />
@@ -362,6 +362,7 @@
                                         full       (1) – bars grow symmetrically above and below center.
                                         reflection (2) – half spectrum at top with an alpha-blended
                                                          inverted mirror below, separated by a thin line.
+        wsbLayoutMode                 – scrolling (0, default) or full-track (1) layout; see attr docs below.
         wsbBarWidth                   – pixel width of each amplitude bar. Default: 6dp.
         wsbBarSpacing                 – pixel gap between adjacent bars. Default: 3dp.
         wsbFadeEdgeLength             – horizontal DST_OUT fading edge on each side. Default: 72dp.
@@ -385,6 +386,18 @@
             <enum name="half" value="0" />
             <enum name="full" value="1" />
             <enum name="reflection" value="2" />
+        </attr>
+        <!--
+            Layout mode controlling whether the waveform scrolls or shows the whole track at once.
+            scrolling (0) – the classic behavior: the playhead stays pinned to the center while
+                            the waveform scrolls beneath it (default).
+            full      (1) – the entire track is squeezed into the available width and does not
+                            scroll; the playhead moves across the bars like a normal seekbar.
+            Switching between the two smoothly zooms in/out, pivoting on the current playhead.
+        -->
+        <attr name="wsbLayoutMode" format="enum">
+            <enum name="scrolling" value="0" />
+            <enum name="full" value="1" />
         </attr>
         <attr name="wsbBarWidth" format="dimension" />
         <attr name="wsbBarSpacing" format="dimension" />

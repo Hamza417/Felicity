@@ -26,6 +26,13 @@ object UserInterfacePreferences {
     const val WAVEFORM_OPTICS = "waveform_optics"
 
     /**
+     * Preference key that toggles the waveform seekbar's layout: a horizontally scrolling
+     * playhead-centered view (default), or the entire track laid out across the available
+     * width at once, acting like a conventional non-scrolling seekbar.
+     */
+    const val WAVEFORM_FULL_MODE = "waveform_full_mode"
+
+    /**
      * Preference key that decides whether the song list leads the detail pages
      * or trails the album, artist, and genre sections.
      */
@@ -142,6 +149,31 @@ object UserInterfacePreferences {
         getSharedPreferences()
             .edit {
                 putFloat(WAVEFORM_OPTICS, value)
+            }
+    }
+
+    /**
+     * Returns whether the waveform seekbar should display the entire track at once
+     * (full-track layout) instead of the default horizontally scrolling, playhead-centered
+     * layout. Defaults to `false`.
+     *
+     * Use with [app.simple.felicity.decorations.seekbars.WaveformSeekbar.LAYOUT_MODE_FULL] /
+     * [app.simple.felicity.decorations.seekbars.WaveformSeekbar.LAYOUT_MODE_SCROLLING].
+     */
+    fun isWaveformFullMode(): Boolean {
+        return getSharedPreferences()
+            .getBoolean(WAVEFORM_FULL_MODE, false)
+    }
+
+    /**
+     * Persists the waveform seekbar's layout mode toggle.
+     *
+     * @param value `true` to show the entire track at once; `false` for the scrolling layout.
+     */
+    fun setWaveformFullMode(value: Boolean) {
+        getSharedPreferences()
+            .edit {
+                putBoolean(WAVEFORM_FULL_MODE, value)
             }
     }
 

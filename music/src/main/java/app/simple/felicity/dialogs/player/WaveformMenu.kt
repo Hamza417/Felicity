@@ -27,6 +27,7 @@ class WaveformMenu : MediaBottomDialogFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         binding.stackMediaControlsSwitch.isChecked = UserInterfacePreferences.isStackMediaControls()
+        binding.fullWaveformSwitch.isChecked = UserInterfacePreferences.isWaveformFullMode()
         binding.opticsSeekbar.setProgress(UserInterfacePreferences.getWaveformOptics() * WAVEFORM_COMPENSATION)
         setTimerPosition()
 
@@ -37,6 +38,10 @@ class WaveformMenu : MediaBottomDialogFragment() {
                     UserInterfacePreferences.setTimerPosition(UserInterfacePreferences.TIMER_POSITION_TOP)
                 }
             }
+        }
+
+        binding.fullWaveformSwitch.setOnCheckedChangeListener { _, isChecked ->
+            UserInterfacePreferences.setWaveformFullMode(isChecked)
         }
 
         binding.opticsSeekbar.setOnSeekChangeListener(object : FelicitySeekbar.OnSeekChangeListener {
