@@ -481,6 +481,10 @@
     <string name="usb_dac_control_summary">Użyj sterownika DAC wbudowanego w aplikację, aby utworzyć bezpośrednie wyjście audio przez DAC.</string>
     <string name="stack_media_controls">Połączone sterowanie mediami</string>
     <string name="stack_media_controls_summary">Umieść przyciski sterowania mediami na wykresie kształtu fali, by zyskać więcej pionowej przestrzeni.</string>
+    <string name="pages">Strony</string>
+    <string name="show_songs_first">Pokaż najpierw utwory</string>
+    <string name="show_songs_first_summary">Pokaż listę utworów przed sekcjami albumów, wykonawców i gatunków na stronach szczegółów.</string>
     <string name="timer_position">Pozycja licznika czasu</string>
     <string name="waveform_menu">Menu kształtu fali</string>
+    <string name="optics">Optyka</string>
 </resources>
