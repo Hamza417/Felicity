@@ -66,38 +66,19 @@
             android:clipChildren="false"
             android:orientation="horizontal">
 
-            <LinearLayout
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
                 android:layout_width="0dp"
+                android:padding="@dimen/padding_15"
+                android:layout_height="wrap_content"
+                android:text="@string/style"
                 android:layout_weight="1"
-                android:orientation="vertical"
-                android:layout_height="wrap_content">
+                android:layout_gravity="center_vertical"
+                android:textSize="@dimen/text_size_14"
+                app:appFontStyle="bold"
+                app:textColorStyle="primary" />
 
-                <app.simple.felicity.decorations.typeface.TypeFaceTextView
-                    android:layout_width="match_parent"
-                    android:paddingHorizontal="@dimen/padding_15"
-                    android:paddingTop="@dimen/padding_15"
-                    android:layout_height="wrap_content"
-                    android:text="@string/full_waveform"
-                    android:layout_gravity="center_vertical"
-                    android:textSize="@dimen/text_size_14"
-                    app:appFontStyle="bold"
-                    app:textColorStyle="primary" />
-
-                <app.simple.felicity.decorations.typeface.TypeFaceTextView
-                    android:layout_width="match_parent"
-                    android:paddingHorizontal="@dimen/padding_15"
-                    android:paddingBottom="@dimen/padding_15"
-                    android:layout_height="wrap_content"
-                    android:text="@string/full_waveform_summary"
-                    android:layout_gravity="center_vertical"
-                    android:textSize="@dimen/text_size_12"
-                    app:appFontStyle="regular"
-                    app:textColorStyle="tertiary" />
-
-            </LinearLayout>
-
-            <app.simple.felicity.decorations.toggles.FelicitySwitch
-                android:id="@+id/full_waveform_switch"
+            <app.simple.felicity.decorations.toggles.FelicityButtonGroup
+                android:id="@+id/waveform_mode_button_group"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_vertical" />
