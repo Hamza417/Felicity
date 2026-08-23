@@ -23,8 +23,8 @@ import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.EqualizerPreferences
 import app.simple.felicity.repository.models.EqualizerPreset
+import app.simple.felicity.shared.utils.PEQFileParser
 import app.simple.felicity.ui.subpanels.EqualizerPresets
-import app.simple.felicity.utils.PeqFileParser
 import app.simple.felicity.viewmodels.panels.EqualizerViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.filterNotNull
@@ -64,7 +64,7 @@ class Equalizer : MediaFragment() {
     /**
      * Document picker launched when the user chooses "Import PEQ File" from the menu.
      * Accepts any file type so the user can pick .txt, .peq, or whatever extension their
-     * EQ tool happened to produce. The actual format validation happens in [PeqFileParser].
+     * EQ tool happened to produce. The actual format validation happens in [PEQFileParser].
      */
     private val peqFilePicker = registerForActivityResult(
             ActivityResultContracts.OpenDocument()
@@ -79,7 +79,7 @@ class Equalizer : MediaFragment() {
                     ?.use { it.readText() }
                     ?: throw IllegalArgumentException("Failed to read PEQ file")
 
-                val preset = PeqFileParser.parse(text, fileName)
+                val preset = PEQFileParser.parse(text, fileName)
                     ?: throw IllegalArgumentException("File contains no valid enabled filter lines")
 
                 withContext(Dispatchers.Main) {
@@ -276,9 +276,9 @@ class Equalizer : MediaFragment() {
      * all parsed bands are pushed to the DSP engine so the sound changes straight away
      * without the user having to do anything extra.
      *
-     * @param preset The fully parsed preset returned by [PeqFileParser.parse].
+     * @param preset The fully parsed preset returned by [PEQFileParser.parse].
      */
-    private fun applyParsedPreset(preset: PeqFileParser.ParsedPreset) {
+    private fun applyParsedPreset(preset: PEQFileParser.ParsedPreset) {
         // Switch to PEQ mode so the imported bands show up on the slider.
         EqualizerManager.setEqMode(EqualizerPreferences.EQ_MODE_PARAMETRIC)
 

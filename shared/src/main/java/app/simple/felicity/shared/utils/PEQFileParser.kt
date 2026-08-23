@@ -1,7 +1,7 @@
-package app.simple.felicity.utils
+package app.simple.felicity.shared.utils
 
-import app.simple.felicity.utils.PeqFileParser.CSV_MATCH_THRESHOLD
-import app.simple.felicity.utils.PeqFileParser.MAX_GRAPHIC_EQ_BANDS
+import app.simple.felicity.shared.utils.PEQFileParser.CSV_MATCH_THRESHOLD
+import app.simple.felicity.shared.utils.PEQFileParser.MAX_GRAPHIC_EQ_BANDS
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -60,7 +60,8 @@ import org.json.JSONTokener
  *
  * @author Hamza417
  */
-object PeqFileParser {
+@Suppress("SameParameterValue")
+object PEQFileParser {
 
     /** GraphicEQ curves are down-sampled to at most this many parametric bands. */
     private const val MAX_GRAPHIC_EQ_BANDS = 24
@@ -387,4 +388,3 @@ object PeqFileParser {
         return ParsedPreset(name = fallbackName, preampDb = 0f, bands = bands)
     }
 }
-
