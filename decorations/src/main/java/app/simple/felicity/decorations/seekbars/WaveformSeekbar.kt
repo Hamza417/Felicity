@@ -46,8 +46,10 @@ import app.simple.felicity.theme.models.Accent
 import app.simple.felicity.theme.models.Theme
 import kotlin.math.abs
 import kotlin.math.asin
+import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToLong
 import kotlin.math.sin
 
@@ -617,7 +619,16 @@ class WaveformSeekbar @JvmOverloads constructor(
         // keeps the outer edges of the visible area anchored at the view edges.
         val lensArc = optics * FISH_EYE_LENS_ARC
         val u = rawOffset / halfWidth
-        return sin(u * lensArc) / sin(lensArc) * halfWidth
+        // The sine bend is only well-behaved (monotonic) for |u| <= 1. Beyond that it would
+        // fold back on itself, mapping far-away bars onto the same screen position as bars
+        // near the center — producing duplicate, overlapping copies of the waveform at high
+        // optics values. Clamping the curved portion and continuing linearly from the clamped
+        // edge keeps the whole function monotonic and unbounded, so anything actually offscreen
+        // stays offscreen no matter how far rawOffset extends.
+        val uClamped = u.coerceIn(-1f, 1f)
+        val curved = sin(uClamped * lensArc) / sin(lensArc) * halfWidth
+        val overshoot = (u - uClamped) * halfWidth
+        return curved + overshoot
     }
 
     /**
@@ -630,7 +641,10 @@ class WaveformSeekbar @JvmOverloads constructor(
         val halfWidth = width / 2f
         if (halfWidth <= 0f) return 1f
         val lensArc = optics * FISH_EYE_LENS_ARC
-        val u = rawOffset / halfWidth
+        // Same clamping rationale as curvedOffset: beyond the lens's domain the bar is
+        // offscreen anyway, so its height scale no longer matters — clamping just keeps
+        // the cosine term from wobbling back upward for very large offsets.
+        val u = (rawOffset / halfWidth).coerceIn(-1f, 1f)
         return 1f - optics * (1f - cos(u * lensArc))
     }
 
@@ -719,6 +733,7 @@ class WaveformSeekbar @JvmOverloads constructor(
         // reads as a continuous zoom rather than an abrupt mode switch.
         val zoomT = zoomProgress
         val fullScale = fullModeScale()
+        val fullBarStep = barStep * fullScale
         val effScale = lerp(1f, fullScale, zoomT)
         val effBarWidthPx = (barWidthPx * effScale).coerceAtLeast(0.5f)
         val effCornerRadiusPx = (barCornerRadiusPx * effScale).coerceAtLeast(0f)
@@ -728,6 +743,31 @@ class WaveformSeekbar @JvmOverloads constructor(
         // The focal point is always the current playhead: pinned to the view center while
         // scrolling, sliding to its proportional position along the full track as we zoom out.
         val focalScreenX = lerp(centerX, progressFraction * w, zoomT)
+
+        // ── Full-track congestion normalization ──────────────────────────────────
+        // As the view zooms toward LAYOUT_MODE_FULL, the per-bar pixel step can shrink far
+        // below a comfortable minimum for long tracks (thousands of one-per-second bars
+        // squeezed into a few hundred pixels). Instead of letting bars collapse into an
+        // illegible solid block, consecutive bars are merged into wider "buckets" (using the
+        // loudest amplitude in each bucket) once the blended step falls under
+        // [MIN_FULL_BAR_STEP_DP], keeping the full waveform legible and only mildly denser
+        // than the scrolling layout rather than fully congested.
+        val blendedBarStepPx = lerp(barStep, fullBarStep, zoomT)
+        val minFullBarStepPx = MIN_FULL_BAR_STEP_DP * resources.displayMetrics.density
+        val skipFactor = if (blendedBarStepPx > 0f && blendedBarStepPx < minFullBarStepPx) {
+            ceil(minFullBarStepPx / blendedBarStepPx).toInt().coerceAtLeast(1)
+        } else {
+            1
+        }
+        val bucketStepPx = blendedBarStepPx * skipFactor
+        val gapRatio = (barSpacingPx / barStep).coerceIn(0f, 0.9f)
+        val bucketBarWidthPx = if (skipFactor > 1) {
+            (bucketStepPx * (1f - gapRatio)).coerceAtLeast(1f)
+        } else {
+            effBarWidthPx
+        }
+        val bucketCornerRadiusPx = effCornerRadiusPx.coerceAtMost(bucketBarWidthPx / 2f)
+        val bucketTransitionZone = bucketStepPx * TRANSITION_ZONE
 
         // Preserve a compositing layer so the DST_OUT fades erase bars near the edges
         val layerId = canvas.saveLayer(0f, 0f, w, h, null)
@@ -765,29 +805,41 @@ class WaveformSeekbar @JvmOverloads constructor(
             maxReflBarArea = 0f
         }
 
-        for (i in drawnAmplitudes.indices) {
-            // Raw offset is the bar's flat position relative to the playhead in native
-            // (scrolling-mode) pixel space. The fish-eye lens bends it for the scrolling
-            // geometry; the linear term is its equivalent position in full-track geometry.
-            // Blending the two by zoomT produces the seamless zoom transition.
-            val rawOffset = i * barStep - scrollOffset
+        var i = 0
+        while (i < drawnAmplitudes.size) {
+            val bucketEnd = min(i + skipFactor, drawnAmplitudes.size)
+            // Bucket center index, in fractional bar units, so the merged bar sits exactly
+            // where its represented time range is centered rather than snapping to one edge.
+            val bucketCenterIndex = (i + bucketEnd - 1) / 2f
+
+            // Raw offset is the bucket's flat position relative to the playhead in native
+            // (scrolling-mode) pixel space. curvedOffset bends it via the fish-eye lens for
+            // BOTH the scrolling geometry and the full-track linear geometry (scaled by
+            // fullScale first), so optics stays active across the entire zoom transition
+            // instead of disappearing once LAYOUT_MODE_FULL settles.
+            val rawOffset = bucketCenterIndex * barStep - scrollOffset
+            val linearRawOffset = rawOffset * fullScale
             val curvedScreenOffset = curvedOffset(rawOffset)
-            val linearScreenOffset = rawOffset * fullScale
+            val linearScreenOffset = curvedOffset(linearRawOffset)
             val barCenterX = focalScreenX + lerp(curvedScreenOffset, linearScreenOffset, zoomT)
             // Cull bars that are fully outside the visible area
-            if (barCenterX + effBarWidthPx / 2f < 0f || barCenterX - effBarWidthPx / 2f > w) continue
+            if (barCenterX + bucketBarWidthPx / 2f < 0f || barCenterX - bucketBarWidthPx / 2f > w) {
+                i = bucketEnd
+                continue
+            }
 
-            val amp = drawnAmplitudes[i].coerceIn(0f, 1f)
+            var amp = 0f
+            for (k in i until bucketEnd) amp = max(amp, drawnAmplitudes[k])
+            amp = amp.coerceIn(0f, 1f)
             // Bars on the far sides of the lens are drawn a little shorter, so the waveform
-            // looks like it wraps around a cylinder and curves away from us. This fish-eye
-            // foreshortening fades out as we zoom toward the flat, full-track layout.
-            val heightScale = lerp(barHeightScale(rawOffset), 1f, zoomT)
+            // looks like it wraps around a cylinder and curves away from us. Blended the same
+            // way as the position so the foreshortening also survives into full-track mode.
+            val heightScale = lerp(barHeightScale(rawOffset), barHeightScale(linearRawOffset), zoomT)
 
             // Smoothly crossfade between played and unplayed color over a ±transitionZone window
             // centered on the playhead, so the color change is gradual rather than an instant switch.
-            val transitionZone = barStep * TRANSITION_ZONE
             val distFromCenter = barCenterX - focalScreenX
-            val colorT = ((distFromCenter + transitionZone) / (2f * transitionZone)).coerceIn(0f, 1f)
+            val colorT = ((distFromCenter + bucketTransitionZone) / (2f * bucketTransitionZone)).coerceIn(0f, 1f)
             barPaint.color = blendArgb(playedColor, unplayedColor, colorT)
 
             // Bars closest to the playhead render at full opacity; bars toward the outer
@@ -808,9 +860,9 @@ class WaveformSeekbar @JvmOverloads constructor(
                     // Symmetric: bar grows from center upward AND downward
                     val halfH = max(effMinBarHeightPx / 2f, amp * (effectiveMaxBarArea / 2f)) * heightScale
                     barRect.set(
-                            barCenterX - effBarWidthPx / 2f,
+                            barCenterX - bucketBarWidthPx / 2f,
                             centerY - halfH,
-                            barCenterX + effBarWidthPx / 2f,
+                            barCenterX + bucketBarWidthPx / 2f,
                             centerY + halfH
                     )
                 }
@@ -818,9 +870,9 @@ class WaveformSeekbar @JvmOverloads constructor(
                     // Reflection main: bar grows upward from just above the separator gap
                     val barH = max(effMinBarHeightPx, amp * maxMainBarArea) * heightScale
                     barRect.set(
-                            barCenterX - effBarWidthPx / 2f,
+                            barCenterX - bucketBarWidthPx / 2f,
                             mainWaveformBottom - barH,
-                            barCenterX + effBarWidthPx / 2f,
+                            barCenterX + bucketBarWidthPx / 2f,
                             mainWaveformBottom
                     )
                 }
@@ -828,15 +880,16 @@ class WaveformSeekbar @JvmOverloads constructor(
                     // Half: bar grows upward from center only
                     val barH = max(effMinBarHeightPx, amp * effectiveMaxBarArea) * heightScale
                     barRect.set(
-                            barCenterX - effBarWidthPx / 2f,
+                            barCenterX - bucketBarWidthPx / 2f,
                             centerY - barH,
-                            barCenterX + effBarWidthPx / 2f,
+                            barCenterX + bucketBarWidthPx / 2f,
                             centerY
                     )
                 }
             }
 
-            canvas.drawRoundRect(barRect, effCornerRadiusPx, effCornerRadiusPx, barPaint)
+            canvas.drawRoundRect(barRect, bucketCornerRadiusPx, bucketCornerRadiusPx, barPaint)
+            i = bucketEnd
         }
 
         // Draw the reflected (inverted, alpha-blended) waveform and its separator line in reflection mode.
@@ -844,23 +897,32 @@ class WaveformSeekbar @JvmOverloads constructor(
         // each bar's paint alpha so no extra compositing pass or gradient texture is needed.
         if (waveformMode == WAVEFORM_MODE_REFLECTION && maxReflBarArea > 0f) {
 
-            for (i in drawnAmplitudes.indices) {
-                val rawOffset = i * barStep - scrollOffset
-                val curvedScreenOffset = curvedOffset(rawOffset)
-                val linearScreenOffset = rawOffset * fullScale
-                val barCenterX = focalScreenX + lerp(curvedScreenOffset, linearScreenOffset, zoomT)
-                if (barCenterX + effBarWidthPx / 2f < 0f || barCenterX - effBarWidthPx / 2f > w) continue
+            var ri = 0
+            while (ri < drawnAmplitudes.size) {
+                val bucketEnd = min(ri + skipFactor, drawnAmplitudes.size)
+                val bucketCenterIndex = (ri + bucketEnd - 1) / 2f
 
-                val amp = drawnAmplitudes[i].coerceIn(0f, 1f)
-                val heightScale = lerp(barHeightScale(rawOffset), 1f, zoomT)
-                val transitionZone = barStep * TRANSITION_ZONE
+                val rawOffset = bucketCenterIndex * barStep - scrollOffset
+                val linearRawOffset = rawOffset * fullScale
+                val curvedScreenOffset = curvedOffset(rawOffset)
+                val linearScreenOffset = curvedOffset(linearRawOffset)
+                val barCenterX = focalScreenX + lerp(curvedScreenOffset, linearScreenOffset, zoomT)
+                if (barCenterX + bucketBarWidthPx / 2f < 0f || barCenterX - bucketBarWidthPx / 2f > w) {
+                    ri = bucketEnd
+                    continue
+                }
+
+                var amp = 0f
+                for (k in ri until bucketEnd) amp = max(amp, drawnAmplitudes[k])
+                amp = amp.coerceIn(0f, 1f)
+                val heightScale = lerp(barHeightScale(rawOffset), barHeightScale(linearRawOffset), zoomT)
                 val distFromCenter = barCenterX - focalScreenX
-                val colorT = ((distFromCenter + transitionZone) / (2f * transitionZone)).coerceIn(0f, 1f)
+                val colorT = ((distFromCenter + bucketTransitionZone) / (2f * bucketTransitionZone)).coerceIn(0f, 1f)
                 barPaint.color = blendArgb(playedColor, unplayedColor, colorT)
 
                 val distFraction = (abs(barCenterX - focalScreenX) / (w / 2f)).coerceIn(0f, 1f)
                 val spotlightAlpha = HIGHLIGHT_MIN_ALPHA + (1f - HIGHLIGHT_MIN_ALPHA) * (1f - distFraction)
-                val leftFadeAlpha = if (leftFadeProgress >= 0f && i < leftFadePivotIndex) {
+                val leftFadeAlpha = if (leftFadeProgress >= 0f && ri < leftFadePivotIndex) {
                     1f - leftFadeProgress
                 } else {
                     1f
@@ -871,12 +933,13 @@ class WaveformSeekbar @JvmOverloads constructor(
                 // Reflected bar grows downward from the top of the reflection area
                 val reflBarH = max(effMinBarHeightPx, amp * maxReflBarArea) * heightScale
                 barRect.set(
-                        barCenterX - effBarWidthPx / 2f,
+                        barCenterX - bucketBarWidthPx / 2f,
                         reflectionTop,
-                        barCenterX + effBarWidthPx / 2f,
+                        barCenterX + bucketBarWidthPx / 2f,
                         reflectionTop + reflBarH
                 )
-                canvas.drawRoundRect(barRect, effCornerRadiusPx, effCornerRadiusPx, barPaint)
+                canvas.drawRoundRect(barRect, bucketCornerRadiusPx, bucketCornerRadiusPx, barPaint)
+                ri = bucketEnd
             }
 
             // Draw the thin horizontal separator line inside the outer compositing layer so the
@@ -904,8 +967,9 @@ class WaveformSeekbar @JvmOverloads constructor(
                 val bookmarkFraction = timestampMs.toFloat().coerceIn(0f, durationMs.toFloat()) / durationMs.toFloat()
                 val bookmarkScrollOffset = bookmarkFraction * (amplitudes.size * barStep)
                 val bmRawOffset = bookmarkScrollOffset - scrollOffset
+                val bmLinearRawOffset = bmRawOffset * fullScale
                 val bmCurved = curvedOffset(bmRawOffset)
-                val bmLinear = bmRawOffset * fullScale
+                val bmLinear = curvedOffset(bmLinearRawOffset)
                 val dotX = focalScreenX + lerp(bmCurved, bmLinear, zoomT)
                 if (dotX + bookmarkDotRadius < 0f || dotX - bookmarkDotRadius > w) continue
                 canvas.drawCircle(dotX, dotCenterY, bookmarkDotRadius, bookmarkPaint)
@@ -1757,6 +1821,14 @@ class WaveformSeekbar @JvmOverloads constructor(
 
         /** Duration of the scrolling ⇄ full-track zoom transition, in milliseconds. */
         private const val LAYOUT_TRANSITION_DURATION_MS = 420L
+
+        /**
+         * Minimum comfortable pixel step (bar + gap) allowed while zooming toward
+         * [LAYOUT_MODE_FULL]. Once the blended per-bar step would shrink below this, consecutive
+         * bars are merged into wider buckets (see [onDraw]) so the full-track waveform stays
+         * legible instead of collapsing into an illegible, fully congested block.
+         */
+        private const val MIN_FULL_BAR_STEP_DP = 3f
 
         /** Labels are positioned at the top edge of the view. */
         const val LABEL_GRAVITY_TOP = 0
