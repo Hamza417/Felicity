@@ -697,8 +697,12 @@ class WaveformSeekbar @JvmOverloads constructor(
 
         val from = zoomProgress
         zoomAnimator = ValueAnimator.ofFloat(from, to).apply {
-            duration = LAYOUT_TRANSITION_DURATION_MS
-            interpolator = DecelerateInterpolator()
+            duration = if (mode == LAYOUT_MODE_FULL) {
+                WAVEFORM_MODE_TRANSITION_DURATION_MS.div(1.33).toLong() // 750ms when zooming out, so the user sees the whole track faster
+            } else {
+                WAVEFORM_MODE_TRANSITION_DURATION_MS
+            }
+            interpolator = DecelerateInterpolator(3F)
             addUpdateListener { anim ->
                 zoomProgress = anim.animatedValue as Float
                 invalidate()
@@ -1820,7 +1824,7 @@ class WaveformSeekbar @JvmOverloads constructor(
         const val LAYOUT_MODE_FULL = 1
 
         /** Duration of the scrolling ⇄ full-track zoom transition, in milliseconds. */
-        private const val LAYOUT_TRANSITION_DURATION_MS = 420L
+        private const val WAVEFORM_MODE_TRANSITION_DURATION_MS = 1000L
 
         /**
          * Minimum comfortable pixel step (bar + gap) allowed while zooming toward
