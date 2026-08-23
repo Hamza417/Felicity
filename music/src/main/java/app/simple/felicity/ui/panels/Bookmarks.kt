@@ -66,16 +66,18 @@ class Bookmarks : BasePanelFragment() {
     private fun updateList(items: List<AudioWithBookmarks>) {
         headerBinding.count.text = getString(R.string.x_songs, items.size)
 
-        if (adapter == null) {
-            adapter = AdapterBookmarks(items)
-            adapter!!.callbacks = object : AdapterBookmarks.Callbacks {
-                override fun onSongClicked(item: AudioWithBookmarks) {
-                    openBookmarksList(item)
+        if (items.isEmpty().not()) {
+            if (adapter == null) {
+                adapter = AdapterBookmarks(items)
+                adapter!!.callbacks = object : AdapterBookmarks.Callbacks {
+                    override fun onSongClicked(item: AudioWithBookmarks) {
+                        openBookmarksList(item)
+                    }
                 }
+                binding.recyclerView.adapter = adapter
+            } else {
+                adapter!!.updateItems(items)
             }
-            binding.recyclerView.adapter = adapter
-        } else {
-            adapter!!.updateItems(items)
         }
     }
 

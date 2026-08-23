@@ -27,7 +27,7 @@ import app.simple.felicity.engine.processors.AaudioOutputProcessor.Companion.AAU
  * ```
  * AaudioOutputProcessor(sampleRate, channelCount, useSafeBuffers)
  *     .start()
- *     .write(floatPcm)   // audio thread
+ *     .write(floatPcm, length)   // audio thread, non-blocking, returns samples accepted
  *     .stop()
  *     .release()
  * ```
@@ -81,11 +81,18 @@ class AaudioOutputProcessor(
      * Writes interleaved float32 PCM to the stream.
      * The native layer converts to int16 if the HAL negotiated [AAUDIO_FORMAT_PCM_I16].
      *
+     * The underlying native call is non-blocking, so it may not accept every
+     * sample in one go if the hardware buffer is momentarily full. Check the
+     * returned count and hang on to whatever wasn't written so it can be sent
+     * on the next call.
+     *
      * @param pcmBuffer Interleaved float PCM; length = frameCount × channelCount.
+     * @return Number of samples actually accepted, which may be less than
+     *         [pcmBuffer]'s size, or -1 if the stream reported an error.
      */
-    fun write(pcmBuffer: FloatArray) {
-        if (nativeHandle == 0L) return
-        nativeAaudioWrite(nativeHandle, pcmBuffer)
+    fun write(pcmBuffer: FloatArray): Int {
+        if (nativeHandle == 0L) return 0
+        return nativeAaudioWrite(nativeHandle, pcmBuffer)
     }
 
     /**
@@ -94,13 +101,20 @@ class AaudioOutputProcessor(
      * with no allocation. A trimmed copy is made only when the buffer is oversized,
      * which at steady state (same frame size every call) never happens.
      *
+     * The write is non-blocking: the hardware buffer may be full, in which case
+     * fewer than [length] samples are accepted. Callers must check the returned
+     * count and retry with the remainder rather than assuming the whole buffer
+     * was consumed — that assumption is what used to make pause() wait for a
+     * whole backlog of already-decoded audio to drain before it could take effect.
+     *
      * @param pcmBuffer  The scratch buffer holding valid audio in its first [length] slots.
      * @param length     Number of valid samples to write.
+     * @return Number of samples actually accepted by the hardware, or -1 on error.
      */
-    fun write(pcmBuffer: FloatArray, length: Int) {
-        if (nativeHandle == 0L) return
+    fun write(pcmBuffer: FloatArray, length: Int): Int {
+        if (nativeHandle == 0L) return 0
         val buf = if (pcmBuffer.size == length) pcmBuffer else pcmBuffer.copyOf(length)
-        nativeAaudioWrite(nativeHandle, buf)
+        return nativeAaudioWrite(nativeHandle, buf)
     }
 
     /**
@@ -190,7 +204,13 @@ class AaudioOutputProcessor(
     ): Long
 
     private external fun nativeAaudioStart(handle: Long): Boolean
-    private external fun nativeAaudioWrite(handle: Long, pcmBuffer: FloatArray)
+
+    /**
+     * @return Number of samples actually written to the hardware buffer (may be
+     *         less than [pcmBuffer]'s size when the buffer is momentarily full),
+     *         or -1 on error.
+     */
+    private external fun nativeAaudioWrite(handle: Long, pcmBuffer: FloatArray): Int
     private external fun nativeAaudioGetLatencyMs(handle: Long): Int
     private external fun nativeAaudioGetPlaybackPositionUs(handle: Long, sourceEnded: Boolean): Long
 

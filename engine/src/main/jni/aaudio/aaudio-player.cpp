@@ -262,27 +262,48 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioSta
  * only when the incoming block size exceeds the previous maximum; in steady
  * state no allocation occurs.
  *
+ * **Blocking on purpose:** the write waits (up to [kTimeoutNanos]) for the
+ * hardware to have room, which is what keeps playback smooth and gap-free —
+ * the call naturally paces itself to how fast the hardware actually consumes
+ * audio, instead of depending on how often the caller happens to be invoked.
+ * Pausing quickly is handled separately: [FelicityAudioSink] silences the
+ * stream directly (see its `muteImmediately`) from the app thread the moment
+ * pause is requested, so it never has to wait for this write to return. The
+ * caller (see [AaudioOutputProcessor.write]) still checks the returned count
+ * and retries any remainder, in case the timeout expires before every sample
+ * fits.
+ *
  * @param env       JNI environment pointer.
  * @param thiz      Calling object (unused).
  * @param handle    Opaque pointer from [nativeAaudioCreate].
  * @param pcmBuffer Interleaved float PCM; length = numFrames × channelCount.
+ * @return Number of samples actually accepted by the hardware buffer (may be
+ *         less than the input length, or 0 if the buffer is currently full),
+ *         or -1 if the stream reported an error.
  */
-JNIEXPORT void JNICALL
+JNIEXPORT jint JNICALL
 Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioWrite(
         JNIEnv *env, jobject /*thiz*/,
         jlong handle, jfloatArray pcmBuffer) {
 
     auto *ctx = reinterpret_cast<AaudioContext *>(handle);
-    if (!ctx || !ctx->stream || !ctx->running.load()) return;
+    if (!ctx || !ctx->stream || !ctx->running.load()) return 0;
 
     const int totalSamples = env->GetArrayLength(pcmBuffer);
-    if (totalSamples <= 0) return;
+    if (totalSamples <= 0) return 0;
 
     const int32_t numFrames = totalSamples / ctx->channelCount;
-    if (numFrames <= 0) return;
+    if (numFrames <= 0) return 0;
 
     jfloat *buf = env->GetFloatArrayElements(pcmBuffer, nullptr);
-    static constexpr int64_t kTimeoutNanos = 100 * 1000000LL;
+
+    // Block for up to this long waiting for hardware buffer room. This keeps
+    // consecutive writes paced to real playback speed so the hardware never
+    // runs dry between calls, which is what prevents audible gaps/crackling.
+    // Pause latency is handled separately (see the note above), so blocking
+    // here no longer has any effect on how fast pause() feels.
+    static constexpr int64_t kTimeoutNanos = 100'000'000LL; // 100 ms
+    jint framesWritten = 0;
 
     if (ctx->actualFormat == AAUDIO_FORMAT_PCM_FLOAT) {
         /** Fast path: HAL accepted float — write directly with no conversion. */
@@ -290,6 +311,9 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioWri
                 AAudioStream_write(ctx->stream, buf, numFrames, kTimeoutNanos);
         if (written < 0) {
             AAUDIO_LOGE("nativeAaudioWrite: float write error (%d)", written);
+            framesWritten = -1;
+        } else {
+            framesWritten = written;
         }
     } else {
         /**
@@ -304,7 +328,7 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioWri
                 AAUDIO_LOGE("nativeAaudioWrite: conversion buffer realloc failed "
                             "(%d samples)", totalSamples);
                 env->ReleaseFloatArrayElements(pcmBuffer, buf, JNI_ABORT);
-                return;
+                return -1;
             }
             ctx->conversionBuffer = newBuf;
             ctx->conversionBufferCapacity = totalSamples;
@@ -316,10 +340,16 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioWri
                 AAudioStream_write(ctx->stream, ctx->conversionBuffer, numFrames, kTimeoutNanos);
         if (written < 0) {
             AAUDIO_LOGE("nativeAaudioWrite: int16 write error (%d)", written);
+            framesWritten = -1;
+        } else {
+            framesWritten = written;
         }
     }
 
     env->ReleaseFloatArrayElements(pcmBuffer, buf, JNI_ABORT);
+
+    if (framesWritten < 0) return -1;
+    return framesWritten * ctx->channelCount;
 }
 
 /**

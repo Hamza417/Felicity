@@ -1,5 +1,6 @@
 package app.simple.felicity.engine.audio
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
@@ -18,6 +19,7 @@ import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
+import app.simple.felicity.engine.audio.FelicityAudioSink.Companion.requestImmediatePause
 import app.simple.felicity.engine.processors.AaudioOutputProcessor
 import app.simple.felicity.engine.processors.NativeDspAudioProcessor
 import app.simple.felicity.engine.processors.OboeOutputProcessor
@@ -123,6 +125,26 @@ class FelicityAudioSink(
 
         /** Applies the given volume level (0.0–1.0) to the output. */
         fun setVolume(volume: Float)
+
+        /**
+         * Silences the hardware stream immediately, bypassing whatever backlog of already
+         * decoded buffers ExoPlayer's internal thread may still be working through.
+         *
+         * Why this exists: [pause] normally runs on ExoPlayer's internal playback thread as
+         * part of the same serialized queue as [InternalSink.handleBuffer]. If the decoder
+         * has queued up several seconds of audio ahead of real time, that queue has to drain
+         * before the real [pause] call gets its turn — which is what used to make pause()
+         * take seconds to take effect. [FelicityAudioSink] calls this method the instant the
+         * app is told to pause (see [FelicityAudioSink.requestImmediatePause]), straight from
+         * the app's main thread, so the hardware goes silent right away. The proper [pause]
+         * call still runs afterward on the playback thread and does the rest of the
+         * bookkeeping (clock, running flags) — this method only needs to stop the sound.
+         *
+         * Must be safe to call concurrently with an in-flight [handleBuffer] write, since it
+         * is invoked from a different thread on purpose. AAudio and Oboe both document their
+         * pause/stop requests as safe to call from any thread while a write is in progress.
+         */
+        fun muteImmediately()
     }
 
     // -----------------------------------------------------------------------------------------
@@ -145,6 +167,10 @@ class FelicityAudioSink(
         override fun flush() = defaultSink.flush()
         override fun release() = defaultSink.release()
         override fun setVolume(volume: Float) = defaultSink.setVolume(volume)
+        override fun muteImmediately() {
+            // DefaultAudioSink already pauses its own AudioTrack synchronously from
+            // ExoPlayer's normal pause() call, so there is no separate backlog to bypass here.
+        }
     }
 
     /**
@@ -163,6 +189,7 @@ class FelicityAudioSink(
         private var startSystemTimeUs = 0L
         private var accumulatedPlayedUs = 0L
         private var isClockRunning = false
+
 
         override fun configure(inputFormat: Format, specifiedBufferSize: Int, outputChannels: IntArray?) {}
 
@@ -207,7 +234,23 @@ class FelicityAudioSink(
             if (sampleCount > 0) {
                 nativeDsp.processInPlace(floatScratchBuffer, sampleCount)
                 visualizer.feedFloat(floatScratchBuffer, sampleCount, channelCount)
-                stream.write(floatScratchBuffer, sampleCount)
+                val samplesWritten = stream.write(floatScratchBuffer, sampleCount)
+
+                // The native write blocks for a short window (tens of milliseconds) waiting
+                // for hardware buffer room, which is what keeps playback gap-free without
+                // needing a separate writer thread. It only returns fewer samples than asked
+                // when that window expires with the hardware still full — in which case we
+                // advance past what was accepted and ask ExoPlayer to retry the remainder.
+                //
+                // pause() itself does not wait on this: see [muteImmediately], which is
+                // called straight from the app thread the instant pause is requested, so the
+                // hardware goes silent immediately even if this write is mid-flight.
+                if (!isPaused && samplesWritten < sampleCount) {
+                    val accepted = samplesWritten.coerceAtLeast(0)
+                    val bytesPerSample = PcmUtils.bytesPerSample(currentEncoding)
+                    buffer.position(buffer.position() + accepted * bytesPerSample)
+                    return false
+                }
             }
             buffer.position(buffer.limit())
             return true
@@ -272,6 +315,14 @@ class FelicityAudioSink(
         override fun setVolume(volume: Float) {
             // Native streams run at unity gain; volume is applied upstream by the DSP chain.
         }
+
+        override fun muteImmediately() {
+            // Thread-safe per AAudio's own docs — safe to call while a write on another
+            // thread is in flight. Only silences the hardware; the proper pause() call
+            // (running later, possibly delayed, on the playback thread) does the rest of
+            // the state bookkeeping.
+            stream.pause()
+        }
     }
 
     /**
@@ -327,7 +378,23 @@ class FelicityAudioSink(
             if (sampleCount > 0) {
                 nativeDsp.processInPlace(floatScratchBuffer, sampleCount)
                 visualizer.feedFloat(floatScratchBuffer, sampleCount, channelCount)
-                stream.write(floatScratchBuffer, sampleCount)
+                val samplesWritten = stream.write(floatScratchBuffer, sampleCount)
+
+                // The native write blocks for a short window waiting for hardware buffer
+                // room, which is what keeps playback gap-free. It only returns fewer samples
+                // than asked when that window expires with the hardware still full — in
+                // which case we advance past what was accepted and ask ExoPlayer to retry
+                // the remainder.
+                //
+                // pause() itself does not wait on this: see [muteImmediately], called
+                // straight from the app thread the instant pause is requested, so the
+                // hardware goes silent immediately even if this write is mid-flight.
+                if (!isPaused && samplesWritten < sampleCount) {
+                    val accepted = samplesWritten.coerceAtLeast(0)
+                    val bytesPerSample = PcmUtils.bytesPerSample(currentEncoding)
+                    buffer.position(buffer.position() + accepted * bytesPerSample)
+                    return false
+                }
             }
             buffer.position(buffer.limit())
             return true
@@ -391,6 +458,14 @@ class FelicityAudioSink(
 
         override fun setVolume(volume: Float) {
             // Unity gain — volume is handled upstream by the DSP chain.
+        }
+
+        override fun muteImmediately() {
+            // Thread-safe per Oboe's own docs — safe to call while a write on another
+            // thread is in flight. Only silences the hardware; the proper pause() call
+            // (running later, possibly delayed, on the playback thread) does the rest of
+            // the state bookkeeping.
+            stream.pause()
         }
     }
 
@@ -502,6 +577,13 @@ class FelicityAudioSink(
 
         override fun setVolume(volume: Float) {
             // USB volume is set via UAC control transfers at negotiation time.
+        }
+
+        override fun muteImmediately() {
+            // The USB isochronous pipeline does not use a blocking native write on the
+            // playback thread the way AAudio/Oboe do, so it is not affected by the same
+            // backlog-drain delay. Stopping here just gives it the same fast response.
+            driver.stopStream()
         }
     }
 
@@ -673,6 +755,11 @@ class FelicityAudioSink(
         UsbDacManager.addListener(usbDacListener)
         val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
         audioManager?.registerAudioDeviceCallback(audioDeviceCallback, mainHandler)
+
+        // Record ourselves as the reachable instance so requestImmediatePause() can find
+        // us from anywhere in the app without needing a reference threaded all the way
+        // through the service and MediaSession machinery.
+        activeInstance = this
     }
 
     // -----------------------------------------------------------------------------------------
@@ -810,6 +897,8 @@ class FelicityAudioSink(
         audioManager?.unregisterAudioDeviceCallback(audioDeviceCallback)
         activeSink.release()
         if (defaultSinkDelegate.isInitialized()) defaultSink.release()
+
+        if (activeInstance === this) activeInstance = null
     }
 
     // -----------------------------------------------------------------------------------------
@@ -1088,5 +1177,37 @@ class FelicityAudioSink(
          */
         @Volatile
         var isOboeStreamActive: Boolean = false
+
+        /**
+         * The most recently created [FelicityAudioSink], if any is still alive. Kept so
+         * [requestImmediatePause] can reach the active sink without needing a reference
+         * threaded all the way through the service and MediaSession callback chain.
+         *
+         * Always cleared in [release], so this never outlives the sink it points at and
+         * cannot leak the [Context] the sink was built with.
+         */
+        @SuppressLint("StaticFieldLeak")
+        @Volatile
+        private var activeInstance: FelicityAudioSink? = null
+
+        /**
+         * Silences whichever native route is currently active right away, without waiting
+         * for ExoPlayer's own [pause] call to make its way through the internal playback
+         * thread's message queue.
+         *
+         * Call this the instant the app decides playback should pause — for example from a
+         * [androidx.media3.common.Player.Listener.onPlayWhenReadyChanged] callback, which
+         * fires on the app's own thread as soon as [androidx.media3.common.Player.pause] is
+         * requested. That happens well before the internal playback thread necessarily gets
+         * a chance to run its own queued [pause], since that thread may still be working
+         * through a backlog of already-decoded buffers from [InternalSink.handleBuffer].
+         *
+         * This only stops the sound. The regular [pause] call still runs afterward and
+         * handles the rest of the bookkeeping (position clock, running flags), so no state
+         * gets skipped — it just no longer has to be fast for the pause to feel instant.
+         */
+        fun requestImmediatePause() {
+            activeInstance?.activeSink?.muteImmediately()
+        }
     }
 }

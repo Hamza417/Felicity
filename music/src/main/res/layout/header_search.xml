@@ -12,6 +12,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:paddingHorizontal="@dimen/padding_15"
+        android:animateLayoutChanges="true"
         android:orientation="horizontal">
 
         <app.simple.felicity.decorations.corners.DynamicCornerEditText
@@ -33,10 +34,10 @@
             app:textColorStyle="primary" />
 
         <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
-            android:id="@+id/filter"
+            android:id="@+id/clear_button"
             android:layout_gravity="center_vertical"
             android:layout_width="@dimen/button_size"
-            android:src="@drawable/ic_filter"
+            android:src="@drawable/ic_cross"
             android:layout_height="@dimen/button_size" />
 
         <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
@@ -44,6 +45,7 @@
             android:layout_gravity="center_vertical"
             android:layout_width="@dimen/button_size"
             android:src="@drawable/ic_double_arrow_right"
+            android:visibility="gone"
             android:layout_height="@dimen/button_size" />
 
         <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
@@ -164,6 +166,22 @@
                 android:drawablePadding="@dimen/padding_5"
                 android:textSize="@dimen/text_size_14"
                 android:text="@string/shuffle"
+                app:appFontStyle="bold"
+                app:drawableTintStyle="accent"
+                app:textColorStyle="tertiary" />
+
+            <app.simple.felicity.decorations.highlight.HighlightTextView
+                android:id="@+id/filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:paddingVertical="@dimen/padding_5"
+                android:paddingHorizontal="@dimen/padding_10"
+                android:drawableStart="@drawable/ic_filter_16dp"
+                android:drawablePadding="@dimen/padding_5"
+                android:textSize="@dimen/text_size_14"
+                android:layout_marginEnd="@dimen/padding_10"
+                android:text="@string/filters"
                 app:appFontStyle="bold"
                 app:drawableTintStyle="accent"
                 app:textColorStyle="tertiary" />

@@ -133,6 +133,10 @@ class PlayingQueue : BasePanelFragment() {
         headerBinding.createPlaylist.setOnClickListener {
             childFragmentManager.showAddMultipleToPlaylistDialog(MediaPlaybackManager.getSongs())
         }
+
+        headerBinding.shuffle.setOnClickListener {
+            shuffleMediaItems(MediaPlaybackManager.getSongs())
+        }
     }
 
     /**

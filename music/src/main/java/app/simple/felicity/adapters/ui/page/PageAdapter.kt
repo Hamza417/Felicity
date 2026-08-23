@@ -21,6 +21,7 @@ import app.simple.felicity.decorations.pager.FelicityPager
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.models.PageItem
+import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Folder
@@ -257,13 +258,10 @@ class PageAdapter(
             }
         }
 
-        // Add all songs
-        data.songs.forEachIndexed { index, audio ->
-            items.add(PageItem.SongItem(
-                    audio = audio,
-                    position = index,
-                    allSongs = data.songs
-            ))
+        // Add all songs. Songs either lead the page or trail it, depending on
+        // the "songs first" preference picked by the user in the UI settings.
+        if (UserInterfacePreferences.isSongsFirstInPages()) {
+            addSongItems()
         }
 
         // Show the MusicBrainz profile block right below the header on artist and composer pages.
@@ -306,6 +304,22 @@ class PageAdapter(
         if (data.genres.isNotEmpty()) {
             items.add(PageItem.GenresSection(
                     genres = data.genres
+            ))
+        }
+
+        // When the other sections should lead the page, the songs settle at the
+        // very bottom so albums, artists, and genres stay visible first.
+        if (!UserInterfacePreferences.isSongsFirstInPages()) {
+            addSongItems()
+        }
+    }
+
+    private fun addSongItems() {
+        data.songs.forEachIndexed { index, audio ->
+            items.add(PageItem.SongItem(
+                    audio = audio,
+                    position = index,
+                    allSongs = data.songs
             ))
         }
     }

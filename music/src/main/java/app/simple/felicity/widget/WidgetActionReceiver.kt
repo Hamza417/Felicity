@@ -124,6 +124,11 @@ class WidgetActionReceiver : BroadcastReceiver() {
                     onDone()
                 }
             }
+            ACTION_OPEN_APP -> {
+                val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+                context.startActivity(launchIntent)
+                onDone()
+            }
 
             else -> onDone()
         }
@@ -182,6 +187,7 @@ class WidgetActionReceiver : BroadcastReceiver() {
         const val ACTION_PLAY_PAUSE = "app.simple.felicity.ACTION_WIDGET_PLAY_PAUSE"
         const val ACTION_NEXT = "app.simple.felicity.ACTION_WIDGET_NEXT"
         const val ACTION_PREV = "app.simple.felicity.ACTION_WIDGET_PREV"
+        const val ACTION_OPEN_APP = "app.simple.felicity.ACTION_WIDGET_OPEN_APP"
     }
 }
 

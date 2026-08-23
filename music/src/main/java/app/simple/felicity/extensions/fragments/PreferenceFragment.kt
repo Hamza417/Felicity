@@ -11,13 +11,10 @@ import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.BuildConfig
 import app.simple.felicity.R
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
-import app.simple.felicity.decorations.toggles.FelicityButtonGroup
-import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
 import app.simple.felicity.decorations.toggles.FelicitySwitch
 import app.simple.felicity.decorations.views.PopupMenuItem
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.enums.PreferenceType
-import app.simple.felicity.models.ButtonGroupState
 import app.simple.felicity.models.Preference
 import app.simple.felicity.models.SeekbarState
 import app.simple.felicity.preferences.AccessibilityPreferences
@@ -393,6 +390,21 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val pagesHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.pages)
+
+        val songsFirstToggle = Preference(
+                title = R.string.show_songs_first,
+                summary = R.string.show_songs_first_summary,
+                icon = R.drawable.ic_sort,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, _ ->
+                    UserInterfacePreferences.setSongsFirstInPages((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    UserInterfacePreferences.isSongsFirstInPages()
+                }
+        )
+
         val applicationHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.application)
 
         val likeButton = Preference(
@@ -428,6 +440,8 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(playerInterface)
         preferences.add(lyricsToggle)
         preferences.add(stackMediaControlsToggle)
+        preferences.add(pagesHeader)
+        preferences.add(songsFirstToggle)
         preferences.add(miniPlayerHeader)
         preferences.add(marginAroundMiniplayerToggle)
         preferences.add(applicationHeader)
@@ -482,25 +496,36 @@ abstract class PreferenceFragment : MediaFragment() {
                 title = R.string.fast_scroll_behavior,
                 summary = R.string.fast_scroll_behavior_summary,
                 icon = R.drawable.ic_swipe_vertical,
-                type = PreferenceType.BUTTON_GROUP,
+                type = PreferenceType.POPUP,
                 valueProvider = {
-                    ButtonGroupState(
-                            buttons = listOf(
-                                    Button(textResId = R.string.hide),
-                                    Button(textResId = R.string.fade),
-                            ),
-                            selectedIndex = when (BehaviourPreferences.getFastScrollBehavior()) {
-                                BehaviourPreferences.HIDE_FAST_SCROLLBAR -> 0
-                                else -> 1
-                            }
-                    )
+                    when (BehaviourPreferences.getFastScrollBehavior()) {
+                        BehaviourPreferences.HIDE_FAST_SCROLLBAR -> getString(R.string.hide)
+                        BehaviourPreferences.FADE_FAST_SCROLLBAR -> getString(R.string.fade)
+                        else -> getString(R.string.fade)
+                    }
                 },
                 onPreferenceAction = { view, _ ->
-                    val behavior = when ((view as FelicityButtonGroup).getSelectedIndex()) {
-                        0 -> BehaviourPreferences.HIDE_FAST_SCROLLBAR
-                        else -> BehaviourPreferences.FADE_FAST_SCROLLBAR
-                    }
-                    BehaviourPreferences.setFastScrollBehavior(behavior)
+                    SharedScrollViewPopup(
+                            container = requireContainerView(),
+                            anchorView = view,
+                            menuItems = listOf(
+                                    PopupMenuItem(title = R.string.hide),
+                                    PopupMenuItem(title = R.string.fade)
+                            ),
+                            onMenuItemClick = {
+                                when (it) {
+                                    R.string.hide -> {
+                                        BehaviourPreferences.setFastScrollBehavior(BehaviourPreferences.HIDE_FAST_SCROLLBAR)
+                                        (view as TextView).text = getString(R.string.hide)
+                                    }
+                                    R.string.fade -> {
+                                        BehaviourPreferences.setFastScrollBehavior(BehaviourPreferences.FADE_FAST_SCROLLBAR)
+                                        (view as TextView).text = getString(R.string.fade)
+                                    }
+                                }
+                            },
+                            onDismiss = {}
+                    ).show()
                 }
         )
 
@@ -538,28 +563,41 @@ abstract class PreferenceFragment : MediaFragment() {
                 title = R.string.transition,
                 summary = R.string.transition_summary,
                 icon = -1,
-                type = PreferenceType.BUTTON_GROUP,
+                type = PreferenceType.POPUP,
                 valueProvider = {
-                    ButtonGroupState(
-                            buttons = listOf(
-                                    Button(textResId = R.string.depth),
-                                    Button(textResId = R.string.drift),
-                                    Button(textResId = R.string.fade),
-                            ),
-                            selectedIndex = when (BehaviourPreferences.getFragmentTransition()) {
-                                BehaviourPreferences.TRANSITION_Z -> 0
-                                BehaviourPreferences.TRANSITION_X -> 1
-                                else -> 2
-                            }
-                    )
+                    when (BehaviourPreferences.getFragmentTransition()) {
+                        BehaviourPreferences.TRANSITION_Z -> getString(R.string.depth)
+                        BehaviourPreferences.TRANSITION_X -> getString(R.string.drift)
+                        else -> getString(R.string.fade)
+                    }
                 },
                 onPreferenceAction = { view, _ ->
-                    val transition = when ((view as FelicityButtonGroup).getSelectedIndex()) {
-                        0 -> BehaviourPreferences.TRANSITION_Z
-                        1 -> BehaviourPreferences.TRANSITION_X
-                        else -> BehaviourPreferences.TRANSITION_FADE
-                    }
-                    BehaviourPreferences.setFragmentTransition(transition)
+                    SharedScrollViewPopup(
+                            container = requireContainerView(),
+                            anchorView = view,
+                            menuItems = listOf(
+                                    PopupMenuItem(title = R.string.fade),
+                                    PopupMenuItem(title = R.string.depth),
+                                    PopupMenuItem(title = R.string.drift)
+                            ),
+                            onMenuItemClick = {
+                                when (it) {
+                                    R.string.fade -> {
+                                        BehaviourPreferences.setFragmentTransition(BehaviourPreferences.TRANSITION_FADE)
+                                        (view as TextView).text = getString(R.string.fade)
+                                    }
+                                    R.string.depth -> {
+                                        BehaviourPreferences.setFragmentTransition(BehaviourPreferences.TRANSITION_Z)
+                                        (view as TextView).text = getString(R.string.depth)
+                                    }
+                                    R.string.drift -> {
+                                        BehaviourPreferences.setFragmentTransition(BehaviourPreferences.TRANSITION_X)
+                                        (view as TextView).text = getString(R.string.drift)
+                                    }
+                                }
+                            },
+                            onDismiss = {}
+                    ).show()
                 }
         )
 

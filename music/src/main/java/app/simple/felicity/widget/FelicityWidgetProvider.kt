@@ -64,6 +64,12 @@ class FelicityWidgetProvider : BaseWidgetProvider() {
                 R.id.widget_next,
                 scope.pendingIntentBuilder(context, WidgetActionReceiver.ACTION_NEXT)
         )
+
+        // open app when widget is clicked
+        views.setOnClickPendingIntent(
+                R.id.widget_background_view,
+                scope.pendingIntentBuilder(context, WidgetActionReceiver.ACTION_OPEN_APP)
+        )
     }
 
     /**

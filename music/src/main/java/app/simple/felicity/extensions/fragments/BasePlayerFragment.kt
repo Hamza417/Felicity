@@ -500,6 +500,7 @@ abstract class BasePlayerFragment : MediaFragment() {
         seekbar.setProgress(MediaPlaybackManager.getSeekPosition(), animate = false)
         updatePlayButtonState(MediaPlaybackManager.isPlaying())
         updateFavoriteIcon(audio)
+        seekbar.optics = UserInterfacePreferences.getWaveformOptics()
 
         // Defer waveform decoding until ExoPlayer is actually playing to avoid
         // Amplituda and ExoPlayer fighting over the same file I/O resources.
@@ -689,6 +690,9 @@ abstract class BasePlayerFragment : MediaFragment() {
             }
             UserInterfacePreferences.TIMER_POSITION -> {
                 updateMediaControlOverlap()
+            }
+            UserInterfacePreferences.WAVEFORM_OPTICS -> {
+                seekbar.optics = UserInterfacePreferences.getWaveformOptics()
             }
         }
     }

@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
 import app.simple.felicity.R
 import app.simple.felicity.databinding.DialogWaveformMenuBinding
+import app.simple.felicity.decorations.seekbars.FelicitySeekbar
 import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
 import app.simple.felicity.extensions.dialogs.MediaBottomDialogFragment
 import app.simple.felicity.preferences.UserInterfacePreferences
@@ -26,6 +27,7 @@ class WaveformMenu : MediaBottomDialogFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         binding.stackMediaControlsSwitch.isChecked = UserInterfacePreferences.isStackMediaControls()
+        binding.opticsSeekbar.setProgress(UserInterfacePreferences.getWaveformOptics() * WAVEFORM_COMPENSATION)
         setTimerPosition()
 
         binding.stackMediaControlsSwitch.setOnCheckedChangeListener { _, isChecked ->
@@ -36,6 +38,12 @@ class WaveformMenu : MediaBottomDialogFragment() {
                 }
             }
         }
+
+        binding.opticsSeekbar.setOnSeekChangeListener(object : FelicitySeekbar.OnSeekChangeListener {
+            override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Float, fromUser: Boolean) {
+                UserInterfacePreferences.setWaveformOptics(progress / WAVEFORM_COMPENSATION)
+            }
+        })
     }
 
     private fun setTimerPosition() {
@@ -103,6 +111,8 @@ class WaveformMenu : MediaBottomDialogFragment() {
             val dialog = newInstance()
             dialog.show(this, TAG)
         }
+
+        private const val WAVEFORM_COMPENSATION = 100F
 
         const val TAG = "WaveformMenu"
     }

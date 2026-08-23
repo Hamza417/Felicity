@@ -8,7 +8,6 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.widget.RemoteViews
-import app.simple.felicity.widget.WidgetViewScope
 import app.simple.felicity.glide.util.AudioCoverUtils.getArtCoverForWidget
 import app.simple.felicity.manager.SharedPreferences
 import app.simple.felicity.preferences.AlbumArtPreferences
@@ -168,10 +167,10 @@ abstract class BaseWidgetProvider : AppWidgetProvider() {
         )
         applyStaticViews(viewScope)
 
-        // Phase 1: push immediately so the widget doesn't stay blank while art loads.
+        // push immediately so the widget doesn't stay blank while art loads.
         manager.updateAppWidget(widgetId, views)
 
-        // Phase 2: load bitmaps — this can take a moment, so we push a second update
+        // load bitmaps — this can take a moment, so we push a second update
         // once they arrive. Both are loaded concurrently to keep things snappy.
         val bgBitmap = loadBackgroundArt(context, manager, widgetId, songId)
         applyBackgroundArt(views, bgBitmap)

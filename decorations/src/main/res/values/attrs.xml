@@ -370,6 +370,8 @@
         wsbReflectionTopGap           – gap between main waveform bottom and separator line. Default: 0dp.
         wsbReflectionBottomGap        – gap between separator line and reflection top. Default: 3dp.
         wsbReflectionAlpha            – uniform alpha [0,1] for reflected bars. Default: 0.4.
+        wsbOptics                     – fish-eye lens strength [0,1] bending the waveform
+                                        around the playhead. Default: 0.0 (flat).
     -->
     <declare-styleable name="WaveformSeekbar">
         <!--
@@ -415,6 +417,12 @@
             Lower values produce a subtler mirror image. Default: 0.4.
         -->
         <attr name="wsbReflectionAlpha" format="float" />
+        <!--
+            Fish-eye lens strength [0.0, 1.0] that bends the waveform around the center
+            playhead so the left and right edges appear to curve away like a cylinder.
+            0.0 is perfectly flat (default); 1.0 gives the strongest rounded, circular look.
+        -->
+        <attr name="wsbOptics" format="float" />
     </declare-styleable>
 
     <!--
