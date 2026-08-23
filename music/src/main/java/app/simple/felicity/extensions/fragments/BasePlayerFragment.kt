@@ -502,6 +502,12 @@ abstract class BasePlayerFragment : MediaFragment() {
         updateFavoriteIcon(audio)
         seekbar.optics = UserInterfacePreferences.getWaveformOptics()
 
+        seekbar.layoutMode = if (UserInterfacePreferences.isWaveformFullMode()) {
+            WaveformSeekbar.LAYOUT_MODE_FULL
+        } else {
+            WaveformSeekbar.LAYOUT_MODE_SCROLLING
+        }
+
         // Defer waveform decoding until ExoPlayer is actually playing to avoid
         // Amplituda and ExoPlayer fighting over the same file I/O resources.
         loadWaveformWhenReady(audio)
@@ -693,6 +699,13 @@ abstract class BasePlayerFragment : MediaFragment() {
             }
             UserInterfacePreferences.WAVEFORM_OPTICS -> {
                 seekbar.optics = UserInterfacePreferences.getWaveformOptics()
+            }
+            UserInterfacePreferences.WAVEFORM_FULL_MODE -> {
+                seekbar.layoutMode = if (UserInterfacePreferences.isWaveformFullMode()) {
+                    WaveformSeekbar.LAYOUT_MODE_FULL
+                } else {
+                    WaveformSeekbar.LAYOUT_MODE_SCROLLING
+                }
             }
         }
     }
