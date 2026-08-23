@@ -355,12 +355,6 @@ abstract class BasePlayerFragment : MediaFragment() {
             DateUtils.formatElapsedTime(max / 1000L)
         }
 
-        seekbar.layoutMode = if (UserInterfacePreferences.isWaveformFullMode()) {
-            WaveformSeekbar.LAYOUT_MODE_FULL
-        } else {
-            WaveformSeekbar.LAYOUT_MODE_SCROLLING
-        }
-
         // Observe waveform amplitude data from the ViewModel.
         waveformViewModel.getWaveformData().observe(viewLifecycleOwner) { amplitudes ->
             seekbar.setAmplitudes(amplitudes)
@@ -507,6 +501,12 @@ abstract class BasePlayerFragment : MediaFragment() {
         updatePlayButtonState(MediaPlaybackManager.isPlaying())
         updateFavoriteIcon(audio)
         seekbar.optics = UserInterfacePreferences.getWaveformOptics()
+
+        seekbar.layoutMode = if (UserInterfacePreferences.isWaveformFullMode()) {
+            WaveformSeekbar.LAYOUT_MODE_FULL
+        } else {
+            WaveformSeekbar.LAYOUT_MODE_SCROLLING
+        }
 
         // Defer waveform decoding until ExoPlayer is actually playing to avoid
         // Amplituda and ExoPlayer fighting over the same file I/O resources.

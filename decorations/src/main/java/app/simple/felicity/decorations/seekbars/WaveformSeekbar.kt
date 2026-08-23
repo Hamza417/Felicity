@@ -22,6 +22,7 @@ import android.view.ViewConfiguration
 import android.view.animation.DecelerateInterpolator
 import android.widget.OverScroller
 import app.simple.felicity.decoration.R
+import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.FULL_TRANSITION_ZONE_DP
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.HIGHLIGHT_MIN_ALPHA
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_GRAVITY_BOTTOM
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_GRAVITY_CENTER
@@ -685,11 +686,11 @@ class WaveformSeekbar @JvmOverloads constructor(
      * playhead: zooming out reveals the entire track around it, zooming back in seamlessly
      * returns to the centered, scrolling playhead.
      */
-    private fun startLayoutTransition(mode: Int) {
+    private fun startLayoutTransition(mode: Int, animate: Boolean = true) {
         zoomAnimator?.cancel()
         val to = if (mode == LAYOUT_MODE_FULL) 1f else 0f
 
-        if (!isAttachedToWindow || isInEditMode) {
+        if (!isAttachedToWindow || isInEditMode || !animate) {
             zoomProgress = to
             invalidate()
             return
@@ -709,6 +710,12 @@ class WaveformSeekbar @JvmOverloads constructor(
             }
             start()
         }
+    }
+
+    fun setLayoutModeWithoutAnimation(mode: Int) {
+        zoomAnimator?.cancel()
+        zoomProgress = if (mode == LAYOUT_MODE_FULL) 1f else 0f
+        invalidate()
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -748,6 +755,35 @@ class WaveformSeekbar @JvmOverloads constructor(
         // scrolling, sliding to its proportional position along the full track as we zoom out.
         val focalScreenX = lerp(centerX, progressFraction * w, zoomT)
 
+        // The playhead's position in pure full-track linear space (i.e. where it would sit if
+        // the whole track were laid out flat with no lens at all). Used below to anchor the
+        // optics bend to the view's center instead of to the moving playhead.
+        val fullFocalX = progressFraction * w
+
+        // ── Optics in full-track mode ─────────────────────────────────────────────
+        // In LAYOUT_MODE_SCROLLING the lens is naturally anchored to the view center because
+        // the playhead is always pinned there. In LAYOUT_MODE_FULL the playhead instead slides
+        // along a static, non-scrolling waveform, so the bend must stay anchored to the view
+        // center too — otherwise it reads as a localized "bump in the fabric" that drags along
+        // with the seek position instead of bending the whole waveform in place. This computes
+        // each bar's full-track offset in *absolute* view-center-relative space (independent of
+        // the current playhead) before running it through the same [curvedOffset] lens, then
+        // cancels the outer +focalScreenX so the result lands at the correct absolute position
+        // regardless of where the playhead currently is.
+        fun blendedOffset(rawOffset: Float): Float {
+            val curvedScreenOffset = curvedOffset(rawOffset)
+            val linearRawOffset = rawOffset * fullScale
+            val absoluteFullOffset = linearRawOffset + fullFocalX - centerX
+            val linearScreenOffset = centerX + curvedOffset(absoluteFullOffset) - focalScreenX
+            return lerp(curvedScreenOffset, linearScreenOffset, zoomT)
+        }
+
+        fun blendedHeightScale(rawOffset: Float): Float {
+            val linearRawOffset = rawOffset * fullScale
+            val absoluteFullOffset = linearRawOffset + fullFocalX - centerX
+            return lerp(barHeightScale(rawOffset), barHeightScale(absoluteFullOffset), zoomT)
+        }
+
         // ── Full-track congestion normalization ──────────────────────────────────
         // As the view zooms toward LAYOUT_MODE_FULL, the per-bar pixel step can shrink far
         // below a comfortable minimum for long tracks (thousands of one-per-second bars
@@ -771,7 +807,18 @@ class WaveformSeekbar @JvmOverloads constructor(
             effBarWidthPx
         }
         val bucketCornerRadiusPx = effCornerRadiusPx.coerceAtMost(bucketBarWidthPx / 2f)
-        val bucketTransitionZone = bucketStepPx * TRANSITION_ZONE
+
+        // ── Played/unplayed crossfade width ──────────────────────────────────────
+        // In scrolling mode the crossfade spans a few native bar-widths, which always reads
+        // as a narrow band around the centered playhead. In full-track mode the "bar width"
+        // can itself be huge for tracks with only a handful of samples (fullBarStep = w / n),
+        // so deriving the zone from it the same way could stretch the crossfade across the
+        // entire screen, making the exact playhead position hard to pinpoint. Instead, the
+        // full-mode zone is a small, fixed slice of the view width, independent of bar count.
+        val scrollingTransitionZonePx = barStep * TRANSITION_ZONE
+        val fullTransitionZonePx = (FULL_TRANSITION_ZONE_DP * resources.displayMetrics.density)
+            .coerceAtMost(w * FULL_TRANSITION_ZONE_MAX_WIDTH_FRACTION)
+        val blendedTransitionZone = lerp(scrollingTransitionZonePx, fullTransitionZonePx, zoomT).coerceAtLeast(1f)
 
         // Preserve a compositing layer so the DST_OUT fades erase bars near the edges
         val layerId = canvas.saveLayer(0f, 0f, w, h, null)
@@ -817,15 +864,13 @@ class WaveformSeekbar @JvmOverloads constructor(
             val bucketCenterIndex = (i + bucketEnd - 1) / 2f
 
             // Raw offset is the bucket's flat position relative to the playhead in native
-            // (scrolling-mode) pixel space. curvedOffset bends it via the fish-eye lens for
-            // BOTH the scrolling geometry and the full-track linear geometry (scaled by
-            // fullScale first), so optics stays active across the entire zoom transition
-            // instead of disappearing once LAYOUT_MODE_FULL settles.
+            // (scrolling-mode) pixel space. blendedOffset bends it via the fish-eye lens for
+            // BOTH the scrolling geometry (anchored to the moving playhead) and the full-track
+            // geometry (anchored to the fixed view center), so optics stays active — and stays
+            // put — across the entire zoom transition instead of disappearing or dragging along
+            // with the seek position once LAYOUT_MODE_FULL settles.
             val rawOffset = bucketCenterIndex * barStep - scrollOffset
-            val linearRawOffset = rawOffset * fullScale
-            val curvedScreenOffset = curvedOffset(rawOffset)
-            val linearScreenOffset = curvedOffset(linearRawOffset)
-            val barCenterX = focalScreenX + lerp(curvedScreenOffset, linearScreenOffset, zoomT)
+            val barCenterX = focalScreenX + blendedOffset(rawOffset)
             // Cull bars that are fully outside the visible area
             if (barCenterX + bucketBarWidthPx / 2f < 0f || barCenterX - bucketBarWidthPx / 2f > w) {
                 i = bucketEnd
@@ -838,13 +883,14 @@ class WaveformSeekbar @JvmOverloads constructor(
             // Bars on the far sides of the lens are drawn a little shorter, so the waveform
             // looks like it wraps around a cylinder and curves away from us. Blended the same
             // way as the position so the foreshortening also survives into full-track mode.
-            val heightScale = lerp(barHeightScale(rawOffset), barHeightScale(linearRawOffset), zoomT)
+            val heightScale = blendedHeightScale(rawOffset)
 
             // Smoothly crossfade between played and unplayed color over a ±transitionZone window
             // centered on the playhead, so the color change is gradual rather than an instant switch.
             val distFromCenter = barCenterX - focalScreenX
-            val colorT = ((distFromCenter + bucketTransitionZone) / (2f * bucketTransitionZone)).coerceIn(0f, 1f)
+            val colorT = ((distFromCenter + blendedTransitionZone) / (2f * blendedTransitionZone)).coerceIn(0f, 1f)
             barPaint.color = blendArgb(playedColor, unplayedColor, colorT)
+
 
             // Bars closest to the playhead render at full opacity; bars toward the outer
             // edges fade toward HIGHLIGHT_MIN_ALPHA, creating a spotlight effect that follows
@@ -907,10 +953,7 @@ class WaveformSeekbar @JvmOverloads constructor(
                 val bucketCenterIndex = (ri + bucketEnd - 1) / 2f
 
                 val rawOffset = bucketCenterIndex * barStep - scrollOffset
-                val linearRawOffset = rawOffset * fullScale
-                val curvedScreenOffset = curvedOffset(rawOffset)
-                val linearScreenOffset = curvedOffset(linearRawOffset)
-                val barCenterX = focalScreenX + lerp(curvedScreenOffset, linearScreenOffset, zoomT)
+                val barCenterX = focalScreenX + blendedOffset(rawOffset)
                 if (barCenterX + bucketBarWidthPx / 2f < 0f || barCenterX - bucketBarWidthPx / 2f > w) {
                     ri = bucketEnd
                     continue
@@ -919,9 +962,9 @@ class WaveformSeekbar @JvmOverloads constructor(
                 var amp = 0f
                 for (k in ri until bucketEnd) amp = max(amp, drawnAmplitudes[k])
                 amp = amp.coerceIn(0f, 1f)
-                val heightScale = lerp(barHeightScale(rawOffset), barHeightScale(linearRawOffset), zoomT)
+                val heightScale = blendedHeightScale(rawOffset)
                 val distFromCenter = barCenterX - focalScreenX
-                val colorT = ((distFromCenter + bucketTransitionZone) / (2f * bucketTransitionZone)).coerceIn(0f, 1f)
+                val colorT = ((distFromCenter + blendedTransitionZone) / (2f * blendedTransitionZone)).coerceIn(0f, 1f)
                 barPaint.color = blendArgb(playedColor, unplayedColor, colorT)
 
                 val distFraction = (abs(barCenterX - focalScreenX) / (w / 2f)).coerceIn(0f, 1f)
@@ -971,10 +1014,7 @@ class WaveformSeekbar @JvmOverloads constructor(
                 val bookmarkFraction = timestampMs.toFloat().coerceIn(0f, durationMs.toFloat()) / durationMs.toFloat()
                 val bookmarkScrollOffset = bookmarkFraction * (amplitudes.size * barStep)
                 val bmRawOffset = bookmarkScrollOffset - scrollOffset
-                val bmLinearRawOffset = bmRawOffset * fullScale
-                val bmCurved = curvedOffset(bmRawOffset)
-                val bmLinear = curvedOffset(bmLinearRawOffset)
-                val dotX = focalScreenX + lerp(bmCurved, bmLinear, zoomT)
+                val dotX = focalScreenX + blendedOffset(bmRawOffset)
                 if (dotX + bookmarkDotRadius < 0f || dotX - bookmarkDotRadius > w) continue
                 canvas.drawCircle(dotX, dotCenterY, bookmarkDotRadius, bookmarkPaint)
             }
@@ -1833,6 +1873,21 @@ class WaveformSeekbar @JvmOverloads constructor(
          * legible instead of collapsing into an illegible, fully congested block.
          */
         private const val MIN_FULL_BAR_STEP_DP = 3f
+
+        /**
+         * Fixed width, in dp, of the played/unplayed crossfade band around the playhead while
+         * in (or zooming toward) [LAYOUT_MODE_FULL]. Deriving this from the bar step like the
+         * scrolling layout does would let it balloon across the entire view for tracks with few
+         * samples (large fullBarStep); a small fixed width keeps the current position easy to
+         * spot regardless of track length.
+         */
+        private const val FULL_TRANSITION_ZONE_DP = 14f
+
+        /**
+         * Safety cap on [FULL_TRANSITION_ZONE_DP] as a fraction of the view width, so the
+         * crossfade band never looks disproportionately wide on very narrow/small views.
+         */
+        private const val FULL_TRANSITION_ZONE_MAX_WIDTH_FRACTION = 0.05f
 
         /** Labels are positioned at the top edge of the view. */
         const val LABEL_GRAVITY_TOP = 0
