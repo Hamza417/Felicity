@@ -1257,6 +1257,21 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val animationsHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.animations)
+
+        val reduceAnimations = Preference(
+                title = R.string.reduce_animations,
+                summary = R.string.reduce_animations_summary,
+                icon = R.drawable.ic_animation,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    AccessibilityPreferences.setReduceAnimations((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    AccessibilityPreferences.isAnimationReduced()
+                }
+        )
+
         preferences.add(userInterfaceHeader)
         preferences.add(divider)
         preferences.add(highlightClickedElement)
@@ -1264,6 +1279,8 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(miniPlayerHeader)
         preferences.add(strokeAroundMiniplayer)
         preferences.add(darkerMiniplayerShadow)
+        preferences.add(animationsHeader)
+        preferences.add(reduceAnimations)
 
         return preferences
     }
