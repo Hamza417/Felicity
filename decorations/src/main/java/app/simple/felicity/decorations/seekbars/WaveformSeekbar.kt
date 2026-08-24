@@ -1413,9 +1413,10 @@ class WaveformSeekbar @JvmOverloads constructor(
      * the waveform always uses the full available vertical space regardless of
      * whether the track is uniformly loud or uniformly quiet.
      *
-     * Bar heights always animate from wherever they currently are (zero on first load,
-     * previous values on subsequent loads) to the new target, so the transition is
-     * never abrupt.
+     * Bar heights animate from wherever they currently are (zero on first load, previous
+     * values on subsequent loads), so the transition is never abrupt — except in
+     * [LAYOUT_MODE_FULL], where the first data set is drawn immediately at its final
+     * heights without any animation and only later sets resize the bars.
      *
      * @param data raw amplitude array, one value per second (any non-negative range)
      */
@@ -1449,6 +1450,17 @@ class WaveformSeekbar @JvmOverloads constructor(
         barAnimator = null
 
         amplitudes = normalizedData
+
+        // In full layout mode the waveform is never trimmed, so the very first data set has
+        // no previous bars to resize from. Draw the bars at their final heights immediately
+        // instead of animating them up from zero; every later set resizes from the current
+        // heights. Scrolling mode keeps the original grow-in behavior.
+        if (layoutMode == LAYOUT_MODE_FULL && drawnAmplitudes.isEmpty()) {
+            animStartAmplitudes = normalizedData.copyOf()
+            drawnAmplitudes = normalizedData.copyOf()
+            invalidate()
+            return
+        }
 
         // Align start array to new data length, padding with zeros when growing
         if (animStartAmplitudes.size != normalizedData.size) {
@@ -1576,6 +1588,10 @@ class WaveformSeekbar @JvmOverloads constructor(
      *     heights to the new song's heights organically.
      *  4. Progress and duration are updated to the new values.
      *
+     * In [LAYOUT_MODE_FULL] the waveform is never trimmed: steps 1–3 are skipped entirely,
+     * the existing waveform stays put, and only the playback position and duration are reset.
+     * The following [setAmplitudes] call simply resizes the bars to the new track's data.
+     *
      * If there are no bars to fade (empty waveform) the function fast-paths to a direct update.
      *
      * @param newDurationMs new total duration in milliseconds
@@ -1591,6 +1607,20 @@ class WaveformSeekbar @JvmOverloads constructor(
         isDragging = false
         seekLineAlpha = 0f
         pendingAmplitudesData = null
+
+        // In full layout mode the waveform is never trimmed or cut when a new track is
+        // loaded. The current waveform stays exactly where it is and the next setAmplitudes
+        // call simply resizes the bars to the new track's data, so the transition reads as
+        // a plain bar resize instead of a left-side wipe. Only the playback position and
+        // duration are reset here.
+        if (layoutMode == LAYOUT_MODE_FULL) {
+            leftFadeProgress = -1f
+            progressMs = 0L
+            animatedProgressMs = 0L
+            durationMs = newDurationMs
+            invalidate()
+            return
+        }
 
         if (drawnAmplitudes.isEmpty() || durationMs <= 0L) {
             amplitudes = FloatArray(0)
@@ -1620,6 +1650,21 @@ class WaveformSeekbar @JvmOverloads constructor(
             }
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
+                    // If the layout switched to full mode while the fade was running, the
+                    // waveform must not be trimmed. Clear the fade state and apply any
+                    // amplitudes deferred while the fade was active instead.
+                    if (layoutMode == LAYOUT_MODE_FULL) {
+                        barAnimator?.cancel()
+                        barAnimator = null
+                        leftFadeProgress = -1f
+                        pendingAmplitudesData?.let { pending ->
+                            pendingAmplitudesData = null
+                            applyNormalizedAmplitudes(pending)
+                        }
+                        invalidate()
+                        return
+                    }
+
                     // Cancel any barAnimator that may have been started by a setAmplitudes
                     // call that slipped in before the fade guard was active. This MUST happen
                     // before drawnAmplitudes is reassigned; otherwise the running animator
