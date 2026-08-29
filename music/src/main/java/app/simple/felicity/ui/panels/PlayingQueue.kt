@@ -159,10 +159,28 @@ class PlayingQueue : BasePanelFragment() {
 
             adapterPlayingQueue?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
                 override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
+                    val clickedSong = songs[position]
+
+                    // If we are in multi-select mode, just toggle and stop here.
                     if (SelectionManager.hasSelection) {
-                        SelectionManager.toggle(songs[position])
-                    } else {
+                        SelectionManager.toggle(clickedSong)
+                        return
+                    }
+
+                    // If the user tapped a different song, play it and stop here.
+                    if (MediaPlaybackManager.getCurrentSong()?.id != clickedSong.id) {
                         MediaPlaybackManager.updatePosition(position, forcePlay = true)
+                        return
+                    }
+
+                    // If we reach this point, the user tapped the currently playing song.
+                    // Decide where to navigate them.
+                    val cameFromPlayer = requireArguments().getBoolean(FROM_PLAYER_KEY, false)
+                    
+                    if (cameFromPlayer) {
+                        goBack()
+                    } else {
+                        openDefaultPlayer()
                     }
                 }
 
@@ -254,9 +272,11 @@ class PlayingQueue : BasePanelFragment() {
         const val TAG = "PlayingQueue"
 
         private const val FIRST_LAUNCH_KEY = "first_launch"
+        private const val FROM_PLAYER_KEY = "from_player"
 
-        fun newInstance(): PlayingQueue {
+        fun newInstance(fromPlayer: Boolean = false): PlayingQueue {
             val args = Bundle()
+            args.putBoolean(FROM_PLAYER_KEY, fromPlayer)
             val fragment = PlayingQueue()
             fragment.arguments = args
             return fragment

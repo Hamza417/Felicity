@@ -277,7 +277,7 @@ abstract class BasePlayerFragment : MediaFragment() {
         })
 
         queue.setOnClickListener {
-            openFragment(PlayingQueue.newInstance(), PlayingQueue.TAG)
+            openFragment(PlayingQueue.newInstance(fromPlayer = true), PlayingQueue.TAG)
         }
 
         count.setOnClickListener {
