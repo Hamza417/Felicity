@@ -65,6 +65,7 @@ import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.constants.MediaConstants
+import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.repositories.AudioRepository
 import app.simple.felicity.repository.repositories.SongStatRepository
@@ -83,6 +84,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import kotlin.math.pow
 import kotlin.math.roundToInt
@@ -2160,6 +2162,77 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
             Log.d(TAG, "Resolved ${updatedMediaItems.size} media items")
             updatedMediaItems
+        }
+
+        /**
+         * Restores the last-known playback queue and position when the system starts this
+         * service without an active player state — e.g. a media button event (Bluetooth
+         * play/pause, headset button, or a resumption request from the system/Android Auto)
+         * arriving while the app process is dead.
+         *
+         * Without this override, [Context.startForegroundService] is invoked by
+         * [androidx.media3.session.MediaButtonReceiver] but the player never receives any
+         * media items to play. Since nothing ever starts playing, [MediaSessionService]
+         * never promotes the service to the foreground via [Service.startForeground], and
+         * the framework kills the app with a
+         * `ForegroundServiceDidNotStartInTimeException` a few seconds later.
+         *
+         * By returning the previously saved queue here, media3 automatically sets it on the
+         * player and calls play(), which lets the service post its notification and call
+         * startForeground() in time.
+         */
+        @Suppress("OVERRIDE_DEPRECATION")
+        override fun onPlaybackResumption(
+                mediaSession: MediaSession,
+                controller: MediaSession.ControllerInfo
+        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> = serviceScope.future {
+            Log.d(TAG, "onPlaybackResumption requested by: ${controller.packageName}")
+
+            val db = AudioDatabase.getInstance(applicationContext)
+            val state = PlaybackStateManager.fetchPlaybackState(db)
+            val restoredSongs = PlaybackStateManager.getAudiosFromQueueIDs(db)
+
+            if (restoredSongs.isNullOrEmpty()) {
+                Log.w(TAG, "onPlaybackResumption: no saved queue found; nothing to resume.")
+                return@future MediaSession.MediaItemsWithStartPosition(
+                        emptyList(), C.INDEX_UNSET, C.TIME_UNSET
+                )
+            }
+
+            val savedIndex = (state?.index ?: 0).coerceIn(0, restoredSongs.size - 1)
+            val savedPositionMs = (state?.position ?: 0L).coerceAtLeast(0L)
+
+            // Keep MediaPlaybackManager's in-memory state in sync so the widget, notification
+            // favorite/repeat buttons, and stat recording all reflect the resumed queue —
+            // mediaController is null at this point so this call only updates local state.
+            withContext(Dispatchers.Main) {
+                MediaPlaybackManager.setSongs(
+                        restoredSongs, savedIndex, savedPositionMs, autoPlay = false, isRestore = true
+                )
+                state?.activeQueueId?.let { MediaPlaybackManager.setActiveQueueId(it) }
+            }
+
+            val mediaItems = restoredSongs.map { audio: Audio ->
+                MediaItem.Builder()
+                    .setMediaId(audio.id.toString())
+                    .setUri(audio.uri)
+                    .setMediaMetadata(
+                            MediaMetadata.Builder()
+                                .setTitle(audio.getProperTitle())
+                                .setArtist(audio.getProperArtists())
+                                .setAlbumTitle(audio.getProperAlbum())
+                                .setIsPlayable(true)
+                                .build()
+                    )
+                    .build()
+            }
+
+            Log.d(
+                    TAG, "onPlaybackResumption: restoring ${mediaItems.size} items, " +
+                    "startIndex=$savedIndex, startPositionMs=$savedPositionMs"
+            )
+
+            MediaSession.MediaItemsWithStartPosition(mediaItems, savedIndex, savedPositionMs)
         }
     }
 
