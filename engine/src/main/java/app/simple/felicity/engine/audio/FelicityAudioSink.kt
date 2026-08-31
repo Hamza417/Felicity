@@ -227,8 +227,6 @@ class FelicityAudioSink(
                 audioSinkListener?.onPositionAdvancing(System.currentTimeMillis() + latencyMs)
             }
 
-            Log.d(TAG, "AAudioNativeSink.handleBuffer: writing ${buffer.remaining()} bytes at $presentationTimeUs us")
-
             val snapshot = buffer.slice().order(buffer.order())
             val sampleCount = snapshotToFloat(snapshot, currentEncoding)
             if (sampleCount > 0) {

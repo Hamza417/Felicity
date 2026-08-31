@@ -1043,12 +1043,21 @@ object MediaPlaybackManager {
         seekJob?.cancel()
         seekJob = scope.launch {
             var lastEmittedPosition: Long? = null
+
             while (isActive) {
                 val position = getSeekPosition()
-                // Only emit if position actually changed to reduce overhead
+
                 if (position != lastEmittedPosition) {
-                    _songSeekPositionFlow.value = position
-                    lastEmittedPosition = position
+                    // If the position drops backward by less than 1000ms, it's likely a pipeline correction.
+                    // Ignore it and let the next loop catch up naturally.
+                    val isMinorStutter = lastEmittedPosition != null &&
+                            position < lastEmittedPosition &&
+                            (lastEmittedPosition - position) < 1000L
+
+                    if (!isMinorStutter) {
+                        _songSeekPositionFlow.value = position
+                        lastEmittedPosition = position
+                    }
                 }
 
                 delay(intervalMs.milliseconds)
