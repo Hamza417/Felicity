@@ -554,6 +554,45 @@ object MediaPlaybackManager {
         }
     }
 
+    /**
+     * Removes every song from the queue except the currently playing one, without
+     * interrupting playback. The currently playing song becomes the sole item in the
+     * queue at index 0. Safe to call for a "Clear queue" action.
+     *
+     * Does NOT emit [_songPositionFlow] — the currently playing song hasn't changed,
+     * only its index (which is always 0 after clearing).
+     */
+    fun clearQueueExceptCurrent() {
+        if (songs.size <= 1) return
+        val current = getCurrentSong() ?: return
+        val currentIndex = currentSongPosition.coerceIn(0, songs.size - 1)
+
+        this.songs = listOf(current)
+
+        suppressPositionEmit = true
+        currentSongPosition = 0
+        suppressPositionEmit = false
+
+        // Surgically remove every item except the current one from ExoPlayer's queue —
+        // no setMediaItems, no prepare, no gap in playback.
+        val controller = mediaController
+        if (controller != null) {
+            val count = controller.mediaItemCount
+            if (count > 1) {
+                if (currentIndex + 1 < count) {
+                    controller.removeMediaItems(currentIndex + 1, count)
+                }
+                if (currentIndex > 0) {
+                    controller.removeMediaItems(0, currentIndex)
+                }
+            }
+        }
+
+        scope.launch {
+            _songListFlow.emit(this@MediaPlaybackManager.songs)
+        }
+    }
+
     // Line 133
     fun playCurrent() {
         // Only seek if we are NOT at the correct index already

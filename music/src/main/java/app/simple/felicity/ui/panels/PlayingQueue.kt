@@ -137,6 +137,14 @@ class PlayingQueue : BasePanelFragment() {
         headerBinding.shuffle.setOnClickListener {
             shuffleMediaItems(MediaPlaybackManager.getSongs())
         }
+
+        headerBinding.clearQueue.setOnClickListener {
+            withSureDialog {
+                if (it) {
+                    MediaPlaybackManager.clearQueueExceptCurrent()
+                }
+            }
+        }
     }
 
     /**
