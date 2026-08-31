@@ -284,6 +284,14 @@ abstract class BasePlayerFragment : MediaFragment() {
             queue.callOnClick()
         }
 
+        artist.setOnClickListener {
+            openArtistPage(MediaPlaybackManager.getCurrentSong() ?: return@setOnClickListener)
+        }
+
+        album.setOnClickListener {
+            openAlbumPage(MediaPlaybackManager.getCurrentSong() ?: return@setOnClickListener)
+        }
+
         search.setOnClickListener {
             openFragment(Search.newInstance(), Search.TAG)
         }

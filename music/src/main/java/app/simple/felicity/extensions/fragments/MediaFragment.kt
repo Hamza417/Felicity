@@ -564,27 +564,12 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 }
 
                 binding.goToArtist.setOnClickListener {
-                    val artistName = audio.artist ?: return@setOnClickListener
-                    val artist = Artist(
-                            id = artistName.hashCode().toLong(),
-                            name = artistName,
-                            albumCount = 0,
-                            trackCount = 0
-                    )
-                    openFragment(ArtistPage.newInstance(artist), ArtistPage.TAG)
+                    openArtistPage(audio)
                     dismissImmediately()
                 }
 
                 binding.goToAlbum.setOnClickListener {
-                    val albumName = audio.album ?: return@setOnClickListener
-                    val artistName = audio.artist ?: ""
-                    val album = Album(
-                            id = audio.albumId,
-                            name = albumName,
-                            artist = artistName,
-                            artistId = artistName.hashCode().toLong()
-                    )
-                    openFragment(AlbumPage.newInstance(album), AlbumPage.TAG)
+                    openAlbumPage(audio)
                     dismissImmediately()
                 }
 
@@ -1247,6 +1232,29 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         } else {
 
         }
+    }
+
+    protected fun openArtistPage(audio: Audio) {
+        val artistName = audio.artist ?: return
+        val artist = Artist(
+                id = artistName.hashCode().toLong(),
+                name = artistName,
+                albumCount = 0,
+                trackCount = 0
+        )
+        openFragment(ArtistPage.newInstance(artist), ArtistPage.TAG)
+    }
+
+    protected fun openAlbumPage(audio: Audio) {
+        val albumName = audio.album ?: return
+        val artistName = audio.artist ?: ""
+        val album = Album(
+                id = audio.albumId,
+                name = albumName,
+                artist = artistName,
+                artistId = artistName.hashCode().toLong()
+        )
+        openFragment(AlbumPage.newInstance(album), AlbumPage.TAG)
     }
 
     protected open fun getShuffleButton(): HighlightTextView? = null

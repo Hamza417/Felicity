@@ -145,7 +145,7 @@
                     app:layout_constraintTop_toBottomOf="@+id/album_art_mime"
                     app:textColorStyle="primary" />
 
-                <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                <app.simple.felicity.decorations.ripple.DynamicRippleTextView
                     android:id="@+id/artist"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -155,6 +155,7 @@
                     android:gravity="center_horizontal"
                     android:marqueeRepeatLimit="marquee_forever"
                     android:scrollHorizontally="true"
+                    android:layout_marginTop="@dimen/gap"
                     android:singleLine="true"
                     android:textSize="@dimen/text_size_14"
                     app:appFontStyle="regular"
@@ -164,11 +165,12 @@
                     app:layout_constraintTop_toBottomOf="@+id/mime_title"
                     app:textColorStyle="secondary" />
 
-                <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                <app.simple.felicity.decorations.ripple.DynamicRippleTextView
                     android:id="@+id/album"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
+                    android:layout_marginTop="@dimen/gap"
                     android:layout_marginHorizontal="@dimen/padding_15"
                     android:ellipsize="marquee"
                     android:gravity="center_horizontal"

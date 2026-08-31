@@ -187,7 +187,7 @@
         app:layout_constraintTop_toBottomOf="@+id/album_art_mime"
         app:textColorStyle="primary" />
 
-    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+    <app.simple.felicity.decorations.ripple.DynamicRippleTextView
         android:id="@+id/artist"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -210,7 +210,7 @@
         app:layout_constraintTop_toBottomOf="@+id/mime_title"
         app:textColorStyle="secondary" />
 
-    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+    <app.simple.felicity.decorations.ripple.DynamicRippleTextView
         android:id="@+id/album"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
