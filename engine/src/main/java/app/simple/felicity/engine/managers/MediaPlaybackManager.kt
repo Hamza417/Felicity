@@ -559,8 +559,12 @@ object MediaPlaybackManager {
      * interrupting playback. The currently playing song becomes the sole item in the
      * queue at index 0. Safe to call for a "Clear queue" action.
      *
-     * Does NOT emit [_songPositionFlow] — the currently playing song hasn't changed,
-     * only its index (which is always 0 after clearing).
+     * Unlike [moveQueueItemSilently] (a pure reorder), the queue actually shrinks here and
+     * the playing song's index genuinely changes (e.g. 3 -> 0) — exactly like the "some other
+     * item removed, current position shifts" branch of [removeQueueItemSilently]. So this
+     * DOES let [currentSongPosition]'s normal setter run and emit [_songPositionFlow],
+     * ensuring every observer that keys off the raw index (not just the song list) learns
+     * the position is now 0 instead of being left showing the old, stale index.
      */
     fun clearQueueExceptCurrent() {
         if (songs.size <= 1) return
@@ -568,10 +572,7 @@ object MediaPlaybackManager {
         val currentIndex = currentSongPosition.coerceIn(0, songs.size - 1)
 
         this.songs = listOf(current)
-
-        suppressPositionEmit = true
         currentSongPosition = 0
-        suppressPositionEmit = false
 
         // Surgically remove every item except the current one from ExoPlayer's queue —
         // no setMediaItems, no prepare, no gap in playback.
@@ -585,6 +586,12 @@ object MediaPlaybackManager {
                 if (currentIndex > 0) {
                     controller.removeMediaItems(0, currentIndex)
                 }
+            }
+            // Belt-and-suspenders: explicitly confirm the controller's active index now
+            // matches position 0, in case ExoPlayer doesn't reflect the reindex in
+            // currentMediaItemIndex immediately after the surgical removals above.
+            if (controller.currentMediaItemIndex != 0) {
+                controller.seekTo(0, controller.currentPosition)
             }
         }
 
