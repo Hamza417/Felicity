@@ -578,7 +578,17 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                         val newFav = !audio.isFavorite
                         AudioDatabase.getInstance(requireContext()).audioDao()?.setFavorite(audio.id, newFav)
                         audio.isFavorite = newFav
-                        if (MediaPlaybackManager.getCurrentSong()?.id == audio.id) {
+
+                        // `audio` here may be a completely different Audio instance than the one
+                        // MediaPlaybackManager actually holds as the "now playing" song (e.g. this
+                        // menu was opened from a Songs/Album/Artist list, each backed by its own
+                        // DB query), even though they share the same id. Mutating `audio` alone
+                        // would leave the real current-song object's isFavorite stale, so the
+                        // player screen and notification would never see the change. Update the
+                        // actual instance too, if it's the one currently playing.
+                        val currentSong = MediaPlaybackManager.getCurrentSong()
+                        if (currentSong?.id == audio.id) {
+                            currentSong.isFavorite = newFav
                             withContext(Dispatchers.Main) { MediaPlaybackManager.notifyCurrentSongUpdated() }
                         }
                     }
@@ -589,9 +599,16 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                     viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                         val newSkip = !audio.isAlwaysSkip
                         AudioDatabase.getInstance(requireContext()).audioDao()?.setAlwaysSkip(audio.id, newSkip)
-                        audio.setAlwaysSkip(newSkip)
-                        if (newSkip && MediaPlaybackManager.getCurrentSong()?.id == audio.id) {
-                            withContext(Dispatchers.Main) { MediaPlaybackManager.next() }
+                        audio.isAlwaysSkip = newSkip
+                        // Same instance-mismatch concern as favorites above: `audio` may not be the
+                        // same object MediaPlaybackManager holds in its queue, so mirror the flag
+                        // onto the real current-song instance before deciding whether to skip.
+                        val currentSong = MediaPlaybackManager.getCurrentSong()
+                        if (currentSong?.id == audio.id) {
+                            currentSong.isAlwaysSkip = newSkip
+                            if (newSkip) {
+                                withContext(Dispatchers.Main) { MediaPlaybackManager.next() }
+                            }
                         }
                     }
                     dismiss()

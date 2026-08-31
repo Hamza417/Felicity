@@ -371,6 +371,21 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         // Set initial repeat button in the notification
         mediaSession?.setCustomLayout(listOf(buildRepeatCommandButton(PlayerPreferences.getRepeatMode())))
 
+        // Keep the notification's favorite button in sync with the currently playing song's
+        // favorite state no matter where the toggle happened (notification button, in-app song
+        // menu, mini/full player heart icon, etc.). Every one of those call sites eventually
+        // calls MediaPlaybackManager.notifyCurrentSongUpdated() (or otherwise emits
+        // songPositionFlow), so collecting it here guarantees both surfaces stay consistent.
+        serviceScope.launch(Dispatchers.Main.immediate) {
+            MediaPlaybackManager.songPositionFlow.collect {
+                val isFavorite = MediaPlaybackManager.getCurrentSong()?.isFavorite ?: false
+                val repeatMode = PlayerPreferences.getRepeatMode()
+                mediaSession?.setCustomLayout(
+                        listOf(buildRepeatCommandButton(repeatMode), buildFavoriteCommandButton(isFavorite))
+                )
+            }
+        }
+
         // Detect the current output device and subscribe to future device changes so the
         // snapshot is refreshed whenever headphones or a BT device is connected / disconnected.
         currentOutputDevice = detectActiveOutputDevice()
