@@ -221,17 +221,23 @@ class Dashboard : BaseHomeFragment() {
             }
         }
 
-        if (binding.recommendedGrid.adapter != null) {
+        val applyUpdate = {
+            applyRecommendedAdapter(data, layoutManager)
+            calculateAndSetHeight()
+        }
+
+        // We only animate if there's an existing adapter AND the argument is true
+        val shouldAnimate = binding.recommendedGrid.adapter != null &&
+                requireArguments().getBoolean(SHOULD_ANIMATE, true)
+
+        if (shouldAnimate) {
             binding.recommendedGrid.animate()
                 .alpha(0f)
-                .scaleX(0.9F)
-                .scaleY(0.9F)
+                .scaleX(0.9f)
+                .scaleY(0.9f)
                 .setDuration(300)
                 .withEndAction {
-                    applyRecommendedAdapter(data, layoutManager)
-
-                    // Call this AFTER the new adapter and layout manager are applied
-                    calculateAndSetHeight()
+                    applyUpdate() // Called after fade out
 
                     binding.recommendedGrid.animate()
                         .alpha(1f)
@@ -241,10 +247,7 @@ class Dashboard : BaseHomeFragment() {
                         .start()
                 }.start()
         } else {
-            applyRecommendedAdapter(data, layoutManager)
-
-            // Call this immediately for the first load
-            calculateAndSetHeight()
+            applyUpdate() // Called immediately for first load or if animations are disabled
         }
 
         // Note: Double check if this is meant to be unconditionally false.
@@ -262,22 +265,32 @@ class Dashboard : BaseHomeFragment() {
      * @param layoutManager The freshly-built [SpannedGridLayoutManager] to attach.
      */
     private fun applyRecommendedAdapter(data: List<Audio>, layoutManager: SpannedGridLayoutManager) {
-        binding.recommendedGrid.adapter = null
-        binding.recommendedGrid.layoutManager = layoutManager
-        binding.recommendedGrid.setHasFixedSize(false)
-        val adapter = AdapterRecommended(data)
-        binding.recommendedGrid.adapter = adapter
-        binding.recommendedGrid.scheduleLayoutAnimation()
+        // Create and configure the adapter
+        val recommendedAdapter = AdapterRecommended(data).apply {
+            setCallbacks(object : AdapterRecommendedCallbacks {
+                override fun onItemClicked(items: List<Audio>, position: Int) =
+                    setMediaItems(items, position)
 
-        adapter.setCallbacks(object : AdapterRecommendedCallbacks {
-            override fun onItemClicked(items: List<Audio>, position: Int) {
-                setMediaItems(items, position)
+                override fun onItemLongClicked(items: List<Audio>, position: Int, imageView: ImageView) =
+                    openSongsMenu(items, position, imageView)
+            })
+        }
+
+        binding.recommendedGrid.apply {
+            adapter = null
+            this.layoutManager = layoutManager
+            setHasFixedSize(false)
+
+            if (requireArguments().getBoolean(SHOULD_ANIMATE, true)) {
+                scheduleLayoutAnimation()
+                requireArguments().putBoolean(SHOULD_ANIMATE, false)
+            } else {
+                layoutAnimation = null
             }
 
-            override fun onItemLongClicked(items: List<Audio>, position: Int, imageView: ImageView) {
-                openSongsMenu(items, position, imageView)
-            }
-        })
+            // Assign the adapter once at the end
+            adapter = recommendedAdapter
+        }
     }
 
     private fun observeData() {
@@ -475,11 +488,6 @@ class Dashboard : BaseHomeFragment() {
         super.onDestroyView()
     }
 
-    override fun onAudio(audio: Audio) {
-        super.onAudio(audio)
-        // Nothing extra to do here — the library stats chip replaced the "currently playing" display.
-    }
-
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
@@ -528,14 +536,17 @@ class Dashboard : BaseHomeFragment() {
     companion object {
         /**
          * Creates a new instance of [Dashboard].
-         *
-         * @return A fresh [Dashboard] fragment ready to show your music library.
          */
-        fun newInstance(): Dashboard = Dashboard()
+        fun newInstance(): Dashboard {
+            val args = Bundle()
+            val fragment = Dashboard()
+            fragment.arguments = args
+            return fragment
+        }
 
         /** Back-stack tag used when navigating to this fragment. */
         const val TAG = "Dashboard"
 
-        private const val PANEL_SPAN_COUNT = 3
+        private const val SHOULD_ANIMATE = "should_animate"
     }
 }
