@@ -542,6 +542,8 @@ abstract class BasePlayerFragment : MediaFragment() {
                 repeat.alpha = 0.4f
             }
         }
+
+        pager.infiniteScrollEnabled = repeatMode == MediaConstants.REPEAT_QUEUE
     }
 
     /**

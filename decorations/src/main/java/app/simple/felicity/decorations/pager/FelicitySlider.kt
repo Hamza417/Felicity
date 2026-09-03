@@ -251,6 +251,17 @@ class FelicitySlider @JvmOverloads constructor(
             pager.carouselSideScaleDp = v
         }
 
+    /**
+     * Whether the pager loops infinitely in both directions (`… 8 → 9 → 10 → 0 → 1 …`),
+     * e.g. when "repeat all" is on. When `false` (the default) the pager is bounded at
+     * both ends. Delegates to [FelicityPager.infiniteScrollEnabled].
+     */
+    var infiniteScrollEnabled: Boolean
+        get() = pager.infiniteScrollEnabled
+        set(v) {
+            pager.infiniteScrollEnabled = v
+        }
+
     private var isRunning = false
 
     // ── Initialisation ───────────────────────────────────────────────────────────

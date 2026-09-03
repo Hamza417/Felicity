@@ -28,6 +28,7 @@ import app.simple.felicity.decorations.pager.FelicityPager.Companion.SCROLL_STAT
 import app.simple.felicity.decorations.pager.FelicityPager.Companion.SCROLL_STATE_SETTLING
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.abs
+import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -53,6 +54,11 @@ import kotlin.math.roundToInt
  *  - [SlideDirection.VERTICAL] — pages slide up/down; great for portrait stacks or feed-style
  *    layouts. In vertical mode the [OnVerticalDragListener] is not used (the vertical axis is
  *    already owned by paging). Secondary horizontal swipes are simply passed to the parent.
+ *
+ * **Infinite loop:** Set [infiniteScrollEnabled] to `true` when "repeat all" is on. Pages then
+ * loop seamlessly in both directions — `… 8 → 9 → 10 → 0 → 1 …` — while listeners still
+ * receive real adapter positions in `0..count-1`. When `false` (the default) the pager is
+ * bounded at both ends.
  *
  * **Scroll model (NORMAL):** Page N is centred when `scrollPx == N * width` (horizontal) or
  * `scrollPx == N * height` (vertical).
@@ -282,11 +288,7 @@ class FelicityPager @JvmOverloads constructor(
             // When leaving carousel mode, clean up any scale/alpha/rotation that a
             // transformer may have applied so pages look normal again.
             if (leavingCarousel) resetAllCardTransforms()
-            cancelAnimation()
-            if (width > 0) {
-                scrollPx = currentPage.coerceAtLeast(0) * pageStepPx()
-                requestLayout()
-            }
+            reAnchorScrollToCurrentPage()
         }
 
     /**
@@ -297,11 +299,7 @@ class FelicityPager @JvmOverloads constructor(
     var carouselCardSizePx: Int = 0
         set(v) {
             field = v.coerceAtLeast(0)
-            if (pagerMode == PagerMode.CAROUSEL && width > 0) {
-                cancelAnimation()
-                scrollPx = currentPage.coerceAtLeast(0) * pageStepPx()
-                requestLayout()
-            }
+            if (pagerMode == PagerMode.CAROUSEL) reAnchorScrollToCurrentPage()
         }
 
     /**
@@ -312,11 +310,7 @@ class FelicityPager @JvmOverloads constructor(
     var carouselPageSpacingPx: Float = 0f
         set(v) {
             field = v.coerceAtLeast(0f)
-            if (pagerMode == PagerMode.CAROUSEL && width > 0) {
-                cancelAnimation()
-                scrollPx = currentPage.coerceAtLeast(0) * pageStepPx()
-                requestLayout()
-            }
+            if (pagerMode == PagerMode.CAROUSEL) reAnchorScrollToCurrentPage()
         }
 
     /**
@@ -333,11 +327,7 @@ class FelicityPager @JvmOverloads constructor(
     var carouselPeekPx: Float = 0f
         set(v) {
             field = v.coerceAtLeast(0f)
-            if (pagerMode == PagerMode.CAROUSEL && width > 0) {
-                cancelAnimation()
-                scrollPx = currentPage.coerceAtLeast(0) * pageStepPx()
-                requestLayout()
-            }
+            if (pagerMode == PagerMode.CAROUSEL) reAnchorScrollToCurrentPage()
         }
 
     /**
@@ -371,12 +361,51 @@ class FelicityPager @JvmOverloads constructor(
         set(v) {
             if (field == v) return
             field = v
+            reAnchorScrollToCurrentPage()
+        }
+
+    /**
+     * Whether the pager loops infinitely in both directions.
+     *
+     * When `true` (and the adapter has more than one page) the pages behave like a
+     * circular tape: swiping past the last page continues to page 0 and swiping backward
+     * from page 0 continues to the last page — `… 8 → 9 → 10 → 0 → 1 …`. Listeners still
+     * receive real adapter positions in `0..count-1`.
+     *
+     * When `false` (the default) the pager is bounded at both ends, exactly as before.
+     *
+     * Toggling this at runtime cancels any running animation, recycles the active pages,
+     * and re-anchors the scroll position to the currently selected page.
+     *
+     * Set this to `true` when "repeat all" mode is on, `false` otherwise.
+     */
+    var infiniteScrollEnabled: Boolean = false
+        set(v) {
+            if (field == v) return
+            field = v
             cancelAnimation()
+            cancelWrapAnimation()
             if (width > 0) {
+                recycleAllPages()
                 scrollPx = currentPage.coerceAtLeast(0) * pageStepPx()
-                requestLayout()
+                ensurePages()
+                applyTranslations()
+                dispatchScrolled()
             }
         }
+
+    /**
+     * Cancels any running animation and re-anchors [scrollPx] so the currently selected
+     * page stays centred. Used by the geometry/mode setters. In infinite mode the active
+     * pages are recycled first so their virtual keys are re-issued around the new anchor.
+     */
+    private fun reAnchorScrollToCurrentPage() {
+        cancelAnimation()
+        if (width <= 0) return
+        if (canInfiniteScroll()) recycleAllPages()
+        scrollPx = currentPage.coerceAtLeast(0) * pageStepPx()
+        requestLayout()
+    }
 
     /**
      * Whether the left and right neighbor cards are visible in carousel mode.
@@ -496,7 +525,13 @@ class FelicityPager @JvmOverloads constructor(
     fun notifyDataSetChanged() {
         cancelAnimation()
         recycleAllPages()
-        if (scrollPx > maxScrollPx()) scrollPx = maxScrollPx()
+        if (canInfiniteScroll()) {
+            // Re-anchor to the current real page; virtual keys are re-issued around it.
+            currentPage = currentPage.coerceIn(0, maxLastPage())
+            scrollPx = currentPage * pageStepPx()
+        } else if (scrollPx > maxScrollPx()) {
+            scrollPx = maxScrollPx()
+        }
         if (width > 0) {
             ensurePages()
             applyTranslations()
@@ -558,7 +593,10 @@ class FelicityPager @JvmOverloads constructor(
      */
     private fun recyclePage(position: Int) {
         val v = activePages.remove(position) ?: return
-        adapter?.onRecycleView(position, v)
+        // In infinite mode [position] is a virtual index — report the real adapter position.
+        val count = pageCount()
+        val realPos = if (infiniteScrollEnabled && count > 1) floorMod(position, count) else position
+        adapter?.onRecycleView(realPos, v)
         recyclePool.addLast(v)
         removeView(v)
     }
@@ -569,22 +607,25 @@ class FelicityPager @JvmOverloads constructor(
     }
 
     /**
-     * Loads and attaches the page at [position] if it is not already active.
+     * Loads and attaches the page at real adapter [position], keyed by [key] in
+     * [activePages]. In normal mode [key] equals [position]; in infinite mode [key] is the
+     * virtual page index whose content is `floorMod(position, count)` — this allows the
+     * same adapter position to be instantiated more than once (e.g. page 0 peeking in from
+     * the right while the last page is centred).
+     *
      * The view is immediately positioned via [applyTranslationTo] using the current
      * [width] so it lands in the correct place even before the next layout pass.
      *
      * Bails out immediately if the host activity is no longer alive to prevent stale
      * image-loader requests (e.g. Glide) from being issued against a destroyed context.
      */
-    private fun loadPage(position: Int) {
-        val ad = adapter ?: return
+    private fun loadPage(key: Int, position: Int) {
         // Guard against Glide / image-loader crashes when the activity has been destroyed
         // or is finishing. This can happen when a Choreographer frame fires during teardown.
-        if (!isActivityAlive()) return
-        if (position !in 0 until ad.getCount()) return
-        if (activePages.containsKey(position)) return
+        if (adapter == null || !isActivityAlive()) return
+        if (activePages.containsKey(key)) return
         val v = obtainView(position)
-        activePages[position] = v
+        activePages[key] = v
         addView(v)
         // Measure and lay out the new child immediately so translation is meaningful.
         if (width > 0 && height > 0) {
@@ -597,7 +638,7 @@ class FelicityPager @JvmOverloads constructor(
                       MeasureSpec.makeMeasureSpec(cardH, MeasureSpec.EXACTLY))
             v.layout(leftOffset, topOffset, leftOffset + cardW, topOffset + cardH)
         }
-        applyTranslationTo(v, position)
+        applyTranslationTo(v, key)
     }
 
     /**
@@ -609,12 +650,32 @@ class FelicityPager @JvmOverloads constructor(
     private fun ensurePages() {
         val count = adapter?.getCount() ?: return
         if (count == 0) return
+        if (canInfiniteScroll()) {
+            ensurePagesInfinite(count)
+            return
+        }
         // Use the resolved current page rather than scrollPageIndex() when width is not
         // yet available, but guard against the sentinel value -1 used during adapter reset.
         val center = if (width > 0) scrollPageIndex() else currentPage.coerceAtLeast(0)
         val lo = max(0, center - pageRadius)
         val hi = minOf(count - 1, center + pageRadius)
-        for (i in lo..hi) loadPage(i)
+        for (i in lo..hi) loadPage(i, i)
+        activePages.keys.filter { it !in lo..hi }.forEach { recyclePage(it) }
+    }
+
+    /**
+     * Infinite-mode variant of [ensurePages]: loads every virtual index within
+     * [pageRadius] of the current scroll center. Each virtual index is mapped onto a
+     * real adapter position with [floorMod]; two virtual indices may therefore show the
+     * same page (e.g. page 0 peeking in from the right while page `count - 1` is centred).
+     */
+    private fun ensurePagesInfinite(count: Int) {
+        // Use the resolved current page rather than scrollVirtualCenter() when width is not
+        // yet available, but guard against the sentinel value -1 used during adapter reset.
+        val center = if (width > 0) scrollVirtualCenter() else currentPage.coerceAtLeast(0)
+        val lo = center - pageRadius
+        val hi = center + pageRadius
+        for (v in lo..hi) loadPage(v, floorMod(v, count))
         activePages.keys.filter { it !in lo..hi }.forEach { recyclePage(it) }
     }
 
@@ -711,6 +772,39 @@ class FelicityPager @JvmOverloads constructor(
         return (scrollPx / step).roundToInt().coerceIn(0, maxLastPage())
     }
 
+    /**
+     * The virtual page index closest to the current [scrollPx].
+     * Unlike [scrollPageIndex] this is **not** clamped to the adapter range: in infinite
+     * mode it can be any integer, which is what makes the loop seamless in both directions.
+     */
+    private fun scrollVirtualCenter(): Int {
+        val step = pageStepPx().takeIf { it > 0f } ?: return currentPage.coerceAtLeast(0)
+        return (scrollPx / step).roundToInt()
+    }
+
+    /** Whether the loop-around behavior is currently active (flag on and more than one page). */
+    private fun canInfiniteScroll() = infiniteScrollEnabled && pageCount() > 1
+
+    /**
+     * Returns the non-negative remainder of [a] modulo [b].
+     * Kotlin's `%` keeps the sign of the dividend, which is awkward when mapping negative
+     * virtual page indices back onto real adapter positions.
+     */
+    private fun floorMod(a: Int, b: Int): Int {
+        val r = a % b
+        return if (r < 0) r + b else r
+    }
+
+    /**
+     * The virtual page index for adapter position [real] that lies closest to
+     * [centerVirtual], so programmatic jumps always take the shortest path around the loop.
+     */
+    private fun nearestVirtualIndex(real: Int, centerVirtual: Int, count: Int): Int {
+        val delta = floorMod(real - centerVirtual, count)
+        val shortest = if (delta <= count / 2) delta else delta - count
+        return centerVirtual + shortest
+    }
+
     /** Returns the adapter position of the currently selected page. */
     fun getCurrentItem(): Int = currentPage
 
@@ -728,6 +822,12 @@ class FelicityPager @JvmOverloads constructor(
             post { if (isAttachedToWindow && isActivityAlive()) setCurrentItem(item, smoothScroll) }
             return
         }
+        if (canInfiniteScroll()) {
+            // Infinite mode: jump to the virtual instance of [item] nearest to the current
+            // scroll center so the animation takes the shortest path around the loop.
+            setCurrentItemInfinite(floorMod(item, pageCount()), smoothScroll)
+            return
+        }
         val bounded = item.coerceIn(0, maxLastPage())
         if (!smoothScroll) {
             cancelAnimation()
@@ -739,6 +839,28 @@ class FelicityPager @JvmOverloads constructor(
             dispatchStateChanged(SCROLL_STATE_IDLE)
         } else {
             smoothScrollTo(bounded * pageStepPx(), durationOverrideMs = null, fromUser = false)
+        }
+    }
+
+    /**
+     * Scrolls to the virtual instance of real page [realTarget] nearest to the current
+     * scroll center. Used by [setCurrentItem] and auto-slide in infinite mode so a jump
+     * from page 0 to the last page wraps backward instead of scrolling across the list.
+     */
+    private fun setCurrentItemInfinite(realTarget: Int, smoothScroll: Boolean) {
+        val count = pageCount()
+        if (count <= 1) return
+        val target = nearestVirtualIndex(realTarget, scrollVirtualCenter(), count)
+        if (!smoothScroll) {
+            cancelAnimation()
+            scrollPx = target * pageStepPx()
+            applyTranslations()
+            ensurePages()
+            dispatchScrolled()
+            dispatchPageSelected(realTarget, fromUser = false)
+            dispatchStateChanged(SCROLL_STATE_IDLE)
+        } else {
+            smoothScrollTo(target * pageStepPx(), durationOverrideMs = null, fromUser = false)
         }
     }
 
@@ -773,6 +895,9 @@ class FelicityPager @JvmOverloads constructor(
         if (w > 0) {
             if (changed) {
                 // Re-anchor scroll so the current page stays centred after a size change.
+                // In infinite mode the active pages must be recycled first so their virtual
+                // keys are re-issued around the new anchor.
+                if (canInfiniteScroll()) recycleAllPages()
                 scrollPx = currentPage.coerceAtLeast(0) * pageStepPx()
             }
             ensurePages()
@@ -898,7 +1023,8 @@ class FelicityPager @JvmOverloads constructor(
         // be called before the backing field is ready during construction. Bail out early;
         // applyTranslations will call us again once the view is properly laid out.
         if (width == 0) return
-        val centerPage = scrollPageIndex()
+        // Compare against the virtual center so infinite-mode keys match correctly.
+        val centerPage = scrollVirtualCenter()
         for ((pos, view) in activePages) {
             if (pos == WRAP_PAGE_KEY) continue
             view.visibility = if (carouselShowSidePages || pos == centerPage) {
@@ -916,9 +1042,13 @@ class FelicityPager @JvmOverloads constructor(
     private fun dispatchScrolled() {
         val step = pageStepPx().takeIf { it > 0f } ?: return
         val posF = scrollPx / step
-        val pos = posF.toInt().coerceIn(0, maxLastPage())
-        val offset = (posF - pos).coerceIn(0f, 1f)
+        // Floor (not truncate) so negative virtual positions map to the correct page and
+        // offset in infinite mode.
+        val virtual = floor(posF.toDouble()).toInt()
+        val offset = (posF - virtual).coerceIn(0f, 1f)
         val px = (offset * step).toInt()
+        val pos = if (canInfiniteScroll()) floorMod(virtual, pageCount())
+        else virtual.coerceIn(0, maxLastPage())
         pageChangeListeners.forEach {
             it.onPageScrolled(pos, offset, px)
         }
@@ -1207,7 +1337,12 @@ class FelicityPager @JvmOverloads constructor(
      * then repaints all active pages and notifies listeners.
      */
     private fun performDrag(deltaPixels: Float) {
-        scrollPx = (scrollPx + deltaPixels).coerceIn(0f, maxScrollPx())
+        // In infinite mode the scroll position is unbounded; otherwise clamp to the ends.
+        scrollPx = if (canInfiniteScroll()) {
+            scrollPx + deltaPixels
+        } else {
+            (scrollPx + deltaPixels).coerceIn(0f, maxScrollPx())
+        }
         applyTranslations()
         ensurePages()
         dispatchScrolled()
@@ -1227,26 +1362,31 @@ class FelicityPager @JvmOverloads constructor(
         val step = pageStepPx()
         val dragDeltaPages = (scrollPx - dragStartScrollPx) / step
         val forward = dragDeltaPages > 0f
+        val infinite = canInfiniteScroll()
 
         if (abs(velocity) > minFlingVelocity) {
             val vPagesPerSec = abs(velocity) / step
             val windowSec = 0.18f
             val pages = max(1, (vPagesPerSec * windowSec).roundToInt().coerceAtMost(3))
             val dir = if (velocity < 0) +1 else -1
-            val floorPage = (scrollPx / step).toInt().coerceIn(0, maxLastPage())
-            val ceilPage = (floorPage + 1).coerceAtMost(maxLastPage())
+            // In infinite mode use floor semantics and no clamping — the loop is unbounded.
+            val floorPage = if (infinite) floor((scrollPx / step).toDouble()).toInt()
+            else (scrollPx / step).toInt()
+            val ceilPage = if (infinite) floorPage + 1 else (floorPage + 1).coerceAtMost(maxLastPage())
             val base = if (dir > 0) ceilPage else floorPage
-            val targetPage = (base + (pages - 1) * dir).coerceIn(0, maxLastPage())
+            val targetPage = if (infinite) base + (pages - 1) * dir
+            else (base + (pages - 1) * dir).coerceIn(0, maxLastPage())
             val distPages = abs(targetPage - scrollPx / step)
             val durationMs = (if (vPagesPerSec > 0f) (distPages / vPagesPerSec) * 1000f * 0.95f else 420f)
                 .coerceIn(200f, 900f).toLong()
             smoothScrollTo(targetPage * step, durationOverrideMs = durationMs, fromUser = true)
         } else {
-            val snapStart = (dragStartScrollPx / step).roundToInt().coerceIn(0, maxLastPage())
-            val target = if (abs(dragDeltaPages) > advanceThreshold) {
-                if (forward) (snapStart + 1).coerceAtMost(maxLastPage())
-                else (snapStart - 1).coerceAtLeast(0)
+            val snapStart = if (infinite) (dragStartScrollPx / step).roundToInt()
+            else (dragStartScrollPx / step).roundToInt().coerceIn(0, maxLastPage())
+            val rawTarget = if (abs(dragDeltaPages) > advanceThreshold) {
+                if (forward) snapStart + 1 else snapStart - 1
             } else snapStart
+            val target = if (infinite) rawTarget else rawTarget.coerceIn(0, maxLastPage())
             val distPages = abs(target - scrollPx / step)
             val durationMs = (300f + 180f * distPages).coerceIn(200f, 700f).toLong()
             smoothScrollTo(target * step, durationOverrideMs = durationMs, fromUser = true)
@@ -1275,10 +1415,14 @@ class FelicityPager @JvmOverloads constructor(
         val windowSec = 0.18f
         val pages = max(1, (vPagesPerSec * windowSec).roundToInt().coerceAtMost(3))
         val dir = if (velocity < 0) +1 else -1
-        val floorPage = (scrollPx / step).toInt().coerceIn(0, maxLastPage())
-        val ceilPage = (floorPage + 1).coerceAtMost(maxLastPage())
+        val infinite = canInfiniteScroll()
+        // In infinite mode use floor semantics and no clamping — the loop is unbounded.
+        val floorPage = if (infinite) floor((scrollPx / step).toDouble()).toInt()
+        else (scrollPx / step).toInt()
+        val ceilPage = if (infinite) floorPage + 1 else (floorPage + 1).coerceAtMost(maxLastPage())
         val base = if (dir > 0) ceilPage else floorPage
-        val targetPage = (base + (pages - 1) * dir).coerceIn(0, maxLastPage())
+        val targetPage = if (infinite) base + (pages - 1) * dir
+        else (base + (pages - 1) * dir).coerceIn(0, maxLastPage())
         val distPages = abs(targetPage - scrollPx / step)
         val durationMs = (if (vPagesPerSec > 0f) (distPages / vPagesPerSec) * 1000f * 0.95f else 420f)
             .coerceIn(200f, 900f).toLong()
@@ -1314,7 +1458,7 @@ class FelicityPager @JvmOverloads constructor(
      */
     private fun smoothScrollTo(targetPx: Float, durationOverrideMs: Long?, fromUser: Boolean) {
         animFromUser = fromUser
-        val clamped = targetPx.coerceIn(0f, maxScrollPx())
+        val clamped = if (canInfiniteScroll()) targetPx else targetPx.coerceIn(0f, maxScrollPx())
         if (scrollPx == clamped && !animating) {
             dispatchPageSelected(pageForPx(clamped), fromUser)
             dispatchStateChanged(SCROLL_STATE_IDLE)
@@ -1422,11 +1566,15 @@ class FelicityPager @JvmOverloads constructor(
     }
 
     /**
-     * Converts a scroll position in pixels to the nearest integer page index,
-     * clamped to `[0, maxLastPage()]`.
+     * Converts a scroll position in pixels to the nearest integer page index.
+     * In normal mode the result is clamped to `[0, maxLastPage()]`; in infinite mode
+     * it is mapped onto a real adapter position via [floorMod] so positions always
+     * stay within `0..count-1` even beyond the ends of the loop.
      */
-    private fun pageForPx(px: Float): Int =
-        (px / pageStepPx().coerceAtLeast(1f)).roundToInt().coerceIn(0, maxLastPage())
+    private fun pageForPx(px: Float): Int {
+        val idx = (px / pageStepPx().coerceAtLeast(1f)).roundToInt()
+        return if (canInfiniteScroll()) floorMod(idx, pageCount()) else idx.coerceIn(0, maxLastPage())
+    }
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private var autoSlideInterval = 0L
@@ -1439,7 +1587,11 @@ class FelicityPager @JvmOverloads constructor(
             // hide() so onDetachedFromWindow was never triggered) or if the activity is gone.
             if (!isAttachedToWindow || !isActivityAlive()) return
             if (autoSlideInterval > 0 && count > 1 && scrollState != SCROLL_STATE_DRAGGING) {
-                if (autoSlideLoop && currentPage >= count - 1) {
+                if (canInfiniteScroll() && autoSlideLoop) {
+                    // Infinite mode: advance one virtual page — wraps seamlessly past the
+                    // last page instead of using the wrap-clone animation.
+                    setCurrentItemInfinite(floorMod(currentPage + 1, count), smoothScroll = true)
+                } else if (autoSlideLoop && currentPage >= count - 1) {
                     // Smooth wrap-around: scroll *forward* past last page to a virtual
                     // page-0 copy (train passing effect), then silently snap back once done.
                     smoothScrollToWrap()
@@ -1675,7 +1827,11 @@ class FelicityPager @JvmOverloads constructor(
     }
 
     fun getCurrentImageView(): ImageView {
-        val currentView = activePages[currentPage]
+        // Keys are virtual indices in infinite mode, so locate the view nearest to the
+        // current scroll center instead of looking up by [currentPage] directly.
+        val center = scrollVirtualCenter()
+        val currentView = activePages[center]
+            ?: activePages.minByOrNull { abs(it.key - center) }?.value
         return currentView as? ImageView ?: ImageView(context)
     }
 
