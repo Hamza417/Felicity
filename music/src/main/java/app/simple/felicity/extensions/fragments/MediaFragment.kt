@@ -387,8 +387,8 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
      */
     protected fun NestedScrollView.requireAttachedMiniPlayer() {
         viewLifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
-            override fun onCreate(owner: LifecycleOwner) {
-                super.onCreate(owner)
+            override fun onStart(owner: LifecycleOwner) {
+                super.onStart(owner)
                 miniPlayerCallbacks?.onAttachMiniPlayerScrollView(this@requireAttachedMiniPlayer)
             }
 
