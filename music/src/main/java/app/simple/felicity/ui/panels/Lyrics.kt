@@ -25,6 +25,7 @@ import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.managers.LyricsLoadingStatus
 import app.simple.felicity.preferences.LyricsPreferences
+import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
@@ -249,6 +250,14 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
         binding.seekbar.setDuration(audio.duration)
         binding.seekbar.setProgress(MediaPlaybackManager.getSeekPosition(), animate = false)
         updatePlayButtonState(MediaPlaybackManager.isPlaying())
+
+        binding.seekbar.optics = UserInterfacePreferences.getWaveformOptics()
+
+        binding.seekbar.layoutMode = if (UserInterfacePreferences.isWaveformFullMode()) {
+            WaveformSeekbar.LAYOUT_MODE_FULL
+        } else {
+            WaveformSeekbar.LAYOUT_MODE_SCROLLING
+        }
 
         // Defer waveform decoding until ExoPlayer is actually playing to avoid
         // Amplituda and ExoPlayer fighting over the same file I/O resources.
