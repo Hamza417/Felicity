@@ -500,6 +500,9 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
 
                 if (audio.artist.isNullOrBlank()) binding.goToArtist.gone(animate = false)
                 if (audio.album.isNullOrBlank()) binding.goToAlbum.gone(animate = false)
+                if (audio.artist.isNullOrBlank() && audio.album.isNullOrBlank()) {
+                    binding.pageDivider.gone(animate = false)
+                }
                 if (audio.isFavorite) binding.addToFavorites.text = getString(R.string.remove_from_favorites)
                 if (audio.isAlwaysSkip) binding.alwaysSkip.text = getString(R.string.never_skip)
 
