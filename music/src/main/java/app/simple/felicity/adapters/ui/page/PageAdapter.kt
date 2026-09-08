@@ -652,11 +652,7 @@ class PageAdapter(
                     }
                     is PageType.ArtistPage -> {
                         artFlow.visibility = View.VISIBLE
-                        val artist = Artist(
-                                id = 0,
-                                name = item.album.name,
-                                albumCount = 0,
-                                trackCount = 0,
+                        val artist = pageType.artist.copy(
                                 songPaths = pageData.songs.map { it.uri }
                         )
                         artFlow.setAdapter(SliderAdapter(ArtFlowData(R.string.artists, listOf(artist))))
