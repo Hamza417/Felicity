@@ -1,28 +1,31 @@
 #### User Interface
 
-- Added **Shuffle** button in the **Playing Queue** panel.
-- Added optical adjustment option for waveform in **Player Screens**.
-- Added **Clear Button** in **Search** panel.
-- Added toggle to show songs first or after the **Albums**, **Artists** and **Genres** in *
-  *Pages/Details** panel.
+- Added two waveforms styles in the **Player Screens**.
+    - A scrolling mode waveform that scrolls from right to left as the song plays.
+    - A static waveform that shows the entire waveform of the song and highlights the current
+      playback position.
+- Added **Reduce Animations** toggle in the **Accessibility Preferences** panel.
 
 #### Bug Fixes
 
-- Fixed curtain animations in lyrics starting from the beginning in plain lyrics mode causing the
-  lyrics taking too long to fully appear on the screen.
-- Fixed critical latency issues when using **AAudio** and **Oboe** audio sinks.
-- Fixed **Bookmarks** list not animating.
-- Fixed irregular fading edges in **Dashboard** strip.
+- Fixed some waveform optics deformity issues.
+- Fixed _ForegroundServiceDidNotStartInTimeException_ crash in the player service.
+- Fixed non-monotonic behavior of the waveform causing the waveform to jump back and forth while the
+  song is playing.
+- Fixed inconsistent global favorite button state in the **Player Screens** when the song is added
+  or removed from favorites.
+- Fixed various issues with scanner progress notification.
+- Fixed extra divider in song menu when the song has no metadata.
+- Fixed scroll view padding state loss in **Dashboard** causing the miniplayer to overlap the
+  content.
 
 #### Improvements
 
-- Tapping the widget should launch/open the app.
-- Hide fast scroll button when search results are empty.
+- Tapping artist and album names in the **Player Screens** now opens the corresponding artist and
+  album pages.
 
 #### Changes
 
-- Changed **Skip .nomedia** and **Skip Hidden Files** to off by default.
-
-#### Removed
-
-- Removed toggle to disable visualizer bars in **Player Screens**.
+- Changed some button groups preferences to popup menus in **Behavior Preferences** panel to avoid
+  localized text overflowing the layout boundary.
+- Apply waveform preferences to the waveform in **Lyrics** panel.
