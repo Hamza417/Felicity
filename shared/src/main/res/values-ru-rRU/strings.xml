@@ -104,7 +104,7 @@
     <string name="name">Название</string>
     <string name="last_year">Прошлый год</string>
     <string name="first_year">Первый год</string>
-    <string name="number_of_songs">Количество песен</string>
+    <string name="number_of_songs">Количество треков</string>
     <string name="colors">Цвета</string>
     <string name="accent_color">Цвет акцента</string>
     <string name="accent_color_summary">Выберите цвет акцента приложения.</string>
@@ -118,11 +118,11 @@
     <string name="dark">Тёмная</string>
     <string name="amoled">AMOLED</string>
     <string name="slate">Грифель</string>
-    <string name="oil">Мазут</string>
+    <string name="oil">Нефть</string>
     <string name="follow_system">Как в системе</string>
     <string name="day_night">День/Ночь</string>
     <string name="material_you_light">Material You (Светлая)</string>
-    <string name="material_you_dark">Material You (Темная)</string>
+    <string name="material_you_dark">Material You (Тёмная)</string>
     <string name="effects">Эффекты</string>
     <string name="shadow_effect">Тень</string>
     <string name="font">Шрифт</string>
@@ -199,7 +199,7 @@
     <string name="date_taken">Дата записи</string>
     <string name="has_embedded_art">Встроенная обложка альбома</string>
     <string name="has_lrc_sidecar">Внешний LRC-файл</string>
-    <string name="audio_id">Audio ID</string>
+    <string name="audio_id">ID аудио</string>
     <string name="no">Номер</string>
     <string name="num_tracks">Кол-во треков</string>
     <string name="format">Формат</string>
@@ -215,7 +215,7 @@
     <string name="minimum_audio_size_summary">Минимальный размер аудиофайла для сканирования и отображения в приложении.</string>
     <string name="filters">Фильтры</string>
     <string name="skip_hidden_files">Пропускать скрытые файлы</string>
-    <string name="skip_hidden_files_summary">Пропускает аудиофайлы с точкой в начале имени (напр., .rington.mp3) при сканировании медиатеки.</string>
+    <string name="skip_hidden_files_summary">Пропускает аудиофайлы с точкой в начале имени (напр., .трек.mp3) при сканировании медиатеки.</string>
     <string name="skip_hidden_folders">Пропускать скрытые папки</string>
     <string name="skip_hidden_folders_summary">Пропускает папки с точкой в начале имени (напр., .music/) и их содержимое при сканировании медиатеки.</string>
     <string name="paste_lyrics_here">Вставить текст песни здесь</string>
@@ -259,9 +259,9 @@
     <string name="application">Приложение</string>
     <string name="haptic_feedback">Виброотклик</string>
     <string name="haptic_feedback_summary">Включение/выключение виброотклика при взаимодействии.</string>
-    <string name="tape_saturation">Продолжительность ленты</string>
+    <string name="tape_saturation">Ленточное насыщение</string>
     <string name="pitch">Тональность</string>
-    <string name="playback_speed">Скорость воспроизведенияРежим Replay Gain</string>
+    <string name="playback_speed">Скорость</string>
     <string name="replay_gain">Replay Gain</string>
     <string name="auto_replay_gain">Авто Replay Gain</string>
     <string name="auto_replay_gain_summary">Автоматически применяет значение громкости из тегов ReplayGain каждого трека при начале воспроизведения. Регулятор Replay Gain в эквалайзере по-прежнему работает поверх этого.</string>
@@ -310,10 +310,10 @@
     <string name="metadata_saved">Метаданные успешно сохранены.</string>
     <string name="comment">Комментарий</string>
     <!-- Audio Pipeline Dialog — section labels -->
-    <string name="track_info">Информация о трекеИнформация о треке</string>
-    <string name="channels">Резамплинг</string>
-    <string name="decoder_name">Декодер</string>
-    <string name="resampler">Задержка визуализации</string>
+    <string name="track_info">Информация о треке</string>
+    <string name="channels">Каналы</string>
+    <string name="decoder_name">Название декодера</string>
+    <string name="resampler">Ресемплер</string>
     <string name="io_rate">Скорость ввода/вывода</string>
     <string name="resampler_type">Тип ресемплера</string>
     <string name="resampler_cutoff">Срез</string>
@@ -329,20 +329,20 @@
     <string name="output">Вывод</string>
     <string name="aaudio_desc">Игнорирует аудио микшер Android и записывает непосредственно на аппаратное обеспечение для более низких задержек.</string>
     <string name="audio_output_mode">API аудиовывода</string>
-    <string name="output_sink">Выходная Привязка</string>
+    <string name="output_sink">Аудиоприёмник</string>
     <string name="output_sink_summary">Выберите аудио API, используемый для отправки обработанного аудио на оборудование.</string>
-    <string name="audiotrack_desc">Стандартный Android-трубопровод. Совместим со всеми устройствами и самым надежным выбором.</string>
-    <string name="oboe_desc">Аудиобблиотека Google, которая автоматически выбирает AAudio на современных устройствах и переключается на OpenSL ES на более старых.</string>
+    <string name="audiotrack_desc">Стандартный аудиодвижок Android. Совместим со всеми устройствами и является самым надёжным выбором.</string>
+    <string name="oboe_desc">Аудиобиблиотека Google, которая автоматически выбирает AAudio на современных устройствах и переключается на OpenSL ES на более старых.</string>
     <string name="prefer_media_store_art">Обложки альбомов из MediaStore</string>
     <string name="prefer_media_store_art_summary">Использует обложки альбомов из MediaStore, если они доступны, вместо сканирования аудиофайлов. Для новых треков обложка может отобразиться с задержкой до обновления MediaStore.</string>
     <string name="album_art_light">Обложка альбома (светлая)</string>
     <string name="album_art_dark">Обложка альбома (темная)</string>
-    <string name="visualizer_latency">Визуализатор Milkdrop</string>
+    <string name="visualizer_latency">Задержка визуализатора</string>
     <string name="open_milkdrop_visualizer">Открыть визуализатор Milkdrop</string>
     <!-- Playlist strings -->
-    <string name="create_playlist">Создать плейлистСоздать плейлист</string>
-    <string name="new_playlist">Новый плейлистНовый плейлист</string>
-    <string name="playlist_name">Название плейлистаНазвание плейлиста</string>
+    <string name="create_playlist">Создать плейлист</string>
+    <string name="new_playlist">Новый плейлист</string>
+    <string name="playlist_name">Название плейлиста</string>
     <string name="playlist_description">Описание (необязательно)</string>
     <string name="edit_playlist">Редактировать плейлист</string>
     <string name="add_all_to_queue">Добавить все в очередь</string>
@@ -363,7 +363,7 @@
     <string name="trial_period_summary">Осталось %1$d дн. пробного периода.</string>
     <!-- Trial expired dialog strings -->
     <string name="trial_expired">Пробный период истек</string>
-    <string name="trial_expired_message">Ваш пробный период закончился. Приобретите полную версию, чтобы продолжить пользКупить сейчасКупить позжеоваться Felicity без ограничений.</string>
+    <string name="trial_expired_message">Ваш пробный период закончился. Приобретите полную версию, чтобы продолжить пользоваться Felicity без ограничений.</string>
     <string name="grace_period_expired_message">Все дополнительные запуски использованы. Пожалуйста, приобретите приложение, чтобы продолжить прослушивание.</string>
     <string name="purchase_now">Купить сейчас</string>
     <string name="purchase_later">Куплю позже</string>
@@ -372,7 +372,7 @@
     <string name="simple_ui_desc">Простой и лаконичный интерфейс плеера, подходящий большинству пользователей.</string>
     <string name="faded_ui_desc">Размытая обложка альбома с эффектом погружения. Лучше всего смотрится в тёмных темах.</string>
     <string name="sync_adjust_desc">Изменение синхронизации здесь обновит временны́е метки непосредственно в LRC-файле.</string>
-    <string name="selection_desc">Режим выбора является глобальным. Вы можете переходить по приложению и выбирать треки из любого альбома или плейлиста. Для выхода нажмите «Снять выбор».</string>
+    <string name="selection_desc">Режим выбора является глобальным. Вы можете переходить по приложению и выбирать треки из любого альбома или плейлиста. Для выхода нажмите «Снять выделение».</string>
     <string name="apply_preset">Применить пресет</string>
     <string name="language">Язык</string>
     <string name="language_summary">Изменить язык приложения.</string>
@@ -398,7 +398,7 @@
     <string name="switch_to_peq">Переключить на PEQ</string>
     <string name="switch_to_graphic_eq">Перейти на графический EQ</string>
     <!-- LRC Editor -->
-    <string name="lrc_lyric_hint">Lyric line…</string>
+    <string name="lrc_lyric_hint">Строка текста…</string>
     <string name="lrc_stamp_timestamp">Поставить временную метку</string>
     <string name="lrc_paste">Вставить текст из буфера обмена</string>
     <string name="lrc_clipboard_empty">Буфер обмена пуст</string>
@@ -411,7 +411,7 @@
     <string name="like_icon">Иконка лайка</string>
     <string name="like_icon_summary">Заменить значок сердца для избранного на значок большого пальца.</string>
     <string name="trial_period">Пробный период</string>
-    <string name="cache">Очистить кэш изображений</string>
+    <string name="cache">Кэш</string>
     <string name="clear_image_cache">Очистить кэш изображений</string>
     <string name="clear_image_cache_summary">Очистить весь кэш изображений. Кэш будет воссоздан. Используйте, если видите неверные обложки.</string>
     <string name="done">Готово</string>
@@ -440,7 +440,7 @@
     <string name="scan_library">Сканировать медиатеку</string>
     <string name="scan_library_summary">Проверить музыкальные папки на наличие новых или изменённых файлов и добавить их в медиатеку. Существующие записи сохраняются.</string>
     <string name="refresh_library">Перестроить медиатеку</string>
-    <string name="refresh_library_summary">Полностью очистить медиатеку и создать заново. Избранное, алвейс-пропускаемые и статистика воспроизведения будут восстановлены.</string>
+    <string name="refresh_library_summary">Полностью очистить медиатеку и создать заново. Избранное, всегда пропускаемые и статистика воспроизведения будут восстановлены.</string>
     <string name="scan_on_resume">Скан. при запуске</string>
     <string name="scan_on_resume_summary">Автоматически сканировать медиатеку при каждом возобновлении приложения. Может расходовать аккумулятор.</string>
     <string name="lock">Блокировка</string>
@@ -467,19 +467,30 @@
     <string name="play_store_foss_purchase_info">Версия FOSS этого приложения не поддерживает покупки через Google Play. Для покупки установите версию из Google Play Store.</string>
     <string name="playstore_link">Ссылка на Play Store</string>
     <string name="playstore_link_summary">Открыть страницу приложения в Play Store.</string>
-    <string name="disable_equalizer">Отключить Эквалайзер</string>
-    <string name="enable_equalizer">Включить Эквалайзер</string>
+    <string name="disable_equalizer">Отключить эквалайзер</string>
+    <string name="enable_equalizer">Включить эквалайзер</string>
     <string name="show_lyrics_summary">Показать одну строку текстов песен на экране плеера.</string>
     <string name="carousel">Карусель</string>
     <string name="carousel_ui_desc">Простой стиль плеера с типом карусели обложки.</string>
-    <string name="caps">Капс</string>
+    <string name="caps">Пики</string>
+    <string name="bars">Полосы</string>
     <string name="current_queue">Очередь %1$d</string>
     <string name="rename">Переименовать</string>
+    <string name="clear_queue">Очистить</string>
     <string name="volume_controls">Регуляторы громкости</string>
     <string name="volume_controls_summary">Показывать регуляторы громкости при нажатии кнопок громкости.</string>
     <string name="usb_dac_control_summary">Используйте внутренний драйвер ЦАП приложения для создания прямого аудиовыхода через ЦАП.</string>
     <string name="stack_media_controls">Сложить элементы управления медиа</string>
     <string name="stack_media_controls_summary">Сложить элементы управления медиа с формой волны для создания большего вертикального пространства.</string>
+    <string name="pages">Страницы</string>
+    <string name="show_songs_first">Сначала показывать треки</string>
+    <string name="show_songs_first_summary">Показывать список треков перед разделами альбома, исполнителя и жанра на страницах сведений.</string>
     <string name="timer_position">Позиция таймера</string>
     <string name="waveform_menu">Меню формы волны</string>
+    <string name="optics">Оптика</string>
+    <string name="reduce_animations">Уменьшить анимации</string>
+    <string name="reduce_animations_summary">Отключает некоторые второстепенные анимации в приложении. Может повысить производительность на некоторых устройствах.
+
+Чтобы отключить анимации переходов, перейдите в панель «%1$s».</string>
+    <string name="animations">Анимации</string>
 </resources>
