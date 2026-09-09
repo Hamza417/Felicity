@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Billing screen strings for the Play Store flavor -->
+    <string name="play_store_purchase_summary">Безпечно завершіть покупку через Google Play.</string>
+    <string name="billing_connecting">Підключення до Google Play…</string>
+    <string name="billing_unavailable">Google Play Білінг недоступний на цьому пристрої.</string>
+    <string name="billing_error">Щось пішло не так: %1$s</string>
+    <string name="purchase_complete">Усе готово! Ласкаво просимо до повної версії Felicity.</string>
+    <string name="already_purchased">Ви вже придбали це — насолоджуйтесь повною версією!</string>
+    <string name="purchase_restored">Вашу покупку відновлено. З поверненням!</string>
+    <string name="days_left">Залишилося днів: %1$d</string>
+    <string name="trial_expired_short">Пробний період закінчився</string>
+    <string name="full_version_active">Повна версія активна</string>
+    <!-- Feature list shown on the purchase screen — sell it! -->
+    <string name="feature_unlimited_playback">Необмежене відтворення без перерв.</string>
+    <string name="feature_equalizer">Вбудований еквалайзер із пресетами.</string>
+    <string name="feature_milkdrop">Візуалізатор MilkDrop.</string>
+    <string name="feature_themes">Красиві теми з різними налаштуваннями.</string>
+    <string name="feature_lyrics">Синхронізовані тексти пісень, що відображаються в реальному часі під час прослуховування.</string>
+    <string name="feature_wifi_server">Локальний Wi-Fi сервер для трансляції вашої медіатеки в будь-який браузер у вашій мережі.</string>
+    <string name="feature_no_subscription">Разова покупка. Заплатіть один раз і володійте назавжди, жодних регулярних платежів.</string>
+    <string name="feature_updates">Усі майбутні оновлення включені без додаткової плати.</string>
+    <string name="all_features_summary">Отримайте повний застосунок без обмежень.</string>
+    <!-- Restore purchase button and result messages -->
+    <string name="restore_purchase">Відновити покупку</string>
+    <string name="restore_purchase_failed">На цьому акаунті не знайдено покупок.\n\nЯкщо ви купили Felicity з іншого акаунта Google, будь ласка, перемкніться на нього в Play Store і спробуйте знову. Якщо ви вважаєте, що це помилка, зверніться до служби підтримки.</string>
+    <string name="restore_purchase_restoring">Відновлення…</string>
+</resources>
