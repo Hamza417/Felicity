@@ -1019,6 +1019,21 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val queueManagementHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.queue_management)
+
+        val confirmQueueReplacementToggle = Preference(
+                title = R.string.confirm_queue_replacement,
+                summary = R.string.confirm_queue_replacement_summary,
+                icon = R.drawable.ic_queue,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    LibraryPreferences.setConfirmQueueReplacementEnabled((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    LibraryPreferences.isConfirmQueueReplacementEnabled()
+                }
+        )
+
         val metadataHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.metadata)
 
         val albumArtistsInsteadOfArtists = Preference(
@@ -1168,6 +1183,8 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(activityHeader)
         preferences.add(pauseActivityToggle)
         preferences.add(clearPlaybackStats)
+        preferences.add(queueManagementHeader)
+        preferences.add(confirmQueueReplacementToggle)
         preferences.add(metadataHeader)
         preferences.add(albumArtistsInsteadOfArtists)
         preferences.add(musicBrainz)

@@ -36,6 +36,7 @@ import app.simple.felicity.databinding.DialogBookmarksListBinding
 import app.simple.felicity.databinding.DialogDeleteSongBinding
 import app.simple.felicity.databinding.DialogEditPlaylistBinding
 import app.simple.felicity.databinding.DialogPlaylistMenuBinding
+import app.simple.felicity.databinding.DialogQueueReplaceConfirmationBinding
 import app.simple.felicity.databinding.DialogSongMenuBinding
 import app.simple.felicity.databinding.DialogSureBinding
 import app.simple.felicity.decorations.highlight.HighlightTextView
@@ -51,6 +52,7 @@ import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.engine.managers.PlaybackStateManager
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.interfaces.MiniPlayerPolicy
+import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.covers.ArtistCover
@@ -241,7 +243,24 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 updateQueueSilently(songs, position)
             }
             else -> {
-                // Case 3: Different queue and different song — default behavior
+                // Case 3: Different queue and different song — default behavior.
+                // If the user has opted into queue-replacement confirmation and a different,
+                // non-empty queue is already loaded, ask before silently destroying it.
+                val hasExistingQueue = MediaPlaybackManager.getSongs().isNotEmpty()
+                if (LibraryPreferences.isConfirmQueueReplacementEnabled() && hasExistingQueue) {
+                    confirmQueueReplacement(
+                            onReplace = {
+                                MediaPlaybackManager.setSongs(songs, position, autoPlay = true)
+                                createSongHistoryDatabase(songs)
+                                showMiniPlayer()
+                            },
+                            onMoveToEmptyQueue = {
+                                moveToEmptyQueueAndPlay(songs, position)
+                            }
+                    )
+                    return
+                }
+
                 MediaPlaybackManager.setSongs(songs, position, autoPlay = true)
                 createSongHistoryDatabase(songs)
             }
@@ -253,6 +272,86 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
          * is visible when navigating to the player from a different screen (e.g. from the playing queue or from a notification)
          */
         showMiniPlayer()
+    }
+
+    /**
+     * Shows a confirmation dialog asking the user whether an already-loaded, different queue
+     * should be replaced by the new selection, or whether the new selection should instead be
+     * moved into an empty queue slot so the existing queue is preserved untouched.
+     *
+     * Only shown when [LibraryPreferences.isConfirmQueueReplacementEnabled] is turned on;
+     * otherwise the queue is always replaced, exactly like before this feature existed.
+     *
+     * @param onReplace         Invoked when the user chooses to overwrite the current queue.
+     * @param onMoveToEmptyQueue Invoked when the user chooses to preserve the current queue and
+     *                           play the new selection from an empty queue slot instead.
+     */
+    private fun confirmQueueReplacement(onReplace: () -> Unit, onMoveToEmptyQueue: () -> Unit) {
+        SimpleDialog.Builder(
+                container = requireContainerView(),
+                inflateBinding = DialogQueueReplaceConfirmationBinding::inflate)
+            .onViewCreated { _ ->
+                hideMiniPlayer()
+            }
+            .onDialogInflated { binding, dismiss, _ ->
+                binding.moveToEmptyQueue.setOnClickListener {
+                    onMoveToEmptyQueue()
+                    dismiss()
+                }
+
+                binding.replace.setOnClickListener {
+                    onReplace()
+                    dismiss()
+                }
+            }
+            .onDismiss {
+                showMiniPlayer()
+            }
+            .build()
+            .show()
+    }
+
+    /**
+     * Archives the currently active queue into its own saved slot (so it survives untouched),
+     * finds the first empty queue slot, switches the active queue to it, and starts playing
+     * [songs] there. If every slot already has songs archived, falls back to replacing the
+     * current queue and warns the user.
+     *
+     * @param songs    The new songs to play (e.g. tapped from a Music Folder).
+     * @param position The position within [songs] that was tapped.
+     */
+    private fun moveToEmptyQueueAndPlay(songs: List<Audio>, position: Int) {
+        // Capture main-thread-only state (media controller reads) before hopping to IO.
+        val currentQueueId = MediaPlaybackManager.getActiveQueueId()
+        val currentSongs = MediaPlaybackManager.getSongs()
+        val currentPosition = MediaPlaybackManager.getCurrentSongPosition()
+        val currentSeek = MediaPlaybackManager.getSeekPosition()
+
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            val db = AudioDatabase.getInstance(requireContext())
+
+            if (currentSongs.isNotEmpty()) {
+                PlaybackStateManager.saveQueueToSlot(
+                        db, currentQueueId, currentSongs.map { it.hash }, currentPosition, currentSeek)
+            }
+
+            val emptySlot = PlaybackStateManager.findFirstEmptySlot(db, excludeQueueId = currentQueueId)
+
+            withContext(Dispatchers.Main) {
+                if (emptySlot != null) {
+                    MediaPlaybackManager.setActiveQueueId(emptySlot)
+                    MediaPlaybackManager.setSongs(songs, position, autoPlay = true)
+                    createSongHistoryDatabase(songs)
+                    showWarning(getString(R.string.moved_to_empty_queue, emptySlot + 1))
+                } else {
+                    // Every slot is already occupied — nothing left to do but replace, same as before.
+                    MediaPlaybackManager.setSongs(songs, position, autoPlay = true)
+                    createSongHistoryDatabase(songs)
+                    showWarning(getString(R.string.no_empty_queue_available))
+                }
+                showMiniPlayer()
+            }
+        }
     }
 
     /**

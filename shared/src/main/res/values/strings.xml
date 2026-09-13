@@ -227,6 +227,17 @@
     <string name="fallback_to_software_decoder">Fallback To Software Decoder</string>
     <string name="fallback_to_software_decoder_summary">Quietly fallback to software decoder if system hardware fails to play an audio file.</string>
     <string name="playing_queue">Playing Queue</string>
+
+    <!-- Queue replacement confirmation -->
+    <string name="queue_management">Queue Management</string>
+    <string name="confirm_queue_replacement">Confirm Queue Replacement</string>
+    <string name="confirm_queue_replacement_summary">Ask before replacing your current playback queue when you start playing songs from folders, albums, artists, or playlists.</string>
+    <string name="replace_queue_title">Replace Playing Queue?</string>
+    <string name="replace_queue_message">A queue is already loaded. Replace it with the new selection, or move the new selection to an empty queue slot instead?</string>
+    <string name="replace">Replace</string>
+    <string name="move_to_empty_queue">Move to Empty Queue</string>
+    <string name="moved_to_empty_queue">Moved to Queue %1$d</string>
+    <string name="no_empty_queue_available">No empty queue slot available. Replaced current queue instead.</string>
     <string name="sync_adjust">Sync Adjust</string>
     <string name="accessibility">Accessibility</string>
     <string name="accessibility_desc">Adjust accessibility settings for a better experience.</string>
