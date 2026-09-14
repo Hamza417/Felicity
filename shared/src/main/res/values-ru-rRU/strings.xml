@@ -227,6 +227,16 @@
     <string name="fallback_to_software_decoder">Резервный программный декодер</string>
     <string name="fallback_to_software_decoder_summary">Автоматически переключается на программный декодер, если хардверный не может воспроизвести аудиофайл.</string>
     <string name="playing_queue">Очередь воспроизведения</string>
+    <!-- Queue replacement confirmation -->
+    <string name="queue_management">Замена очереди</string>
+    <string name="confirm_queue_replacement">Подтвердить замену очереди</string>
+    <string name="confirm_queue_replacement_summary">Подтверждать смену очереди при воспроизведении песен из папок, альбомов, плейлистов или исполнителей.</string>
+    <string name="replace_queue_title">Заменить очередь воспроизведения?</string>
+    <string name="replace_queue_message">Очередь воспроизведения не пуста. Перезаписать текущую очередь или использовать для новых треков свободный слот(-ы)?</string>
+    <string name="replace">Заменить</string>
+    <string name="move_to_empty_queue">Переместить в пустую очередь</string>
+    <string name="moved_to_empty_queue">Перемещено в очередь %1$d</string>
+    <string name="no_empty_queue_available">Свободных мест в очереди нет. Выполнена замена текущей очереди.</string>
     <string name="sync_adjust">Регулировка синхронизации</string>
     <string name="accessibility">Специальные возможности</string>
     <string name="accessibility_desc">Настройка специальных возможностей.</string>
