@@ -87,7 +87,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
 
-open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
+open class MediaFragment : KeyboardScopedFragment(), MiniPlayerPolicy {
 
     private var shouldShowMiniPlayer = true
     private var lastSavedSeekPosition = 0L
