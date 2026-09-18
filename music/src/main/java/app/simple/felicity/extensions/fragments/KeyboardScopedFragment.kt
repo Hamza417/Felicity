@@ -1,8 +1,11 @@
 package app.simple.felicity.extensions.fragments
 
+import android.content.Context
 import android.os.Bundle
 import android.view.View
+import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
+import androidx.activity.OnBackPressedCallback
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsAnimationCompat
 import androidx.core.view.WindowInsetsCompat
@@ -13,8 +16,30 @@ import app.simple.inure.decorations.ime.TranslateDeferringInsetsAnimationCallbac
 
 open class KeyboardScopedFragment : ScopedFragment() {
 
+    // Create a callback that intercepts back presses ONLY to hide the keyboard
+    private val keyboardBackCallback = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() {
+            view?.let { v ->
+                val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.hideSoftInputFromWindow(v.windowToken, 0)
+            }
+        }
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        // Register the callback with the Activity's dispatcher
+        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, keyboardBackCallback)
+
+        // Dynamically enable/disable it based on actual keyboard visibility.
+        // This ensures ScopedFragment's predictive back still works when the keyboard is closed.
+        view.viewTreeObserver.addOnGlobalLayoutListener {
+            val insets = ViewCompat.getRootWindowInsets(view)
+            val isKeyboardVisible = insets?.isVisible(WindowInsetsCompat.Type.ime()) == true
+            keyboardBackCallback.isEnabled = isKeyboardVisible
+        }
+
         view.addHeightKeyboardCallbacks()
     }
 
@@ -47,11 +72,8 @@ open class KeyboardScopedFragment : ScopedFragment() {
          * views which we wish to react to inset animations. In this example, we want our
          * EditText holder view, and the conversation RecyclerView to react.
          *
-         * We use our [TranslateDeferringInsetsAnimationCallback] class, bundled in this sample,
-         * which will automatically move each view as the IME animates.
-         *
-         * Note about [TranslateDeferringInsetsAnimationCallback], it relies on the behavior of
-         * [RootViewDeferringInsetsCallback] on the layout's root view.
+         * We explicitly allow dispatch to continue down to child views, so that child
+         * EditTexts receive the call.
          */
         ViewCompat.setWindowInsetsAnimationCallback(
                 this,
@@ -59,17 +81,7 @@ open class KeyboardScopedFragment : ScopedFragment() {
                         view = this,
                         persistentInsetTypes = WindowInsetsCompat.Type.systemBars(),
                         deferredInsetTypes = WindowInsetsCompat.Type.ime(),
-                        // We explicitly allow dispatch to continue down to binding.messageHolder's
-                        // child views, so that step 2.5 below receives the call
                         dispatchMode = WindowInsetsAnimationCompat.Callback.DISPATCH_MODE_CONTINUE_ON_SUBTREE
-                )
-        )
-        ViewCompat.setWindowInsetsAnimationCallback(
-                this,
-                HeightDeferringInsetsAnimationCallback(
-                        view = this,
-                        persistentInsetTypes = WindowInsetsCompat.Type.systemBars(),
-                        deferredInsetTypes = WindowInsetsCompat.Type.ime()
                 )
         )
     }
@@ -110,21 +122,13 @@ open class KeyboardScopedFragment : ScopedFragment() {
          */
         ViewCompat.setWindowInsetsAnimationCallback(
                 this,
-                HeightDeferringInsetsAnimationCallback(
+                TranslateDeferringInsetsAnimationCallback(
                         view = this,
                         persistentInsetTypes = WindowInsetsCompat.Type.systemBars(),
                         deferredInsetTypes = WindowInsetsCompat.Type.ime(),
                         // We explicitly allow dispatch to continue down to binding.messageHolder's
                         // child views, so that step 2.5 below receives the call
                         dispatchMode = WindowInsetsAnimationCompat.Callback.DISPATCH_MODE_CONTINUE_ON_SUBTREE
-                )
-        )
-        ViewCompat.setWindowInsetsAnimationCallback(
-                this,
-                HeightDeferringInsetsAnimationCallback(
-                        view = this,
-                        persistentInsetTypes = WindowInsetsCompat.Type.systemBars(),
-                        deferredInsetTypes = WindowInsetsCompat.Type.ime()
                 )
         )
     }
@@ -143,7 +147,6 @@ open class KeyboardScopedFragment : ScopedFragment() {
          * [WindowInsetsAnimationCompat.Callback.DISPATCH_MODE_CONTINUE_ON_SUBTREE] dispatch mode, which
          * we have done above.
          */
-        ViewCompat.setWindowInsetsAnimationCallback(this, ControlFocusInsetsAnimationCallback(this)
-        )
+        ViewCompat.setWindowInsetsAnimationCallback(this, ControlFocusInsetsAnimationCallback(this))
     }
 }
