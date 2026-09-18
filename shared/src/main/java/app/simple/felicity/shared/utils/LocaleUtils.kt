@@ -37,6 +37,8 @@ object LocaleUtils {
             Lang("Polski (Polish)", "pl-PL"),
             // Spanish
             Lang("Español (Spanish)", "es-ES"),
+            // Ukrainian
+            Lang("Українська (Ukrainian)", "uk-UA"),
     )
 
     fun getAppLocale(): Locale {
