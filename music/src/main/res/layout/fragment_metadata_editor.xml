@@ -723,7 +723,8 @@
         android:gravity="end"
         android:layout_gravity="bottom"
         android:orientation="horizontal"
-        android:padding="@dimen/padding_15"
+        android:paddingHorizontal="@dimen/padding_15"
+        android:paddingVertical="@dimen/padding_10"
         app:navigationPaddingRequired="true"
         app:statusPaddingRequired="false">
 
