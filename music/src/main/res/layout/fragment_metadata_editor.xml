@@ -17,7 +17,7 @@
             android:layout_width="match_parent"
             android:scrollbars="none"
             app:layout_behavior="app.simple.felicity.decorations.behaviors.OverScrollBehavior"
-            app:navigationPaddingRequired="true"
+            app:navigationPaddingRequired="false"
             app:statusPaddingRequired="true">
 
             <LinearLayout
@@ -714,7 +714,7 @@
         android:layout_width="match_parent"
         android:layout_height="1px" />
 
-    <app.simple.felicity.decorations.theme.ThemeLinearLayout
+    <app.simple.felicity.decorations.padding.PaddingAwareLinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:clipChildren="false"
@@ -723,7 +723,9 @@
         android:gravity="end"
         android:layout_gravity="bottom"
         android:orientation="horizontal"
-        android:padding="@dimen/padding_15">
+        android:padding="@dimen/padding_15"
+        app:navigationPaddingRequired="true"
+        app:statusPaddingRequired="false">
 
         <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
             android:id="@+id/search_button"
@@ -749,7 +751,7 @@
             app:appFontStyle="bold"
             app:textColorStyle="accent" />
 
-    </app.simple.felicity.decorations.theme.ThemeLinearLayout>
+    </app.simple.felicity.decorations.padding.PaddingAwareLinearLayout>
 
 </LinearLayout>
 
