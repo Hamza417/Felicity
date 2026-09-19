@@ -227,6 +227,16 @@
     <string name="fallback_to_software_decoder">Odwrót do dekodera programowego</string>
     <string name="fallback_to_software_decoder_summary">Automatycznie użyj dekodera programowego, jeśli dekoder sprzętowy nie potrafi odtworzyć danego pliku audio.</string>
     <string name="playing_queue">Kolejka odtwarzania</string>
+    <!-- Queue replacement confirmation -->
+    <string name="queue_management">Zarządzanie kolejką</string>
+    <string name="confirm_queue_replacement">Potwierdź zastąpienie kolejki</string>
+    <string name="confirm_queue_replacement_summary">Zapytaj przed zastąpieniem aktualnej kolejki odtwarzania, gdy zaczniesz odtwarzać utwory z folderów, albumów, wykonawców lub list odtwarzania.</string>
+    <string name="replace_queue_title">Zastąpić kolejkę odtwarzania?</string>
+    <string name="replace_queue_message">Kolejka jest już załadowana. Zastąpić ją nowym wyborem, czy przenieść nowy wybór do pustego miejsca kolejki?</string>
+    <string name="replace">Zastąp</string>
+    <string name="move_to_empty_queue">Przenieś do pustej kolejki</string>
+    <string name="moved_to_empty_queue">Przeniesiono do kolejki %1$d</string>
+    <string name="no_empty_queue_available">Brak wolnego miejsca w kolejce. Zamiast tego zastąpiono bieżącą kolejkę.</string>
     <string name="sync_adjust">Dostosuj synchronizację</string>
     <string name="accessibility">Ułatwienia dostępu</string>
     <string name="accessibility_desc">Dostosuj ułatwienia dostępu dla lepszego doświadczenia.</string>
@@ -476,6 +486,7 @@
     <string name="bars">Paski</string>
     <string name="current_queue">Kolejka %1$d</string>
     <string name="rename">Zmień nazwę</string>
+    <string name="clear_queue">Wyczyść</string>
     <string name="volume_controls">Regulacja głośności</string>
     <string name="volume_controls_summary">Pokaż regulację głośności po naciśnięciu przycisków głośności.</string>
     <string name="usb_dac_control_summary">Użyj sterownika DAC wbudowanego w aplikację, aby utworzyć bezpośrednie wyjście audio przez DAC.</string>
@@ -487,4 +498,7 @@
     <string name="timer_position">Pozycja licznika czasu</string>
     <string name="waveform_menu">Menu kształtu fali</string>
     <string name="optics">Optyka</string>
+    <string name="reduce_animations">Zredukuj animacje</string>
+    <string name="reduce_animations_summary">Wyłącz niektóre niepotrzebne animacje w całej aplikacji. Może poprawić wydajność aplikacji na niektórych urządzeniach.\n\nAby wyłączyć animacje przejść, przejdź do panelu %1$s.</string>
+    <string name="animations">Animacje</string>
 </resources>
