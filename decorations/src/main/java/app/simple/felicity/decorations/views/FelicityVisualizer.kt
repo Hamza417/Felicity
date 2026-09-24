@@ -67,7 +67,7 @@ class FelicityVisualizer @JvmOverloads constructor(
         defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr), ThemeChangedListener {
 
-    // ── Rendering mode ────────────────────────────────────────────────────────
+    // == Rendering mode ========================================================
 
     /** Selects whether bars or a fluid wave is rendered. */
     enum class VisualizerMode {
@@ -123,7 +123,7 @@ class FelicityVisualizer @JvmOverloads constructor(
             invalidate()
         }
 
-    // ── Twin-buffer state (written by audio thread, read by UI thread) ────────
+    // == Twin-buffer state (written by audio thread, read by UI thread) ========
 
     /**
      * Buffer A of the lock-free twin-buffer pair.
@@ -150,7 +150,7 @@ class FelicityVisualizer @JvmOverloads constructor(
      */
     val isBufferAFront = AtomicBoolean(true)
 
-    // ── Band state ────────────────────────────────────────────────────────────
+    // == Band state ============================================================
 
     /** Current smoothed magnitude for each band (the value actually rendered). */
     private val currentBands = FloatArray(BAND_COUNT)
@@ -164,7 +164,7 @@ class FelicityVisualizer @JvmOverloads constructor(
     /** Remaining hold frames before gravity starts pulling the cap down. */
     private val peakHoldCounters = IntArray(BAND_COUNT)
 
-    // ── AGC ───────────────────────────────────────────────────────────────────
+    // == AGC =======
 
     /**
      * Smoothed peak across all bands used as the AGC reference.
@@ -172,7 +172,7 @@ class FelicityVisualizer @JvmOverloads constructor(
      */
     private var smoothedMax = MIN_SMOOTHED_MAX
 
-    // ── Drawing ───────────────────────────────────────────────────────────────
+    // == Drawing ===============================================================
 
     /** Paint for the frequency bars and the primary wave fill; shader is rebuilt when size or colors change. */
     private val barPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
@@ -239,7 +239,7 @@ class FelicityVisualizer @JvmOverloads constructor(
         }
     }
 
-    // ── Particle system ───────────────────────────────────────────────────────
+    // == Particle system =======================================================
 
     /**
      * Controls whether the ash-particle emitter is active.
@@ -278,7 +278,7 @@ class FelicityVisualizer @JvmOverloads constructor(
         var turbulence: Float = 0.2f
     }
 
-    // ── Bar path (growing-end rounded corners) ────────────────────────────────
+    // == Bar path (growing-end rounded corners) ================================
 
     /** Reusable [Path] for rendering bars with rounded growing-end corners and a flat anchor base. */
     private val barPath = Path()
@@ -295,7 +295,7 @@ class FelicityVisualizer @JvmOverloads constructor(
     /** Reusable [Path] for rendering both the primary and secondary wave shapes. */
     private val wavePathBuffer = Path()
 
-    // ── Render height fraction ────────────────────────────────────────────────
+    // == Render height fraction ================================================
 
     /**
      * Maximum bar or wave render length expressed as a fraction of the view's primary
@@ -332,7 +332,7 @@ class FelicityVisualizer @JvmOverloads constructor(
         }
     }
 
-    // ── Public API ────────────────────────────────────────────────────────────
+    // == Public API ============================================================
 
     /**
      * Delivers a new spectrum snapshot via the legacy (non-direct) path.
@@ -409,7 +409,7 @@ class FelicityVisualizer @JvmOverloads constructor(
         postInvalidate()
     }
 
-    // ── Internal helpers ──────────────────────────────────────────────────────
+    // == Internal helpers ======================================================
 
     private fun buildAccentColors(): IntArray {
         return if (isInEditMode) {
@@ -422,7 +422,7 @@ class FelicityVisualizer @JvmOverloads constructor(
         }
     }
 
-    // ── Size / gradient ───────────────────────────────────────────────────────
+    // == Size / gradient =======================================================
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
@@ -458,7 +458,7 @@ class FelicityVisualizer @JvmOverloads constructor(
         secondaryWavePaint.shader = newGradient
     }
 
-    // ── Drawing ───────────────────────────────────────────────────────────────
+    // == Drawing ===============================================================
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
@@ -895,7 +895,7 @@ class FelicityVisualizer @JvmOverloads constructor(
         particles.add(p)
     }
 
-    // ── Lifecycle ─────────────────────────────────────────────────────────────
+    // == Lifecycle =============================================================
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
@@ -926,7 +926,7 @@ class FelicityVisualizer @JvmOverloads constructor(
         }
     }
 
-    // ── ThemeChangedListener ──────────────────────────────────────────────────
+    // == ThemeChangedListener ==================================================
 
     override fun onAccentChanged(accent: Accent) {
         super.onAccentChanged(accent)
@@ -940,7 +940,7 @@ class FelicityVisualizer @JvmOverloads constructor(
         // Bars use accent colors, not theme background colors — no action needed.
     }
 
-    // ── Private helpers ───────────────────────────────────────────────────────
+    // == Private helpers =======================================================
 
     /**
      * Computes the corner radius as a fraction of bar cross-section width from the current app preference.

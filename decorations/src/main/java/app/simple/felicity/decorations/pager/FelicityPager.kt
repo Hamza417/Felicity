@@ -215,7 +215,7 @@ class FelicityPager @JvmOverloads constructor(
         pageChangeListeners.clear()
     }
 
-    // ── Fade ─────────────────────────────────────────────────────────────────────
+    // == Fade =========
 
     /**
      * Whether the directional edge-fade effect is active. Default: false.
@@ -1835,7 +1835,7 @@ class FelicityPager @JvmOverloads constructor(
         return currentView as? ImageView ?: ImageView(context)
     }
 
-    // ── Fade helpers ──────────────────────────────────────────────────────────────
+    // == Fade helpers ==============================================================
 
     /**
      * Rebuilds the [LinearGradient] shader on [fadePaint] based on the current [fadeDirection],

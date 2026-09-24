@@ -219,7 +219,7 @@ class FelicityMediaControls @JvmOverloads constructor(
         mediaControlListener = listener
     }
 
-    // ── Theme helpers ──────────────────────────────────────────────────────────
+    // == Theme helpers ==========================================================
 
     /** Reads the current theme and accent colors into local fields. */
     private fun pullTheme() {
@@ -270,7 +270,7 @@ class FelicityMediaControls @JvmOverloads constructor(
         }
     }
 
-    // ── Layout ────────────────────────────────────────────────────────────────
+    // == Layout ================================================================
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         // Natural height = play button diameter scaled by the size percent
@@ -382,7 +382,7 @@ class FelicityMediaControls @JvmOverloads constructor(
         }
     }
 
-    // ── Drawing ───────────────────────────────────────────────────────────────
+    // == Drawing ===============================================================
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
@@ -460,7 +460,7 @@ class FelicityMediaControls @JvmOverloads constructor(
         else -> 1f
     }
 
-    // ── Playback state ────────────────────────────────────────────────────────
+    // == Playback state ========================================================
 
     /**
      * Updates the play/pause state. When [animate] is true, the icon crossfade and
@@ -527,7 +527,7 @@ class FelicityMediaControls @JvmOverloads constructor(
         }
     }
 
-    // ── Touch handling ────────────────────────────────────────────────────────
+    // == Touch handling ========================================================
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -643,7 +643,7 @@ class FelicityMediaControls @JvmOverloads constructor(
         holdRunnable = null
     }
 
-    // ── Drawable.Callback — lets ripple animations trigger redraws ─────────
+    // == Drawable.Callback — lets ripple animations trigger redraws =========
 
     override fun invalidateDrawable(drawable: Drawable) {
         invalidate()
@@ -657,7 +657,7 @@ class FelicityMediaControls @JvmOverloads constructor(
         handler.removeCallbacks(what)
     }
 
-    // ── Theme change listeners ─────────────────────────────────────────────
+    // == Theme change listeners =============================================
 
     private fun applyThemeChanges() {
         pullTheme()

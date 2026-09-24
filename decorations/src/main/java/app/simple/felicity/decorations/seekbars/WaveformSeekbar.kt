@@ -737,7 +737,7 @@ class WaveformSeekbar @JvmOverloads constructor(
         val totalScrollRange = amplitudes.size * barStep
         val scrollOffset = progressFraction * totalScrollRange
 
-        // ── Scrolling ⇄ full-track zoom geometry ─────────────────────────────────
+        // == Scrolling ⇄ full-track zoom geometry =================================
         // fullScale converts a native (scrolling-mode) pixel offset into its equivalent
         // position when the whole track is squeezed into the view width. effScale/zoomT
         // blend every size and position value between the two modes so the transition
@@ -760,7 +760,7 @@ class WaveformSeekbar @JvmOverloads constructor(
         // optics bend to the view's center instead of to the moving playhead.
         val fullFocalX = progressFraction * w
 
-        // ── Optics in full-track mode ─────────────────────────────────────────────
+        // == Optics in full-track mode =============================================
         // In LAYOUT_MODE_SCROLLING the lens is naturally anchored to the view center because
         // the playhead is always pinned there. In LAYOUT_MODE_FULL the playhead instead slides
         // along a static, non-scrolling waveform, so the bend must stay anchored to the view
@@ -784,7 +784,7 @@ class WaveformSeekbar @JvmOverloads constructor(
             return lerp(barHeightScale(rawOffset), barHeightScale(absoluteFullOffset), zoomT)
         }
 
-        // ── Full-track congestion normalization ──────────────────────────────────
+        // == Full-track congestion normalization ==================================
         // As the view zooms toward LAYOUT_MODE_FULL, the per-bar pixel step can shrink far
         // below a comfortable minimum for long tracks (thousands of one-per-second bars
         // squeezed into a few hundred pixels). Instead of letting bars collapse into an
@@ -808,7 +808,7 @@ class WaveformSeekbar @JvmOverloads constructor(
         }
         val bucketCornerRadiusPx = effCornerRadiusPx.coerceAtMost(bucketBarWidthPx / 2f)
 
-        // ── Played/unplayed crossfade width ──────────────────────────────────────
+        // == Played/unplayed crossfade width ======================================
         // In scrolling mode the crossfade spans a few native bar-widths, which always reads
         // as a narrow band around the centered playhead. In full-track mode the "bar width"
         // can itself be huge for tracks with only a handful of samples (fullBarStep = w / n),

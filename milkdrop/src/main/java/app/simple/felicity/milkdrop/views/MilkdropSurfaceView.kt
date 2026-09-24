@@ -2,6 +2,7 @@ package app.simple.felicity.milkdrop.views
 
 import android.content.Context
 import android.opengl.GLSurfaceView
+import android.opengl.GLSurfaceView.RENDERMODE_CONTINUOUSLY
 import android.util.AttributeSet
 import app.simple.felicity.engine.managers.VisualizerManager
 import app.simple.felicity.engine.processors.VisualizerProcessor
@@ -52,7 +53,7 @@ class MilkdropSurfaceView @JvmOverloads constructor(
         preserveEGLContextOnPause = true
     }
 
-    // ── Window attachment / detachment ────────────────────────────────────────
+    // == Window attachment / detachment ========================================
 
     /**
      * Registers the renderer as the PCM-window callback on the live
@@ -83,7 +84,7 @@ class MilkdropSurfaceView @JvmOverloads constructor(
         super.onDetachedFromWindow()
     }
 
-    // ── Public API ────────────────────────────────────────────────────────────
+    // == Public API ============================================================
 
     /**
      * Loads a Milkdrop preset from raw text content.
