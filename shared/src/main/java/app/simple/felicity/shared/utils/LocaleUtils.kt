@@ -19,7 +19,7 @@ object LocaleUtils {
      * https://www.oracle.com/java/technologies/javase/jdk8-jre8-suported-locales.html
      */
     val langLists = arrayListOf(
-            // Auto detect language (default)
+            // Auto-detect language (default)
             Lang("autoSystemLanguageString" /* Placeholder */, "default"),
             // English (United States)
             Lang("English (US)", "en-US"),
@@ -39,6 +39,8 @@ object LocaleUtils {
             Lang("Español (Spanish)", "es-ES"),
             // Ukrainian
             Lang("Українська (Ukrainian)", "uk-UA"),
+            // Persian
+            Lang("فارسی (Persian)", "fa-IR"),
     )
 
     fun getAppLocale(): Locale {
