@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Billing screen strings for the Play Store flavor -->
+    <string name="play_store_purchase_summary">خرید خود را به صورت امن از طریق گوگل پلی کامل کنید.</string>
+    <string name="billing_connecting">در حال اتصال به گوگل پلی\u2026</string>
+    <string name="billing_unavailable">سیستم پرداخت گوگل پلی در این دستگاه در دسترس نیست.</string>
+    <string name="billing_error">مشکلی پیش آمد: %1$s</string>
+    <string name="purchase_complete">همه چیز آماده است! به نسخه کامل Felicity خوش آمدید.</string>
+    <string name="already_purchased">شما قبلاً این را خریده‌اید — از نسخه کامل لذت ببرید!</string>
+    <string name="purchase_restored">خرید شما بازیابی شد. خوش آمدید!</string>
+    <string name="days_left">%1$d روز باقی مانده</string>
+    <string name="trial_expired_short">دوره آزمایشی به پایان رسید</string>
+    <string name="full_version_active">نسخه کامل فعال است</string>
+    <!-- Feature list shown on the purchase screen — sell it! -->
+    <string name="feature_unlimited_playback">پخش نامحدود بدون هیچ وقفه‌ای.</string>
+    <string name="feature_equalizer">اکولایزر داخلی با پیش‌تنظیمات.</string>
+    <string name="feature_milkdrop">ویژوالایزر MilkDrop.</string>
+    <string name="feature_themes">تم‌های زیبا با شخصی‌سازی‌های متنوع.</string>
+    <string name="feature_lyrics">متن آهنگ همگام‌سازی شده که همزمان با گوش دادن شما نمایش داده می‌شود.</string>
+    <string name="feature_wifi_server">سرور وای‌فای محلی برای پخش کتابخانه شما در هر مرورگری در شبکه‌تان.</string>
+    <string name="feature_no_subscription">خرید یک‌باره. یک بار هزینه کنید، مالک آن شوید، بدون هزینه‌های تکرارشونده.</string>
+    <string name="feature_updates">تمام به‌روزرسانی‌های آینده بدون هزینه اضافی لحاظ شده است.</string>
+    <string name="all_features_summary">دریافت برنامه کامل بدون هیچ محدودیتی.</string>
+    <!-- Restore purchase button and result messages -->
+    <string name="restore_purchase">بازیابی خرید</string>
+    <string name="restore_purchase_failed">خریدی در این حساب یافت نشد.\n\nاگر Felicity را با حساب گوگل دیگری خریداری کرده‌اید، لطفاً در پلی استور به آن حساب تغییر وضعیت داده و دوباره تلاش کنید. اگر فکر می‌کنید این یک اشتباه است، با پشتیبانی تماس بگیرید.</string>
+    <string name="restore_purchase_restoring">در حال بازیابی\u2026</string>
+</resources>
