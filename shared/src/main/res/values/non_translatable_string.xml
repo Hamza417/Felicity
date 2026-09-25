@@ -61,6 +61,9 @@
     <string name="rg_peak_hint" translatable="false">e.g. 0.9876</string>
     <string name="rg_track_peak" translatable="false">Track Peak</string>
     <string name="rg_album_peak" translatable="false">Album Peak</string>
-    <string name="active_years">%1$s – %2$s</string>
-    <string name="usb_dac">USB DAC</string>
+    <string name="active_years" translatable="false">%1$s – %2$s</string>
+    <string name="usb_dac" translatable="false">USB DAC</string>
+    <string name="artflow" translatable="false">ArtFlow</string>
+    <string name="amoled" translatable="false">AMOLED</string>
+    <string name="replay_gain" translatable="false">Replay Gain</string>
 </resources>
