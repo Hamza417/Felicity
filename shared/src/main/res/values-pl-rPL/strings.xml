@@ -76,7 +76,6 @@
     <string name="track_number">Numer ścieżki</string>
     <string name="composer">Kompozytor</string>
     <string name="open_app_settings">Otwórz ustawienia aplikacji…</string>
-    <string name="artflow">ArtFlow</string>
     <string name="artflow_desc">Skupia się na wizualnym wyszukiwaniu z wieloma karuzelami okładek albumów.</string>
     <string name="sort_by">Sortuj według</string>
     <string name="date_modified">Data modyfikacji</string>
@@ -116,7 +115,6 @@
     <string name="soapstone">Steatyt</string>
     <string name="high_contrast">Wysoki kontrast</string>
     <string name="dark">Ciemny</string>
-    <string name="amoled">AMOLED</string>
     <string name="slate">Popielaty</string>
     <string name="oil">Olej</string>
     <string name="follow_system">Zgodnie z systemem</string>
@@ -272,7 +270,6 @@
     <string name="tape_saturation">Nasycenie taśmy</string>
     <string name="pitch">Wysokość</string>
     <string name="playback_speed">Prędkość</string>
-    <string name="replay_gain">Replay Gain</string>
     <string name="auto_replay_gain">Automatyczny Replay Gain</string>
     <string name="auto_replay_gain_summary">Automatycznie zastosuj wartość wzmocnienia osadzoną w tagach ReplayGain każdego utworu, gdy rozpocznie się odtwarzanie. Pokrętło Replay Gain w korektorze wciąż działa niezależnie od tego ustawienia.</string>
     <string name="replay_gain_mode">Tryb Replay Gain</string>
