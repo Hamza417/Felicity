@@ -76,7 +76,6 @@
     <string name="track_number">Номер трека</string>
     <string name="composer">Композитор</string>
     <string name="open_app_settings">Открыть настройки приложения…</string>
-    <string name="artflow">ArtFlow</string>
     <string name="artflow_desc">Карусель из обложек альбомов в духе iPod Classic.</string>
     <string name="sort_by">Сортировать по</string>
     <string name="date_modified">Дата изменения</string>
@@ -116,7 +115,6 @@
     <string name="soapstone">Мыльный камень</string>
     <string name="high_contrast">Высокая контрастность</string>
     <string name="dark">Тёмная</string>
-    <string name="amoled">AMOLED</string>
     <string name="slate">Грифель</string>
     <string name="oil">Нефть</string>
     <string name="follow_system">Как в системе</string>
@@ -272,7 +270,6 @@
     <string name="tape_saturation">Ленточное насыщение</string>
     <string name="pitch">Тональность</string>
     <string name="playback_speed">Скорость</string>
-    <string name="replay_gain">Replay Gain</string>
     <string name="auto_replay_gain">Авто Replay Gain</string>
     <string name="auto_replay_gain_summary">Автоматически применяет значение громкости из тегов ReplayGain каждого трека при начале воспроизведения. Регулятор Replay Gain в эквалайзере по-прежнему работает поверх этого.</string>
     <string name="replay_gain_mode">Режим Replay Gain</string>
