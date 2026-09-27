@@ -513,4 +513,6 @@
     <string name="reduce_animations">Reduce Animations</string>
     <string name="reduce_animations_summary">Disable some unnecessary animations throughout the app. May improve app\'s performance in some devices.\n\nTo disable transition animations, go to %1$s panel.</string>
     <string name="animations">Animations</string>
+    <string name="miniplayer_width">Mini Player Width</string>
+    <string name="miniplayer_width_summary">Adjust horizontal width of the Mini Player in landscape mode.</string>
 </resources>

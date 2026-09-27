@@ -306,6 +306,26 @@ abstract class PreferenceFragment : MediaFragment() {
 
         val miniPlayerHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.miniplayer)
 
+        val miniplayerWidth = Preference(
+                title = R.string.miniplayer_width,
+                summary = R.string.miniplayer_width_summary,
+                icon = -1,
+                type = PreferenceType.SLIDER,
+                onPreferenceAction = { view, callback ->
+                    UserInterfacePreferences.setMiniplayerWidth((view as FelicitySeekbar).getProgress())
+                },
+                valueProvider = Supplier {
+                    SeekbarState(
+                            position = UserInterfacePreferences.getMiniplayerWidth(),
+                            max = UserInterfacePreferences.MAX_LANDSCAPE_MINIPLAYER_WIDTH,
+                            min = UserInterfacePreferences.MIN_LANDSCAPE_MINIPLAYER_WIDTH,
+                            default = UserInterfacePreferences.DEFAULT_LANDSCAPE_MINIPLAYER_WIDTH,
+                            leftLabel = false,
+                            rightLabel = false,
+                    )
+                }
+        )
+
         val marginAroundMiniplayerToggle = Preference(
                 title = R.string.margin_around_miniplayer,
                 summary = R.string.margin_around_miniplayer_summary,
@@ -443,6 +463,7 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(pagesHeader)
         preferences.add(songsFirstToggle)
         preferences.add(miniPlayerHeader)
+        preferences.add(miniplayerWidth)
         preferences.add(marginAroundMiniplayerToggle)
         preferences.add(applicationHeader)
         preferences.add(likeButton)

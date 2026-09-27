@@ -17,6 +17,7 @@ object UserInterfacePreferences {
     const val LIKE_ICON_INSTEAD_OF_HEART = "like_icon_instead_of_heart"
 
     const val MARGIN_AROUND_MINIPLAYER = "margin_around_miniplayer"
+    const val MINIPLAYER_WIDTH = "miniplayer_width"
     const val HOME_INTERFACE = "home_interface_"
     const val PLAYER_INTERFACE = "player_interface_"
 
@@ -51,6 +52,10 @@ object UserInterfacePreferences {
     const val TIMER_POSITION_CENTER = 1
     const val TIMER_POSITION_BOTTOM = 2
 
+    const val MAX_LANDSCAPE_MINIPLAYER_WIDTH = 1.0f
+    const val MIN_LANDSCAPE_MINIPLAYER_WIDTH = 0f
+    const val DEFAULT_LANDSCAPE_MINIPLAYER_WIDTH = 0.8f
+
     fun setLikeIconInsteadOfThumb(value: Boolean) {
         getSharedPreferences().edit { putBoolean(LIKE_ICON_INSTEAD_OF_HEART, value) }
     }
@@ -65,6 +70,14 @@ object UserInterfacePreferences {
 
     fun isMarginAroundMiniplayer(): Boolean {
         return getSharedPreferences().getBoolean(MARGIN_AROUND_MINIPLAYER, true)
+    }
+
+    fun setMiniplayerWidth(value: Float) {
+        getSharedPreferences().edit { putFloat(MINIPLAYER_WIDTH, value) }
+    }
+
+    fun getMiniplayerWidth(): Float {
+        return getSharedPreferences().getFloat(MINIPLAYER_WIDTH, DEFAULT_LANDSCAPE_MINIPLAYER_WIDTH)
     }
 
     fun getHomeInterface(): Int {

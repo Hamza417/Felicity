@@ -3,15 +3,18 @@ package app.simple.felicity.activities
 import android.app.SearchManager
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Bundle
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.util.Log
+import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.app.ShareCompat
 import androidx.core.net.toUri
 import androidx.core.view.isVisible
@@ -109,6 +112,8 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        applyMiniPlayerResponsiveLayout(UserInterfacePreferences.getMiniplayerWidth())
 
         binding.miniPlayer.callbacks = object : MiniPlayer.Callbacks {
             override fun onPageSelected(position: Int, fromUser: Boolean) {
@@ -278,6 +283,53 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         }
 
         isFirstLaunch = false
+    }
+
+    /**
+     * Dynamically resizes the mini player (and its floating action bar) based on a
+     * provided slider value, allowing for fluid width scaling.
+     *
+     * - Width: Linearly interpolates between a minimum of 1/4th the screen width (at 0.0f)
+     *   up to full screen width / MATCH_PARENT (at 1.0f).
+     * - Alignment: Docks to the bottom edge in portrait mode, and the bottom-start edge
+     *   in landscape mode to optimize available screen real estate.
+     *
+     * The action bar is resized and positioned identically, as it floats directly
+     * above the mini player and must always maintain visual alignment.
+     *
+     * @param sliderValue A float between 0.0f and 1.0f representing the desired width scale.
+     */
+    private fun applyMiniPlayerResponsiveLayout(sliderValue: Float) {
+        val clampedValue = sliderValue.coerceIn(0f, 1f)
+
+        val screenWidth = resources.displayMetrics.widthPixels
+        val minWidth = screenWidth / 4f
+        val maxWidth = screenWidth.toFloat()
+
+        val targetWidth = if (clampedValue == 1f) {
+            ViewGroup.LayoutParams.MATCH_PARENT
+        } else {
+            (minWidth + (maxWidth - minWidth) * clampedValue).toInt()
+        }
+
+        val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        val gravity = if (isLandscape) {
+            Gravity.BOTTOM or Gravity.START
+        } else {
+            Gravity.BOTTOM
+        }
+
+        (binding.miniPlayer.layoutParams as? CoordinatorLayout.LayoutParams)?.let { params ->
+            params.width = targetWidth
+            params.gravity = gravity
+            binding.miniPlayer.layoutParams = params
+        }
+
+        (binding.miniPlayerActionBar.layoutParams as? CoordinatorLayout.LayoutParams)?.let { params ->
+            params.width = targetWidth
+            params.gravity = gravity
+            binding.miniPlayerActionBar.layoutParams = params
+        }
     }
 
     private fun runDatabaseScanner() {
@@ -611,6 +663,9 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
                 if (AudioPreferences.isUsbDacEnabled()) {
                     UsbDacDriver.getInstance(this).checkForExistingDac()
                 }
+            }
+            UserInterfacePreferences.MINIPLAYER_WIDTH -> {
+                applyMiniPlayerResponsiveLayout(UserInterfacePreferences.getMiniplayerWidth())
             }
         }
     }
