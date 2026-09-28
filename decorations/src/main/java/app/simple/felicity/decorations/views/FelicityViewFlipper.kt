@@ -83,15 +83,46 @@ class FelicityViewFlipper @JvmOverloads constructor(
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val w = MeasureSpec.getSize(widthMeasureSpec)
-        val h = MeasureSpec.getSize(heightMeasureSpec)
+        val widthSize = MeasureSpec.getSize(widthMeasureSpec)
+        val heightMode = MeasureSpec.getMode(heightMeasureSpec)
+        val heightSize = MeasureSpec.getSize(heightMeasureSpec)
 
-        val childWidthSpec = MeasureSpec.makeMeasureSpec(w, MeasureSpec.EXACTLY)
-        val childHeightSpec = MeasureSpec.makeMeasureSpec(h, MeasureSpec.EXACTLY)
-        for (i in 0 until childCount) {
-            getChildAt(i).measure(childWidthSpec, childHeightSpec)
+        var desiredHeight = 0
+
+        // Measure children to find the maximum height required
+        val childWidthSpec = MeasureSpec.makeMeasureSpec(widthSize, MeasureSpec.EXACTLY)
+        val initialChildHeightSpec = if (heightMode == MeasureSpec.EXACTLY) {
+            heightMeasureSpec // match_parent or specific DP
+        } else {
+            MeasureSpec.makeMeasureSpec(heightSize, MeasureSpec.AT_MOST) // wrap_content
         }
-        setMeasuredDimension(w, h)
+
+        for (i in 0 until childCount) {
+            val child = getChildAt(i)
+            if (child.visibility != GONE) {
+                child.measure(childWidthSpec, initialChildHeightSpec)
+                desiredHeight = maxOf(desiredHeight, child.measuredHeight)
+            }
+        }
+
+        // Determine the final height for the ViewFlipper
+        val finalHeight = if (heightMode == MeasureSpec.EXACTLY) {
+            heightSize
+        } else {
+            desiredHeight
+        }
+
+        // Remeasure all children to EXACTLY the final height so pages look uniform
+        val finalChildHeightSpec = MeasureSpec.makeMeasureSpec(finalHeight, MeasureSpec.EXACTLY)
+        for (i in 0 until childCount) {
+            val child = getChildAt(i)
+            // Only remeasure if the child isn't already the correct height
+            if (child.visibility != GONE && child.measuredHeight != finalHeight) {
+                child.measure(childWidthSpec, finalChildHeightSpec)
+            }
+        }
+
+        setMeasuredDimension(widthSize, finalHeight)
     }
 
     override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
