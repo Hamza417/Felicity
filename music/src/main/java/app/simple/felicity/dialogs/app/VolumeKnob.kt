@@ -192,7 +192,7 @@ class VolumeKnob : ScopedBottomSheetFragment() {
             binding.dotsIndicator.setCurrentPage(it)
 
             // User has swiped, and we should assume we are in the interaction mode
-            // So let the dialog be...
+            // So let the dialog be... unless volume is pressed/adjusted
             //            if (it == 0) {
             //                startCloseRunnable()
             //            }
