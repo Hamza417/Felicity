@@ -158,7 +158,6 @@ class DotsIndicatorView @JvmOverloads constructor(
         val cy = height / 2f
 
         // Draw inactive dots
-        @Suppress("EmptyRange")
         for (i in 0 until count) {
             canvas.drawCircle(cx0 + i * dotSpacing, cy, dotRadius, inactivePaint)
         }

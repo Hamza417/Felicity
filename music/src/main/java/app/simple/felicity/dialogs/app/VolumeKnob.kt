@@ -14,6 +14,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
+import androidx.dynamicanimation.animation.SpringForce
 import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.databinding.DialogVolumeKnobBinding
@@ -89,6 +90,9 @@ class VolumeKnob : ScopedBottomSheetFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         startCloseRunnable()
+        binding.dotsIndicator.setCount(2)
+        binding.dotsIndicator.setCurrentPage(0)
+        binding.dotsIndicator.springStiffness = SpringForce.STIFFNESS_LOW
 
         // Single background collector — only the latest distinct index reaches the audio manager.
         // Launched on Dispatchers.IO because setStreamVolume is a synchronous binder (IPC) call
@@ -185,6 +189,7 @@ class VolumeKnob : ScopedBottomSheetFragment() {
 
         binding.viewFlipper.setOnScreenChangedListener {
             stopCloseRunnable()
+            binding.dotsIndicator.setCurrentPage(it)
 
             // User has swiped, and we should assume we are in the interaction mode
             // So let the dialog be...
