@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.util.Log
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
@@ -20,6 +21,7 @@ import app.simple.felicity.decorations.knobs.FelicityKnobListener
 import app.simple.felicity.dialogs.app.VolumeKnob.Companion.VOLUME_REPEAT_DELAY_MS
 import app.simple.felicity.engine.usb.UsbDacDriver
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
+import app.simple.felicity.preferences.EqualizerPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -104,8 +106,8 @@ class VolumeKnob : ScopedBottomSheetFragment() {
 
         // Volume Knob
         setVolumeKnobPosition()
-        binding.volumeKnob.setTickTexts("0", "100")
-        binding.volumeKnob.setListener(object : FelicityKnobListener {
+        binding.volumeKnobLayout.volumeKnob.setTickTexts("0", "100")
+        binding.volumeKnobLayout.volumeKnob.setListener(object : FelicityKnobListener {
             override fun onIncrement(value: Float) {
 
             }
@@ -131,11 +133,71 @@ class VolumeKnob : ScopedBottomSheetFragment() {
             }
         })
 
-        binding.equalizer.setOnClickListener {
-            volumeListener?.onEqualizerClicked().also {
-                dismiss()
+        // Bass knob (low-shelf at 250 Hz).
+        // Knob value 0-100 maps to gain -12 dB (full cut) ... 0 dB (center) ... +12 dB (full boost).
+        binding.toneKnobLayout.bassKnob.centerSnapEnabled = true
+        binding.toneKnobLayout.bassKnob.setTickTexts("-12", "+12")
+        binding.toneKnobLayout.bassKnob.divisionCount = 48 * 2
+        binding.toneKnobLayout.bassKnob.setKnobPosition(bassDbToKnobValue(EqualizerPreferences.getBassDb()), animate = false)
+        binding.toneKnobLayout.bassKnob.setListener(object : FelicityKnobListener {
+            override fun onIncrement(value: Float) {}
+
+            override fun onRotate(value: Float) {
+                val db = knobValueToBassDb(value)
+                EqualizerPreferences.setBassDb(db)
+                Log.d(TAG, "Bass gain updated: ${db}dB")
             }
+
+            override fun onLabel(value: Float): String {
+                val db = knobValueToBassDb(value)
+                return when {
+                    db > 0.05f -> "+${"%.1f".format(db)} dB"
+                    db < -0.05f -> "${"%.1f".format(db)} dB"
+                    else -> "0 dB"
+                }
+            }
+        })
+
+        // Treble knob (high-shelf at 4000 Hz).
+        // Knob value 0-100 maps to gain -12 dB (full cut) ... 0 dB (center) ... +12 dB (full boost).
+        binding.toneKnobLayout.trebleKnob.centerSnapEnabled = true
+        binding.toneKnobLayout.trebleKnob.setTickTexts("-12", "+12")
+        binding.toneKnobLayout.trebleKnob.divisionCount = 48 * 2
+        binding.toneKnobLayout.trebleKnob.setKnobPosition(trebleDbToKnobValue(EqualizerPreferences.getTrebleDb()), animate = false)
+        binding.toneKnobLayout.trebleKnob.setListener(object : FelicityKnobListener {
+            override fun onIncrement(value: Float) {}
+
+            override fun onRotate(value: Float) {
+                val db = knobValueToTrebleDb(value)
+                EqualizerPreferences.setTrebleDb(db)
+                Log.d(TAG, "Treble gain updated: ${db}dB")
+            }
+
+            override fun onLabel(value: Float): String {
+                val db = knobValueToTrebleDb(value)
+                return when {
+                    db > 0.05f -> "+${"%.1f".format(db)} dB"
+                    db < -0.05f -> "${"%.1f".format(db)} dB"
+                    else -> "0 dB"
+                }
+            }
+        })
+
+        binding.viewFlipper.setOnScreenChangedListener {
+            stopCloseRunnable()
+
+            // User has swiped, and we should assume we are in the interaction mode
+            // So let the dialog be...
+            //            if (it == 0) {
+            //                startCloseRunnable()
+            //            }
         }
+
+        //        binding.equalizer.setOnClickListener {
+        //            volumeListener?.onEqualizerClicked().also {
+        //                dismiss()
+        //            }
+        //        }
 
         // Hardware volume keys
         dialog?.setOnKeyListener { _, keyCode, event ->
@@ -284,7 +346,7 @@ class VolumeKnob : ScopedBottomSheetFragment() {
     private fun setVolumeKnobPosition() {
         val current = audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC)?.toFloat() ?: 0f
         val max = audioManager?.getStreamMaxVolume(AudioManager.STREAM_MUSIC)?.toFloat() ?: 1f
-        binding.volumeKnob.setKnobPosition((current / max) * 100f)
+        binding.volumeKnobLayout.volumeKnob.setKnobPosition((current / max) * 100f)
     }
 
     override fun onDestroy() {
@@ -316,6 +378,18 @@ class VolumeKnob : ScopedBottomSheetFragment() {
         }
 
         private fun FragmentManager.isVolumeKnobShowing(): Boolean = findFragmentByTag(TAG) != null
+
+        /** Maps knob position [0..100] to bass/treble gain [-12..+12] dB. */
+        fun knobValueToBassDb(knobValue: Float): Float = ((knobValue - 50f) / 50f * 12f).coerceIn(-12f, 12f)
+
+        /** Maps bass gain [-12..+12] dB to knob position [0..100]. */
+        fun bassDbToKnobValue(db: Float): Float = ((db / 12f * 50f) + 50f).coerceIn(0f, 100f)
+
+        /** Maps knob position [0..100] to treble gain [-12..+12] dB. */
+        fun knobValueToTrebleDb(knobValue: Float): Float = ((knobValue - 50f) / 50f * 12f).coerceIn(-12f, 12f)
+
+        /** Maps treble gain [-12..+12] dB to knob position [0..100]. */
+        fun trebleDbToKnobValue(db: Float): Float = ((db / 12f * 50f) + 50f).coerceIn(0f, 100f)
 
         interface VolumeListener {
 
