@@ -66,6 +66,7 @@ import app.simple.felicity.repository.models.PlaylistWithSongs
 import app.simple.felicity.repository.repositories.LrcRepository
 import app.simple.felicity.repository.shuffle.Shuffle.smartShuffle
 import app.simple.felicity.repository.sort.PageSort.sortedForAlbumPage
+import app.simple.felicity.repository.sort.PageSort.sortedForArtistPage
 import app.simple.felicity.repository.utils.AudioUtils.getProperAlbum
 import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
 import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
@@ -1257,7 +1258,7 @@ open class MediaFragment : KeyboardScopedFragment(), MiniPlayerPolicy {
 
             binding.addAllToQueue.setOnClickListener {
                 viewLifecycleOwner.lifecycleScope.launch {
-                    val songs = fetchAudiosByPaths(artist.songPaths)
+                    val songs = fetchAudiosByPaths(artist.songPaths).sortedForArtistPage()
                     songs.forEach { MediaPlaybackManager.addToQueue(it) }
                 }
                 dismiss()
