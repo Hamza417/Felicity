@@ -2,11 +2,14 @@ package app.simple.felicity.decorations.views
 
 import android.content.Context
 import android.util.AttributeSet
+import android.view.Gravity
 import android.view.MotionEvent
 import android.view.VelocityTracker
 import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
+import androidx.core.content.withStyledAttributes
+import androidx.core.view.isGone
 import kotlin.math.abs
 
 /**
@@ -72,6 +75,20 @@ class FelicityViewFlipper @JvmOverloads constructor(
             }
         }
 
+    var gravity: Int = Gravity.TOP
+        set(value) {
+            if (field != value) {
+                field = value
+                requestLayout()
+            }
+        }
+
+    init {
+        context.withStyledAttributes(attrs, intArrayOf(android.R.attr.gravity), defStyleAttr, 0) {
+            gravity = getInt(0, Gravity.TOP)
+        }
+    }
+
     /**
      * Registers [listener] to be called whenever the displayed child changes, either by
      * user swipe or a programmatic [displayedChild] assignment.
@@ -91,33 +108,38 @@ class FelicityViewFlipper @JvmOverloads constructor(
 
         // Measure children to find the maximum height required
         val childWidthSpec = MeasureSpec.makeMeasureSpec(widthSize, MeasureSpec.EXACTLY)
-        val initialChildHeightSpec = if (heightMode == MeasureSpec.EXACTLY) {
-            heightMeasureSpec // match_parent or specific DP
-        } else {
-            MeasureSpec.makeMeasureSpec(heightSize, MeasureSpec.AT_MOST) // wrap_content
-        }
 
         for (i in 0 until childCount) {
             val child = getChildAt(i)
             if (child.visibility != GONE) {
+                val lp = child.layoutParams
+                // Respect the parent's constraints but let the child decide its initial size
+                val initialChildHeightSpec = getChildMeasureSpec(heightMeasureSpec, 0, lp.height)
                 child.measure(childWidthSpec, initialChildHeightSpec)
                 desiredHeight = maxOf(desiredHeight, child.measuredHeight)
             }
         }
 
-        // Determine the final height for the ViewFlipper
+        // Determine the final height for the ViewFlipper (prevents height jumping on swipe)
         val finalHeight = if (heightMode == MeasureSpec.EXACTLY) {
             heightSize
         } else {
             desiredHeight
         }
 
-        // Remeasure all children to EXACTLY the final height so pages look uniform
-        val finalChildHeightSpec = MeasureSpec.makeMeasureSpec(finalHeight, MeasureSpec.EXACTLY)
+        // Remeasure children using the final fixed height of the ViewFlipper
+        val finalParentHeightSpec = MeasureSpec.makeMeasureSpec(finalHeight, MeasureSpec.EXACTLY)
+
         for (i in 0 until childCount) {
             val child = getChildAt(i)
-            // Only remeasure if the child isn't already the correct height
-            if (child.visibility != GONE && child.measuredHeight != finalHeight) {
+            if (child.visibility != GONE) {
+                val lp = child.layoutParams
+
+                // This is the key part:
+                // - If child is match_parent, it gets EXACTLY finalHeight.
+                // - If child is wrap_content, it gets AT_MOST finalHeight (so it can be smaller and centered).
+                val finalChildHeightSpec = getChildMeasureSpec(finalParentHeightSpec, 0, lp.height)
+
                 child.measure(childWidthSpec, finalChildHeightSpec)
             }
         }
@@ -128,9 +150,24 @@ class FelicityViewFlipper @JvmOverloads constructor(
     override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
         val pageWidth = r - l
         val pageHeight = b - t
+
         for (i in 0 until childCount) {
             val child = getChildAt(i)
-            child.layout(0, 0, pageWidth, pageHeight)
+            if (child.isGone) continue
+
+            val childHeight = child.measuredHeight
+
+            // Determine vertical offset based on gravity
+            val childTop = when (gravity and Gravity.VERTICAL_GRAVITY_MASK) {
+                Gravity.CENTER_VERTICAL -> (pageHeight - childHeight) / 2
+                Gravity.BOTTOM -> pageHeight - childHeight
+                else -> Gravity.TOP // Default to top if unspecified
+            }
+
+            // Layout the child with the calculated vertical offset
+            child.layout(0, childTop, pageWidth, childTop + childHeight)
+
+            // Apply horizontal swipe offset
             child.translationX = (i - currentIndex) * pageWidth.toFloat() + dragOffset
         }
     }
