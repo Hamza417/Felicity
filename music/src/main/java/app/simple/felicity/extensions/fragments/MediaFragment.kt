@@ -88,6 +88,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
+import kotlin.time.Duration.Companion.milliseconds
 
 open class MediaFragment : KeyboardScopedFragment(), MiniPlayerPolicy {
 
@@ -456,7 +457,7 @@ open class MediaFragment : KeyboardScopedFragment(), MiniPlayerPolicy {
         // show mini player briefly then hide it again
         showMiniPlayer()
         viewLifecycleOwner.lifecycleScope.launch {
-            delay(2000) // Show for 2 seconds
+            delay(2000.milliseconds) // Show for 2 seconds
 
             if (wantsMiniPlayerVisible.not()) {
                 hideMiniPlayer()
@@ -1352,6 +1353,13 @@ open class MediaFragment : KeyboardScopedFragment(), MiniPlayerPolicy {
 
         } else {
 
+        }
+
+        // Hide shuffle button if queue size is less than 2, since shuffling a single song is meaningless.
+        if (MediaPlaybackManager.getQueueSize() < 2) {
+            shuffleButton.gone()
+        } else {
+            shuffleButton.visible()
         }
     }
 

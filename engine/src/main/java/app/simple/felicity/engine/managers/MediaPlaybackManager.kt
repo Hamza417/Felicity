@@ -400,6 +400,7 @@ object MediaPlaybackManager {
     }
 
     fun getSongs(): List<Audio> = songs
+    fun getQueueSize(): Int = songs.size
 
     /**
      * Returns the queue in its original, unshuffled order. When shuffle is off this is
