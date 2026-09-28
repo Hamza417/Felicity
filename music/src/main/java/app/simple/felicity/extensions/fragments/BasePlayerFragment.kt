@@ -103,9 +103,6 @@ abstract class BasePlayerFragment : MediaFragment() {
     /** The text view showing the current queue position (e.g. "3/12"). */
     protected abstract val count: TextView
 
-    /** The button that opens the playing queue panel. */
-    protected abstract val queue: View
-
     /** The button that opens the search panel. */
     protected abstract val search: View
 
@@ -276,12 +273,8 @@ abstract class BasePlayerFragment : MediaFragment() {
             }
         })
 
-        queue.setOnClickListener {
-            openFragment(PlayingQueue.newInstance(fromPlayer = true), PlayingQueue.TAG)
-        }
-
         count.setOnClickListener {
-            queue.callOnClick()
+            openFragment(PlayingQueue.newInstance(fromPlayer = true), PlayingQueue.TAG)
         }
 
         artist.setOnClickListener {

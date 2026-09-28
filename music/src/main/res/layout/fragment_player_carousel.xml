@@ -64,20 +64,10 @@
                     android:layout_gravity="center_vertical"
                     android:paddingVertical="@dimen/padding_5"
                     android:paddingHorizontal="@dimen/padding_10"
+                    android:drawablePadding="@dimen/padding_5"
                     app:appFontStyle="bold"
-                    app:highlightMode="auto"
-                    app:textColorStyle="primary" />
-
-                <app.simple.felicity.decorations.highlight.HighlightTextView
-                    android:id="@+id/lyrics"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center_vertical"
-                    android:layout_marginStart="@dimen/padding_5"
-                    android:paddingVertical="@dimen/padding_5"
-                    android:paddingHorizontal="@dimen/padding_10"
-                    android:text="@string/lyrics"
-                    app:appFontStyle="bold"
+                    app:drawableStartCompat="@drawable/ic_queue_16dp"
+                    app:drawableTintStyle="accent"
                     app:highlightMode="auto"
                     app:textColorStyle="primary" />
 
@@ -222,18 +212,18 @@
                         android:id="@+id/mediaControls"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_weight="3"
+                        android:layout_weight="1"
                         android:clipToOutline="false"
                         android:clipChildren="false"
                         android:clipToPadding="false" />
 
                     <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
-                        android:id="@+id/queue"
+                        android:id="@+id/lyrics"
                         android:layout_width="@dimen/button_size"
                         android:layout_height="@dimen/button_size"
                         android:layout_gravity="center_vertical"
                         android:layout_marginEnd="@dimen/padding_1"
-                        android:src="@drawable/ic_queue"
+                        android:src="@drawable/ic_lyrics"
                         app:buttonTintType="regular" />
 
                 </LinearLayout>

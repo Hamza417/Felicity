@@ -42,9 +42,6 @@ class CarouselPlayer : BasePlayerFragment() {
     override val mediaControls: FelicityMediaControls
         get() = binding.mediaControls
 
-    override val queue: View
-        get() = binding.queue
-
     override val search: View
         get() = binding.search
 
