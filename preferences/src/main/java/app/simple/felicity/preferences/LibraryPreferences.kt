@@ -9,6 +9,8 @@ object LibraryPreferences {
     private const val SCANNER_ON_RESUME = "scanner_on_resume"
     private const val PAUSE_ACTIVITY = "pause_activity"
     const val ALBUM_ARTIST_OVER_ARTIST = "album_artist_over_artist"
+    const val SPLIT_MULTIPLE_ARTISTS = "split_multiple_artists"
+    const val ARTIST_SEPARATORS = "artist_separators"
 
     /**
      * Key used to store whether the user wants the app to fetch artist info
@@ -94,6 +96,34 @@ object LibraryPreferences {
 
     // ------------------------------------------------------------------------------------------------------ //
 
+    /**
+     * Whether a single artist tag that credits several artists (e.g. "AKON feat. WYCLEF")
+     * should be split into individual artists during library aggregation. Enabled by default.
+     */
+    fun isSplitMultipleArtistsEnabled(): Boolean {
+        return SharedPreferences.getSharedPreferences().getBoolean(SPLIT_MULTIPLE_ARTISTS, true)
+    }
+
+    fun setSplitMultipleArtistsEnabled(enabled: Boolean) {
+        SharedPreferences.getSharedPreferences().edit { putBoolean(SPLIT_MULTIPLE_ARTISTS, enabled) }
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
+    /**
+     * Custom, whitespace-separated separator tokens that replace the built-in conservative set
+     * used when splitting multi-artist tags. Empty (the default) keeps the built-in behaviour.
+     */
+    fun getArtistSeparators(): String {
+        return SharedPreferences.getSharedPreferences().getString(ARTIST_SEPARATORS, "") ?: ""
+    }
+
+    fun setArtistSeparators(separators: String) {
+        SharedPreferences.getSharedPreferences().edit { putString(ARTIST_SEPARATORS, separators) }
+    }
+
+    // ------------------------------------------------------------------------------------------------------ //
+
     fun isScannerOnResumeEnabled(): Boolean {
         return SharedPreferences.getSharedPreferences().getBoolean(SCANNER_ON_RESUME, false)
     }
@@ -141,3 +171,4 @@ object LibraryPreferences {
     }
 }
 
+ 

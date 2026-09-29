@@ -314,6 +314,11 @@
     <string name="musicbrainz_enabled">Extra Info from MusicBrainz</string>
     <string name="musicbrainz_enabled_summary">Fetch info from the MusicBrainz open database. Requires an internet connection. Disabling stops all MusicBrainz network requests.</string>
     <string name="show_album_artists_summary">Show album artists instead of artists in the artists field of the lists in the app.</string>
+    <string name="split_multiple_artists">Split Multiple Artists</string>
+    <string name="split_multiple_artists_summary">Split a single tag that credits several artists (e.g. \"AKON feat. WYCLEF\") into separate artists. Officially recognised names such as AC/DC are always kept whole.</string>
+    <string name="artist_separators">Artist Separators</string>
+    <string name="artist_separators_summary">Customise which separators split multi-artist tags. Leave empty to use the safe built-in set. Separate multiple tokens with spaces.</string>
+    <string name="artist_separators_hint">e.g. ; | feat.</string>
     <string name="copy">Copy</string>
     <string name="edit_metadata">Edit Metadata</string>
     <string name="metadata_saved">Metadata saved successfully.</string>

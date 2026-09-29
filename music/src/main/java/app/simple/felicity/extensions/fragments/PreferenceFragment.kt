@@ -14,6 +14,7 @@ import app.simple.felicity.decorations.seekbars.FelicitySeekbar
 import app.simple.felicity.decorations.toggles.FelicitySwitch
 import app.simple.felicity.decorations.views.PopupMenuItem
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
+import app.simple.felicity.dialogs.library.ArtistSeparators.Companion.showArtistSeparators
 import app.simple.felicity.enums.PreferenceType
 import app.simple.felicity.models.Preference
 import app.simple.felicity.models.SeekbarState
@@ -1070,6 +1071,29 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val splitMultipleArtists = Preference(
+                title = R.string.split_multiple_artists,
+                summary = R.string.split_multiple_artists_summary,
+                icon = R.drawable.ic_artist,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    LibraryPreferences.setSplitMultipleArtistsEnabled((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    LibraryPreferences.isSplitMultipleArtistsEnabled()
+                }
+        )
+
+        val artistSeparators = Preference(
+                title = R.string.artist_separators,
+                summary = R.string.artist_separators_summary,
+                icon = R.drawable.ic_divider,
+                type = PreferenceType.DIALOG,
+                onPreferenceAction = { view, callback ->
+                    childFragmentManager.showArtistSeparators()
+                }
+        )
+
         val musicBrainz = Preference(
                 title = R.string.musicbrainz_enabled,
                 summary = R.string.musicbrainz_enabled_summary,
@@ -1208,6 +1232,8 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(confirmQueueReplacementToggle)
         preferences.add(metadataHeader)
         preferences.add(albumArtistsInsteadOfArtists)
+        preferences.add(splitMultipleArtists)
+        preferences.add(artistSeparators)
         preferences.add(musicBrainz)
         preferences.add(albumArtHeader)
         preferences.add(mediaStoreArt)

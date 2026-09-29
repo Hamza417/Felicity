@@ -3,6 +3,7 @@ package app.simple.felicity.repository.repositories
 import android.content.Context
 import android.provider.MediaStore
 import app.simple.felicity.repository.models.Artist
+import app.simple.felicity.repository.utils.ArtistTagUtils
 import javax.inject.Inject
 
 class ArtistRepository @Inject constructor(private val context: Context) {
@@ -140,8 +141,6 @@ class ArtistRepository @Inject constructor(private val context: Context) {
 
     fun fetchCollaboratorArtists(currentArtist: Artist): List<Artist> {
         val name = currentArtist.name ?: return emptyList()
-        val delimiters = arrayOf("&", "ft.", "feat.", ",", "and")
-        val regex = delimiters.joinToString("|") { Regex.escape(it) }.toRegex(RegexOption.IGNORE_CASE)
 
         fun normalizeArtistName(s: String) = s.trim().lowercase()
 
@@ -159,9 +158,11 @@ class ArtistRepository @Inject constructor(private val context: Context) {
             val artistCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
             while (cursor.moveToNext()) {
                 val artistField = cursor.getString(artistCol) ?: continue
-                // Only consider tracks with multiple artists
-                if (!artistField.contains(regex)) continue
-                val names = artistField.split(regex).map { normalizeArtistName(it) }.filter { it.isNotEmpty() }
+                // Use the shared, conservative splitter so collaborator detection stays
+                // consistent with the rest of the library (e.g. never splits "AC/DC").
+                val names = ArtistTagUtils.splitArtists(artistField).map { normalizeArtistName(it) }
+                // Only consider tracks that actually credit multiple artists
+                if (names.size < 2) continue
                 if (names.contains(currentArtistName)) {
                     names.filter { it != currentArtistName }.forEach { collaboratorNames.add(it) }
                 }
