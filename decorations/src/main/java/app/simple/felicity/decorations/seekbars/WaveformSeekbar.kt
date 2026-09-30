@@ -702,21 +702,18 @@ class WaveformSeekbar @JvmOverloads constructor(
     }
 
     /**
-     * Draws [rect] as a rounded rectangle, yawed around the vertical line passing through
-     * ([pivotX], [pivotY]) by [yawDegrees]. Uses [android.graphics.Camera] to get a genuine
-     * 3D rotation-around-Y-axis projection (foreshortening the bar's width and skewing its
-     * vertical edges into a slight trapezoid) instead of a 2D in-plane rotation, which would
-     * incorrectly tip the bar sideways rather than turn it away from the viewer.
+     * Rotates [canvas] around the vertical line passing through ([pivotX], [pivotY]) by
+     * [yawDegrees] using [android.graphics.Camera], returning `true` if a transform was
+     * actually pushed (in which case the caller **must** call `canvas.restore()` after
+     * drawing). Shared by [drawYawedBar] and [drawYawedDot] so every optics-affected shape —
+     * bars and bookmark dots alike — turns away from the viewer identically.
      *
      * A rotation around the Y axis leaves the Y coordinate of every point unchanged, so
-     * [pivotY] only matters for keeping the translate math self-consistent — the bar does
-     * not shift vertically no matter what value is passed.
+     * [pivotY] only matters for keeping the translate math self-consistent — nothing shifts
+     * vertically no matter what value is passed.
      */
-    private fun drawYawedBar(canvas: Canvas, rect: RectF, cornerRadius: Float, pivotX: Float, pivotY: Float, yawDegrees: Float) {
-        if (yawDegrees == 0f) {
-            canvas.drawRoundRect(rect, cornerRadius, cornerRadius, barPaint)
-            return
-        }
+    private fun pushYawTransform(canvas: Canvas, pivotX: Float, pivotY: Float, yawDegrees: Float): Boolean {
+        if (yawDegrees == 0f) return false
         barCamera.save()
         barCamera.rotateY(yawDegrees)
         barCamera.getMatrix(barCameraMatrix)
@@ -725,8 +722,34 @@ class WaveformSeekbar @JvmOverloads constructor(
         barCameraMatrix.postTranslate(pivotX, pivotY)
         canvas.save()
         canvas.concat(barCameraMatrix)
+        return true
+    }
+
+    /**
+     * Draws [rect] as a rounded rectangle, yawed around the vertical line passing through
+     * ([pivotX], [pivotY]) by [yawDegrees]. Uses [android.graphics.Camera] (via
+     * [pushYawTransform]) to get a genuine 3D rotation-around-Y-axis projection
+     * (foreshortening the bar's width and skewing its vertical edges into a slight trapezoid)
+     * instead of a 2D in-plane rotation, which would incorrectly tip the bar sideways rather
+     * than turn it away from the viewer.
+     */
+    private fun drawYawedBar(canvas: Canvas, rect: RectF, cornerRadius: Float, pivotX: Float, pivotY: Float, yawDegrees: Float) {
+        val pushed = pushYawTransform(canvas, pivotX, pivotY, yawDegrees)
         canvas.drawRoundRect(rect, cornerRadius, cornerRadius, barPaint)
-        canvas.restore()
+        if (pushed) canvas.restore()
+    }
+
+    /**
+     * Draws a filled circle of [radius] at ([cx], [cy]), yawed the same way as [drawYawedBar]
+     * so bookmark dots turn away from the viewer along with the bars around them instead of
+     * staying flat, upright disks that break the illusion of a rotating wheel. The yaw
+     * foreshortens the circle into an ellipse exactly as a real disk would when viewed
+     * edge-on, using [paint] for the fill.
+     */
+    private fun drawYawedDot(canvas: Canvas, cx: Float, cy: Float, radius: Float, yawDegrees: Float, paint: Paint) {
+        val pushed = pushYawTransform(canvas, cx, cy, yawDegrees)
+        canvas.drawCircle(cx, cy, radius, paint)
+        if (pushed) canvas.restore()
     }
 
     /**
@@ -1119,7 +1142,10 @@ class WaveformSeekbar @JvmOverloads constructor(
                 val bmRawOffset = bookmarkScrollOffset - scrollOffset
                 val dotX = focalScreenX + blendedOffset(bmRawOffset)
                 if (dotX + bookmarkDotRadius < 0f || dotX - bookmarkDotRadius > w) continue
-                canvas.drawCircle(dotX, dotCenterY, bookmarkDotRadius, bookmarkPaint)
+                // Yaw the dot the same way as the bars beneath it, so bookmarks turn away
+                // toward the edges instead of staying flat, upright disks.
+                val dotYawDeg = blendedYaw(bmRawOffset)
+                drawYawedDot(canvas, dotX, dotCenterY, bookmarkDotRadius, dotYawDeg, bookmarkPaint)
             }
         }
 
