@@ -910,6 +910,18 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             currentWordIndex = -1;
             wordSyncCurrentLayout = null;
             wordSyncLayoutLineIndex = -1;
+            
+            // This assigns the index directly (no startHighlightTransition() call), so make
+            // sure the new active line is immediately shown as fully highlighted rather than
+            // staying unhighlighted until the line changes again.
+            if (highlightAnimator != null && highlightAnimator.isRunning()) {
+                highlightAnimator.cancel();
+            }
+            if (dehighlightAnimator != null && dehighlightAnimator.isRunning()) {
+                dehighlightAnimator.cancel();
+            }
+            highlightFraction = 1f;
+            dehighlightFraction = 0f;
         }
         
         invalidate();
@@ -1229,6 +1241,17 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         if (!isStaticMode()) {
             long adjustedTime = timeInMillis + data.getOffset();
             currentLineIndex = findLineIndexByTime(adjustedTime);
+            // The initial active line is set directly (no startHighlightTransition() call),
+            // so make sure it renders fully highlighted right away instead of staying at
+            // the default unhighlighted color until the *next* line change animates it in.
+            if (highlightAnimator != null && highlightAnimator.isRunning()) {
+                highlightAnimator.cancel();
+            }
+            if (dehighlightAnimator != null && dehighlightAnimator.isRunning()) {
+                dehighlightAnimator.cancel();
+            }
+            highlightFraction = 1f;
+            dehighlightFraction = 0f;
         } else if (durationMs > 0) {
             float maxScroll = getMaxScrollY();
             if (maxScroll > 0) {
@@ -1314,6 +1337,19 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         if (newLineIndex != currentLineIndex) {
             previousLineIndex = currentLineIndex;
             currentLineIndex = newLineIndex;
+            
+            // Directly assigning the index (unlike updateTime()) bypasses
+            // startHighlightTransition(), so the new current line would otherwise stay
+            // rendered in the unhighlighted color until the line advances again. Snap the
+            // highlight state to "fully highlighted" immediately instead.
+            if (highlightAnimator != null && highlightAnimator.isRunning()) {
+                highlightAnimator.cancel();
+            }
+            if (dehighlightAnimator != null && dehighlightAnimator.isRunning()) {
+                dehighlightAnimator.cancel();
+            }
+            highlightFraction = 1f;
+            dehighlightFraction = 0f;
         }
         
         invalidate();
