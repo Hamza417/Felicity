@@ -190,6 +190,21 @@ class FelicityAudioSink(
         private var accumulatedPlayedUs = 0L
         private var isClockRunning = false
 
+        /**
+         * Set by [muteImmediately] the instant pause is requested from the app's main
+         * thread, before the real [pause] call (queued behind any backlog of already
+         * decoded buffers) has had a chance to run on the playback thread.
+         *
+         * Without this flag, [handleBuffer] would see `stream.isRunning == false` (because
+         * [muteImmediately] already paused the native stream) while [isPaused] is still
+         * `false` (because the real [pause] hasn't run yet), and its auto-start check below
+         * would immediately call [stream].start() again for every buffer still in the
+         * backlog — undoing the mute and letting audio keep playing until the backlog
+         * finally drains. Checking this flag alongside [isPaused] keeps the stream paused
+         * and stops accepting further buffers until [play] explicitly resumes it.
+         */
+        @Volatile
+        private var immediateMuteRequested = false
 
         override fun configure(inputFormat: Format, specifiedBufferSize: Int, outputChannels: IntArray?) {}
 
@@ -199,16 +214,18 @@ class FelicityAudioSink(
         }
 
         override fun handleBuffer(buffer: ByteBuffer, presentationTimeUs: Long, encodedAccessUnitCount: Int): Boolean {
-            // Only auto-start the stream if ExoPlayer is actively playing.
-            // If paused, we still process and write the data (pre-buffering), but keep the hardware asleep.
-            if (!isPaused && !stream.isRunning) {
+            // Only auto-start the stream if ExoPlayer is actively playing and no
+            // immediate mute is pending. See [immediateMuteRequested] for why the
+            // pending-mute check is necessary.
+            if (!isPaused && !immediateMuteRequested && !stream.isRunning) {
                 stream.start()
                 startClock()
             }
 
-            // If paused, only accept the very first buffer to establish the base presentation time.
+            // If paused (or an immediate mute is pending the real pause() call), only
+            // accept the very first buffer to establish the base presentation time.
             // Reject everything else so ExoPlayer stops decoding and feeding the void.
-            if (isPaused && !isFirstBuffer) {
+            if ((isPaused || immediateMuteRequested) && !isFirstBuffer) {
                 return false
             }
 
@@ -284,6 +301,7 @@ class FelicityAudioSink(
         }
 
         override fun play() {
+            immediateMuteRequested = false
             if (!stream.isRunning) stream.start()
             startClock()
         }
@@ -298,6 +316,7 @@ class FelicityAudioSink(
             isFirstBuffer = true
             accumulatedPlayedUs = 0L
             isClockRunning = false
+            immediateMuteRequested = false
             if (!isPaused) {
                 stream.start()
                 startClock()
@@ -318,7 +337,9 @@ class FelicityAudioSink(
             // Thread-safe per AAudio's own docs — safe to call while a write on another
             // thread is in flight. Only silences the hardware; the proper pause() call
             // (running later, possibly delayed, on the playback thread) does the rest of
-            // the state bookkeeping.
+            // the state bookkeeping. The flag stops handleBuffer's auto-restart check
+            // (and further backlog buffers) from undoing this before that happens.
+            immediateMuteRequested = true
             stream.pause()
         }
     }
@@ -339,20 +360,26 @@ class FelicityAudioSink(
         private var accumulatedPlayedUs = 0L
         private var isClockRunning = false
 
+        /** See [AaudioNativeSink.immediateMuteRequested] — identical reasoning applies here. */
+        @Volatile
+        private var immediateMuteRequested = false
+
         override fun configure(inputFormat: Format, specifiedBufferSize: Int, outputChannels: IntArray?) {}
 
         override fun hasPendingData(): Boolean = !isFirstBuffer
 
         override fun handleBuffer(buffer: ByteBuffer, presentationTimeUs: Long, encodedAccessUnitCount: Int): Boolean {
-            // Respect the paused state to prevent micro-stutters
-            if (!isPaused && !stream.isRunning) {
+            // Respect the paused state to prevent micro-stutters. Also respect a pending
+            // immediate mute — see [immediateMuteRequested] for why this check is necessary.
+            if (!isPaused && !immediateMuteRequested && !stream.isRunning) {
                 stream.start()
                 startClock()
             }
 
-            // If paused, only accept the very first buffer to establish the base presentation time.
+            // If paused (or an immediate mute is pending the real pause() call), only
+            // accept the very first buffer to establish the base presentation time.
             // Reject everything else so ExoPlayer stops decoding and feeding the void.
-            if (isPaused && !isFirstBuffer) {
+            if ((isPaused || immediateMuteRequested) && !isFirstBuffer) {
                 return false
             }
 
@@ -428,6 +455,7 @@ class FelicityAudioSink(
         }
 
         override fun play() {
+            immediateMuteRequested = false
             if (!stream.isRunning) stream.start()
             startClock()
         }
@@ -442,6 +470,7 @@ class FelicityAudioSink(
             isFirstBuffer = true
             accumulatedPlayedUs = 0L
             isClockRunning = false
+            immediateMuteRequested = false
             if (!isPaused) {
                 stream.start()
                 startClock()
@@ -462,7 +491,9 @@ class FelicityAudioSink(
             // Thread-safe per Oboe's own docs — safe to call while a write on another
             // thread is in flight. Only silences the hardware; the proper pause() call
             // (running later, possibly delayed, on the playback thread) does the rest of
-            // the state bookkeeping.
+            // the state bookkeeping. The flag stops handleBuffer's auto-restart check
+            // (and further backlog buffers) from undoing this before that happens.
+            immediateMuteRequested = true
             stream.pause()
         }
     }
