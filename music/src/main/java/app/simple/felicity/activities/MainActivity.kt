@@ -283,8 +283,6 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         if (applicationContext.isSAFAccessGranted()) {
             AudioDatabaseService.startScan(applicationContext)
         }
-
-        isFirstLaunch = false
     }
 
     /**
@@ -742,6 +740,11 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         // refreshIfNoLyrics() is smart enough to skip this when lyrics are already loaded.
         lyricsManager.refreshIfNoLyrics()
         runDatabaseScanner()
+
+        // Flipped AFTER runDatabaseScanner() so the very first onResume() following a
+        // cold start (where isFirstLaunch is still true) never races with the initial
+        // scan kicked off from onCreate(). See startAudioDatabaseService() for details.
+        isFirstLaunch = false
 
         // One-shot pulse to discover a USB DAC that was already plugged in before the
         // app launched. The broadcast receiver only catches hotplug events while the

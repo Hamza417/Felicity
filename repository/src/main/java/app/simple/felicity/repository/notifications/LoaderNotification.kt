@@ -181,13 +181,21 @@ class LoaderNotification(private val context: Context) {
      * safely in place.
      *
      * @param generation The token returned by [begin] when this scan started.
+     * @return true if [generation] was still current (i.e. this call actually owned
+     *         and dismissed the notification), false if a newer scan had already
+     *         superseded it and this call was a safe no-op. Callers can use this to
+     *         know whether it is safe to also reset any other scan-ownership state —
+     *         a superseded scan must never tear down state belonging to the scan
+     *         that replaced it.
      */
-    fun dismiss(generation: Int) {
+    fun dismiss(generation: Int): Boolean {
         synchronized(lock) {
             if (generation == this.generation) {
                 active = false
                 notificationManager.cancel(SCAN_NOTIFICATION_ID)
+                return true
             }
+            return false
         }
     }
 

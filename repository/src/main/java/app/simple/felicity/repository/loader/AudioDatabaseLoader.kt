@@ -332,19 +332,33 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "Error during audio file processing", e)
         } finally {
-            if (notificationGeneration != -1) {
-                // Generation-aware dismissal: if a newer scan already bumped the
-                // generation, this quietly does nothing so the newer scan's
-                // notification stays untouched. Force-dismissing here was exactly
-                // what made the notification flicker whenever a refresh overlapped
-                // a running scan.
+            // Generation-aware dismissal: if a newer scan already bumped the
+            // generation, dismiss() quietly does nothing and returns false, so the
+            // newer scan's notification stays untouched. Force-dismissing here was
+            // exactly what made the notification flicker whenever a refresh
+            // overlapped a running scan.
+            //
+            // Crucially, `owned` also gates the isScanRunning reset below. A scan
+            // that was superseded (canceled) by a newer one must NEVER flip
+            // isScanRunning back to false — doing so unconditionally let a stale,
+            // already-canceled coroutine's cleanup race with the genuinely active
+            // scan, letting a stray third scan sneak in, bump the notification
+            // generation again, and then itself get canceled with nothing left to
+            // ever call dismiss() on the now-current generation. That left the
+            // "Scanning Library" notification stuck forever — most noticeable on
+            // fast scans (e.g. no new songs found) where this race window is most
+            // likely to be hit.
+            val owned = if (notificationGeneration != -1) {
                 notification.dismiss(notificationGeneration)
             } else {
                 // begin() itself failed (e.g. POST_NOTIFICATIONS was revoked) —
                 // make sure nothing stale is left showing.
                 notification.dismissForce()
+                true
             }
-            isScanRunning.set(false)
+            if (owned) {
+                isScanRunning.set(false)
+            }
         }
     }
 
