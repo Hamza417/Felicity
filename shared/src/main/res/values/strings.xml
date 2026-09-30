@@ -237,6 +237,14 @@
     <string name="move_to_empty_queue">Move to Empty Queue</string>
     <string name="moved_to_empty_queue">Moved to Queue %1$d</string>
     <string name="no_empty_queue_available">No empty queue slot available. Replaced current queue instead.</string>
+
+    <!-- Folder hierarchy shuffle scope confirmation -->
+    <string name="shuffle_scope_title">Shuffle Songs?</string>
+    <string name="shuffle_scope_message">Shuffle only the songs directly inside this folder, or include every song found in its sub-folders too?</string>
+    <string name="shuffle_this_folder_only">This Folder Only</string>
+    <string name="shuffle_include_subfolders">Include Sub-folders</string>
+    <string name="no_songs_to_shuffle">No songs found to shuffle.</string>
+
     <string name="sync_adjust">Sync Adjust</string>
     <string name="accessibility">Accessibility</string>
     <string name="accessibility_desc">Adjust accessibility settings for a better experience.</string>

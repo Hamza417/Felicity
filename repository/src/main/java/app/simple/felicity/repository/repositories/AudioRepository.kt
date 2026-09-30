@@ -533,6 +533,32 @@ class AudioRepository @Inject constructor(
     )
 
     /**
+     * Returns every song located anywhere under [folderPath], including all nested sub-folders,
+     * flattened into a single list. Pass `null` to get every song across every granted folder
+     * (used for the hierarchy's root level, which has no folder of its own).
+     *
+     * This is a one-shot suspend fetch (not a live [Flow]) intended for one-off actions like
+     * "shuffle everything inside this folder and its sub-folders", where a reactive stream isn't
+     * needed. Results are filtered by [LibraryPreferences] minimum duration and size.
+     *
+     * @param folderPath The folder's document ID (as stored in [Folder.path]), or null for the root.
+     * @return A flat list of every [Audio] found at or below [folderPath].
+     */
+    suspend fun getSongsRecursively(folderPath: String?): MutableList<Audio> = withContext(Dispatchers.IO) {
+        val audioList = audioDatabase.audioDao()?.getFilteredAudioList(minDurationMs(), minSizeBytes())
+            ?: return@withContext mutableListOf()
+
+        if (folderPath == null) {
+            audioList
+        } else {
+            audioList.filter { audio ->
+                val docId = docIdOf(audio.uri) ?: return@filter false
+                docId.startsWith("$folderPath/")
+            }.toMutableList()
+        }
+    }
+
+    /**
      * Get all data for an album page including songs, artists, and genres.
      * This method filters audio files by album name and aggregates related data.
      * Results are filtered in real-time by [LibraryPreferences] minimum duration and size.

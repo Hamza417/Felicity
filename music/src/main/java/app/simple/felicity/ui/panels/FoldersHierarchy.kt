@@ -11,8 +11,11 @@ import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.AdapterFolderHierarchy
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.constants.CommonPreferencesConstants
+import app.simple.felicity.databinding.DialogShuffleScopeConfirmationBinding
 import app.simple.felicity.databinding.FragmentFoldersHierarchyBinding
 import app.simple.felicity.databinding.HeaderFoldersHierarchyBinding
+import app.simple.felicity.decorations.highlight.HighlightTextView
+import app.simple.felicity.decorations.popups.SimpleDialog
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.app.GenericListStyleDialog
 import app.simple.felicity.dialogs.app.GenericListStyleDialog.Companion.showListStyleDialog
@@ -83,6 +86,51 @@ class FoldersHierarchy : BasePanelFragment() {
     override fun onDestroyView() {
         adapter = null
         super.onDestroyView()
+    }
+
+    override fun getShuffleButton(): HighlightTextView {
+        return headerBinding.shuffle
+    }
+
+    override fun onShuffleClicked() {
+        super.onShuffleClicked()
+        showShuffleScopeDialog()
+    }
+
+    /**
+     * Lets the user decide whether the shuffle action should only cover the songs visible at
+     * this exact level, or every song found anywhere inside this folder's sub-folder tree too.
+     * Mirrors the "Sure" style confirmation dialogs used elsewhere, but with two affirmative
+     * choices instead of a single confirm/cancel pair.
+     */
+    private fun showShuffleScopeDialog() {
+        SimpleDialog.Builder(
+                container = requireContainerView(),
+                inflateBinding = DialogShuffleScopeConfirmationBinding::inflate)
+            .onDialogInflated { binding, dismiss, _ ->
+                binding.currentLevelOnly.setOnClickListener {
+                    dismiss()
+                    val songs = viewModel.contents.value.songs
+                    if (songs.isEmpty()) {
+                        showWarning(getString(R.string.no_songs_to_shuffle))
+                    } else {
+                        shuffleMediaItems(songs)
+                    }
+                }
+
+                binding.includeSubfolders.setOnClickListener {
+                    dismiss()
+                    viewModel.getRecursiveSongs { songs ->
+                        if (songs.isEmpty()) {
+                            showWarning(getString(R.string.no_songs_to_shuffle))
+                        } else {
+                            shuffleMediaItems(songs)
+                        }
+                    }
+                }
+            }
+            .build()
+            .show()
     }
 
     private fun setupClickListeners() {

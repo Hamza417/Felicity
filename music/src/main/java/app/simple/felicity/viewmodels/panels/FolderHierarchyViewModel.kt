@@ -81,6 +81,20 @@ class FolderHierarchyViewModel @AssistedInject constructor(
         }
     }
 
+    /**
+     * Fetches every song located at or below this level's [folderPath], including all nested
+     * sub-folders, as a one-shot flat list. Used for the "shuffle including sub-folders" option
+     * offered when the user taps the shuffle button.
+     *
+     * @param onResult Called on the main thread with the flattened song list once loaded.
+     */
+    fun getRecursiveSongs(onResult: (List<Audio>) -> Unit) {
+        viewModelScope.launch {
+            val songs = audioRepository.getSongsRecursively(folderPath)
+            onResult(songs)
+        }
+    }
+
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
         when (key) {
