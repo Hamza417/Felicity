@@ -5,9 +5,11 @@ import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.content.Context
 import android.content.SharedPreferences
+import android.graphics.Camera
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
+import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
@@ -22,6 +24,7 @@ import android.view.ViewConfiguration
 import android.view.animation.DecelerateInterpolator
 import android.widget.OverScroller
 import app.simple.felicity.decoration.R
+import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.BAR_YAW_STRENGTH
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.FULL_TRANSITION_ZONE_DP
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.HIGHLIGHT_MIN_ALPHA
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_GRAVITY_BOTTOM
@@ -34,6 +37,7 @@ import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LAYOUT_MODE_FULL
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LAYOUT_MODE_SCROLLING
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LEFT_FADE_DURATION_MS
+import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.MAX_BAR_YAW_DEG
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.WAVEFORM_MODE_FULL
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.WAVEFORM_MODE_HALF
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.WAVEFORM_MODE_REFLECTION
@@ -70,7 +74,9 @@ import kotlin.math.sin
  *
  * An optional fish-eye lens ([optics]) bends the waveform around the playhead so that
  * the left and right edges appear to curve away like the sides of a cylinder instead
- * of staying perfectly flat.
+ * of staying perfectly flat. Bars near the edges also tilt around their own baseline as
+ * they curve away, like spokes on a rotating wheel, instead of merely shrinking and
+ * crowding closer together — this is what sells the round, "rotating radio dial" feel.
  *
  * Horizontal fading edges are applied on both sides using a
  * [PorterDuff.Mode.DST_OUT] gradient layer, following the same technique
@@ -344,6 +350,11 @@ class WaveformSeekbar @JvmOverloads constructor(
     private val barRect = RectF()
     private val pillRect = RectF()
 
+    // Reusable Camera/Matrix pair used to yaw bars around their own vertical axis under the
+    // optics lens (see drawYawedBar). Reused across frames to avoid per-bar allocations.
+    private val barCamera = Camera()
+    private val barCameraMatrix = Matrix()
+
     // Filled circle paint used to draw bookmark indicators above the waveform bars
     private val bookmarkPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
@@ -508,6 +519,13 @@ class WaveformSeekbar @JvmOverloads constructor(
         reflectionBottomGapPx = REFLECTION_BOTTOM_GAP_DP * d
         reflectionLineHeightPx = REFLECTION_LINE_HEIGHT_DP * d
 
+        // Give the yaw projection a bit more perspective punch than Camera's very-far default
+        // location, so the width foreshortening and edge skew applied in drawYawedBar are
+        // clearly visible rather than reading as an almost-imperceptible sliver of scaling.
+        // The location only depends on screen density, so it's set once here rather than on
+        // every bar draw call.
+        barCamera.setLocation(0f, 0f, CAMERA_DEPTH_INCHES * d)
+
         // Read XML attributes when they are provided
         if (attrs != null) {
             val ta = context.obtainStyledAttributes(attrs, R.styleable.WaveformSeekbar, defStyleAttr, 0)
@@ -633,20 +651,82 @@ class WaveformSeekbar @JvmOverloads constructor(
     }
 
     /**
+     * Returns the bar's position on the fish-eye lens expressed as an angle (in radians),
+     * measured from the lens' center axis. This is the single source of truth for both the
+     * vertical foreshortening ([barHeightScale]) and the visual yaw ([barYawDegrees])
+     * applied to a bar, so both effects always agree on exactly how "around the cylinder"
+     * a given bar currently sits.
+     */
+    private fun lensAngleRad(rawOffset: Float): Float {
+        if (optics <= 0f) return 0f
+        val halfWidth = width / 2f
+        if (halfWidth <= 0f) return 0f
+        val lensArc = optics * FISH_EYE_LENS_ARC
+        // Same clamping rationale as curvedOffset: beyond the lens's domain the bar is
+        // offscreen anyway, so its angle no longer matters — clamping just keeps the
+        // trigonometric terms from wobbling back for very large offsets.
+        val u = (rawOffset / halfWidth).coerceIn(-1f, 1f)
+        return u * lensArc
+    }
+
+    /**
      * Calculates how much a bar should shrink vertically because of the fish-eye bend.
      * Bars near the edges are tilted away from us, like markings on a turning cylinder,
      * so their heights are foreshortened by the cosine of their lens angle.
      */
     private fun barHeightScale(rawOffset: Float): Float {
         if (optics <= 0f) return 1f
-        val halfWidth = width / 2f
-        if (halfWidth <= 0f) return 1f
-        val lensArc = optics * FISH_EYE_LENS_ARC
-        // Same clamping rationale as curvedOffset: beyond the lens's domain the bar is
-        // offscreen anyway, so its height scale no longer matters — clamping just keeps
-        // the cosine term from wobbling back upward for very large offsets.
-        val u = (rawOffset / halfWidth).coerceIn(-1f, 1f)
-        return 1f - optics * (1f - cos(u * lensArc))
+        val theta = lensAngleRad(rawOffset)
+        return 1f - optics * (1f - cos(theta))
+    }
+
+    /**
+     * Calculates how far a bar should yaw — rotate around its own **vertical** axis — because
+     * of the fish-eye bend. Picture each bar as a thin vertical picket standing on the rim of
+     * a spinning drum: as the drum turns, pickets near the middle face the viewer head-on,
+     * while pickets approaching the left/right edges progressively turn away and present a
+     * narrower, perspective-skewed face — exactly like the spine of a book rotating on
+     * Photo Gallery's coverflow. That is a yaw (turning around a vertical line), not a roll
+     * (tipping sideways in the view plane), which is why it's applied via [drawYawedBar]'s
+     * [android.graphics.Camera]-based 3D transform instead of a flat [android.graphics.Canvas.rotate].
+     *
+     * The raw lens angle is scaled by [BAR_YAW_STRENGTH] and clamped to [MAX_BAR_YAW_DEG] so
+     * bars never turn so far that they visually collapse to an illegible sliver at the
+     * extreme edges.
+     */
+    private fun barYawDegrees(rawOffset: Float): Float {
+        if (optics <= 0f) return 0f
+        val theta = lensAngleRad(rawOffset)
+        val degrees = Math.toDegrees((theta * BAR_YAW_STRENGTH).toDouble()).toFloat()
+        return degrees.coerceIn(-MAX_BAR_YAW_DEG, MAX_BAR_YAW_DEG)
+    }
+
+    /**
+     * Draws [rect] as a rounded rectangle, yawed around the vertical line passing through
+     * ([pivotX], [pivotY]) by [yawDegrees]. Uses [android.graphics.Camera] to get a genuine
+     * 3D rotation-around-Y-axis projection (foreshortening the bar's width and skewing its
+     * vertical edges into a slight trapezoid) instead of a 2D in-plane rotation, which would
+     * incorrectly tip the bar sideways rather than turn it away from the viewer.
+     *
+     * A rotation around the Y axis leaves the Y coordinate of every point unchanged, so
+     * [pivotY] only matters for keeping the translate math self-consistent — the bar does
+     * not shift vertically no matter what value is passed.
+     */
+    private fun drawYawedBar(canvas: Canvas, rect: RectF, cornerRadius: Float, pivotX: Float, pivotY: Float, yawDegrees: Float) {
+        if (yawDegrees == 0f) {
+            canvas.drawRoundRect(rect, cornerRadius, cornerRadius, barPaint)
+            return
+        }
+        barCamera.save()
+        barCamera.rotateY(yawDegrees)
+        barCamera.getMatrix(barCameraMatrix)
+        barCamera.restore()
+        barCameraMatrix.preTranslate(-pivotX, -pivotY)
+        barCameraMatrix.postTranslate(pivotX, pivotY)
+        canvas.save()
+        canvas.concat(barCameraMatrix)
+        canvas.drawRoundRect(rect, cornerRadius, cornerRadius, barPaint)
+        canvas.restore()
     }
 
     /**
@@ -784,6 +864,14 @@ class WaveformSeekbar @JvmOverloads constructor(
             return lerp(barHeightScale(rawOffset), barHeightScale(absoluteFullOffset), zoomT)
         }
 
+        // Blends bar yaw the same way position and height scale are blended, so the
+        // turning-picket look survives the scrolling ⇄ full-track zoom transition intact.
+        fun blendedYaw(rawOffset: Float): Float {
+            val linearRawOffset = rawOffset * fullScale
+            val absoluteFullOffset = linearRawOffset + fullFocalX - centerX
+            return lerp(barYawDegrees(rawOffset), barYawDegrees(absoluteFullOffset), zoomT)
+        }
+
         // == Full-track congestion normalization ==================================
         // As the view zooms toward LAYOUT_MODE_FULL, the per-bar pixel step can shrink far
         // below a comfortable minimum for long tracks (thousands of one-per-second bars
@@ -905,8 +993,13 @@ class WaveformSeekbar @JvmOverloads constructor(
             }
             barPaint.alpha = (255 * spotlightAlpha * leftFadeAlpha).toInt()
 
+            // Anchor point each bar rotates around: the fixed baseline it grows from, so the
+            // tilt reads as the bar pivoting on the rim of the wheel rather than swinging its
+            // whole body (and detaching from the axis) around some arbitrary point.
+            val anchorY: Float
             when (waveformMode) {
                 WAVEFORM_MODE_FULL -> {
+                    anchorY = centerY
                     // Symmetric: bar grows from center upward AND downward
                     val halfH = max(effMinBarHeightPx / 2f, amp * (effectiveMaxBarArea / 2f)) * heightScale
                     barRect.set(
@@ -917,6 +1010,7 @@ class WaveformSeekbar @JvmOverloads constructor(
                     )
                 }
                 WAVEFORM_MODE_REFLECTION -> {
+                    anchorY = mainWaveformBottom
                     // Reflection main: bar grows upward from just above the separator gap
                     val barH = max(effMinBarHeightPx, amp * maxMainBarArea) * heightScale
                     barRect.set(
@@ -927,6 +1021,7 @@ class WaveformSeekbar @JvmOverloads constructor(
                     )
                 }
                 else -> {
+                    anchorY = centerY
                     // Half: bar grows upward from center only
                     val barH = max(effMinBarHeightPx, amp * effectiveMaxBarArea) * heightScale
                     barRect.set(
@@ -938,7 +1033,12 @@ class WaveformSeekbar @JvmOverloads constructor(
                 }
             }
 
-            canvas.drawRoundRect(barRect, bucketCornerRadiusPx, bucketCornerRadiusPx, barPaint)
+            // Tilt the bar around its own vertical axis (yaw), like a picket turning on the rim
+            // of a spinning drum, instead of merely scaling it — this is what keeps bars near
+            // the edges from reading as "just smaller and squeezed together" and instead sells
+            // a genuine rotating, round wheel feel.
+            val yawDeg = blendedYaw(rawOffset)
+            drawYawedBar(canvas, barRect, bucketCornerRadiusPx, barCenterX, anchorY, yawDeg)
             i = bucketEnd
         }
 
@@ -985,7 +1085,10 @@ class WaveformSeekbar @JvmOverloads constructor(
                         barCenterX + bucketBarWidthPx / 2f,
                         reflectionTop + reflBarH
                 )
-                canvas.drawRoundRect(barRect, bucketCornerRadiusPx, bucketCornerRadiusPx, barPaint)
+                // Tilt the reflected bar the same way as its main counterpart, yawing around
+                // the top of the reflection strip (its own baseline) instead of the main bar's.
+                val reflYawDeg = blendedYaw(rawOffset)
+                drawYawedBar(canvas, barRect, bucketCornerRadiusPx, barCenterX, reflectionTop, reflYawDeg)
                 ri = bucketEnd
             }
 
@@ -2055,6 +2158,31 @@ class WaveformSeekbar @JvmOverloads constructor(
          * area comfortably readable, without the extreme pinching of a full 90 degree lens.
          */
         private const val FISH_EYE_LENS_ARC = 1.0471975f
+
+        /**
+         * Fraction of the raw lens angle actually applied as visible bar yaw in
+         * [barYawDegrees]. Kept well under 1.0 so bars turn noticeably — giving the "proper
+         * rotating wheel" feel the optics effect is going for — without yawing so
+         * aggressively that they collapse into an illegible sliver.
+         */
+        private const val BAR_YAW_STRENGTH = 0.85f
+
+        /**
+         * Hard cap, in degrees, on how far any single bar is allowed to yaw via
+         * [barYawDegrees], regardless of [optics] strength or how close to the edge a bar
+         * sits. Prevents the outermost bars from turning so far that they visually collapse
+         * to a sliver or flip past edge-on.
+         */
+        private const val MAX_BAR_YAW_DEG = 65f
+
+        /**
+         * Distance, in density-independent "camera inches", of [barCamera] from the bar plane
+         * used by [drawYawedBar]. Smaller values (closer camera) produce a stronger, more
+         * pronounced perspective skew as a bar yaws; [android.graphics.Camera]'s own default
+         * location is quite far away and reads as barely-there scaling, so this pulls the
+         * camera in noticeably closer for a visibly 3D "turning picket" look.
+         */
+        private const val CAMERA_DEPTH_INCHES = -6f
 
         /**
          * Alpha fraction [0.0, 1.0] for the separator line in reflection mode.
