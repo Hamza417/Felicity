@@ -23,6 +23,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.callbacks.MiniPlayerCallbacks
+import app.simple.felicity.core.singletons.AppOrientation
 import app.simple.felicity.crash.CrashReporter
 import app.simple.felicity.databinding.ActivityMainBinding
 import app.simple.felicity.databinding.DialogDeleteSongBinding
@@ -60,6 +61,7 @@ import app.simple.felicity.repository.repositories.LrcRepository
 import app.simple.felicity.repository.services.AudioDatabaseService
 import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
 import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
+import app.simple.felicity.shared.utils.ConditionUtils.invert
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
 import app.simple.felicity.shared.utils.UnitUtils.dpToPx
@@ -300,6 +302,11 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
      * @param sliderValue A float between 0.0f and 1.0f representing the desired width scale.
      */
     private fun applyMiniPlayerResponsiveLayout(sliderValue: Float) {
+        if (AppOrientation.isLandscape().invert()) {
+            // In portrait mode, the mini player is always full width, so no scaling needed.
+            return
+        }
+
         val clampedValue = sliderValue.coerceIn(0f, 1f)
 
         val screenWidth = resources.displayMetrics.widthPixels
