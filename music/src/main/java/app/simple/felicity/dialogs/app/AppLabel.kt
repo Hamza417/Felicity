@@ -13,11 +13,8 @@ class AppLabel : ScopedBottomSheetFragment() {
 
     private lateinit var binding: DialogMainAppLabelBinding
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = DialogMainAppLabelBinding.inflate(inflater, container, false)
-
-
-
         return binding.root
     }
 
@@ -29,6 +26,10 @@ class AppLabel : ScopedBottomSheetFragment() {
         binding.save.setOnClickListener {
             val label = binding.editText.text.toString()
             MainPreferences.setAppLabel(label)
+            dismiss()
+        }
+
+        binding.cancel.setOnClickListener {
             dismiss()
         }
     }
