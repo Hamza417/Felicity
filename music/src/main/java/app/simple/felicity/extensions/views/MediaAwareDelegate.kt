@@ -13,6 +13,7 @@ import androidx.core.graphics.ColorUtils
 import androidx.core.graphics.withClip
 import app.simple.felicity.R
 import app.simple.felicity.engine.managers.MediaPlaybackManager
+import app.simple.felicity.extensions.views.MediaAwareDelegate.Companion.knownRowHeights
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.repository.listeners.MediaStateListener
 import app.simple.felicity.repository.managers.SelectionManager
@@ -23,6 +24,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Holds all of the media-aware drawing and state logic shared between
@@ -100,6 +102,9 @@ class MediaAwareDelegate(private val view: View, context: Context) : MediaStateL
     private var cachedIsInSelection = false
     private var cachedDragHandle = false
 
+    /** Whether [onMeasure] has ever produced a real measurement for this instance. */
+    private var hasMeasuredOnce = false
+
     /**
      * Binds an audio ID to the host view. Playing and selection state are resolved
      * immediately so a recycled view never shows stale indicators.
@@ -168,15 +173,44 @@ class MediaAwareDelegate(private val view: View, context: Context) : MediaStateL
      *  3. If it changed, measure a *second* time so children (whose width depends on the
      *     padding) get laid out against the correct value immediately — no extra traversal,
      *     no race, no dependency on some later event to "fix itself".
+     *
+     * ### Why this doesn't cost scroll performance
+     * The second pass only runs when the padding actually changes — which, in steady-state
+     * scrolling/recycling, is virtually never:
+     *  - Row height is stable for a given concrete view type for the whole process lifetime
+     *    (same layout, same font size), so [knownRowHeights] lets a **brand new** ViewHolder
+     *    get the right padding pre-applied *before* it's ever measured — the only view that
+     *    ever actually pays for a second pass is the very first instance of each row type
+     *    created in the app, not every recycled row on every fling.
+     *  - For already-created (recycled) rows, [setAudioID] already re-applies padding
+     *    synchronously during `onBindViewHolder` — *before* this measure call — using the
+     *    view's still-set-from-last-bind height, which is the same stable height. So by the
+     *    time this method runs, padding already matches and the extra pass is skipped.
+     *  - Even in the rare case both fall through (e.g. right after a font-size preference
+     *    change alters row height process-wide), it's one extra cheap measurement of a
+     *    handful of single-line `TextView`s — negligible next to everything else a
+     *    `RecyclerView` already does per newly bound row.
      */
     fun onMeasure(measure: () -> Unit) {
+        if (enableGridMode) {
+            measure()
+            return
+        }
+        if (!hasMeasuredOnce) {
+            // Best-effort guess so a never-before-measured view is already correct by the
+            // time the real measurement below runs, sparing it the second pass too.
+            knownRowHeights[view.javaClass]?.let {
+                applyRightPadding(it)
+            }
+        }
         measure()
-        if (enableGridMode) return
+        hasMeasuredOnce = true
         val h = view.measuredHeight.toFloat()
         if (h <= 0f) return
         if (applyRightPadding(h)) {
             measure()
         }
+        knownRowHeights[view.javaClass] = h
     }
 
     /**
@@ -184,7 +218,7 @@ class MediaAwareDelegate(private val view: View, context: Context) : MediaStateL
      * views in list mode are never hidden behind the drawn indicators. In grid mode this
      * is skipped entirely because the icons float centered and don't displace content.
      *
-     * Used outside of the measure pass — e.g. when playback/selection state changes while
+     * Used outside the measure pass — e.g. when playback/selection state changes while
      * the row is already on screen. In that case [View.setPadding]'s internal
      * `requestLayout()` is *not* racing an in-progress traversal (the state change arrives
      * asynchronously, not from inside `layout()`), so it reliably schedules and completes a
@@ -451,6 +485,21 @@ class MediaAwareDelegate(private val view: View, context: Context) : MediaStateL
          * dark that you can't recognize the album art at all.
          */
         const val GRID_CONTENT_ALPHA = 80
+
+        /**
+         * Last known-good measured row height per concrete host view class (e.g.
+         * [MediaAwareRippleConstraintLayout] used for the list style vs.
+         * [MediaAwareRippleLinearLayout] used for the labels style each get their own entry,
+         * so they never clobber each other even though they share this delegate).
+         *
+         * Used by [onMeasure] to pre-apply a best-effort correct padding to brand new,
+         * never-before-measured instances *before* their first real measurement — since row
+         * height for a given type is effectively constant for the process lifetime, this
+         * means only the very first instance of each type ever created has to pay for the
+         * safety-net second measure pass; every other recycled/created row after it is
+         * correct in a single pass.
+         */
+        private val knownRowHeights = ConcurrentHashMap<Class<*>, Float>()
     }
 }
 
