@@ -27,7 +27,7 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Holds all of the media-aware drawing and state logic shared between
+ * Holds all the media-aware drawing and state logic shared between
  * [MediaAwareRippleConstraintLayout] and [MediaAwareRippleLinearLayout].
  *
  * Both layouts own one instance of this and forward their lifecycle and draw
@@ -157,7 +157,7 @@ class MediaAwareDelegate(private val view: View, context: Context) : MediaStateL
      * *parent's available height* as its size — not the row's own final height — so padding
      * computed from it was frequently wrong.
      *
-     * It also ruled out correcting the padding afterwards from [onSizeChanged]/[onLayout]:
+     * It also ruled out correcting the padding afterward from [onSizeChanged]/[onLayout]:
      * [View.setPadding] internally calls [View.requestLayout], and that call happens *while a
      * layout traversal is already in progress* (we're inside the parent's `layout()` call).
      * `RecyclerView` can swallow or indefinitely defer a `requestLayout()` requested
@@ -264,7 +264,9 @@ class MediaAwareDelegate(private val view: View, context: Context) : MediaStateL
             cachedShaderW = w
             cachedShaderH = h
             cachedShaderColor = accentColor
+            @Suppress("KotlinConstantConditions")
             cachedIsPlaying = playing
+            @Suppress("KotlinConstantConditions")
             cachedIsInSelection = inSelection
             cachedDragHandle = enableDragHandle
             return
