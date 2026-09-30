@@ -199,8 +199,20 @@ interface AudioDao {
     @Query("SELECT * FROM audio WHERE is_available = 1 AND album LIKE '%' || :query || '%' ORDER BY title COLLATE NOCASE ASC")
     fun searchByAlbum(query: String): Flow<MutableList<Audio>>
 
-    // Reactive search with filtering
-    @Query("SELECT * FROM audio WHERE is_available = 1 AND duration >= :minDuration AND size >= :minSize AND title LIKE '%' || :query || '%' ORDER BY title COLLATE NOCASE ASC")
+    // Reactive search with filtering.
+    // The title search also falls back to the "name" column (raw file display name,
+    // e.g. "song.mp3") and the "path" column (full filesystem path) so that files with
+    // missing/blank metadata titles can still be found by their file name.
+    @Query("""
+        SELECT * FROM audio
+        WHERE is_available = 1 AND duration >= :minDuration AND size >= :minSize
+        AND (
+            title LIKE '%' || :query || '%'
+            OR name LIKE '%' || :query || '%'
+            OR path LIKE '%' || :query || '%'
+        )
+        ORDER BY title COLLATE NOCASE ASC
+    """)
     fun searchByTitleFiltered(query: String, minDuration: Long, minSize: Long): Flow<MutableList<Audio>>
 
     @Query("SELECT * FROM audio WHERE is_available = 1 AND duration >= :minDuration AND size >= :minSize AND artist LIKE '%' || :query || '%' ORDER BY title COLLATE NOCASE ASC")

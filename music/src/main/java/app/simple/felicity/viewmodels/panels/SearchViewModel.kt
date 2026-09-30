@@ -15,6 +15,7 @@ import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.YearGroup
 import app.simple.felicity.repository.repositories.AudioRepository
 import app.simple.felicity.repository.sort.SearchSort.searchSorted
+import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -33,12 +34,13 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * ViewModel for the Search panel. Searches all audio fields (title, artist, album,
- * genre, composer, year) and groups results into [SearchResults] by category
- * (songs, albums, artists, genres, composers, years).
+ * ViewModel for the Search panel. Searches all audio fields (title, file name, path,
+ * artist, album, genre, composer, year) and groups results into [SearchResults] by
+ * category (songs, albums, artists, genres, composers, years).
  * A 300 ms debounce prevents excessive queries while the user is typing.
  * Category visibility is driven by [SearchCategoryFilter] which is persisted
- * through [SearchPreferences].
+ * through [SearchPreferences]. Song results are additionally ranked by title-match
+ * relevance so the most relevant track always appears first (see [titleRelevanceRank]).
  *
  * @author Hamza417
  */
@@ -120,6 +122,13 @@ class SearchViewModel @Inject constructor(
     /**
      * Aggregates raw per-field query results into a [SearchResults] instance,
      * applying the current [SearchCategoryFilter] to suppress disabled categories.
+     *
+     * Songs are additionally ranked by how closely their title matches [query] — an exact
+     * (or "starts with") title match is always surfaced above other songs that only matched
+     * through an unrelated field (e.g. the album name), even if those other songs would
+     * otherwise sort earlier alphabetically. This fixes the case where a song shares its
+     * name with its album: previously every track on that album would be interleaved
+     * alphabetically, burying the actual match.
      */
     private fun buildSearchResults(
             core: CoreAudioResults,
@@ -132,6 +141,7 @@ class SearchViewModel @Inject constructor(
         val allAudio = (byTitle + byAlbum + byGenre + byComposer)
             .distinctBy { it.id }
             .searchSorted()
+            .sortedBy { it.titleRelevanceRank(query) }
 
         val songs = if (filter.songsEnabled) allAudio else emptyList()
 
@@ -185,6 +195,21 @@ class SearchViewModel @Inject constructor(
         )
     }
 
+
+    /**
+     * Ranks how closely this track's title matches [query], for sorting purposes.
+     * Lower is a better match: 0 = exact match, 1 = starts with, 2 = contains, 3 = no title match
+     * (i.e. the track only matched through another field like album, genre, or composer).
+     */
+    private fun Audio.titleRelevanceRank(query: String): Int {
+        val title = getProperTitle()
+        return when {
+            title.equals(query, ignoreCase = true) -> 0
+            title.startsWith(query, ignoreCase = true) -> 1
+            title.contains(query, ignoreCase = true) -> 2
+            else -> 3
+        }
+    }
 
     private fun resort() {
         viewModelScope.launch(Dispatchers.IO) {
