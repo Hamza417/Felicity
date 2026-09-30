@@ -75,7 +75,6 @@ class MediaAwareDelegate(private val view: View, context: Context) : MediaStateL
         set(value) {
             if (field == value) return
             field = value
-            appliedIconCount = -1
             updateRightPadding()
             view.invalidate()
         }
@@ -101,9 +100,6 @@ class MediaAwareDelegate(private val view: View, context: Context) : MediaStateL
     private var cachedIsInSelection = false
     private var cachedDragHandle = false
 
-    /** Tracks the last padding we applied so we don't trigger unnecessary layout passes. */
-    private var appliedIconCount = -1
-
     /**
      * Binds an audio ID to the host view. Playing and selection state are resolved
      * immediately so a recycled view never shows stale indicators.
@@ -113,7 +109,6 @@ class MediaAwareDelegate(private val view: View, context: Context) : MediaStateL
         this.audioID = audioID
         isPlaying = audioID == MediaPlaybackManager.getCurrentSongId()
         isInSelection = SelectionManager.selectedAudios.value.any { it.id == audioID }
-        appliedIconCount = -1
         updateRightPadding()
         view.invalidate()
     }
@@ -147,23 +142,75 @@ class MediaAwareDelegate(private val view: View, context: Context) : MediaStateL
     }
 
     /**
+     * Should be called from the host's `View.onMeasure()`, wrapping the real
+     * `super.onMeasure(widthMeasureSpec, heightMeasureSpec)` call in [measure].
+     *
+     * Host rows are `wrap_content` in height — the *real* row height (driven by the
+     * title/artist text lines + cover art) isn't known until **after** children have been
+     * measured. That ruled out computing the icon padding from `heightMeasureSpec` directly:
+     * for a `wrap_content` view inside a `RecyclerView` the spec is `AT_MOST` with the
+     * *parent's available height* as its size — not the row's own final height — so padding
+     * computed from it was frequently wrong.
+     *
+     * It also ruled out correcting the padding afterwards from [onSizeChanged]/[onLayout]:
+     * [View.setPadding] internally calls [View.requestLayout], and that call happens *while a
+     * layout traversal is already in progress* (we're inside the parent's `layout()` call).
+     * `RecyclerView` can swallow or indefinitely defer a `requestLayout()` requested
+     * mid-traversal, so the corrected padding never actually re-measures the text — it stays
+     * wrong until something else (e.g. a full rebind after the app is stopped and resumed)
+     * forces a fresh measure pass.
+     *
+     * The fix is a manual two-pass measure, entirely local to this single `onMeasure` call:
+     *  1. Measure once (with whatever padding is currently applied) purely to learn the real,
+     *     final `measuredHeight` — width doesn't affect it since all text rows are
+     *     `maxLines="1"` + `ellipsize="end"`, so they can't grow taller from less width.
+     *  2. Compute the correct padding from that real height and apply it if it changed.
+     *  3. If it changed, measure a *second* time so children (whose width depends on the
+     *     padding) get laid out against the correct value immediately — no extra traversal,
+     *     no race, no dependency on some later event to "fix itself".
+     */
+    fun onMeasure(measure: () -> Unit) {
+        measure()
+        if (enableGridMode) return
+        val h = view.measuredHeight.toFloat()
+        if (h <= 0f) return
+        if (applyRightPadding(h)) {
+            measure()
+        }
+    }
+
+    /**
      * Applies right padding equal to the total width of all visible icons so that child
      * views in list mode are never hidden behind the drawn indicators. In grid mode this
      * is skipped entirely because the icons float centered and don't displace content.
+     *
+     * Used outside of the measure pass — e.g. when playback/selection state changes while
+     * the row is already on screen. In that case [View.setPadding]'s internal
+     * `requestLayout()` is *not* racing an in-progress traversal (the state change arrives
+     * asynchronously, not from inside `layout()`), so it reliably schedules and completes a
+     * fresh traversal on its own.
      */
     fun updateRightPadding() {
         if (enableGridMode) return
         if (view.height == 0) return
-        val h = view.height.toFloat()
+        applyRightPadding(view.height.toFloat())
+    }
+
+    /**
+     * Shared padding math. Returns `true` if the padding actually changed (i.e. a caller doing
+     * its own measure pass, like [onMeasure], needs to re-measure to account for it).
+     */
+    private fun applyRightPadding(h: Float): Boolean {
         val iconSize = (h * 0.45f).toInt()
         val iconPadding = (h * 0.10f).toInt()
         val iconCount = (if (enableDragHandle) 1 else 0) +
                 (if (isPlaying) 1 else 0) +
                 (if (isInSelection) 1 else 0)
-        if (iconCount == appliedIconCount) return
-        appliedIconCount = iconCount
-        view.setPadding(view.paddingLeft, view.paddingTop, iconCount * (iconSize + iconPadding), view.paddingBottom)
+        val newPaddingRight = iconCount * (iconSize + iconPadding)
+        if (newPaddingRight == view.paddingRight) return false
+        view.setPadding(view.paddingLeft, view.paddingTop, newPaddingRight, view.paddingBottom)
         // WARN: do not call invalidate here
+        return true
     }
 
     /**
