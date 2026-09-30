@@ -24,6 +24,7 @@ import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Genre
+import app.simple.felicity.repository.models.YearGroup
 import app.simple.felicity.repository.utils.AudioUtils.getProperAlbum
 import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
 import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
@@ -60,6 +61,12 @@ class AdapterSearch : FastScrollAdapter<VerticalListViewHolder>() {
     /** Backing genre list kept for consistency; genres are passed individually to callbacks. */
     private var genres: MutableList<Genre> = mutableListOf()
 
+    /** Backing composer list used as the parameter for composer-click callbacks. */
+    private var composers: MutableList<Artist> = mutableListOf()
+
+    /** Backing year-group list kept for consistency; years are passed individually to callbacks. */
+    private var years: MutableList<YearGroup> = mutableListOf()
+
     /** Current layout mode that determines which song view type is inflated. */
     var layoutMode: CommonPreferencesConstants.LayoutMode = SearchPreferences.getGridSize()
 
@@ -85,6 +92,12 @@ class AdapterSearch : FastScrollAdapter<VerticalListViewHolder>() {
 
                 oldItem is SearchAdapterItem.GenreItem && newItem is SearchAdapterItem.GenreItem ->
                     oldItem.genre.id == newItem.genre.id
+
+                oldItem is SearchAdapterItem.ComposerItem && newItem is SearchAdapterItem.ComposerItem ->
+                    oldItem.composer.id == newItem.composer.id
+
+                oldItem is SearchAdapterItem.YearItem && newItem is SearchAdapterItem.YearItem ->
+                    oldItem.yearGroup.id == newItem.yearGroup.id
 
                 else -> false
             }
@@ -130,6 +143,8 @@ class AdapterSearch : FastScrollAdapter<VerticalListViewHolder>() {
             is SearchAdapterItem.AlbumItem -> VIEW_TYPE_ALBUM
             is SearchAdapterItem.ArtistItem -> VIEW_TYPE_ARTIST
             is SearchAdapterItem.GenreItem -> VIEW_TYPE_GENRE
+            is SearchAdapterItem.ComposerItem -> VIEW_TYPE_COMPOSER
+            is SearchAdapterItem.YearItem -> VIEW_TYPE_YEAR
             is SearchAdapterItem.SongItem -> when {
                 layoutMode.isLabel -> VIEW_TYPE_SONG_LABEL
                 layoutMode.isGrid -> VIEW_TYPE_SONG_GRID
@@ -159,6 +174,12 @@ class AdapterSearch : FastScrollAdapter<VerticalListViewHolder>() {
             VIEW_TYPE_GENRE ->
                 GenreHolder(AdapterStyleListBinding.inflate(inflater, parent, false))
 
+            VIEW_TYPE_COMPOSER ->
+                ComposerHolder(AdapterStyleListBinding.inflate(inflater, parent, false))
+
+            VIEW_TYPE_YEAR ->
+                YearHolder(AdapterStyleListBinding.inflate(inflater, parent, false))
+
             else ->
                 SongListHolder(AdapterStyleListBinding.inflate(inflater, parent, false))
         }
@@ -173,6 +194,8 @@ class AdapterSearch : FastScrollAdapter<VerticalListViewHolder>() {
             is AlbumHolder -> holder.bind(items[position] as SearchAdapterItem.AlbumItem, isLightBind)
             is ArtistHolder -> holder.bind(items[position] as SearchAdapterItem.ArtistItem, isLightBind)
             is GenreHolder -> holder.bind(items[position] as SearchAdapterItem.GenreItem)
+            is ComposerHolder -> holder.bind(items[position] as SearchAdapterItem.ComposerItem)
+            is YearHolder -> holder.bind(items[position] as SearchAdapterItem.YearItem)
         }
     }
 
@@ -185,6 +208,8 @@ class AdapterSearch : FastScrollAdapter<VerticalListViewHolder>() {
             is AlbumHolder -> Glide.with(holder.binding.cover).clear(holder.binding.cover)
             is ArtistHolder -> Glide.with(holder.binding.cover).clear(holder.binding.cover)
             is GenreHolder -> Glide.with(holder.binding.cover).clear(holder.binding.cover)
+            is ComposerHolder -> Glide.with(holder.binding.cover).clear(holder.binding.cover)
+            is YearHolder -> Glide.with(holder.binding.cover).clear(holder.binding.cover)
             else -> Unit
         }
     }
@@ -198,6 +223,8 @@ class AdapterSearch : FastScrollAdapter<VerticalListViewHolder>() {
      * @param albumsHeader Label used for the albums section header.
      * @param artistsHeader Label used for the artists section header.
      * @param genresHeader Label used for the genres section header.
+     * @param composersHeader Label used for the composers section header.
+     * @param yearsHeader Label used for the years section header.
      */
     fun submitResults(
             results: SearchResults,
@@ -205,11 +232,15 @@ class AdapterSearch : FastScrollAdapter<VerticalListViewHolder>() {
             albumsHeader: String,
             artistsHeader: String,
             genresHeader: String,
+            composersHeader: String,
+            yearsHeader: String,
     ) {
         songs = results.songs.toMutableList()
         albums = results.albums.toMutableList()
         artists = results.artists.toMutableList()
         genres = results.genres.toMutableList()
+        composers = results.composers.toMutableList()
+        years = results.years.toMutableList()
 
         val newItems = buildList {
             if (songs.isNotEmpty()) {
@@ -227,6 +258,14 @@ class AdapterSearch : FastScrollAdapter<VerticalListViewHolder>() {
             if (genres.isNotEmpty()) {
                 add(SearchAdapterItem.Header(genresHeader))
                 genres.forEach { add(SearchAdapterItem.GenreItem(it)) }
+            }
+            if (composers.isNotEmpty()) {
+                add(SearchAdapterItem.Header(composersHeader))
+                composers.forEach { add(SearchAdapterItem.ComposerItem(it)) }
+            }
+            if (years.isNotEmpty()) {
+                add(SearchAdapterItem.Header(yearsHeader))
+                years.forEach { add(SearchAdapterItem.YearItem(it)) }
             }
         }
 
@@ -454,8 +493,61 @@ class AdapterSearch : FastScrollAdapter<VerticalListViewHolder>() {
         }
     }
 
+    /**
+     * ViewHolder for composer result rows. Composers are modeled as [Artist] elsewhere
+     * in the app (e.g. the Composers panel), so this holder mirrors [ArtistHolder].
+     *
+     * @param binding The view binding for the list item layout.
+     */
+    inner class ComposerHolder(val binding: AdapterStyleListBinding) :
+            VerticalListViewHolder(binding.root) {
+
+        fun bind(item: SearchAdapterItem.ComposerItem) {
+            val composer = item.composer
+            binding.title.setTextOrUnknown(composer.name)
+            binding.secondaryDetail.setTextOrUnknown(
+                    context.resources.getQuantityString(R.plurals.number_of_songs, composer.trackCount, composer.trackCount)
+            )
+            binding.tertiaryDetail.gone(false)
+            binding.cover.loadArtCoverWithPayload(item = composer)
+            binding.container.setOnClickListener {
+                if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
+                    generalAdapterCallbacks?.onComposerClicked(composers, composers.indexOf(composer), it)
+                }
+            }
+            binding.container.setOnLongClickListener {
+                if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
+                    generalAdapterCallbacks?.onComposerLongClicked(composers, composers.indexOf(composer), binding.cover)
+                }
+                true
+            }
+        }
+    }
+
+    /**
+     * ViewHolder for year-group result rows.
+     *
+     * @param binding The view binding for the list item layout.
+     */
+    inner class YearHolder(val binding: AdapterStyleListBinding) :
+            VerticalListViewHolder(binding.root) {
+
+        fun bind(item: SearchAdapterItem.YearItem) {
+            val yearGroup = item.yearGroup
+            binding.title.text = yearGroup.year
+            binding.secondaryDetail.text = context.resources.getQuantityString(
+                    R.plurals.number_of_songs, yearGroup.songCount, yearGroup.songCount
+            )
+            binding.tertiaryDetail.gone(false)
+            binding.cover.loadArtCoverWithPayload(yearGroup)
+            binding.container.setOnClickListener {
+                generalAdapterCallbacks?.onYearGroupClicked(yearGroup, it)
+            }
+        }
+    }
+
     companion object {
-        /** View type for section header rows (Songs, Albums, Artists, Genres). */
+        /** View type for section header rows (Songs, Albums, Artists, Genres, Composers, Years). */
         const val VIEW_TYPE_HEADER = 0
 
         /** View type for song items in list mode. */
@@ -475,6 +567,12 @@ class AdapterSearch : FastScrollAdapter<VerticalListViewHolder>() {
 
         /** View type for genre result rows. */
         const val VIEW_TYPE_GENRE = 6
+
+        /** View type for composer result rows. */
+        const val VIEW_TYPE_COMPOSER = 7
+
+        /** View type for year-group result rows. */
+        const val VIEW_TYPE_YEAR = 8
     }
 }
 
@@ -518,4 +616,18 @@ sealed class SearchAdapterItem {
      * @param genre The [Genre] data to display.
      */
     data class GenreItem(val genre: Genre) : SearchAdapterItem()
+
+    /**
+     * A composer result row. Composers are modeled as [Artist] elsewhere in the app.
+     *
+     * @param composer The composer (as [Artist]) data to display.
+     */
+    data class ComposerItem(val composer: Artist) : SearchAdapterItem()
+
+    /**
+     * A year-group result row.
+     *
+     * @param yearGroup The [YearGroup] data to display.
+     */
+    data class YearItem(val yearGroup: YearGroup) : SearchAdapterItem()
 }

@@ -69,6 +69,7 @@
     <string name="date_added">Date Added</string>
     <string name="duration">Duration</string>
     <string name="year">Year</string>
+    <string name="years">Years</string>
     <string name="sorting_style">Sorting Style</string>
     <string name="normal">Normal</string>
     <string name="reversed">Reversed</string>

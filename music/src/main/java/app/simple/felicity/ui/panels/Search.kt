@@ -32,21 +32,24 @@ import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Genre
+import app.simple.felicity.repository.models.YearGroup
 import app.simple.felicity.repository.sort.SearchSort.setSearchSort
 import app.simple.felicity.shared.utils.TimeUtils.toDynamicTimeString
 import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.shared.utils.ViewUtils.visible
 import app.simple.felicity.ui.pages.AlbumPage
 import app.simple.felicity.ui.pages.ArtistPage
+import app.simple.felicity.ui.pages.ComposerPage
 import app.simple.felicity.ui.pages.GenrePage
+import app.simple.felicity.ui.pages.YearPage
 import app.simple.felicity.viewmodels.panels.SearchViewModel
 import kotlinx.coroutines.launch
 
 /**
  * Search panel that performs a full-library search across songs, albums, artists,
- * and genres using a single [AdapterSearch] with multiple view types. Results are
- * separated by labeled section headers that are part of the same flat item list.
- * A filter button allows toggling which categories are searched.
+ * genres, composers, and years using a single [AdapterSearch] with multiple view types.
+ * Results are separated by labeled section headers that are part of the same flat item
+ * list. A filter button allows toggling which categories are searched.
  * Search queries are debounced by 300 ms in [SearchViewModel] to avoid excessive
  * database queries while the user is typing.
  *
@@ -153,6 +156,17 @@ class Search : PanelFragment() {
                 override fun onGenreClicked(genre: Genre, view: View) {
                     openFragment(GenrePage.newInstance(genre), GenrePage.TAG)
                 }
+
+                override fun onComposerClicked(
+                        composers: List<Artist>,
+                        position: Int,
+                        view: View) {
+                    openFragment(ComposerPage.newInstance(composers[position]), ComposerPage.TAG)
+                }
+
+                override fun onYearGroupClicked(yearGroup: YearGroup, view: View) {
+                    openFragment(YearPage.newInstance(yearGroup), YearPage.TAG)
+                }
             })
         }
 
@@ -225,13 +239,17 @@ class Search : PanelFragment() {
         val albumsHeader = getString(R.string.albums)
         val artistsHeader = getString(R.string.artists)
         val genresHeader = getString(R.string.genres)
+        val composersHeader = getString(R.string.composers)
+        val yearsHeader = getString(R.string.years)
 
         adapterSearch?.submitResults(
                 results = results,
                 songsHeader = songsHeader,
                 albumsHeader = albumsHeader,
                 artistsHeader = artistsHeader,
-                genresHeader = genresHeader
+                genresHeader = genresHeader,
+                composersHeader = composersHeader,
+                yearsHeader = yearsHeader
         )
 
         headerBinding.sortStyle.setSearchSort()
@@ -282,6 +300,28 @@ class Search : PanelFragment() {
             }
         } else {
             headerBinding.chipGenres.gone()
+        }
+
+        // Composers chip: show count and wire scroll, hide when empty.
+        if (results.composers.isNotEmpty()) {
+            headerBinding.chipComposers.visible()
+            headerBinding.chipComposers.text = getString(R.string.x_composers, results.composers.size)
+            headerBinding.chipComposers.setOnClickListener {
+                scrollToSection(composersHeader)
+            }
+        } else {
+            headerBinding.chipComposers.gone()
+        }
+
+        // Years chip: show count and wire scroll, hide when empty.
+        if (results.years.isNotEmpty()) {
+            headerBinding.chipYears.visible()
+            headerBinding.chipYears.text = getString(R.string.x_years, results.years.size)
+            headerBinding.chipYears.setOnClickListener {
+                scrollToSection(yearsHeader)
+            }
+        } else {
+            headerBinding.chipYears.gone()
         }
 
         headerBinding.hours.setOnClickListener {

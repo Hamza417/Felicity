@@ -1144,6 +1144,64 @@ class AudioRepository @Inject constructor(
     }
 
     /**
+     * Reactive composer search that returns proper [Artist] objects (composers are modeled
+     * as [Artist] elsewhere in the app, e.g. [getAllComposersWithAggregation]) with accurate counts.
+     *
+     * @param query The text the user typed in the search box.
+     * @return Flow of composers (as [Artist]) whose name matches [query], sorted by name.
+     */
+    fun searchComposersFlow(query: String): Flow<List<Artist>> {
+        return audioDatabase.audioDao()?.searchByComposerFiltered(query, minDurationMs(), minSizeBytes())?.map { songs ->
+            songs.mapNotNull { it.composer?.takeIf { name -> name.isNotBlank() } }
+                .distinct()
+                .filter { it.contains(query, ignoreCase = true) }
+                .map { name ->
+                    val matchedSongs = songs.filter { it.composer == name }
+                    val uniqueAlbums = matchedSongs.mapNotNull { it.album }.distinct().size
+                    Artist(
+                            id = name.hashCode().toLong(),
+                            name = name,
+                            albumCount = uniqueAlbums,
+                            trackCount = matchedSongs.size,
+                            songPaths = matchedSongs.map { it.uri }
+                    )
+                }
+                .sortedBy { it.name?.lowercase() }
+        } ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
+     * Reactive search by year – re-emits whenever the audio table changes.
+     * Filtered in real-time by [LibraryPreferences] minimum duration and size.
+     */
+    fun searchByYearFlow(year: String): Flow<MutableList<Audio>> {
+        return audioDatabase.audioDao()?.searchByYearFiltered(year, minDurationMs(), minSizeBytes())
+            ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
+     * Reactive year search that groups matches into [YearGroup] objects.
+     *
+     * @param query The text the user typed in the search box.
+     * @return Flow of [YearGroup] objects whose year string matches [query], sorted descending.
+     */
+    fun searchYearGroupsFlow(query: String): Flow<List<YearGroup>> {
+        return audioDatabase.audioDao()?.searchByYearFiltered(query, minDurationMs(), minSizeBytes())?.map { songs ->
+            songs.groupBy { it.year }
+                .mapNotNull { (year, matchedSongs) ->
+                    if (year.isNullOrEmpty()) return@mapNotNull null
+                    YearGroup(
+                            id = year.hashCode().toLong(),
+                            year = year,
+                            songPaths = matchedSongs.map { it.uri },
+                            songCount = matchedSongs.size
+                    )
+                }
+                .sortedByDescending { it.year }
+        } ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
      * Get audio files sorted by a specific column
      * @param sortColumn The column to sort by (e.g., "title", "artist", "date_added")
      * @param ascending Whether to sort in ascending order (true) or descending (false)

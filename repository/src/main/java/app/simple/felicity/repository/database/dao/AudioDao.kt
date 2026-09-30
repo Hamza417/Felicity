@@ -215,6 +215,10 @@ interface AudioDao {
     @Query("SELECT * FROM audio WHERE is_available = 1 AND duration >= :minDuration AND size >= :minSize AND composer LIKE '%' || :query || '%' ORDER BY title COLLATE NOCASE ASC")
     fun searchByComposerFiltered(query: String, minDuration: Long, minSize: Long): Flow<MutableList<Audio>>
 
+    // Reactive search by year – matches any year string containing the query (e.g. "19" matches "1998").
+    @Query("SELECT * FROM audio WHERE is_available = 1 AND duration >= :minDuration AND size >= :minSize AND year LIKE '%' || :query || '%' ORDER BY title COLLATE NOCASE ASC")
+    fun searchByYearFiltered(query: String, minDuration: Long, minSize: Long): Flow<MutableList<Audio>>
+
     @Query("SELECT id FROM audio WHERE uri = :path AND is_available = 1")
     fun getAudioIdByPath(path: String): Long
 

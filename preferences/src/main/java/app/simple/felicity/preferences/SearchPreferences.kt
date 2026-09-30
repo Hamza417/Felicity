@@ -17,6 +17,8 @@ object SearchPreferences {
     const val FILTER_ALBUMS = "search_filter_albums"
     const val FILTER_ARTISTS = "search_filter_artists"
     const val FILTER_GENRES = "search_filter_genres"
+    const val FILTER_COMPOSERS = "search_filter_composers"
+    const val FILTER_YEARS = "search_filter_years"
 
     // ----------------------------------------------------------------------------------------- //
 
@@ -89,4 +91,16 @@ object SearchPreferences {
 
     fun setGenresEnabled(value: Boolean) =
         SharedPreferences.getSharedPreferences().edit { putBoolean(FILTER_GENRES, value) }
+
+    fun isComposersEnabled(): Boolean =
+        SharedPreferences.getSharedPreferences().getBoolean(FILTER_COMPOSERS, true)
+
+    fun setComposersEnabled(value: Boolean) =
+        SharedPreferences.getSharedPreferences().edit { putBoolean(FILTER_COMPOSERS, value) }
+
+    fun isYearsEnabled(): Boolean =
+        SharedPreferences.getSharedPreferences().getBoolean(FILTER_YEARS, true)
+
+    fun setYearsEnabled(value: Boolean) =
+        SharedPreferences.getSharedPreferences().edit { putBoolean(FILTER_YEARS, value) }
 }
