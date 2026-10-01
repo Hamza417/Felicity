@@ -8,6 +8,7 @@ object LyricsPreferences {
     const val LRC_ALIGNMENT = "lyrics_lrc_alignment"
     const val LRC_TEXT_SIZE = "lyrics_lrc_text_size"
     const val AUTO_DOWNLOAD_LYRICS = "lyrics_auto_download"
+    const val ALBUM_ART_BACKGROUND = "lyrics_album_art_background"
 
     const val LEFT = 0
     const val CENTER = 1
@@ -45,5 +46,16 @@ object LyricsPreferences {
     fun isAutoDownloadLyrics(): Boolean {
         return SharedPreferences.getSharedPreferences()
             .getBoolean(AUTO_DOWNLOAD_LYRICS, false)
+    }
+
+    fun setAlbumArtBackground(enabled: Boolean) {
+        SharedPreferences.getSharedPreferences().edit {
+            putBoolean(ALBUM_ART_BACKGROUND, enabled)
+        }
+    }
+
+    fun isAlbumArtBackground(): Boolean {
+        return SharedPreferences.getSharedPreferences()
+            .getBoolean(ALBUM_ART_BACKGROUND, true)
     }
 }

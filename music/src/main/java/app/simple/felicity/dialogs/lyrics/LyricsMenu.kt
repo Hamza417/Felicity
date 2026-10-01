@@ -54,6 +54,11 @@ class LyricsMenu : MediaBottomDialogFragment() {
             }
         })
 
+        binding.backgroundToggle.isChecked = LyricsPreferences.isAlbumArtBackground()
+        binding.backgroundToggle.setOnCheckedChangeListener { _, isChecked ->
+            LyricsPreferences.setAlbumArtBackground(isChecked)
+        }
+
         binding.textSizeSeekbar.setRightLabelProvider { progress, f1, f2 ->
             String.format(Locale.getDefault(), "%.1f px", progress)
         }

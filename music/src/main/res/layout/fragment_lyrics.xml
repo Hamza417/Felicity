@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<app.simple.felicity.decorations.theme.ThemeFrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:orientation="vertical"
@@ -131,4 +131,4 @@
 
     </app.simple.felicity.decorations.padding.NonThemePaddingAwareLinearLayout>
 
-</FrameLayout>
+</app.simple.felicity.decorations.theme.ThemeFrameLayout>

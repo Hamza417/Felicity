@@ -23,7 +23,6 @@ import app.simple.felicity.dialogs.lyrics.LyricsMenu.Companion.showLyricsMenu
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
-import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.managers.LyricsLoadingStatus
 import app.simple.felicity.preferences.LyricsPreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
@@ -31,6 +30,8 @@ import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
 import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
+import app.simple.felicity.shared.utils.ViewUtils.gone
+import app.simple.felicity.shared.utils.ViewUtils.visible
 import app.simple.felicity.ui.panels.Lyrics.Companion.TEXT_SIZE_DEBOUNCE_MS
 import app.simple.felicity.ui.subpanels.LrcEditor
 import app.simple.felicity.ui.subpanels.LyricsSearch
@@ -84,6 +85,7 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
         requireHiddenMiniPlayer()
         setAlignment()
         applyTextSize()
+        setAlbumArtBackground(animate = true)
         updateState()
 
         binding.lrc.setOnLrcClickListener { timeInMillis, _ ->
@@ -295,6 +297,23 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
         }
     }
 
+    private fun setAlbumArtBackground(animate: Boolean = false) {
+        val enabled = LyricsPreferences.isAlbumArtBackground()
+        if (enabled) {
+            binding.cover.animate()
+                .alpha(1f)
+                .setDuration(if (animate) 300L else 0L)
+                .withStartAction { binding.cover.visible(false) }
+                .start()
+        } else {
+            binding.cover.animate()
+                .alpha(0f)
+                .setDuration(if (animate) 300L else 0L)
+                .withEndAction { binding.cover.gone(false) }
+                .start()
+        }
+    }
+
     override val wantsMiniPlayerVisible: Boolean
         get() = false
 
@@ -303,6 +322,7 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
         when (key) {
             LyricsPreferences.LRC_ALIGNMENT -> setAlignment(animate = true)
             LyricsPreferences.LRC_TEXT_SIZE -> scheduleTextSizeUpdate()
+            LyricsPreferences.ALBUM_ART_BACKGROUND -> setAlbumArtBackground(animate = true)
         }
     }
 
