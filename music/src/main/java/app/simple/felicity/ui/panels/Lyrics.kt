@@ -22,6 +22,7 @@ import app.simple.felicity.dialogs.lyrics.LyricsMenu
 import app.simple.felicity.dialogs.lyrics.LyricsMenu.Companion.showLyricsMenu
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.fragments.MediaFragment
+import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.managers.LyricsLoadingStatus
 import app.simple.felicity.preferences.LyricsPreferences
@@ -245,7 +246,15 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
         currentAudioPath = audio.uri
         binding.title.text = audio.getProperTitle()
         binding.artists.text = audio.getProperArtists()
-        binding.cover.loadArtCoverWithPayload(audio)
+        binding.cover.loadArtCover(
+                audio,
+                blur = true,
+                shadow = false,
+                crop = true,
+                roundedCorners = false,
+                darken = true,
+                greyscale = false
+        )
         binding.lrc.setDuration(audio.duration)
         binding.seekbar.setDuration(audio.duration)
         binding.seekbar.setProgress(MediaPlaybackManager.getSeekPosition(), animate = false)
@@ -328,7 +337,15 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
             val forward = MediaPlaybackManager.lastNavigationDirection
             binding.title.setTextWithEffect(audio.getProperTitle(), forward)
             binding.artists.setTextWithEffect(audio.getProperArtists(), forward, 50L)
-            binding.cover.loadArtCoverWithPayload(audio)
+            binding.cover.loadArtCover(
+                    audio,
+                    blur = true,
+                    shadow = false,
+                    crop = true,
+                    roundedCorners = false,
+                    darken = true,
+                    greyscale = false
+            )
             binding.lrc.setDuration(audio.duration)
             binding.seekbar.setDurationWithReset(audio.duration)
         }
