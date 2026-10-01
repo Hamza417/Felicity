@@ -16,6 +16,7 @@ import app.simple.felicity.databinding.FragmentLyricsBinding
 import app.simple.felicity.decorations.lrc.view.FelicityLrcView
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithEffect
+import app.simple.felicity.decorations.views.FelicityMediaControls.Companion.MediaControlListener
 import app.simple.felicity.dialogs.lyrics.AddLyrics
 import app.simple.felicity.dialogs.lyrics.AddLyrics.Companion.showAddLyrics
 import app.simple.felicity.dialogs.lyrics.LyricsMenu
@@ -128,17 +129,27 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
             })
         }
 
-        binding.next.setOnClickListener {
-            MediaPlaybackManager.next()
-        }
+        binding.mediaControls.setMediaControlListener(object : MediaControlListener {
+            override fun onPreviousClick() {
+                MediaPlaybackManager.previous()
+            }
 
-        binding.previous.setOnClickListener {
-            MediaPlaybackManager.previous()
-        }
+            override fun onNextClick() {
+                MediaPlaybackManager.next()
+            }
 
-        binding.play.setOnClickListener {
-            MediaPlaybackManager.flipState()
-        }
+            override fun onPlayClick() {
+                MediaPlaybackManager.flipState()
+            }
+
+            override fun onForwardStep() {
+                MediaPlaybackManager.seekRelative(SEEK_PER_PULSE_MS)
+            }
+
+            override fun onRewindStep() {
+                MediaPlaybackManager.seekRelative(-SEEK_PER_PULSE_MS)
+            }
+        })
 
         binding.search.setOnClickListener {
             openFragment(LyricsSearch.newInstance(), LyricsSearch.TAG)
@@ -236,11 +247,7 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
     }
 
     private fun updatePlayButtonState(isPlaying: Boolean) {
-        if (isPlaying) {
-            binding.play.setPlaying()
-        } else {
-            binding.play.setPaused()
-        }
+        binding.mediaControls?.setPlaying(isPlaying)
     }
 
     private fun updateState() {
