@@ -247,7 +247,7 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
     }
 
     private fun updatePlayButtonState(isPlaying: Boolean) {
-        binding.mediaControls?.setPlaying(isPlaying)
+        binding.mediaControls.setPlaying(isPlaying)
     }
 
     private fun updateState() {
@@ -262,7 +262,8 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
                 crop = true,
                 roundedCorners = false,
                 darken = true,
-                greyscale = false
+                greyscale = false,
+                vignette = true
         )
         binding.lrc.setDuration(audio.duration)
         binding.seekbar.setDuration(audio.duration)
@@ -304,6 +305,7 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
         }
     }
 
+    @Suppress("SameParameterValue")
     private fun setAlbumArtBackground(animate: Boolean = false) {
         val enabled = LyricsPreferences.isAlbumArtBackground()
         if (enabled) {
@@ -371,7 +373,8 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
                     crop = true,
                     roundedCorners = false,
                     darken = true,
-                    greyscale = false
+                    greyscale = false,
+                    vignette = true
             )
             binding.lrc.setDuration(audio.duration)
             binding.seekbar.setDurationWithReset(audio.duration)
