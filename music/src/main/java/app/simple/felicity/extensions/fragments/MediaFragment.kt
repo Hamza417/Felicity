@@ -1354,13 +1354,6 @@ open class MediaFragment : KeyboardScopedFragment(), MiniPlayerPolicy {
         } else {
 
         }
-
-        // Hide shuffle button if queue size is less than 2, since shuffling a single song is meaningless.
-        if (MediaPlaybackManager.getQueueSize() < 2) {
-            shuffleButton.gone()
-        } else {
-            shuffleButton.visible()
-        }
     }
 
     protected fun openArtistPage(audio: Audio) {
