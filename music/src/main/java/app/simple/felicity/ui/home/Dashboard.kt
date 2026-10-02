@@ -282,7 +282,9 @@ class Dashboard : BaseHomeFragment() {
             setHasFixedSize(false)
 
             if (requireArguments().getBoolean(SHOULD_ANIMATE, true)) {
-                scheduleLayoutAnimation()
+                if (binding.recommendedGrid.layoutAnimation != null) {
+                    scheduleLayoutAnimation()
+                }
                 requireArguments().putBoolean(SHOULD_ANIMATE, false)
             } else {
                 layoutAnimation = null

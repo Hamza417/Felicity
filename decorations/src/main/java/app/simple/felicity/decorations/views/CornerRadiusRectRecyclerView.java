@@ -107,7 +107,13 @@ public class CornerRadiusRectRecyclerView extends RecyclerView
     public void dispatchDraw(@NonNull Canvas canvas) {
         int save = canvas.save();
         canvas.clipPath(clipPath);
-        super.dispatchDraw(canvas);
+        
+        try {
+            super.dispatchDraw(canvas);
+        } catch (NullPointerException e) {
+            Log.e("CornerRadiusRectRV", "Caught framework NPE during layout animation dispatch");
+        }
+        
         canvas.restoreToCount(save);
     }
     
