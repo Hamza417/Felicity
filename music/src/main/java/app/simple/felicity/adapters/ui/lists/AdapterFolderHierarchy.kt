@@ -13,7 +13,6 @@ import app.simple.felicity.databinding.AdapterStyleGridBinding
 import app.simple.felicity.databinding.AdapterStyleListBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextOrUnknown
-import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.preferences.FolderHierarchyPreferences
 import app.simple.felicity.repository.models.Audio
@@ -172,7 +171,7 @@ class AdapterFolderHierarchy(contents: FolderHierarchyContents) : RecyclerView.A
     inner class SongListHolder(val binding: AdapterStyleListBinding) :
             VerticalListViewHolder(binding.root) {
         fun bindSelectionState(song: Audio) {
-            binding.container.isSelected = MediaPlaybackManager.getCurrentSongId() == song.id
+            binding.container.setAudioID(song.id)
         }
 
         fun bind(audio: Audio) {
@@ -195,7 +194,7 @@ class AdapterFolderHierarchy(contents: FolderHierarchyContents) : RecyclerView.A
     inner class SongGridHolder(val binding: AdapterStyleGridBinding) :
             VerticalListViewHolder(binding.root) {
         fun bindSelectionState(audio: Audio) {
-            binding.container.isSelected = MediaPlaybackManager.getCurrentSongId() == audio.id
+            binding.container.setAudioID(audio.id)
         }
 
         fun bind(song: Audio) {
