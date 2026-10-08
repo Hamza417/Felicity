@@ -134,7 +134,7 @@ dependencies {
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
 
     // AndroidX
-    implementation 'androidx.fragment:fragment-ktx:1.8.9'
+    implementation 'androidx.fragment:fragment-ktx:1.9.1'
     implementation 'androidx.activity:activity-ktx:1.13.0'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-savedstate:2.11.0'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.11.0'
