@@ -70,6 +70,7 @@
     <string name="date_added">Data dodania</string>
     <string name="duration">Czas trwania</string>
     <string name="year">Rok</string>
+    <string name="years">Lata</string>
     <string name="sorting_style">Styl sortowania</string>
     <string name="normal">Normalny</string>
     <string name="reversed">Odwrócony</string>
@@ -235,6 +236,12 @@
     <string name="move_to_empty_queue">Przenieś do pustej kolejki</string>
     <string name="moved_to_empty_queue">Przeniesiono do kolejki %1$d</string>
     <string name="no_empty_queue_available">Brak wolnego miejsca w kolejce. Zamiast tego zastąpiono bieżącą kolejkę.</string>
+    <!-- Folder hierarchy shuffle scope confirmation -->
+    <string name="shuffle_scope_title">Losować utwory?</string>
+    <string name="shuffle_scope_message">Losować tylko utwory bezpośrednio wewnątrz tego folderu, czy uwzględnić każdy utwór również w jego podfolderach?</string>
+    <string name="shuffle_this_folder_only">Tylko ten folder</string>
+    <string name="shuffle_include_subfolders">Uwzględnij podfoldery</string>
+    <string name="no_songs_to_shuffle">Nie znaleziono utworów do losowania.</string>
     <string name="sync_adjust">Dostosuj synchronizację</string>
     <string name="accessibility">Ułatwienia dostępu</string>
     <string name="accessibility_desc">Dostosuj ułatwienia dostępu dla lepszego doświadczenia.</string>
@@ -498,4 +505,6 @@
     <string name="reduce_animations">Zredukuj animacje</string>
     <string name="reduce_animations_summary">Wyłącz niektóre niepotrzebne animacje w całej aplikacji. Może poprawić wydajność aplikacji na niektórych urządzeniach.\n\nAby wyłączyć animacje przejść, przejdź do panelu %1$s.</string>
     <string name="animations">Animacje</string>
+    <string name="miniplayer_width">Szerokość miniodtwarzacza</string>
+    <string name="miniplayer_width_summary">Dostosuj poziomą szerokość miniodtwarzacza w trybie poziomej orientacji.</string>
 </resources>
