@@ -31,12 +31,12 @@ class TypeFaceTextInputEditText : TextInputEditText {
     fun showInput() {
         requestFocus()
         (context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
-            .showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)
+            .showSoftInput(this, 0)
     }
 
     fun hideInput() {
         clearFocus()
         (context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
-            .hideSoftInputFromWindow(windowToken, InputMethodManager.HIDE_IMPLICIT_ONLY)
+            .hideSoftInputFromWindow(windowToken, 0)
     }
 }

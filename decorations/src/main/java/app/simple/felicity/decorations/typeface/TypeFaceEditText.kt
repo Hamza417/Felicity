@@ -141,13 +141,13 @@ open class TypeFaceEditText : AppCompatEditText, ThemeChangedListener {
     open fun showInput() {
         requestFocus()
         (context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
-            .showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)
+            .showSoftInput(this, 0)
     }
 
     open fun hideInput() {
         clearFocus()
         (context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
-            .hideSoftInputFromWindow(windowToken, InputMethodManager.HIDE_IMPLICIT_ONLY)
+            .hideSoftInputFromWindow(windowToken, 0)
     }
 
     @Suppress("unused")
