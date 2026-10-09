@@ -92,6 +92,7 @@ class VolumeKnob : ScopedBottomSheetFragment() {
         startCloseRunnable()
         binding.dotsIndicator.setCount(2)
         binding.dotsIndicator.setCurrentPage(0)
+        binding.dotsIndicator.useThemeColors = true
         binding.dotsIndicator.springStiffness = SpringForce.STIFFNESS_LOW
 
         // Single background collector — only the latest distinct index reaches the audio manager.

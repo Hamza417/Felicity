@@ -92,6 +92,11 @@ class DotsIndicatorView @JvmOverloads constructor(
     private val inactivePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val activePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val ovalRect = RectF()
+    var useThemeColors = false
+        set(v) {
+            field = v
+            applyThemeColors()
+        }
 
     // == Choreographer ============================================================
     private val choreographer: Choreographer by lazy { Choreographer.getInstance() }
@@ -262,18 +267,23 @@ class DotsIndicatorView @JvmOverloads constructor(
 
     override fun onAccentChanged(accent: Accent) {
         applyThemeColors()
-        invalidate()
     }
 
     override fun onThemeChanged(theme: Theme, animate: Boolean) {
         applyThemeColors()
-        invalidate()
     }
 
     private fun applyThemeColors() {
-        val color = Color.WHITE
-        activePaint.color = color
-        inactivePaint.color = (color and 0x00FFFFFF) or (0x55 shl 24)
+        if (useThemeColors) {
+            activePaint.color = ThemeManager.accent.primaryAccentColor
+            inactivePaint.color = ThemeManager.theme.viewGroupTheme.highlightColor
+        } else {
+            val color = Color.WHITE
+            activePaint.color = color
+            inactivePaint.color = (color and 0x00FFFFFF) or (0x55 shl 24)
+        }
+
+        invalidate()
     }
 
     override fun onDetachedFromWindow() {
