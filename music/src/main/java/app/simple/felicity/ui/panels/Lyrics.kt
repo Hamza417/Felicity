@@ -41,6 +41,7 @@ import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
 import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.shared.utils.ViewUtils.visible
+import app.simple.felicity.theme.managers.ThemeUtils
 import app.simple.felicity.ui.panels.Lyrics.Companion.TEXT_SIZE_DEBOUNCE_MS
 import app.simple.felicity.ui.subpanels.LrcEditor
 import app.simple.felicity.ui.subpanels.LyricsSearch
@@ -324,6 +325,7 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
             binding.artists.setTextColorMode(TypeFaceTextView.SECONDARY_WHITE)
             binding.search.setTintMode(ThemeImageButton.WHITE)
             binding.settings.setTintMode(ThemeImageButton.WHITE)
+            requireLightBarIcons()
         } else {
             binding.coverContainer.animate()
                 .alpha(0f)
@@ -335,6 +337,13 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
             binding.artists.setTextColorMode(TypeFaceTextView.SECONDARY)
             binding.search.setTintMode(ThemeImageButton.REGULAR)
             binding.settings.setTintMode(ThemeImageButton.REGULAR)
+
+            /**
+             * We cannot just set dark bar colors since user can be on any theme
+             * and each theme may set their own bar colors. So we just reapply
+             * the theme's bar colors to ensure consistency.
+             */
+            ThemeUtils.setBarColors(resources, requireActivity().window)
         }
     }
 
