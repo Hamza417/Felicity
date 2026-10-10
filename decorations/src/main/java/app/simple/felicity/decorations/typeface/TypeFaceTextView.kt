@@ -6,7 +6,6 @@ import android.content.res.ColorStateList
 import android.content.res.TypedArray
 import android.graphics.Color
 import android.graphics.text.LineBreaker
-import android.os.Build
 import android.text.Layout
 import android.util.AttributeSet
 import androidx.appcompat.widget.AppCompatTextView
@@ -71,29 +70,12 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
         setTextColor(false)
         setDrawableTint(false)
 
-        //        if (DevelopmentPreferences.get(DevelopmentPreferences.preferencesIndicator) && isDrawableHidden) {
-        //            setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0)
-        //        } else {
-        //            setDrawableTint(false)
-        //        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            if (isSingleLine) {
-                if (BehaviourPreferences.isMarqueeOn()) {
-                    isSelected = true
-                } else {
-                    isSingleLine = false
-                    ellipsize = null
-                }
-            }
-        } else {
-            if (lineCount <= 1) {
-                if (BehaviourPreferences.isMarqueeOn()) {
-                    isSelected = true
-                } else {
-                    isSingleLine = false
-                    ellipsize = null
-                }
+        if (isSingleLine) {
+            if (BehaviourPreferences.isMarqueeOn()) {
+                isSelected = true
+            } else {
+                isSingleLine = false
+                ellipsize = null
             }
         }
     }

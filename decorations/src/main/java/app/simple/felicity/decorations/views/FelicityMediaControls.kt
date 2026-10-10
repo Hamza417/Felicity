@@ -16,10 +16,10 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.view.animation.OvershootInterpolator
 import androidx.core.content.ContextCompat
+import androidx.core.content.withStyledAttributes
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.ripple.FelicityRippleDrawable
-import app.simple.felicity.decorations.views.FelicityMediaControls.Companion.SEEK_INTERVAL_MS
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.AppearancePreferences
@@ -202,10 +202,10 @@ class FelicityMediaControls @JvmOverloads constructor(
 
         // Pull any XML attributes the layout author may have set for us
         if (attrs != null) {
-            val a = context.obtainStyledAttributes(attrs, R.styleable.FelicityMediaControls, defStyleAttr, 0)
-            showSeekButtons = a.getBoolean(R.styleable.FelicityMediaControls_showSeekButtons, true)
-            buttonsSizePercent = a.getFloat(R.styleable.FelicityMediaControls_buttonsSizePercent, 1.0f).coerceIn(0f, 1f)
-            a.recycle()
+            context.withStyledAttributes(attrs, R.styleable.FelicityMediaControls, defStyleAttr, 0) {
+                showSeekButtons = getBoolean(R.styleable.FelicityMediaControls_showSeekButtons, true)
+                buttonsSizePercent = getFloat(R.styleable.FelicityMediaControls_buttonsSizePercent, 1.0f).coerceIn(0f, 1f)
+            }
         }
 
         if (!isInEditMode) {
