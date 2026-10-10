@@ -6,13 +6,28 @@
     android:layout_height="match_parent"
     android:clipChildren="false">
 
-    <ImageView
-        android:id="@+id/cover"
+    <FrameLayout
+        android:id="@+id/cover_container"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:scaleType="centerCrop"
-        android:focusable="false"
-        android:importantForAccessibility="no" />
+        android:layout_height="match_parent">
+
+        <ImageView
+            android:id="@+id/cover_back"
+            android:focusable="false"
+            android:importantForAccessibility="no"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop" />
+
+        <ImageView
+            android:id="@+id/cover_front"
+            android:focusable="false"
+            android:importantForAccessibility="no"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop" />
+
+    </FrameLayout>
 
     <app.simple.felicity.decorations.padding.NonThemePaddingAwareLinearLayout
         android:layout_width="match_parent"
