@@ -15,6 +15,8 @@ import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentLyricsBinding
 import app.simple.felicity.decorations.lrc.view.FelicityLrcView
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar
+import app.simple.felicity.decorations.theme.ThemeImageButton
+import app.simple.felicity.decorations.typeface.TypeFaceTextView
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithEffect
 import app.simple.felicity.decorations.views.FelicityMediaControls.Companion.MediaControlListener
 import app.simple.felicity.dialogs.lyrics.AddLyrics
@@ -314,12 +316,22 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
                 .setDuration(if (animate) 300L else 0L)
                 .withStartAction { binding.cover.visible(false) }
                 .start()
+
+            binding.title.setTextColorMode(TypeFaceTextView.WHITE)
+            binding.artists.setTextColorMode(TypeFaceTextView.SECONDARY_WHITE)
+            binding.search.setTintMode(ThemeImageButton.WHITE)
+            binding.settings.setTintMode(ThemeImageButton.WHITE)
         } else {
             binding.cover.animate()
                 .alpha(0f)
                 .setDuration(if (animate) 300L else 0L)
                 .withEndAction { binding.cover.gone(false) }
                 .start()
+
+            binding.title.setTextColorMode(TypeFaceTextView.BOLD)
+            binding.artists.setTextColorMode(TypeFaceTextView.SECONDARY)
+            binding.search.setTintMode(ThemeImageButton.REGULAR)
+            binding.settings.setTintMode(ThemeImageButton.REGULAR)
         }
     }
 

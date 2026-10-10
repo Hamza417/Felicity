@@ -23,12 +23,12 @@ import app.simple.felicity.theme.models.Theme;
 
 public class ThemeImageButton extends AppCompatImageButton implements ThemeChangedListener, SharedPreferences.OnSharedPreferenceChangeListener {
     
-    private final int REGULAR = 0;
-    private final int SECONDARY = 1;
-    private final int ACCENT = 2;
-    private final int WHITE = 3;
-    private final int GRAY = 4;
-    private final int CUSTOM = -1;
+    public static final int REGULAR = 0;
+    public static final int SECONDARY = 1;
+    public static final int ACCENT = 2;
+    public static final int WHITE = 3;
+    public static final int GRAY = 4;
+    public static final int CUSTOM = -1;
     
     protected int tintMode;
     private ValueAnimator valueAnimator;
@@ -64,6 +64,11 @@ public class ThemeImageButton extends AppCompatImageButton implements ThemeChang
             setTint(getTintColor(tintMode), false);
             typedArray.recycle();
         }
+    }
+    
+    public void setTintMode(int tintMode) {
+        this.tintMode = tintMode;
+        setTint(getTintColor(tintMode), true);
     }
     
     protected void setTint(int endColor, boolean animate) {

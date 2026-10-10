@@ -132,6 +132,7 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
                 QUATERNARY -> this.animateColorChange(ThemeManager.theme.textViewTheme.quaternaryTextColor)
                 ACCENT -> this.animateColorChange(ThemeManager.accent.primaryAccentColor)
                 WHITE -> this.animateColorChange(Color.WHITE)
+                SECONDARY_WHITE -> this.animateColorChange(Color.LTGRAY)
             }
         } else {
             when (colorMode) {
@@ -142,6 +143,7 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
                 QUATERNARY -> setTextColor(ThemeManager.theme.textViewTheme.quaternaryTextColor)
                 ACCENT -> setTextColor(ThemeManager.accent.primaryAccentColor)
                 WHITE -> setTextColor(ColorStateList.valueOf(Color.WHITE))
+                SECONDARY_WHITE -> setTextColor(ColorStateList.valueOf(Color.LTGRAY))
             }
         }
     }
@@ -264,6 +266,7 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
         const val QUATERNARY = 4
         const val ACCENT = 5
         const val WHITE = 6
+        const val SECONDARY_WHITE = 7
 
         const val DRAWABLE_ACCENT = 0
         const val DRAWABLE_REGULAR = 1
