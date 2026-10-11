@@ -101,7 +101,7 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
         requireHiddenMiniPlayer()
         setAlignment()
         applyTextSize()
-        setAlbumArtBackground(animate = true)
+        setAlbumArtBackground(animate = false)
         updateState()
 
         binding.lrc.setOnLrcClickListener { timeInMillis, _ ->
@@ -315,11 +315,17 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
     private fun setAlbumArtBackground(animate: Boolean = false) {
         val enabled = LyricsPreferences.isAlbumArtBackground()
         if (enabled) {
-            binding.coverContainer.animate()
-                .alpha(1f)
-                .setDuration(if (animate) 300L else 0L)
-                .withStartAction { binding.coverContainer.visible(false) }
-                .start()
+            if (animate) {
+                binding.coverContainer.animate()
+                    .alpha(1f)
+                    .setDuration(300L)
+                    .withStartAction { binding.coverContainer.visible(false) }
+                    .start()
+            } else {
+                binding.coverContainer.animate().cancel()
+                binding.coverContainer.visible(false)
+                binding.coverContainer.alpha = 1f
+            }
 
             binding.title.setTextColorMode(TypeFaceTextView.WHITE)
             binding.artists.setTextColorMode(TypeFaceTextView.SECONDARY_WHITE)
@@ -327,11 +333,17 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
             binding.settings.setTintMode(ThemeImageButton.WHITE)
             requireLightBarIcons()
         } else {
-            binding.coverContainer.animate()
-                .alpha(0f)
-                .setDuration(if (animate) 300L else 0L)
-                .withEndAction { binding.coverContainer.gone(false) }
-                .start()
+            if (animate) {
+                binding.coverContainer.animate()
+                    .alpha(0f)
+                    .setDuration(300L)
+                    .withEndAction { binding.coverContainer.gone(false) }
+                    .start()
+            } else {
+                binding.coverContainer.animate().cancel()
+                binding.coverContainer.gone(false)
+                binding.coverContainer.alpha = 0f
+            }
 
             binding.title.setTextColorMode(TypeFaceTextView.BOLD)
             binding.artists.setTextColorMode(TypeFaceTextView.SECONDARY)
