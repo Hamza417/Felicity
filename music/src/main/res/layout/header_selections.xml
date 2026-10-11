@@ -25,7 +25,7 @@
             android:id="@+id/close"
             android:layout_gravity="center_vertical"
             android:layout_width="@dimen/button_size"
-            android:src="@drawable/ic_close"
+            android:src="@drawable/ic_clear_all"
             android:layout_height="@dimen/button_size" />
 
     </LinearLayout>
