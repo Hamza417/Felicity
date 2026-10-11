@@ -245,6 +245,9 @@
     <string name="shuffle_include_subfolders">Include Sub-folders</string>
     <string name="no_songs_to_shuffle">No songs found to shuffle.</string>
 
+    <string name="play_scope_title">Play Songs?</string>
+    <string name="play_scope_message">Play only the songs directly inside this folder, or include every song found in its sub-folders too?</string>
+
     <string name="sync_adjust">Sync Adjust</string>
     <string name="accessibility">Accessibility</string>
     <string name="accessibility_desc">Adjust accessibility settings for a better experience.</string>

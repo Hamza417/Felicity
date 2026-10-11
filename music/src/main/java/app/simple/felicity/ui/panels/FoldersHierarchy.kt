@@ -22,6 +22,7 @@ import app.simple.felicity.dialogs.app.GenericListStyleDialog.Companion.showList
 import app.simple.felicity.dialogs.folders.DialogFolderHierarchySort.Companion.showFolderHierarchySortDialog
 import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.FolderHierarchyPreferences
+import app.simple.felicity.repository.managers.SelectionManager
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Folder
 import app.simple.felicity.repository.sort.FolderHierarchySort.setCurrentSortStyle
@@ -94,37 +95,77 @@ class FoldersHierarchy : BasePanelFragment() {
 
     override fun onShuffleClicked() {
         super.onShuffleClicked()
-        showShuffleScopeDialog()
+        handlePlaybackAction(isShuffle = true)
+    }
+
+    private fun handlePlaybackAction(isShuffle: Boolean, songs: List<Audio> = emptyList(), position: Int = 0) {
+        val currentSong = app.simple.felicity.engine.managers.MediaPlaybackManager.getCurrentSong()
+        val requestedSong = songs.getOrNull(position)
+        val isSameQueue = app.simple.felicity.engine.managers.MediaPlaybackManager.isSameQueue(songs)
+        val isSameSong = currentSong != null && requestedSong != null && currentSong.id == requestedSong.id
+
+        if (SelectionManager.hasSelection || (isSameQueue && isSameSong) || viewModel.contents.value.subFolders.isEmpty()) {
+            if (isShuffle) {
+                val folderSongs = viewModel.contents.value.songs
+                if (folderSongs.isEmpty()) {
+                    showWarning(getString(R.string.no_songs_to_shuffle))
+                } else {
+                    shuffleMediaItems(folderSongs)
+                }
+            } else {
+                setMediaItems(songs, position)
+            }
+        } else {
+            showScopeDialog(
+                    isShuffle = isShuffle,
+                    position = position
+            )
+        }
     }
 
     /**
-     * Lets the user decide whether the shuffle action should only cover the songs visible at
+     * Lets the user decide whether the action should only cover the songs visible at
      * this exact level, or every song found anywhere inside this folder's sub-folder tree too.
      * Mirrors the "Sure" style confirmation dialogs used elsewhere, but with two affirmative
      * choices instead of a single confirm/cancel pair.
      */
-    private fun showShuffleScopeDialog() {
+    private fun showScopeDialog(isShuffle: Boolean, position: Int = 0) {
         SimpleDialog.Builder(
                 container = requireContainerView(),
                 inflateBinding = DialogShuffleScopeConfirmationBinding::inflate)
             .onDialogInflated { binding, dismiss, _ ->
+                if (!isShuffle) {
+                    binding.title.text = getString(R.string.play_scope_title)
+                    binding.message.text = getString(R.string.play_scope_message)
+                }
+
                 binding.currentLevelOnly.setOnClickListener {
                     dismiss()
                     val songs = viewModel.contents.value.songs
                     if (songs.isEmpty()) {
                         showWarning(getString(R.string.no_songs_to_shuffle))
                     } else {
-                        shuffleMediaItems(songs)
+                        if (isShuffle) {
+                            shuffleMediaItems(songs)
+                        } else {
+                            setMediaItems(songs, position)
+                        }
                     }
                 }
 
                 binding.includeSubfolders.setOnClickListener {
                     dismiss()
+                    val tappedSong = viewModel.contents.value.songs.getOrNull(position)
                     viewModel.getRecursiveSongs { songs ->
                         if (songs.isEmpty()) {
                             showWarning(getString(R.string.no_songs_to_shuffle))
                         } else {
-                            shuffleMediaItems(songs)
+                            if (isShuffle) {
+                                shuffleMediaItems(songs)
+                            } else {
+                                val newPosition = tappedSong?.let { songs.indexOf(it).takeIf { idx -> idx != -1 } } ?: 0
+                                setMediaItems(songs, newPosition)
+                            }
                         }
                     }
                 }
@@ -160,7 +201,10 @@ class FoldersHierarchy : BasePanelFragment() {
                 }
 
                 override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
-                    setMediaItems(songs, position)
+                    handlePlaybackAction(
+                            isShuffle = false,
+                            songs = songs,
+                            position = position)
                 }
 
                 override fun onSongLongClicked(songs: List<Audio>, position: Int, imageView: ImageView?) {
