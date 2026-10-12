@@ -5,6 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:layoutAnimation="@anim/grid_list_animation_controller"
+    android:clipToPadding="false"
     app:fastScrollEnabled="false"
-    app:navigationPaddingRequired="false"
-    app:statusPaddingRequired="false" />
+    app:navigationPaddingRequired="true"
+    app:statusPaddingRequired="true" />

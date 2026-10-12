@@ -19,9 +19,12 @@ import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles
 import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.SpannedTile
 import app.simple.felicity.databinding.FragmentHomeSpannedBinding
 import app.simple.felicity.decorations.utils.RecyclerViewUtils.forEachViewHolderIndexed
+import app.simple.felicity.dialogs.app.AppLabel.Companion.showAppLabel
 import app.simple.felicity.extensions.fragments.BaseHomeFragment
+import app.simple.felicity.preferences.MainPreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.server.ServerModeService
 import app.simple.felicity.viewmodels.panels.HomeViewModel
 import kotlinx.coroutines.launch
 import kotlin.random.Random
@@ -61,12 +64,24 @@ class TiledHome : BaseHomeFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        requireLightBarIcons()
+
         binding.recyclerView.setBackgroundColor(Color.BLACK)
         binding.recyclerView.requireAttachedMiniPlayer()
 
         setupRecyclerView()
         observeRecommended()
+        observeServerState()
+        requireLightBarIcons()
+    }
+
+    private fun observeServerState() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                ServerModeService.isRunning.collect { running ->
+                    tilesAdapter?.setServerRunning(running)
+                }
+            }
+        }
     }
 
     /**
@@ -88,8 +103,10 @@ class TiledHome : BaseHomeFragment() {
 
         layoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
             override fun getSpanSize(position: Int): Int {
+                if (position == 0) return spanCount
+
                 // Hero positions get the wide treatment; everything else stays compact.
-                return if (position in AdapterSpannedHomeTiles.BIG_TILE_POSITIONS) bigTileSpan else smallTileSpan
+                return if (position - 1 in AdapterSpannedHomeTiles.BIG_TILE_POSITIONS) bigTileSpan else smallTileSpan
             }
         }
 
@@ -124,6 +141,8 @@ class TiledHome : BaseHomeFragment() {
     private fun buildAndAttachAdapter(songs: List<Audio>) {
         val tiles = AdapterSpannedHomeTiles.buildTiles(songs, buildPanelTiles())
         tilesAdapter = AdapterSpannedHomeTiles(tiles)
+        tilesAdapter?.setServerRunning(ServerModeService.isRunning.value)
+        tilesAdapter?.updateAppLabel(MainPreferences.getAppLabel(requireContext()))
 
         tilesAdapter!!.setCallbacks(object : AdapterSpannedHomeTiles.SpannedHomeTileCallbacks {
             override fun onSongTileClicked(songs: List<Audio>, position: Int) {
@@ -157,13 +176,25 @@ class TiledHome : BaseHomeFragment() {
 
             override fun onPanelTileClicked(panelTile: SpannedTile.PanelTile) {
                 when (panelTile.titleRes) {
-                    R.string.server -> {
-                        toggleServer()
-                    }
-                    else -> {
-                        navigateToPanel(panelTile.getPanel())
-                    }
+                    R.string.server -> toggleServer()
+                    else -> navigateToPanel(panelTile.getPanel())
                 }
+            }
+
+            override fun onSearchClicked() {
+                openSearch()
+            }
+
+            override fun onSettingsClicked() {
+                openPreferencesPanel()
+            }
+
+            override fun onAppLabelClicked() {
+                childFragmentManager.showAppLabel()
+            }
+
+            override fun onServerToggleClicked() {
+                toggleServer()
             }
         })
 
@@ -188,8 +219,8 @@ class TiledHome : BaseHomeFragment() {
         tiles.add(SpannedTile.PanelTile(R.string.albums, R.drawable.ic_album))
         tiles.add(SpannedTile.PanelTile(R.string.artists, R.drawable.ic_people))
 
-        tiles.add(SpannedTile.PanelTile(R.string.server, R.drawable.ic_wifi))
-        tiles.add(SpannedTile.PanelTile(R.string.search, R.drawable.ic_search))
+        // tiles.add(SpannedTile.PanelTile(R.string.server, R.drawable.ic_wifi))
+        // tiles.add(SpannedTile.PanelTile(R.string.search, R.drawable.ic_search))
 
         if (UserInterfacePreferences.isPanelVisible(UserInterfacePreferences.PANEL_VISIBLE_ALBUM_ARTISTS))
             tiles.add(SpannedTile.PanelTile(R.string.album_artists, R.drawable.ic_artist))
@@ -281,6 +312,15 @@ class TiledHome : BaseHomeFragment() {
         }
 
         tileAnimators[this.id] = Pair(xAnimator, yAnimator)
+    }
+
+    override fun onSharedPreferenceChanged(sharedPreferences: android.content.SharedPreferences?, key: String?) {
+        super.onSharedPreferenceChanged(sharedPreferences, key)
+        when (key) {
+            MainPreferences.APP_LABEL -> {
+                tilesAdapter?.updateAppLabel(MainPreferences.getAppLabel(requireContext()))
+            }
+        }
     }
 
     override fun onDestroyView() {
