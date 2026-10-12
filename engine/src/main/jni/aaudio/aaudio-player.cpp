@@ -20,6 +20,9 @@
 #include <aaudio/AAudio.h>
 #include <cstdlib>
 #include <cstring>
+#include <chrono>
+#include <mutex>
+#include <thread>
 
 #include "aaudio-player.h"
 
@@ -35,6 +38,21 @@
 #define AAUDIO_LOGI(...) __android_log_print(ANDROID_LOG_INFO,  AAUDIO_TAG, __VA_ARGS__)
 #define AAUDIO_LOGW(...) __android_log_print(ANDROID_LOG_WARN,  AAUDIO_TAG, __VA_ARGS__)
 
+namespace {
+/**
+ * How long any JNI entry point will wait to acquire [AaudioContext::streamMutex]
+ * before giving up and returning a "not ready" result. Kept short so a stuck
+ * recovery thread (or any other bug) can never block the audio thread or a
+ * Kotlin caller — this is the key property that prevents the whole-app freeze
+ * that used to happen when a phone call disconnected the stream.
+ */
+    constexpr auto kLockTimeout = std::chrono::milliseconds(50);
+
+/** Longer timeout used only by the recovery thread itself and by destroy(). */
+    constexpr auto kRecoveryLockTimeout = std::chrono::milliseconds(1000);
+
+    void aaudioErrorCallback(AAudioStream *stream, void *userData, aaudio_result_t error);
+}  // namespace
 
 /**
  * Converts [numSamples] float32 samples from [src] to signed 16-bit integers in [dst].
@@ -76,6 +94,174 @@ static void convertFloatToInt16(const float *__restrict src,
 #endif
 }
 
+/**
+ * Builds and opens a brand new AAudio stream using the parameters already stored
+ * on [ctx] (sampleRate / channelCount / safeBufferMode), registers the disconnect
+ * error callback on it, and sizes its buffer the same way [nativeAaudioCreate]
+ * originally did.
+ *
+ * Does **not** touch `ctx->stream` itself — callers (both the initial create and
+ * the disconnect-recovery path) are responsible for swapping it in under
+ * [AaudioContext::streamMutex]. This separation is what lets recovery build the
+ * replacement stream *before* taking the lock, so the lock is only ever held for
+ * the brief pointer-swap, not for the whole (possibly slow) reopen.
+ *
+ * @return The freshly opened stream (caller takes ownership), or nullptr on failure.
+ */
+static AAudioStream *openAaudioStream(AaudioContext *ctx, aaudio_format_t *outFormat) {
+    AAudioStreamBuilder *builder = nullptr;
+    aaudio_result_t result = AAudio_createStreamBuilder(&builder);
+    if (result != AAUDIO_OK) {
+        AAUDIO_LOGE("openAaudioStream: AAudio_createStreamBuilder failed (%d)", result);
+        return nullptr;
+    }
+
+    AAudioStreamBuilder_setFormat(builder, AAUDIO_FORMAT_PCM_FLOAT);
+    AAudioStreamBuilder_setSampleRate(builder, ctx->sampleRate);
+    AAudioStreamBuilder_setChannelCount(builder, ctx->channelCount);
+    AAudioStreamBuilder_setUsage(builder, AAUDIO_USAGE_MEDIA);
+    AAudioStreamBuilder_setContentType(builder, AAUDIO_CONTENT_TYPE_MUSIC);
+    AAudioStreamBuilder_setDirection(builder, AAUDIO_DIRECTION_OUTPUT);
+    AAudioStreamBuilder_setErrorCallback(builder, aaudioErrorCallback, ctx);
+
+    AAudioStream *stream = nullptr;
+    if (ctx->safeBufferMode) {
+        AAudioStreamBuilder_setPerformanceMode(builder, AAUDIO_PERFORMANCE_MODE_NONE);
+        AAudioStreamBuilder_setSharingMode(builder, AAUDIO_SHARING_MODE_SHARED);
+        result = AAudioStreamBuilder_openStream(builder, &stream);
+    } else {
+        AAudioStreamBuilder_setPerformanceMode(builder, AAUDIO_PERFORMANCE_MODE_LOW_LATENCY);
+        AAudioStreamBuilder_setSharingMode(builder, AAUDIO_SHARING_MODE_EXCLUSIVE);
+        result = AAudioStreamBuilder_openStream(builder, &stream);
+        if (result != AAUDIO_OK) {
+            AAUDIO_LOGW("openAaudioStream: exclusive open failed (%d), retrying shared", result);
+            AAudioStreamBuilder_setSharingMode(builder, AAUDIO_SHARING_MODE_SHARED);
+            result = AAudioStreamBuilder_openStream(builder, &stream);
+        }
+    }
+
+    AAudioStreamBuilder_delete(builder);
+
+    if (result != AAUDIO_OK || !stream) {
+        AAUDIO_LOGE("openAaudioStream: stream open failed (%d)", result);
+        return nullptr;
+    }
+
+    *outFormat = AAudioStream_getFormat(stream);
+    if (*outFormat != AAUDIO_FORMAT_PCM_FLOAT) {
+        AAUDIO_LOGW("openAaudioStream: requested FLOAT but HAL negotiated format=%d "
+                    "— nativeAaudioWrite will convert float→int16 on every call",
+                    static_cast<int>(*outFormat));
+    }
+
+    const int32_t burstFrames = AAudioStream_getFramesPerBurst(stream);
+    const int32_t actualSampleRate = AAudioStream_getSampleRate(stream);
+    const int32_t targetHeadroomMs = ctx->safeBufferMode ? 80 : 40;
+    int32_t targetFrames = (actualSampleRate * targetHeadroomMs) / 1000;
+    int32_t calculatedMultiplier = (burstFrames > 0) ? (targetFrames / burstFrames) + 1 : 4;
+    if (calculatedMultiplier < 2) calculatedMultiplier = 2;
+    int32_t finalFrames = burstFrames * calculatedMultiplier;
+    const int32_t maxCapacity = AAudioStream_getBufferCapacityInFrames(stream);
+    if (finalFrames > maxCapacity) finalFrames = maxCapacity;
+    AAudioStream_setBufferSizeInFrames(stream, finalFrames);
+
+    AAUDIO_LOGI("AAudio stream (re)opened — sampleRate=%d (actual=%d), channels=%d, "
+                "format=%d, safeMode=%d, burstFrames=%d, bufferFrames=%d",
+                ctx->sampleRate, actualSampleRate, ctx->channelCount,
+                static_cast<int>(*outFormat), ctx->safeBufferMode ? 1 : 0,
+                burstFrames, finalFrames);
+
+    return stream;
+}
+
+namespace {
+
+/**
+ * Runs on a detached background thread in response to [aaudioErrorCallback]. Closes
+ * the now-dead stream and opens a fresh replacement, swapping it into [ctx->stream]
+ * under [AaudioContext::streamMutex] only for the brief pointer-assignment — never
+ * while the (potentially slow) HAL open call itself is in flight.
+ *
+ * Guarded by [AaudioContext::recovering] so a burst of extra error callbacks (AAudio
+ * can fire more than one in quick succession) only triggers one reopen at a time, and
+ * by [AaudioContext::destroyed] so a reopen that races against [nativeAaudioDestroy]
+ * backs off instead of resurrecting a stream nobody owns anymore.
+ */
+    void recoverAaudioStream(AaudioContext *ctx) {
+        if (ctx->destroyed.load()) return;
+
+        bool expected = false;
+        if (!ctx->recovering.compare_exchange_strong(expected, true)) {
+            return; // Another recovery is already in flight.
+        }
+
+        AAudioStream *oldStream = nullptr;
+        {
+            std::unique_lock<std::timed_mutex> lock(ctx->streamMutex, kRecoveryLockTimeout);
+            if (!lock.owns_lock() || ctx->destroyed.load()) {
+                AAUDIO_LOGE("recoverAaudioStream: could not safely detach old stream — aborting");
+                ctx->recovering.store(false);
+                return;
+            }
+            oldStream = ctx->stream;
+            ctx->stream = nullptr;
+            ctx->running.store(false);
+        }
+
+        if (oldStream) {
+            // The AAudio docs are explicit that requestStop()/close() must not be called
+            // from inside the error callback itself — but we are on our own dedicated
+            // thread here, so this is safe.
+            AAudioStream_requestStop(oldStream);
+            AAudioStream_close(oldStream);
+        }
+
+        aaudio_format_t newFormat = AAUDIO_FORMAT_PCM_FLOAT;
+        AAudioStream *newStream = ctx->destroyed.load() ? nullptr : openAaudioStream(ctx,
+                                                                                     &newFormat);
+
+        std::unique_lock<std::timed_mutex> lock(ctx->streamMutex, kRecoveryLockTimeout);
+        if (!lock.owns_lock() || ctx->destroyed.load()) {
+            if (newStream) {
+                AAudioStream_requestStop(newStream);
+                AAudioStream_close(newStream);
+            }
+            ctx->recovering.store(false);
+            return;
+        }
+
+        if (newStream) {
+            ctx->stream = newStream;
+            ctx->actualFormat = newFormat;
+            AAUDIO_LOGI("recoverAaudioStream: stream successfully reopened after disconnect");
+        } else {
+            AAUDIO_LOGE("recoverAaudioStream: reopen failed — route stays silent until the "
+                        "next configure() call recreates it from the Kotlin side");
+        }
+        ctx->recovering.store(false);
+    }
+
+/**
+ * Fired by AAudio on its own internal thread when the stream is disconnected —
+ * most commonly because a phone call (or other higher-priority client) forced the
+ * audio HAL to tear down our exclusive low-latency stream. This is what used to
+ * leave the app frozen: every later call into the dead handle either failed
+ * silently or blocked, and nothing ever told the Kotlin side to recreate it.
+ *
+ * Per AAudio's threading rules we must not call requestStop()/close() on the
+ * stream from directly within this callback, so all we do here is flip the
+ * running flag and hand off to [recoverAaudioStream] on a detached thread.
+ */
+    void aaudioErrorCallback(AAudioStream * /*stream*/, void *userData, aaudio_result_t error) {
+        auto *ctx = static_cast<AaudioContext *>(userData);
+        if (!ctx) return;
+        AAUDIO_LOGW("aaudioErrorCallback: stream error %d — scheduling recovery", error);
+        ctx->running.store(false);
+        std::thread(recoverAaudioStream, ctx).detach();
+    }
+
+}  // namespace
+
 extern "C" {
 
 /**
@@ -89,9 +275,9 @@ extern "C" {
  *   - [AAUDIO_PERFORMANCE_MODE_NONE] with [AAUDIO_SHARING_MODE_SHARED],
  *     buffer = 8× burst size to prevent BT stack starvation.
  *
- * In both modes, the HAL-negotiated format is read after opening and stored in
- * [AaudioContext::actualFormat]. If it differs from [AAUDIO_FORMAT_PCM_FLOAT], all
- * subsequent [nativeAaudioWrite] calls will perform float→int16 conversion.
+ * Also registers [aaudioErrorCallback] so a later forced disconnect (e.g. a phone
+ * call taking over the HAL) triggers automatic stream recovery instead of leaving
+ * every subsequent call stuck against a dead handle.
  *
  * @param env          JNI environment pointer.
  * @param thiz         Calling object (unused).
@@ -105,7 +291,7 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioCre
         JNIEnv * /*env*/, jobject /*thiz*/,
         jint sampleRate, jint channelCount, jboolean useSafeBuffers) {
 
-    auto *ctx = static_cast<AaudioContext *>(calloc(1, sizeof(AaudioContext)));
+    auto *ctx = new(std::nothrow) AaudioContext();
     if (!ctx) {
         AAUDIO_LOGE("nativeAaudioCreate: context allocation failed");
         return 0L;
@@ -119,109 +305,14 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioCre
     ctx->stream = nullptr;
     ctx->conversionBuffer = nullptr;
     ctx->conversionBufferCapacity = 0;
-    ctx->actualFormat = AAUDIO_FORMAT_PCM_FLOAT; // overwritten after open
+    ctx->actualFormat = AAUDIO_FORMAT_PCM_FLOAT;
 
-    AAudioStreamBuilder *builder = nullptr;
-    aaudio_result_t result = AAudio_createStreamBuilder(&builder);
-    if (result != AAUDIO_OK) {
-        AAUDIO_LOGE("nativeAaudioCreate: AAudio_createStreamBuilder failed (%d)", result);
-        free(ctx);
+    AAudioStream *stream = openAaudioStream(ctx, &ctx->actualFormat);
+    if (!stream) {
+        delete ctx;
         return 0L;
     }
-
-    AAudioStreamBuilder_setFormat(builder, AAUDIO_FORMAT_PCM_FLOAT);
-    AAudioStreamBuilder_setSampleRate(builder, static_cast<int32_t>(sampleRate));
-    AAudioStreamBuilder_setChannelCount(builder, static_cast<int32_t>(channelCount));
-    AAudioStreamBuilder_setUsage(builder, AAUDIO_USAGE_MEDIA);
-    AAudioStreamBuilder_setContentType(builder, AAUDIO_CONTENT_TYPE_MUSIC);
-    AAudioStreamBuilder_setDirection(builder, AAUDIO_DIRECTION_OUTPUT);
-
-    if (ctx->safeBufferMode) {
-        /**
-         * Bluetooth path: use NONE performance mode with shared access.
-         * Exclusive mode is almost never granted for Bluetooth sinks; requesting it
-         * wastes an open attempt and may cause a longer timeout before fallback.
-         */
-        AAudioStreamBuilder_setPerformanceMode(builder, AAUDIO_PERFORMANCE_MODE_NONE);
-        AAudioStreamBuilder_setSharingMode(builder, AAUDIO_SHARING_MODE_SHARED);
-        result = AAudioStreamBuilder_openStream(builder, &ctx->stream);
-    } else {
-        /** Fast path: try exclusive first, fall back to shared. */
-        AAudioStreamBuilder_setPerformanceMode(builder, AAUDIO_PERFORMANCE_MODE_LOW_LATENCY);
-        AAudioStreamBuilder_setSharingMode(builder, AAUDIO_SHARING_MODE_EXCLUSIVE);
-        result = AAudioStreamBuilder_openStream(builder, &ctx->stream);
-        if (result != AAUDIO_OK) {
-            AAUDIO_LOGW("nativeAaudioCreate: exclusive open failed (%d), retrying shared", result);
-            AAudioStreamBuilder_setSharingMode(builder, AAUDIO_SHARING_MODE_SHARED);
-            result = AAudioStreamBuilder_openStream(builder, &ctx->stream);
-        }
-    }
-
-    AAudioStreamBuilder_delete(builder);
-
-    if (result != AAUDIO_OK || !ctx->stream) {
-        AAUDIO_LOGE("nativeAaudioCreate: stream open failed (%d)", result);
-        free(ctx);
-        return 0L;
-    }
-
-    /**
-     * Bug 1 fix: read the format the HAL actually gave us.
-     * The builder's setFormat() is only a preference — the HAL may return
-     * AAUDIO_FORMAT_PCM_I16. If that happens, nativeAaudioWrite will convert.
-     */
-    ctx->actualFormat = AAudioStream_getFormat(ctx->stream);
-    if (ctx->actualFormat != AAUDIO_FORMAT_PCM_FLOAT) {
-        AAUDIO_LOGW("nativeAaudioCreate: requested FLOAT but HAL negotiated format=%d "
-                    "— nativeAaudioWrite will convert float→int16 on every call",
-                    static_cast<int>(ctx->actualFormat));
-    } else {
-        AAUDIO_LOGI("nativeAaudioCreate: HAL confirmed AAUDIO_FORMAT_PCM_FLOAT");
-    }
-
-/**
-     * Bug 2 fix: Time-based buffer sizing to prevent Hi-Res gaping.
-     * We need to guarantee enough milliseconds of headroom to survive Java thread
-     * jitter/GC pauses, regardless of how fast the sample rate consumes frames.
-     */
-    const int32_t burstFrames = AAudioStream_getFramesPerBurst(ctx->stream);
-    const int32_t actualSampleRate = AAudioStream_getSampleRate(ctx->stream);
-
-    // Check if the OS actually granted the hi-res sample rate
-    if (actualSampleRate != ctx->sampleRate) {
-        AAUDIO_LOGW("Requested %d Hz, but HAL forced %d Hz. Timings may shift.",
-                    ctx->sampleRate, actualSampleRate);
-    }
-
-    // Aim for ~40ms of buffer headroom for wired, and ~80ms for Bluetooth
-    const int32_t targetHeadroomMs = ctx->safeBufferMode ? 80 : 40;
-
-    // Calculate how many frames we need to hit that time target
-    int32_t targetFrames = (actualSampleRate * targetHeadroomMs) / 1000;
-
-    // AAudio performs best when the buffer is an exact multiple of the burst size
-    int32_t calculatedMultiplier = (targetFrames / burstFrames) + 1;
-
-    // Safety clamp (don't go below 2 bursts, don't exceed max capacity)
-    if (calculatedMultiplier < 2) calculatedMultiplier = 2;
-    int32_t finalFrames = burstFrames * calculatedMultiplier;
-
-    int32_t maxCapacity = AAudioStream_getBufferCapacityInFrames(ctx->stream);
-    if (finalFrames > maxCapacity) finalFrames = maxCapacity;
-
-    AAudioStream_setBufferSizeInFrames(ctx->stream, finalFrames);
-
-    const aaudio_sharing_mode_t actualSharing = AAudioStream_getSharingMode(ctx->stream);
-    AAUDIO_LOGI("AaudioContext created — sampleRate=%d, channels=%d, "
-                "format=%d (float=%d), sharing=%s, safeMode=%d, "
-                "burstFrames=%d, bufferFrames=%d (~%d ms)",
-                ctx->sampleRate, ctx->channelCount,
-                static_cast<int>(ctx->actualFormat),
-                static_cast<int>(AAUDIO_FORMAT_PCM_FLOAT),
-                (actualSharing == AAUDIO_SHARING_MODE_EXCLUSIVE) ? "EXCLUSIVE" : "SHARED",
-                ctx->safeBufferMode ? 1 : 0,
-                burstFrames, finalFrames,
-                (ctx->sampleRate > 0) ? (finalFrames * 1000 / ctx->sampleRate) : -1);
+    ctx->stream = stream;
 
     return reinterpret_cast<jlong>(ctx);
 }
@@ -239,7 +330,10 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioSta
         JNIEnv * /*env*/, jobject /*thiz*/, jlong handle) {
 
     auto *ctx = reinterpret_cast<AaudioContext *>(handle);
-    if (!ctx || !ctx->stream) return JNI_FALSE;
+    if (!ctx) return JNI_FALSE;
+
+    std::unique_lock<std::timed_mutex> lock(ctx->streamMutex, kLockTimeout);
+    if (!lock.owns_lock() || !ctx->stream) return JNI_FALSE;
 
     const aaudio_result_t result = AAudioStream_requestStart(ctx->stream);
     if (result != AAUDIO_OK) {
@@ -263,23 +357,21 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioSta
  * state no allocation occurs.
  *
  * **Blocking on purpose:** the write waits (up to [kTimeoutNanos]) for the
- * hardware to have room, which is what keeps playback smooth and gap-free —
- * the call naturally paces itself to how fast the hardware actually consumes
- * audio, instead of depending on how often the caller happens to be invoked.
- * Pausing quickly is handled separately: [FelicityAudioSink] silences the
- * stream directly (see its `muteImmediately`) from the app thread the moment
- * pause is requested, so it never has to wait for this write to return. The
- * caller (see [AaudioOutputProcessor.write]) still checks the returned count
- * and retries any remainder, in case the timeout expires before every sample
- * fits.
+ * hardware to have room, which is what keeps playback smooth and gap-free.
+ * If the stream has been disconnected (e.g. mid phone-call) and a recovery is
+ * in flight, [streamMutex] simply fails to lock within [kLockTimeout] and this
+ * returns 0 immediately rather than touching the dead/being-replaced handle —
+ * ExoPlayer will retry the same buffer on the next cycle, and once recovery
+ * finishes [AaudioOutputProcessor.isRunning] reflects the new stream so
+ * [FelicityAudioSink] auto-restarts it.
  *
  * @param env       JNI environment pointer.
  * @param thiz      Calling object (unused).
  * @param handle    Opaque pointer from [nativeAaudioCreate].
  * @param pcmBuffer Interleaved float PCM; length = numFrames × channelCount.
  * @return Number of samples actually accepted by the hardware buffer (may be
- *         less than the input length, or 0 if the buffer is currently full),
- *         or -1 if the stream reported an error.
+ *         less than the input length, or 0 if the buffer is currently full or
+ *         the stream is mid-recovery), or -1 if the stream reported an error.
  */
 JNIEXPORT jint JNICALL
 Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioWrite(
@@ -287,7 +379,10 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioWri
         jlong handle, jfloatArray pcmBuffer) {
 
     auto *ctx = reinterpret_cast<AaudioContext *>(handle);
-    if (!ctx || !ctx->stream || !ctx->running.load()) return 0;
+    if (!ctx) return 0;
+
+    std::unique_lock<std::timed_mutex> lock(ctx->streamMutex, kLockTimeout);
+    if (!lock.owns_lock() || !ctx->stream || !ctx->running.load()) return 0;
 
     const int totalSamples = env->GetArrayLength(pcmBuffer);
     if (totalSamples <= 0) return 0;
@@ -297,11 +392,6 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioWri
 
     jfloat *buf = env->GetFloatArrayElements(pcmBuffer, nullptr);
 
-    // Block for up to this long waiting for hardware buffer room. This keeps
-    // consecutive writes paced to real playback speed so the hardware never
-    // runs dry between calls, which is what prevents audible gaps/crackling.
-    // Pause latency is handled separately (see the note above), so blocking
-    // here no longer has any effect on how fast pause() feels.
     static constexpr int64_t kTimeoutNanos = 100'000'000LL; // 100 ms
     jint framesWritten = 0;
 
@@ -310,7 +400,12 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioWri
         const aaudio_result_t written =
                 AAudioStream_write(ctx->stream, buf, numFrames, kTimeoutNanos);
         if (written < 0) {
-            AAUDIO_LOGE("nativeAaudioWrite: float write error (%d)", written);
+            if (written == AAUDIO_ERROR_DISCONNECTED) {
+                AAUDIO_LOGW("nativeAaudioWrite: stream disconnected — recovery will handle it");
+                ctx->running.store(false);
+            } else {
+                AAUDIO_LOGE("nativeAaudioWrite: float write error (%d)", written);
+            }
             framesWritten = -1;
         } else {
             framesWritten = written;
@@ -339,7 +434,12 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioWri
         const aaudio_result_t written =
                 AAudioStream_write(ctx->stream, ctx->conversionBuffer, numFrames, kTimeoutNanos);
         if (written < 0) {
-            AAUDIO_LOGE("nativeAaudioWrite: int16 write error (%d)", written);
+            if (written == AAUDIO_ERROR_DISCONNECTED) {
+                AAUDIO_LOGW("nativeAaudioWrite: stream disconnected — recovery will handle it");
+                ctx->running.store(false);
+            } else {
+                AAUDIO_LOGE("nativeAaudioWrite: int16 write error (%d)", written);
+            }
             framesWritten = -1;
         } else {
             framesWritten = written;
@@ -368,8 +468,36 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioGet
         JNIEnv * /*env*/, jobject /*thiz*/, jlong handle) {
 
     auto *ctx = reinterpret_cast<AaudioContext *>(handle);
-    if (!ctx || !ctx->stream) return -1;
+    if (!ctx) return -1;
+
+    std::unique_lock<std::timed_mutex> lock(ctx->streamMutex, kLockTimeout);
+    if (!lock.owns_lock() || !ctx->stream) return -1;
     return static_cast<jint>(ctx->actualFormat);
+}
+
+/**
+ * Returns whether the stream is currently started and running, straight from the
+ * native [AaudioContext::running] flag.
+ *
+ * This is the single source of truth [AaudioOutputProcessor.isRunning] delegates
+ * to on the Kotlin side. Tying it to live native state (instead of a Kotlin-side
+ * cached boolean) is what lets [FelicityAudioSink]'s existing
+ * `if (!isPaused && !stream.isRunning) stream.start()` auto-restart check in
+ * `handleBuffer` notice — on its own, with no extra plumbing — that a disconnect
+ * happened and automatically resume playback once recovery has reopened the
+ * stream, instead of staying silently stuck forever.
+ *
+ * @param env    JNI environment pointer.
+ * @param thiz   Calling object (unused).
+ * @param handle Opaque pointer from [nativeAaudioCreate].
+ */
+JNIEXPORT jboolean JNICALL
+Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioIsRunning(
+        JNIEnv * /*env*/, jobject /*thiz*/, jlong handle) {
+
+    auto *ctx = reinterpret_cast<AaudioContext *>(handle);
+    if (!ctx) return JNI_FALSE;
+    return ctx->running.load() ? JNI_TRUE : JNI_FALSE;
 }
 
 /**
@@ -385,7 +513,10 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioGet
         JNIEnv * /*env*/, jobject /*thiz*/, jlong handle) {
 
     auto *ctx = reinterpret_cast<AaudioContext *>(handle);
-    if (!ctx || !ctx->stream || !ctx->running.load()) return -1;
+    if (!ctx) return -1;
+
+    std::unique_lock<std::timed_mutex> lock(ctx->streamMutex, kLockTimeout);
+    if (!lock.owns_lock() || !ctx->stream || !ctx->running.load()) return -1;
 
     const int64_t framesWritten = AAudioStream_getFramesWritten(ctx->stream);
     int64_t presentedFrames = 0;
@@ -429,7 +560,10 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioGet
         JNIEnv * /*env*/, jobject /*thiz*/, jlong handle, jboolean sourceEnded) {
 
     auto *ctx = reinterpret_cast<AaudioContext *>(handle);
-    if (!ctx || !ctx->stream) return -1L;
+    if (!ctx) return -1L;
+
+    std::unique_lock<std::timed_mutex> lock(ctx->streamMutex, kLockTimeout);
+    if (!lock.owns_lock() || !ctx->stream) return -1L;
 
     const int64_t framesWritten = AAudioStream_getFramesWritten(ctx->stream);
     if (framesWritten <= 0) return -1L;
@@ -480,9 +614,12 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioPau
         JNIEnv * /*env*/, jobject /*thiz*/, jlong handle) {
 
     auto *ctx = reinterpret_cast<AaudioContext *>(handle);
-    if (!ctx || !ctx->stream) return;
+    if (!ctx) return;
 
     ctx->running.store(false);
+
+    std::unique_lock<std::timed_mutex> lock(ctx->streamMutex, kLockTimeout);
+    if (!lock.owns_lock() || !ctx->stream) return;
 
     // Use requestPause instead of requestStop to avoid HAL teardown latency
     const aaudio_result_t result = AAudioStream_requestPause(ctx->stream);
@@ -504,9 +641,13 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioSto
         JNIEnv * /*env*/, jobject /*thiz*/, jlong handle) {
 
     auto *ctx = reinterpret_cast<AaudioContext *>(handle);
-    if (!ctx || !ctx->stream) return;
+    if (!ctx) return;
 
     ctx->running.store(false);
+
+    std::unique_lock<std::timed_mutex> lock(ctx->streamMutex, kLockTimeout);
+    if (!lock.owns_lock() || !ctx->stream) return;
+
     const aaudio_result_t result = AAudioStream_requestStop(ctx->stream);
     if (result != AAUDIO_OK) {
         AAUDIO_LOGW("nativeAaudioStop: requestStop returned (%d)", result);
@@ -517,6 +658,10 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioSto
 /**
  * Stops, closes, and frees all resources owned by the [AaudioContext], including
  * the float→int16 [AaudioContext::conversionBuffer].
+ *
+ * Sets [AaudioContext::destroyed] before taking the lock so any disconnect-recovery
+ * thread that is mid-flight (see [recoverAaudioStream]) notices and backs off
+ * instead of resurrecting or touching a stream that is being torn down.
  *
  * @param env    JNI environment pointer.
  * @param thiz   Calling object (unused).
@@ -529,16 +674,30 @@ Java_app_simple_felicity_engine_processors_AaudioOutputProcessor_nativeAaudioDes
     auto *ctx = reinterpret_cast<AaudioContext *>(handle);
     if (!ctx) return;
 
-    if (ctx->stream) {
-        ctx->running.store(false);
-        AAudioStream_requestStop(ctx->stream);
-        AAudioStream_close(ctx->stream);
-        ctx->stream = nullptr;
+    ctx->destroyed.store(true);
+    ctx->running.store(false);
+
+    AAudioStream *stream = nullptr;
+    {
+        std::unique_lock<std::timed_mutex> lock(ctx->streamMutex, kRecoveryLockTimeout);
+        if (lock.owns_lock()) {
+            stream = ctx->stream;
+            ctx->stream = nullptr;
+        } else {
+            AAUDIO_LOGE("nativeAaudioDestroy: could not acquire stream lock in time — "
+                        "freeing context without closing the stream (will be reclaimed by "
+                        "the OS on process exit if this ever happens)");
+        }
+    }
+
+    if (stream) {
+        AAudioStream_requestStop(stream);
+        AAudioStream_close(stream);
     }
 
     free(ctx->conversionBuffer);
     ctx->conversionBuffer = nullptr;
-    free(ctx);
+    delete ctx;
     AAUDIO_LOGI("AaudioContext destroyed");
 }
 

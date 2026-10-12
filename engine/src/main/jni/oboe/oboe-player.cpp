@@ -28,7 +28,10 @@
 #include "oboe/Oboe.h"
 #include <cstdlib>
 #include <cstring>
+#include <chrono>
+#include <mutex>
 #include <string>
+#include <thread>
 
 #include "oboe-player.h"
 
@@ -43,6 +46,20 @@
 #define OBOE_LOGE(...) __android_log_print(ANDROID_LOG_ERROR, OBOE_TAG, __VA_ARGS__)
 #define OBOE_LOGI(...) __android_log_print(ANDROID_LOG_INFO,  OBOE_TAG, __VA_ARGS__)
 #define OBOE_LOGW(...) __android_log_print(ANDROID_LOG_WARN,  OBOE_TAG, __VA_ARGS__)
+
+namespace {
+/**
+ * How long any JNI entry point will wait to acquire [OboeContext::streamMutex]
+ * before giving up and returning a "not ready" result. Kept short so a stuck
+ * recovery thread (or any other bug) can never block the audio thread or a
+ * Kotlin caller — this is the key property that prevents the whole-app freeze
+ * that used to happen when a phone call disconnected the stream.
+ */
+    constexpr auto kLockTimeout = std::chrono::milliseconds(50);
+
+/** Longer timeout used only by the recovery thread itself and by destroy(). */
+    constexpr auto kRecoveryLockTimeout = std::chrono::milliseconds(1000);
+}  // namespace
 
 /**
  * Converts [numSamples] float32 samples from [src] to signed 16-bit integers in [dst].
@@ -99,6 +116,143 @@ static const char *apiName(oboe::AudioApi api) {
     }
 }
 
+namespace {
+
+/**
+ * Notified by Oboe when the underlying stream is disconnected — most commonly
+ * because a phone call (or other higher-priority client) forced the audio HAL
+ * to tear down our exclusive low-latency stream. This is what used to leave the
+ * app frozen: every later call into the dead handle either failed silently or
+ * blocked, and nothing ever told the Kotlin side to recreate it.
+ *
+ * Oboe already stops and closes the stream itself before calling
+ * [onErrorAfterClose], so all this does is hand off to a detached background
+ * thread that opens a fresh replacement and swaps it into [OboeContext::stream]
+ * under [OboeContext::streamMutex].
+ */
+    class FelicityOboeErrorCallback : public oboe::AudioStreamErrorCallback {
+    public:
+        explicit FelicityOboeErrorCallback(OboeContext *ctx) : mCtx(ctx) {}
+
+        void onErrorAfterClose(oboe::AudioStream * /*oldStream*/, oboe::Result error) override {
+            OBOE_LOGW("onErrorAfterClose: stream closed due to error (%s) — scheduling recovery",
+                      oboe::convertToText(error));
+            mCtx->running.store(false);
+            std::thread(&FelicityOboeErrorCallback::recover, mCtx).detach();
+        }
+
+        /**
+         * Builds and opens a brand-new stream using the parameters already stored on
+         * [ctx] (sampleRate / channelCount / safeBufferMode) and re-registers this
+         * same error callback on it so a second disconnect is caught too.
+         *
+         * Does not touch `ctx->stream` — callers swap it in themselves under the lock.
+         */
+        static oboe::Result openStream(OboeContext *ctx,
+                                       std::shared_ptr<oboe::AudioStream> *outStream) {
+            oboe::AudioStreamBuilder builder;
+            builder.setDirection(oboe::Direction::Output)
+                    ->setUsage(oboe::Usage::Media)
+                    ->setContentType(oboe::ContentType::Music)
+                    ->setSampleRate(ctx->sampleRate)
+                    ->setChannelCount(ctx->channelCount)
+                    ->setFormat(oboe::AudioFormat::Float)
+                    ->setSampleRateConversionQuality(oboe::SampleRateConversionQuality::Medium)
+                    ->setErrorCallback(ctx->errorCallback.get());
+
+            if (ctx->safeBufferMode) {
+                builder.setPerformanceMode(oboe::PerformanceMode::None)
+                        ->setSharingMode(oboe::SharingMode::Shared);
+            } else {
+                builder.setPerformanceMode(oboe::PerformanceMode::LowLatency)
+                        ->setSharingMode(oboe::SharingMode::Exclusive);
+            }
+
+            const oboe::Result result = builder.openStream(*outStream);
+            if (result != oboe::Result::OK || !*outStream) {
+                OBOE_LOGE("FelicityOboeErrorCallback::openStream: openStream failed (%s)",
+                          oboe::convertToText(result));
+                return result;
+            }
+
+            ctx->actualFormat = (*outStream)->getFormat();
+            ctx->actualApiName = apiName((*outStream)->getAudioApi());
+
+            const int32_t actualSr = (*outStream)->getSampleRate();
+            const int32_t burstFrames = (*outStream)->getFramesPerBurst();
+            const int32_t targetMs = ctx->safeBufferMode ? 80 : 40;
+            const int32_t targetFrames = (actualSr * targetMs) / 1000;
+            int32_t multiplier = (burstFrames > 0) ? (targetFrames / burstFrames) + 1 : 4;
+            if (multiplier < 2) multiplier = 2;
+            const int32_t maxCap = (*outStream)->getBufferCapacityInFrames();
+            int32_t finalFrames = burstFrames * multiplier;
+            if (finalFrames > maxCap) finalFrames = maxCap;
+            (*outStream)->setBufferSizeInFrames(finalFrames);
+
+            OBOE_LOGI("Oboe stream (re)opened — sampleRate=%d, channels=%d, format=%d, "
+                      "api=%s, safeMode=%d, burstFrames=%d, bufferFrames=%d",
+                      ctx->sampleRate, ctx->channelCount, static_cast<int>(ctx->actualFormat),
+                      ctx->actualApiName.c_str(), ctx->safeBufferMode ? 1 : 0,
+                      burstFrames, finalFrames);
+            return oboe::Result::OK;
+        }
+
+    private:
+        /**
+         * Runs on a detached background thread. Guarded by [OboeContext::recovering] so
+         * a burst of extra error callbacks only triggers one reopen at a time, and by
+         * [OboeContext::destroyed] so a reopen racing against [nativeOboeDestroy] backs
+         * off instead of resurrecting a stream nobody owns anymore.
+         */
+        static void recover(OboeContext *ctx) {
+            if (ctx->destroyed.load()) return;
+
+            bool expected = false;
+            if (!ctx->recovering.compare_exchange_strong(expected, true)) {
+                return; // Another recovery is already in flight.
+            }
+
+            {
+                std::unique_lock<std::timed_mutex> lock(ctx->streamMutex, kRecoveryLockTimeout);
+                if (!lock.owns_lock() || ctx->destroyed.load()) {
+                    OBOE_LOGE("recover: could not safely detach old stream — aborting");
+                    ctx->recovering.store(false);
+                    return;
+                }
+                // Oboe has already stopped/closed the old stream for us before calling
+                // onErrorAfterClose — just drop our reference to it.
+                ctx->stream.reset();
+            }
+
+            std::shared_ptr<oboe::AudioStream> newStream;
+            oboe::Result result = oboe::Result::ErrorInvalidState;
+            if (!ctx->destroyed.load()) {
+                result = openStream(ctx, &newStream);
+            }
+
+            std::unique_lock<std::timed_mutex> lock(ctx->streamMutex, kRecoveryLockTimeout);
+            if (!lock.owns_lock() || ctx->destroyed.load()) {
+                if (newStream) newStream->close();
+                ctx->recovering.store(false);
+                return;
+            }
+
+            if (result == oboe::Result::OK && newStream) {
+                ctx->stream = newStream;
+                OBOE_LOGI("recover: stream successfully reopened after disconnect");
+            } else {
+                OBOE_LOGE("recover: reopen failed (%s) — route stays silent until the next "
+                          "configure() call recreates it from the Kotlin side",
+                          oboe::convertToText(result));
+            }
+            ctx->recovering.store(false);
+        }
+
+        OboeContext *mCtx;
+    };
+
+}  // namespace
+
 extern "C" {
 
 /**
@@ -112,8 +266,9 @@ extern "C" {
  *   - [oboe::PerformanceMode::None] with [oboe::SharingMode::Shared],
  *     buffer = ~80 ms headroom to prevent the Bluetooth stack from starving.
  *
- * After the stream opens, [OboeContext::actualFormat] is read from the stream
- * so the write path can decide whether float→int16 conversion is needed.
+ * Also registers a [FelicityOboeErrorCallback] so a later forced disconnect
+ * (e.g. a phone call taking over the HAL) triggers automatic stream recovery
+ * instead of leaving every subsequent call stuck against a dead handle.
  *
  * @param env           JNI environment pointer.
  * @param thiz          Calling object (unused).
@@ -141,83 +296,15 @@ Java_app_simple_felicity_engine_processors_OboeOutputProcessor_nativeOboeCreate(
     ctx->conversionBufferCapacity = 0;
     ctx->latencyMs = -1;
     ctx->running.store(false);
+    ctx->errorCallback = std::make_unique<FelicityOboeErrorCallback>(ctx);
 
-    oboe::AudioStreamBuilder builder;
-    builder.setDirection(oboe::Direction::Output)
-            ->setUsage(oboe::Usage::Media)
-            ->setContentType(oboe::ContentType::Music)
-            ->setSampleRate(static_cast<int32_t>(sampleRate))
-            ->setChannelCount(static_cast<int32_t>(channelCount))
-            ->setFormat(oboe::AudioFormat::Float)
-            ->setSampleRateConversionQuality(oboe::SampleRateConversionQuality::Medium);
-
-    if (ctx->safeBufferMode) {
-        /**
-         * Bluetooth path: use None performance mode with shared access.
-         * Exclusive mode is almost never granted for Bluetooth sinks; requesting it
-         * wastes an attempt and may cause a longer timeout before fallback.
-         */
-        builder.setPerformanceMode(oboe::PerformanceMode::None)
-                ->setSharingMode(oboe::SharingMode::Shared);
-    } else {
-        /**
-         * Fast path: request exclusive low-latency. Oboe will transparently fall
-         * back to shared mode if the hardware rejects the exclusive request.
-         */
-        builder.setPerformanceMode(oboe::PerformanceMode::LowLatency)
-                ->setSharingMode(oboe::SharingMode::Exclusive);
-    }
-
-    oboe::Result result = builder.openStream(ctx->stream);
-    if (result != oboe::Result::OK || !ctx->stream) {
-        OBOE_LOGE("nativeOboeCreate: openStream failed (%s)",
-                  oboe::convertToText(result));
+    std::shared_ptr<oboe::AudioStream> stream;
+    const oboe::Result result = FelicityOboeErrorCallback::openStream(ctx, &stream);
+    if (result != oboe::Result::OK || !stream) {
         delete ctx;
         return 0L;
     }
-
-    /**
-     * Read back what the HAL actually negotiated — Oboe may have fallen back
-     * from float to int16, or from AAudio to OpenSL ES. We record both so
-     * the write path can convert if needed and the UI can show the real backend.
-     */
-    ctx->actualFormat = ctx->stream->getFormat();
-    ctx->actualApiName = apiName(ctx->stream->getAudioApi());
-
-    if (ctx->actualFormat != oboe::AudioFormat::Float) {
-        OBOE_LOGW("nativeOboeCreate: requested Float but HAL negotiated format=%d "
-                  "— nativeOboeWrite will convert float→int16 on every call",
-                  static_cast<int>(ctx->actualFormat));
-    } else {
-        OBOE_LOGI("nativeOboeCreate: HAL confirmed AudioFormat::Float");
-    }
-
-    /**
-     * Size the buffer to give us enough headroom to absorb Java thread jitter
-     * and GC pauses without underruns, regardless of sample rate.
-     * We aim for ~40 ms on wired output and ~80 ms on Bluetooth.
-     */
-    const int32_t actualSr = ctx->stream->getSampleRate();
-    const int32_t burstFrames = ctx->stream->getFramesPerBurst();
-    const int32_t targetMs = ctx->safeBufferMode ? 80 : 40;
-    const int32_t targetFrames = (actualSr * targetMs) / 1000;
-    int32_t multiplier = (burstFrames > 0) ? (targetFrames / burstFrames) + 1 : 4;
-    if (multiplier < 2) multiplier = 2;
-    const int32_t maxCap = ctx->stream->getBufferCapacityInFrames();
-    int32_t finalFrames = burstFrames * multiplier;
-    if (finalFrames > maxCap) finalFrames = maxCap;
-
-    ctx->stream->setBufferSizeInFrames(finalFrames);
-
-    OBOE_LOGI("OboeContext created — sampleRate=%d (actual=%d), channels=%d, "
-              "format=%d, api=%s, safeMode=%d, "
-              "burstFrames=%d, bufferFrames=%d (~%d ms)",
-              ctx->sampleRate, actualSr, ctx->channelCount,
-              static_cast<int>(ctx->actualFormat),
-              ctx->actualApiName.c_str(),
-              ctx->safeBufferMode ? 1 : 0,
-              burstFrames, finalFrames,
-              (actualSr > 0) ? (finalFrames * 1000 / actualSr) : -1);
+    ctx->stream = stream;
 
     return reinterpret_cast<jlong>(ctx);
 }
@@ -235,7 +322,10 @@ Java_app_simple_felicity_engine_processors_OboeOutputProcessor_nativeOboeStart(
         JNIEnv * /*env*/, jobject /*thiz*/, jlong handle) {
 
     auto *ctx = reinterpret_cast<OboeContext *>(handle);
-    if (!ctx || !ctx->stream) return JNI_FALSE;
+    if (!ctx) return JNI_FALSE;
+
+    std::unique_lock<std::timed_mutex> lock(ctx->streamMutex, kLockTimeout);
+    if (!lock.owns_lock() || !ctx->stream) return JNI_FALSE;
 
     const oboe::Result result = ctx->stream->requestStart();
     if (result != oboe::Result::OK) {
@@ -261,23 +351,20 @@ Java_app_simple_felicity_engine_processors_OboeOutputProcessor_nativeOboeStart(
  * allocation occurs.
  *
  * **Blocking on purpose:** the write waits (up to [kTimeoutNanos]) for the
- * hardware to have room, which is what keeps playback smooth and gap-free —
- * the call naturally paces itself to how fast the hardware actually consumes
- * audio, instead of depending on how often the caller happens to be invoked.
- * Pausing quickly is handled separately: [FelicityAudioSink] silences the
- * stream directly (see its `muteImmediately`) from the app thread the moment
- * pause is requested, so it never has to wait for this write to return. The
- * caller (see [OboeOutputProcessor.write]) still checks the returned count
- * and retries any remainder, in case the timeout expires before every sample
- * fits.
+ * hardware to have room. If the stream has been disconnected (e.g. mid phone-call)
+ * and a recovery is in flight, [OboeContext::streamMutex] simply fails to lock
+ * within [kLockTimeout] and this returns 0 immediately rather than touching the
+ * dead/being-replaced handle — ExoPlayer will retry the same buffer on the next
+ * cycle, and once recovery finishes [OboeOutputProcessor.isRunning] reflects the
+ * new stream so [FelicityAudioSink] auto-restarts it.
  *
  * @param env       JNI environment pointer.
  * @param thiz      Calling object (unused).
  * @param handle    Opaque pointer from [nativeOboeCreate].
  * @param pcmBuffer Interleaved float PCM; length = numFrames × channelCount.
  * @return Number of samples actually accepted by the hardware buffer (may be
- *         less than the input length, or 0 if the buffer is currently full),
- *         or -1 if the stream reported an error.
+ *         less than the input length, or 0 if the buffer is currently full or
+ *         the stream is mid-recovery), or -1 if the stream reported an error.
  */
 JNIEXPORT jint JNICALL
 Java_app_simple_felicity_engine_processors_OboeOutputProcessor_nativeOboeWrite(
@@ -285,7 +372,10 @@ Java_app_simple_felicity_engine_processors_OboeOutputProcessor_nativeOboeWrite(
         jlong handle, jfloatArray pcmBuffer) {
 
     auto *ctx = reinterpret_cast<OboeContext *>(handle);
-    if (!ctx || !ctx->stream || !ctx->running.load()) return 0;
+    if (!ctx) return 0;
+
+    std::unique_lock<std::timed_mutex> lock(ctx->streamMutex, kLockTimeout);
+    if (!lock.owns_lock() || !ctx->stream || !ctx->running.load()) return 0;
 
     const int totalSamples = env->GetArrayLength(pcmBuffer);
     if (totalSamples <= 0) return 0;
@@ -295,11 +385,6 @@ Java_app_simple_felicity_engine_processors_OboeOutputProcessor_nativeOboeWrite(
 
     jfloat *buf = env->GetFloatArrayElements(pcmBuffer, nullptr);
 
-    // Block for up to this long waiting for hardware buffer room. This keeps
-    // consecutive writes paced to real playback speed so the hardware never
-    // runs dry between calls, which is what prevents audible gaps/crackling.
-    // Pause latency is handled separately (see the note above), so blocking
-    // here no longer has any effect on how fast pause() feels.
     static constexpr int64_t kTimeoutNanos = 100'000'000LL; // 100 ms
     jint framesWritten = 0;
 
@@ -309,6 +394,9 @@ Java_app_simple_felicity_engine_processors_OboeOutputProcessor_nativeOboeWrite(
         if (!result) {
             OBOE_LOGE("nativeOboeWrite: float write error (%s)",
                       oboe::convertToText(result.error()));
+            if (result.error() == oboe::Result::ErrorDisconnected) {
+                ctx->running.store(false);
+            }
             framesWritten = -1;
         } else {
             framesWritten = result.value();
@@ -340,6 +428,9 @@ Java_app_simple_felicity_engine_processors_OboeOutputProcessor_nativeOboeWrite(
         if (!result) {
             OBOE_LOGE("nativeOboeWrite: int16 write error (%s)",
                       oboe::convertToText(result.error()));
+            if (result.error() == oboe::Result::ErrorDisconnected) {
+                ctx->running.store(false);
+            }
             framesWritten = -1;
         } else {
             framesWritten = result.value();
@@ -367,7 +458,10 @@ Java_app_simple_felicity_engine_processors_OboeOutputProcessor_nativeOboeGetLate
         JNIEnv * /*env*/, jobject /*thiz*/, jlong handle) {
 
     auto *ctx = reinterpret_cast<OboeContext *>(handle);
-    if (!ctx || !ctx->stream || !ctx->running.load()) return -1;
+    if (!ctx) return -1;
+
+    std::unique_lock<std::timed_mutex> lock(ctx->streamMutex, kLockTimeout);
+    if (!lock.owns_lock() || !ctx->stream || !ctx->running.load()) return -1;
 
     /** Oboe's helper does the AAudioStream_getTimestamp math for us. */
     auto latencyResult = ctx->stream->calculateLatencyMillis();
@@ -399,10 +493,38 @@ Java_app_simple_felicity_engine_processors_OboeOutputProcessor_nativeOboeGetApiN
         JNIEnv *env, jobject /*thiz*/, jlong handle) {
 
     auto *ctx = reinterpret_cast<OboeContext *>(handle);
-    if (!ctx || !ctx->stream) {
+    if (!ctx) return env->NewStringUTF("Unknown");
+
+    std::unique_lock<std::timed_mutex> lock(ctx->streamMutex, kLockTimeout);
+    if (!lock.owns_lock() || !ctx->stream) {
         return env->NewStringUTF("Unknown");
     }
     return env->NewStringUTF(ctx->actualApiName.c_str());
+}
+
+/**
+ * Returns whether the stream is currently started and running, straight from the
+ * native [OboeContext::running] flag.
+ *
+ * This is the single source of truth [OboeOutputProcessor.isRunning] delegates to
+ * on the Kotlin side. Tying it to live native state (instead of a Kotlin-side
+ * cached boolean) is what lets [FelicityAudioSink]'s existing
+ * `if (!isPaused && !stream.isRunning) stream.start()` auto-restart check in
+ * `handleBuffer` notice — on its own, with no extra plumbing — that a disconnect
+ * happened and automatically resume playback once recovery has reopened the
+ * stream, instead of staying silently stuck forever.
+ *
+ * @param env    JNI environment pointer.
+ * @param thiz   Calling object (unused).
+ * @param handle Opaque pointer from [nativeOboeCreate].
+ */
+JNIEXPORT jboolean JNICALL
+Java_app_simple_felicity_engine_processors_OboeOutputProcessor_nativeOboeIsRunning(
+        JNIEnv * /*env*/, jobject /*thiz*/, jlong handle) {
+
+    auto *ctx = reinterpret_cast<OboeContext *>(handle);
+    if (!ctx) return JNI_FALSE;
+    return ctx->running.load() ? JNI_TRUE : JNI_FALSE;
 }
 
 /**
@@ -424,7 +546,10 @@ Java_app_simple_felicity_engine_processors_OboeOutputProcessor_nativeOboeGetPlay
         JNIEnv * /*env*/, jobject /*thiz*/, jlong handle, jboolean /*sourceEnded*/) {
 
     auto *ctx = reinterpret_cast<OboeContext *>(handle);
-    if (!ctx || !ctx->stream) return -1L;
+    if (!ctx) return -1L;
+
+    std::unique_lock<std::timed_mutex> lock(ctx->streamMutex, kLockTimeout);
+    if (!lock.owns_lock() || !ctx->stream) return -1L;
 
     const int64_t framesWritten = ctx->stream->getFramesWritten();
     if (framesWritten <= 0) return -1L;
@@ -473,9 +598,12 @@ Java_app_simple_felicity_engine_processors_OboeOutputProcessor_nativeOboePause(
         JNIEnv * /*env*/, jobject /*thiz*/, jlong handle) {
 
     auto *ctx = reinterpret_cast<OboeContext *>(handle);
-    if (!ctx || !ctx->stream) return;
+    if (!ctx) return;
 
     ctx->running.store(false);
+
+    std::unique_lock<std::timed_mutex> lock(ctx->streamMutex, kLockTimeout);
+    if (!lock.owns_lock() || !ctx->stream) return;
 
     // Use requestPause instead of requestStop
     const oboe::Result result = ctx->stream->requestPause();
@@ -498,9 +626,13 @@ Java_app_simple_felicity_engine_processors_OboeOutputProcessor_nativeOboeStop(
         JNIEnv * /*env*/, jobject /*thiz*/, jlong handle) {
 
     auto *ctx = reinterpret_cast<OboeContext *>(handle);
-    if (!ctx || !ctx->stream) return;
+    if (!ctx) return;
 
     ctx->running.store(false);
+
+    std::unique_lock<std::timed_mutex> lock(ctx->streamMutex, kLockTimeout);
+    if (!lock.owns_lock() || !ctx->stream) return;
+
     const oboe::Result result = ctx->stream->requestStop();
     if (result != oboe::Result::OK) {
         OBOE_LOGW("nativeOboeStop: requestStop returned (%s)",
@@ -513,6 +645,10 @@ Java_app_simple_felicity_engine_processors_OboeOutputProcessor_nativeOboeStop(
  * Stops, closes, and frees all resources owned by the [OboeContext], including
  * the float→int16 [OboeContext::conversionBuffer].
  *
+ * Sets [OboeContext::destroyed] before taking the lock so any disconnect-recovery
+ * thread that is mid-flight notices and backs off instead of resurrecting or
+ * touching a stream that is being torn down.
+ *
  * @param env    JNI environment pointer.
  * @param thiz   Calling object (unused).
  * @param handle Opaque pointer from [nativeOboeCreate].
@@ -524,11 +660,24 @@ Java_app_simple_felicity_engine_processors_OboeOutputProcessor_nativeOboeDestroy
     auto *ctx = reinterpret_cast<OboeContext *>(handle);
     if (!ctx) return;
 
-    if (ctx->stream) {
-        ctx->running.store(false);
-        ctx->stream->requestStop();
-        ctx->stream->close();
-        ctx->stream.reset();
+    ctx->destroyed.store(true);
+    ctx->running.store(false);
+
+    std::shared_ptr<oboe::AudioStream> stream;
+    {
+        std::unique_lock<std::timed_mutex> lock(ctx->streamMutex, kRecoveryLockTimeout);
+        if (lock.owns_lock()) {
+            stream = ctx->stream;
+            ctx->stream.reset();
+        } else {
+            OBOE_LOGE("nativeOboeDestroy: could not acquire stream lock in time — "
+                      "freeing context without closing the stream");
+        }
+    }
+
+    if (stream) {
+        stream->requestStop();
+        stream->close();
     }
 
     free(ctx->conversionBuffer);

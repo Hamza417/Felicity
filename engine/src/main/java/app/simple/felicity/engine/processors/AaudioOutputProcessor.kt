@@ -1,8 +1,6 @@
 package app.simple.felicity.engine.processors
 
 import android.util.Log
-import app.simple.felicity.engine.processors.AaudioOutputProcessor.Companion.AAUDIO_FORMAT_PCM_FLOAT
-import app.simple.felicity.engine.processors.AaudioOutputProcessor.Companion.AAUDIO_FORMAT_PCM_I16
 
 /**
  * JNI handle for a native AAudio output stream.
@@ -47,12 +45,21 @@ class AaudioOutputProcessor(
 
     private var nativeHandle: Long = 0L
 
-    /** Tracks whether the native stream has been started and is currently running.
-     *  Updated synchronously by [start] and [stop] so callers on any thread can
-     *  check this without a JNI round-trip. */
-    @Volatile
-    var isRunning: Boolean = false
-        private set
+    /**
+     * Tracks whether the native stream is currently started and running.
+     *
+     * This delegates straight to the native [AaudioContext.running] flag on every
+     * read instead of caching a Kotlin-side boolean. That matters for disconnect
+     * recovery: if the audio HAL forcibly disconnects the stream (most commonly
+     * because a phone call took over the DSP), the native error callback flips
+     * the native flag to `false` and reopens a fresh stream in the background.
+     * Reading it live here is what lets [FelicityAudioSink]'s existing
+     * `if (!isPaused && !stream.isRunning) stream.start()` auto-restart check in
+     * `handleBuffer` notice the disconnect and resume playback automatically once
+     * recovery finishes — with no extra plumbing on the Kotlin side.
+     */
+    val isRunning: Boolean
+        get() = nativeHandle != 0L && nativeAaudioIsRunning(nativeHandle)
 
     init {
         nativeHandle = nativeAaudioCreate(sampleRate, channelCount, useSafeBuffers)
@@ -72,9 +79,7 @@ class AaudioOutputProcessor(
      */
     fun start(): Boolean {
         if (nativeHandle == 0L) return false
-        val ok = nativeAaudioStart(nativeHandle)
-        if (ok) isRunning = true
-        return ok
+        return nativeAaudioStart(nativeHandle)
     }
 
     /**
@@ -162,7 +167,6 @@ class AaudioOutputProcessor(
 
     fun pause() {
         if (nativeHandle != 0L) {
-            isRunning = false
             nativeAaudioPause(nativeHandle)
         }
     }
@@ -172,7 +176,6 @@ class AaudioOutputProcessor(
      */
     fun stop() {
         if (nativeHandle == 0L) return
-        isRunning = false
         nativeAaudioStop(nativeHandle)
     }
 
@@ -181,7 +184,6 @@ class AaudioOutputProcessor(
      */
     fun release() {
         if (nativeHandle == 0L) return
-        isRunning = false
         nativeAaudioDestroy(nativeHandle)
         nativeHandle = 0L
         Log.i(TAG, "AaudioOutputProcessor released")
@@ -222,6 +224,9 @@ class AaudioOutputProcessor(
      *         or -1 if the stream is not open.
      */
     private external fun nativeAaudioGetActualFormat(handle: Long): Int
+
+    /** Live native running state — see [isRunning]. */
+    private external fun nativeAaudioIsRunning(handle: Long): Boolean
     private external fun nativeAaudioPause(handle: Long)
     private external fun nativeAaudioStop(handle: Long)
     private external fun nativeAaudioDestroy(handle: Long)
