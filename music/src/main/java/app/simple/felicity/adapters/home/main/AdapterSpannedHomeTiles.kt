@@ -4,14 +4,8 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.Companion.BIG_TILE_EVERY_N
-import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.Companion.DESIRED_SONG_COUNT
-import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.Companion.MAX_PANEL_COUNT
-import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.Companion.PANEL_POSITIONS
-import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.Companion.SONG_TILE_COUNT
 import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.Companion.SPAN_COUNT
-import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.Companion.TOTAL_TILE_COUNT
 import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.Companion.buildLayoutSpec
-import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.Companion.buildTiles
 import app.simple.felicity.databinding.AdapterGridImageBinding
 import app.simple.felicity.databinding.AdapterSpannedPanelTileBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
@@ -195,7 +189,7 @@ class AdapterSpannedHomeTiles(
          * The only number you need to change to get more or fewer song tiles in the grid.
          * Everything else, hero positions, panel slots, total tile count, adjusts automatically.
          */
-        const val DESIRED_SONG_COUNT = 35
+        const val DESIRED_SONG_COUNT = 40
 
         /**
          * How many panel navigation slots to reserve. Keep this at least as large as the
