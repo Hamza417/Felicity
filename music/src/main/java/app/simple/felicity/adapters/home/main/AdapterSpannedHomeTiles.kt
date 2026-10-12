@@ -4,17 +4,19 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.Companion.BIG_TILE_EVERY_N
+import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.Companion.DESIRED_SONG_COUNT
+import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.Companion.MAX_PANEL_COUNT
+import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.Companion.PANEL_POSITIONS
+import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.Companion.SONG_TILE_COUNT
 import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.Companion.SPAN_COUNT
+import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.Companion.TOTAL_TILE_COUNT
 import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.Companion.buildLayoutSpec
+import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.Companion.buildTiles
 import app.simple.felicity.databinding.AdapterGridImageBinding
-import app.simple.felicity.databinding.AdapterHomeSpannedHeaderBinding
 import app.simple.felicity.databinding.AdapterSpannedPanelTileBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
-import app.simple.felicity.preferences.MainPreferences
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.shared.utils.ViewUtils.toColorStateList
-import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Panel
 
 /**
@@ -36,14 +38,11 @@ class AdapterSpannedHomeTiles(
 ) : RecyclerView.Adapter<VerticalListViewHolder>() {
 
     private var callbacks: SpannedHomeTileCallbacks? = null
-    private var isServerRunning = false
-    private var appLabel = ""
 
     override fun getItemViewType(position: Int): Int {
         return when (tiles[position]) {
             is SpannedTile.SongTile -> TYPE_SONG
             is SpannedTile.PanelTile -> TYPE_PANEL
-            is SpannedTile.HeaderTile -> TYPE_HEADER
         }
     }
 
@@ -53,8 +52,6 @@ class AdapterSpannedHomeTiles(
                     AdapterGridImageBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             TYPE_PANEL -> PanelHolder(
                     AdapterSpannedPanelTileBinding.inflate(LayoutInflater.from(parent.context), parent, false))
-            TYPE_HEADER -> HeaderHolder(
-                    AdapterHomeSpannedHeaderBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             else -> throw IllegalArgumentException("Unknown tile type at viewType=$viewType")
         }
     }
@@ -89,27 +86,6 @@ class AdapterSpannedHomeTiles(
                     callbacks?.onPanelTileClicked(tile)
                 }
             }
-
-            is SpannedTile.HeaderTile -> {
-                val headerHolder = holder as HeaderHolder
-
-                if (appLabel.isEmpty()) {
-                    appLabel = MainPreferences.getAppLabel(headerHolder.itemView.context)
-                }
-
-                headerHolder.binding.label.text = appLabel
-
-                headerHolder.binding.serverToggle.imageTintList = if (isServerRunning) {
-                    ThemeManager.accent.primaryAccentColor.toColorStateList()
-                } else {
-                    ThemeManager.theme.iconTheme.regularIconColor.toColorStateList()
-                }
-
-                headerHolder.binding.search.setOnClickListener { callbacks?.onSearchClicked() }
-                headerHolder.binding.settings.setOnClickListener { callbacks?.onSettingsClicked() }
-                headerHolder.binding.label.setOnClickListener { callbacks?.onAppLabelClicked() }
-                headerHolder.binding.serverToggle.setOnClickListener { callbacks?.onServerToggleClicked() }
-            }
         }
     }
 
@@ -118,22 +94,8 @@ class AdapterSpannedHomeTiles(
     override fun getItemId(position: Int): Long {
         return when (val tile = tiles[position]) {
             is SpannedTile.SongTile -> tile.audio.id
+            // Panel tiles use a stable id derived from their title resource so they never animate.
             is SpannedTile.PanelTile -> tile.titleRes.toLong().inv()
-            is SpannedTile.HeaderTile -> Long.MAX_VALUE
-        }
-    }
-
-    fun setServerRunning(running: Boolean) {
-        if (isServerRunning != running) {
-            isServerRunning = running
-            notifyItemChanged(0) // Header is always at position 0
-        }
-    }
-
-    fun updateAppLabel(label: String) {
-        if (appLabel != label) {
-            appLabel = label
-            notifyItemChanged(0)
         }
     }
 
@@ -170,9 +132,6 @@ class AdapterSpannedHomeTiles(
     inner class PanelHolder(val binding: AdapterSpannedPanelTileBinding) :
             VerticalListViewHolder(binding.root)
 
-    inner class HeaderHolder(val binding: AdapterHomeSpannedHeaderBinding) :
-            VerticalListViewHolder(binding.root)
-
     /**
      * Represents a single tile in the Windows Phone-style grid. Sealed so we can
      * switch on the type without worrying about forgotten branches.
@@ -197,9 +156,6 @@ class AdapterSpannedHomeTiles(
                 return Panel(titleRes, iconRes)
             }
         }
-
-        /** The single header tile. */
-        object HeaderTile : SpannedTile()
     }
 
     /**
@@ -229,17 +185,11 @@ class AdapterSpannedHomeTiles(
          * @param panelTile The string resource ID of the panel that should be opened.
          */
         fun onPanelTileClicked(panelTile: SpannedTile.PanelTile)
-
-        fun onSearchClicked()
-        fun onSettingsClicked()
-        fun onAppLabelClicked()
-        fun onServerToggleClicked()
     }
 
     companion object {
         private const val TYPE_SONG = 0
         private const val TYPE_PANEL = 1
-        private const val TYPE_HEADER = 2
 
         /**
          * The only number you need to change to get more or fewer song tiles in the grid.
@@ -404,9 +354,7 @@ class AdapterSpannedHomeTiles(
                 songs: List<Audio>,
                 panels: List<SpannedTile.PanelTile>
         ): MutableList<SpannedTile> {
-            val result = ArrayList<SpannedTile>(TOTAL_TILE_COUNT + 1)
-            result.add(SpannedTile.HeaderTile)
-            
+            val result = ArrayList<SpannedTile>(TOTAL_TILE_COUNT)
             var songIndex = 0
             var panelIndex = 0
 
