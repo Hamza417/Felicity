@@ -70,13 +70,13 @@
     <string name="date_added">Date d\'ajout</string>
     <string name="duration">Durée</string>
     <string name="year">Année</string>
+    <string name="years">Années</string>
     <string name="sorting_style">Style de tri</string>
     <string name="normal">Normal</string>
     <string name="reversed">Inversé</string>
     <string name="track_number">Numéro de piste</string>
     <string name="composer">Compositeur</string>
     <string name="open_app_settings">Ouvrir les paramètres de l\'application…</string>
-    <string name="artflow">ArtFlow</string>
     <string name="artflow_desc">Met l\'accent sur la découverte visuelle avec plusieurs carrousels de pochettes.</string>
     <string name="sort_by">Trier par</string>
     <string name="date_modified">Date de modification</string>
@@ -116,7 +116,6 @@
     <string name="soapstone">Stéatite</string>
     <string name="high_contrast">Contraste élevé</string>
     <string name="dark">Sombre</string>
-    <string name="amoled">AMOLED</string>
     <string name="slate">Ardoise</string>
     <string name="oil">Huile</string>
     <string name="follow_system">Suivre le système</string>
@@ -173,7 +172,7 @@
     <string name="delete_audio_summary">%1$s sera définitivement supprimé du stockage.</string>
     <string name="gapless_playback">Lecture sans coupure</string>
     <string name="gapless_playback_summary">Lisez les fichiers audio sans coupure.</string>
-    <string name="high_resolution_output_summary">"Activez le mode Hi-Res (32 bits flottants) au lieu du mode 16 bits standard. Un appareil compatible est requis, sinon la qualité peut diminuer au lieu de s\'améliorer."</string>
+    <string name="high_resolution_output_summary">"Activez le mode Hi-Res (32 bits flottants) au lieu du mode 16 bits standard. Un appareil compatible est requis, sinon la qualité peut diminuer au lieu de s'améliorer."</string>
     <string name="audio_information">Informations audio</string>
     <string name="playback_info">Informations de lecture</string>
     <string name="played">Lu</string>
@@ -183,7 +182,6 @@
     <string name="last_played_relative">Dernière lecture (relative)</string>
     <string name="clear_stats">Effacer les statistiques</string>
     <string name="never_played">Jamais lu</string>
-
     <!-- Audio Information dialog -->
     <string name="album_artist">Artiste de l\'album</string>
     <string name="size">Taille</string>
@@ -228,12 +226,29 @@
     <string name="fallback_to_software_decoder">Retour au décodeur logiciel</string>
     <string name="fallback_to_software_decoder_summary">Revenez silencieusement au décodeur logiciel si le matériel système ne parvient pas à lire un fichier audio.</string>
     <string name="playing_queue">File de lecture</string>
+    <!-- Queue replacement confirmation -->
+    <string name="queue_management">Gestion de la file</string>
+    <string name="confirm_queue_replacement">Confirmation du remplacement de la file</string>
+    <string name="confirm_queue_replacement_summary">Demande avant de remplacer votre file de lecture actuelle quand vous commencez à jouer des chansons depuis les répertoires, albums, artistes ou listes de lecture.</string>
+    <string name="replace_queue_title">Remplacer la file en cours de lecture ?</string>
+    <string name="replace_queue_message">Une file est déjà chargée. Voulez-vous la remplacer par la nouvelle sélection ou placer la nouvelle sélection dans un emplacement vide de la file ?</string>
+    <string name="replace">Remplacer</string>
+    <string name="move_to_empty_queue">Placer dans la file</string>
+    <string name="moved_to_empty_queue">Placé dans la file %1$d</string>
+    <string name="no_empty_queue_available">Aucun emplacement disponible. La file actuelle a été remplacée.</string>
+    <!-- Folder hierarchy shuffle scope confirmation -->
+    <string name="shuffle_scope_title">Mélanger les chansons ?</string>
+    <string name="shuffle_scope_message">Mélanger seulement les chansons dans ce répertoire ou inclure celles contenues dans ses sous-répertoires ?</string>
+    <string name="shuffle_this_folder_only">Uniquement ce répertoire</string>
+    <string name="shuffle_include_subfolders">Inclure les sous-répertoires</string>
+    <string name="no_songs_to_shuffle">Aucune chanson à mélanger.</string>
+    <string name="play_scope_title">Jouer les chansons ?</string>
+    <string name="play_scope_message">Jouer seulement les chansons dans ce répertoire ou inclure celles contenues dans ses sous-répertoires ?</string>
     <string name="sync_adjust">Ajustement de synchronisation</string>
     <string name="accessibility">Accessibilité</string>
     <string name="accessibility_desc">Ajustez les paramètres d\'accessibilité pour une meilleure expérience.</string>
     <string name="stroke_around_miniplayer">Contour du mini-lecteur</string>
     <string name="darker_miniplayer_shadow">Utiliser des ombres plus sombres</string>
-
     <!-- Shuffle -->
     <string name="grid_type">Type de grille</string>
     <string name="options">Options</string>
@@ -252,7 +267,7 @@
     <string name="lyrics_saved">Paroles enregistrées</string>
     <string name="x_results">%1$d Résultats</string>
     <string name="delete_lyrics_too">Supprimer aussi les fichiers de paroles</string>
-    <string name="miniplayer">Mini lecteur</string>
+    <string name="miniplayer">Mini-lecteur</string>
     <string name="margin_around_miniplayer">Marge autour du mini-lecteur</string>
     <string name="margin_around_miniplayer_summary">Activez la marge autour du mini-lecteur. Si activé, le mini-lecteur en bas aura de l\'espace autour de lui.</string>
     <string name="force_stereo_downmixing">Mixage stéréo forcé</string>
@@ -264,7 +279,6 @@
     <string name="tape_saturation">Saturation de bande</string>
     <string name="pitch">Hauteur tonale</string>
     <string name="playback_speed">Vitesse</string>
-    <string name="replay_gain">Replay Gain</string>
     <string name="auto_replay_gain">Replay Gain automatique</string>
     <string name="auto_replay_gain_summary">Appliquez automatiquement la valeur de gain intégrée dans les balises ReplayGain de chaque piste lorsqu\'une nouvelle chanson commence à jouer. Le réglage Replay Gain dans l\'égaliseur fonctionne toujours en plus de cela.</string>
     <string name="replay_gain_mode">Mode Replay Gain</string>
@@ -311,7 +325,6 @@
     <string name="edit_metadata">Modifier les métadonnées</string>
     <string name="metadata_saved">Métadonnées enregistrées avec succès.</string>
     <string name="comment">Commentaire</string>
-
     <!-- Audio Pipeline Dialog — section labels -->
     <string name="track_info">Informations de piste</string>
     <string name="channels">Canaux</string>
@@ -329,7 +342,6 @@
     <string name="device_name">Nom de l\'appareil</string>
     <string name="disabled">Désactivé</string>
     <string name="insert_and_play">Insérer dans la file et lire</string>
-
     <string name="output">Sortie</string>
     <string name="aaudio_desc">Contourne le mixeur audio Android et écrit directement sur le matériel pour une latence plus faible.</string>
     <string name="audio_output_mode">API de sortie</string>
@@ -343,7 +355,6 @@
     <string name="album_art_dark">Pochette d\'album (Sombre)</string>
     <string name="visualizer_latency">Latence du visualiseur</string>
     <string name="open_milkdrop_visualizer">Ouvrir le visualiseur Milkdrop</string>
-
     <!-- Playlist strings -->
     <string name="create_playlist">Créer une liste de lecture</string>
     <string name="new_playlist">Nouvelle liste de lecture</string>
@@ -366,7 +377,6 @@
     <string name="verifying_license">Vérification de la licence</string>
     <string name="trial">Essai</string>
     <string name="trial_period_summary">%1$d jours restants dans la période d\'essai.</string>
-
     <!-- Trial expired dialog strings -->
     <string name="trial_expired">Essai expiré</string>
     <string name="trial_expired_message">Votre période d\'essai gratuite est terminée. Achetez la version complète pour continuer à profiter de Felicity sans interruption.</string>
@@ -374,7 +384,6 @@
     <string name="purchase_now">Acheter maintenant</string>
     <string name="purchase_later">J\'achèterai plus tard</string>
     <string name="grace_launches_used">%1$d sur %2$d lancements de grâce consommés.</string>
-
     <!-- Play Store purchase screen strings -->
     <string name="simple_ui_desc">Interface de lecteur simple et plate adaptée à la plupart des utilisateurs.</string>
     <string name="faded_ui_desc">Pochette d\'album estompée avec ambiance immersive, idéal en modes sombres.</string>
@@ -388,7 +397,6 @@
     <string name="keep_screen_on">Garder l\'écran allumé</string>
     <string name="keep_screen_on_summary">Empêchez l\'application de passer en veille.</string>
     <string name="auto">Automatique (Système)</string>
-
     <!-- Server mode strings -->
     <string name="server_notification_title">Serveur de musique en cours d\'exécution</string>
     <string name="server_notification_subtext">Appuyez pour ouvrir dans le navigateur</string>
@@ -396,18 +404,15 @@
     <string name="server_channel_name">Serveur de musique</string>
     <string name="server_channel_description">Affiche le statut du serveur de musique Wi-Fi local</string>
     <string name="server_unknown_ip">ip-inconnue</string>
-
     <string name="stroke_around_miniplayer_summary">Ajoutez une ligne sombre autour du bord du mini-lecteur pour améliorer la visibilité.</string>
     <string name="darker_miniplayer_shadow_summary">Remplacez l\'ombre d\'élévation système par une lueur plus douce en couleur d\'accentuation dessinée directement sur le canevas.</string>
     <string name="support_development_summary">Achetez la clé de licence de l\'application sur Gumroad.</string>
-
     <!-- Equalizer Presets -->
     <string name="save_preset">Enregistrer le préréglage</string>
     <string name="preset_name_hint">Nom du préréglage…</string>
     <string name="built_in">Intégré</string>
     <string name="switch_to_peq">Passer au PEQ</string>
     <string name="switch_to_graphic_eq">Passer à l\'EQ graphique</string>
-
     <!-- LRC Editor -->
     <string name="lrc_lyric_hint">Ligne de paroles…</string>
     <string name="lrc_stamp_timestamp">Horodater la position actuelle</string>
@@ -428,14 +433,12 @@
     <string name="done">Terminé</string>
     <string name="manage_music_folders">Gérer les dossiers de musique</string>
     <string name="manage_music_folders_desc">Gérez les répertoires locaux pour l\'indexation de la bibliothèque.</string>
-
     <!-- Dashboard section titles and chips -->
     <string name="top_artists">Meilleurs artistes</string>
     <string name="top_albums">Meilleurs albums</string>
     <string name="library_stats">%1$s Pistes • %2$s Heures</string>
     <string name="server">Serveur</string>
     <string name="server_active">Serveur actif</string>
-
     <string name="outline_clickable_elements">Contourner les éléments cliquables</string>
     <string name="outline_clickable_elements_summary">Dessinez un contour autour des boutons et icônes cliquables.</string>
     <string name="highlight_clicked_element">Mettre en surbrillance les éléments cliquables</string>
@@ -444,7 +447,6 @@
     <string name="panel_visibility_summary">Choisissez quels panneaux apparaissent dans les listes de navigation.</string>
     <string name="reshuffle">Pas de remélange</string>
     <string name="reshuffle_summary">Ne remélangez pas la liste si la liste actuelle est déjà mélangée lors de la sélection d\'une nouvelle chanson.</string>
-
     <string name="label">Étiquette</string>
     <string name="relaxed">Détendu</string>
     <string name="compact">Compact</string>
@@ -465,7 +467,6 @@
     <string name="read_more">Lire la suite</string>
     <string name="read_less">Réduire</string>
     <string name="active_since">Actif depuis %1$s</string>
-
     <string name="active_since_present">%1$s – présent</string>
     <string name="released_in">Sorti le %1$s</string>
     <string name="pause_activity">Mettre l\'activité en pause</string>
@@ -488,14 +489,24 @@
     <string name="carousel">Carrousel</string>
     <string name="carousel_ui_desc">Style de lecteur simple avec des pochettes d\'album de type carrousel.</string>
     <string name="caps">Majuscules</string>
+    <string name="bars">Barres</string>
     <string name="current_queue">File %1$d</string>
     <string name="rename">Renommer</string>
+    <string name="clear_queue">Vider</string>
     <string name="volume_controls">Contrôles du volume</string>
     <string name="volume_controls_summary">Afficher les contrôles du volume lorsque les boutons de volume sont pressés.</string>
     <string name="usb_dac_control_summary">Utilisez le pilote DAC interne de l\'application pour créer une sortie audio directe via DAC.</string>
     <string name="stack_media_controls">Empiler les contrôles multimédias</string>
     <string name="stack_media_controls_summary">Empilez les contrôles multimédias avec la forme d\'onde pour créer plus d\'espace vertical.</string>
+    <string name="pages">Pages</string>
+    <string name="show_songs_first">Montrer les chansons en premier</string>
+    <string name="show_songs_first_summary">Affiche la liste de chansons avant les sélections album, artiste et genre dans les pages de détail.</string>
     <string name="timer_position">Position du minuteur</string>
     <string name="waveform_menu">Menu de forme d\'onde</string>
+    <string name="optics">Effets visuels</string>
+    <string name="reduce_animations">Réduire les animations</string>
+    <string name="reduce_animations_summary">Désactive certaines animations non essentielles dans l\'application. Peut améliorer la performance sur certains appareils.\n\nPour désactiver les animations de transition, allez dans %1$s.</string>
+    <string name="animations">Animations</string>
+    <string name="miniplayer_width">Largeur du mini lecteur</string>
+    <string name="miniplayer_width_summary">Ajuste la largeur horizontale du mini-lecteur en mode paysage.</string>
 </resources>
-
