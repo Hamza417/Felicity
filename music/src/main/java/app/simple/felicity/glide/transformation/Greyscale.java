@@ -30,13 +30,16 @@ public class Greyscale extends BitmapTransformation {
     
     @Override
     protected Bitmap transform(BitmapPool pool, Bitmap source, int outWidth, int outHeight) {
-        Bitmap bitmap = Bitmap.createBitmap(source.getWidth(), source.getHeight(), Bitmap.Config.ARGB_8888);
-        //Create Image Paint
+        // Reuse a bitmap from Glide's pool instead of raw Bitmap.createBitmap() on every
+        // transform() call —> this runs per RecyclerView bind when the greyscale preference
+        // is enabled, so unpooled allocations fragment the native heap over time.
+        Bitmap bitmap = pool.get(source.getWidth(), source.getHeight(), Bitmap.Config.ARGB_8888);
+        // Create Image Paint
         Paint paint = new Paint();
         ColorMatrix greyMatrix = new ColorMatrix();
         greyMatrix.setSaturation(0.0f);
         paint.setColorFilter(new ColorMatrixColorFilter(greyMatrix));
-        //Draw to Canvas
+        // Draw to Canvas
         Canvas canvas = new Canvas(bitmap);
         canvas.drawBitmap(source, 0, 0, paint);
         return bitmap;
@@ -44,10 +47,7 @@ public class Greyscale extends BitmapTransformation {
     
     @Override
     public boolean equals(Object object) {
-        if (object instanceof Greyscale) {
-            return true;
-        }
-        return false;
+        return object instanceof Greyscale;
     }
     
     @Override

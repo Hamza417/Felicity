@@ -13,7 +13,6 @@ import androidx.annotation.ColorInt
 import androidx.annotation.ColorRes
 import androidx.annotation.IntDef
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.createBitmap
 import app.simple.felicity.blur.GPUBlur
 import app.simple.felicity.preferences.AppearancePreferences
 import com.bumptech.glide.load.engine.bitmap_recycle.BitmapPool
@@ -152,14 +151,18 @@ class BlurShadow(private val context: Context) : BitmapTransformation() {
     }
 
     override fun transform(pool: BitmapPool, source: Bitmap, outWidth: Int, outHeight: Int): Bitmap {
-        val bitmap = createBitmap(source.width, source.height)
+        // Draw the output from Glide's BitmapPool rather than a raw Bitmap.createBitmap().
+        // This transformation runs on every RecyclerView bind (e.g. the song list), so
+        // allocating fresh native bitmap buffers each time fragments the native heap and
+        // can eventually trigger an OutOfMemoryError even while free memory looks plentiful.
+        val bitmap = pool.getDirty(source.width, source.height, Bitmap.Config.ARGB_8888)
         val shadow: Bitmap
 
-        //Calculate Shadow Offset
+        // Calculate Shadow Offset
         val shadowX = elevation * cos(Math.toRadians(angle.toDouble())).toFloat()
         val shadowY = -(elevation * sin(Math.toRadians(angle.toDouble())).toFloat())
 
-        //Create Shadow Paint
+        // Create Shadow Paint
         val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             colorFilter = if (shadowEffectEnabled) {
                 ColorMatrixColorFilter(ColorMatrix().apply {
@@ -172,14 +175,14 @@ class BlurShadow(private val context: Context) : BitmapTransformation() {
         }
 
         if (blurRadius <= MAX_BLUR_RADIUS) {
-            //Apply Blur
+            // Apply Blur
             shadow = if (shadowEffectEnabled) {
                 GPUBlur.blur(source, blurRadius)
             } else {
-                createBitmap(source.width, source.height)
+                pool.getDirty(source.width, source.height, Bitmap.Config.ARGB_8888)
             }
 
-            //Draw to Canvas
+            // Draw to Canvas
             val canvas = Canvas(bitmap)
             canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
             canvas.drawBitmap(shadow, 0F, 0F, shadowPaint)
@@ -191,30 +194,33 @@ class BlurShadow(private val context: Context) : BitmapTransformation() {
             shadow = if (shadowEffectEnabled) {
                 GPUBlur.blur(source, blurRadius)
             } else {
-                createBitmap(source.width, source.height)
+                pool.getDirty(source.width, source.height, Bitmap.Config.ARGB_8888)
             }
 
-            //Draw to Canvas
+            // Draw to Canvas
             val canvas = Canvas(bitmap)
             canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
             canvas.drawBitmap(shadow, shadowX, shadowY, shadowPaint)
             canvas.drawBitmap(source, 0f, 0f, null)
         }
 
-        //Output
-        shadow.recycle()
+        // Output: bitmaps obtained from the pool are returned to it so they can be reused by
+        // the next transform() call instead of being torn down and reallocated from native
+        // memory, which can cause heap fragmentation under rapid RecyclerView scrolling.
+        if (shadowEffectEnabled) {
+            shadow.recycle()
+        } else {
+            pool.put(shadow)
+        }
         return bitmap
     }
 
     override fun equals(other: Any?): Boolean {
-        if (other is BlurShadow) {
-            return blurRadius == other.blurRadius
-                    && elevation == other.elevation
-                    && angle == other.angle
-                    && colour == other.colour
-                    && shadowEffectEnabled == other.shadowEffectEnabled
-        }
-        return false
+        return other is BlurShadow && (blurRadius == other.blurRadius
+                && elevation == other.elevation
+                && angle == other.angle
+                && colour == other.colour
+                && shadowEffectEnabled == other.shadowEffectEnabled)
     }
 
     override fun hashCode(): Int {
