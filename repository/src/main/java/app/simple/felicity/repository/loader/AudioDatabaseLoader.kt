@@ -163,7 +163,7 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             val startTime = System.currentTimeMillis()
             Log.d(TAG, "Starting audio file processing...")
 
-            notificationGeneration = notification.begin()
+            notificationGeneration = notification.begin(context)
 
             val dao = audioDatabase.audioDao()
 
@@ -200,7 +200,6 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
 
             notification.setTotal(notificationGeneration, allSAFFiles.size)
             Log.d(TAG, "Total audio files to evaluate: ${allSAFFiles.size}")
-
 
             val processedCount = AtomicInteger(0)
 
@@ -273,7 +272,6 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                                 Log.w(TAG, "Failed to extract metadata for: ${safFile.name}")
                                 return@launch
                             }
-
 
                             val storedId = pathToStoredId[uriKey]
                             val stored = indexedMap[uriKey]

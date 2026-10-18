@@ -30,8 +30,8 @@ class LoaderNotification(private val context: Context) {
         private const val SCAN_CHANNEL_ID = "felicity_library_scanner"
 
         /**
-         * Do not use 1001 because it is used as default notification id in AndroidX Media library:
-         * https://github.com/androidx/media/blob/8c6678b657ede1e7883fc164ef73ed483c7796c3/libraries/session/src/main/java/androidx/media3/session/DefaultMediaNotificationProvider.java#L229
+         * Do not use 1001 because it is used as the default notification ID in the AndroidX Media3 library.
+         * See [DefaultMediaNotificationProvider (L229)](https://github.com/androidx/media/blob/8c6678b657ede1e7883fc164ef73ed483c7796c3/libraries/session/src/main/java/androidx/media3/session/DefaultMediaNotificationProvider.java#L229).
          */
         private const val SCAN_NOTIFICATION_ID = 1002
 
@@ -99,7 +99,7 @@ class LoaderNotification(private val context: Context) {
      *
      * @return A generation token for this scan — hold onto it!
      */
-    fun begin(): Int {
+    fun begin(context: Context): Int {
         setupChannel()
         return synchronized(lock) {
             totalFiles = 0
@@ -107,7 +107,7 @@ class LoaderNotification(private val context: Context) {
             generation += 1
             active = true
             val token = generation
-            notificationManager.notify(SCAN_NOTIFICATION_ID, buildIndeterminate())
+            notificationManager.notify(SCAN_NOTIFICATION_ID, buildIndeterminate(context))
             token
         }
     }
@@ -147,7 +147,7 @@ class LoaderNotification(private val context: Context) {
         synchronized(lock) {
             // Both checks live inside the lock so a canceled scan's straggler
             // producer can never resurrect the notification after the scan's
-            // final cancel — the "notification never goes away" bug.
+            // final cancel.
             if (!active || generation != this.generation) return
             if (!force && now - lastUpdateElapsedMs < MIN_UPDATE_INTERVAL_MS) return
 
@@ -250,11 +250,11 @@ class LoaderNotification(private val context: Context) {
         notificationManager.createNotificationChannel(channel)
     }
 
-    private fun buildIndeterminate(): Notification {
+    private fun buildIndeterminate(context: Context): Notification {
         return NotificationCompat.Builder(context, SCAN_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_felicity_full)
-            .setContentTitle("Scanning Library")
-            .setContentText("Getting your music ready…")
+            .setContentTitle(context.getString(R.string.scanning_library))
+            .setContentText(context.getString(R.string.getting_music_ready))
             .setProgress(0, 0, true)
             .setSilent(true)
             .setOngoing(true)
