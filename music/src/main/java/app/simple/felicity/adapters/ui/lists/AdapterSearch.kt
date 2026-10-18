@@ -140,11 +140,26 @@ class AdapterSearch : FastScrollAdapter<VerticalListViewHolder>() {
     override fun getItemViewType(position: Int): Int {
         return when (items[position]) {
             is SearchAdapterItem.Header -> VIEW_TYPE_HEADER
-            is SearchAdapterItem.AlbumItem -> VIEW_TYPE_ALBUM
-            is SearchAdapterItem.ArtistItem -> VIEW_TYPE_ARTIST
-            is SearchAdapterItem.GenreItem -> VIEW_TYPE_GENRE
-            is SearchAdapterItem.ComposerItem -> VIEW_TYPE_COMPOSER
-            is SearchAdapterItem.YearItem -> VIEW_TYPE_YEAR
+            is SearchAdapterItem.AlbumItem -> when {
+                layoutMode.isGrid -> VIEW_TYPE_ALBUM_GRID
+                else -> VIEW_TYPE_ALBUM
+            }
+            is SearchAdapterItem.ArtistItem -> when {
+                layoutMode.isGrid -> VIEW_TYPE_ARTIST_GRID
+                else -> VIEW_TYPE_ARTIST
+            }
+            is SearchAdapterItem.GenreItem -> when {
+                layoutMode.isGrid -> VIEW_TYPE_GENRE_GRID
+                else -> VIEW_TYPE_GENRE
+            }
+            is SearchAdapterItem.ComposerItem -> when {
+                layoutMode.isGrid -> VIEW_TYPE_COMPOSER_GRID
+                else -> VIEW_TYPE_COMPOSER
+            }
+            is SearchAdapterItem.YearItem -> when {
+                layoutMode.isGrid -> VIEW_TYPE_YEAR_GRID
+                else -> VIEW_TYPE_YEAR
+            }
             is SearchAdapterItem.SongItem -> when {
                 layoutMode.isLabel -> VIEW_TYPE_SONG_LABEL
                 layoutMode.isGrid -> VIEW_TYPE_SONG_GRID
@@ -168,17 +183,32 @@ class AdapterSearch : FastScrollAdapter<VerticalListViewHolder>() {
             VIEW_TYPE_ALBUM ->
                 AlbumHolder(AdapterStyleListBinding.inflate(inflater, parent, false))
 
+            VIEW_TYPE_ALBUM_GRID ->
+                AlbumGridHolder(AdapterStyleGridBinding.inflate(inflater, parent, false))
+
             VIEW_TYPE_ARTIST ->
                 ArtistHolder(AdapterStyleListBinding.inflate(inflater, parent, false))
+
+            VIEW_TYPE_ARTIST_GRID ->
+                ArtistGridHolder(AdapterStyleGridBinding.inflate(inflater, parent, false))
 
             VIEW_TYPE_GENRE ->
                 GenreHolder(AdapterStyleListBinding.inflate(inflater, parent, false))
 
+            VIEW_TYPE_GENRE_GRID ->
+                GenreGridHolder(AdapterStyleGridBinding.inflate(inflater, parent, false))
+
             VIEW_TYPE_COMPOSER ->
                 ComposerHolder(AdapterStyleListBinding.inflate(inflater, parent, false))
 
+            VIEW_TYPE_COMPOSER_GRID ->
+                ComposerGridHolder(AdapterStyleGridBinding.inflate(inflater, parent, false))
+
             VIEW_TYPE_YEAR ->
                 YearHolder(AdapterStyleListBinding.inflate(inflater, parent, false))
+
+            VIEW_TYPE_YEAR_GRID ->
+                YearGridHolder(AdapterStyleGridBinding.inflate(inflater, parent, false))
 
             else ->
                 SongListHolder(AdapterStyleListBinding.inflate(inflater, parent, false))
@@ -192,10 +222,15 @@ class AdapterSearch : FastScrollAdapter<VerticalListViewHolder>() {
             is SongGridHolder -> holder.bind(items[position] as SearchAdapterItem.SongItem, isLightBind)
             is SongLabelHolder -> holder.bind(items[position] as SearchAdapterItem.SongItem, isLightBind)
             is AlbumHolder -> holder.bind(items[position] as SearchAdapterItem.AlbumItem, isLightBind)
+            is AlbumGridHolder -> holder.bind(items[position] as SearchAdapterItem.AlbumItem, isLightBind)
             is ArtistHolder -> holder.bind(items[position] as SearchAdapterItem.ArtistItem, isLightBind)
+            is ArtistGridHolder -> holder.bind(items[position] as SearchAdapterItem.ArtistItem, isLightBind)
             is GenreHolder -> holder.bind(items[position] as SearchAdapterItem.GenreItem)
+            is GenreGridHolder -> holder.bind(items[position] as SearchAdapterItem.GenreItem)
             is ComposerHolder -> holder.bind(items[position] as SearchAdapterItem.ComposerItem)
+            is ComposerGridHolder -> holder.bind(items[position] as SearchAdapterItem.ComposerItem)
             is YearHolder -> holder.bind(items[position] as SearchAdapterItem.YearItem)
+            is YearGridHolder -> holder.bind(items[position] as SearchAdapterItem.YearItem)
         }
     }
 
@@ -206,10 +241,15 @@ class AdapterSearch : FastScrollAdapter<VerticalListViewHolder>() {
             is SongListHolder -> Glide.with(holder.binding.cover).clear(holder.binding.cover)
             is SongGridHolder -> Glide.with(holder.binding.albumArt).clear(holder.binding.albumArt)
             is AlbumHolder -> Glide.with(holder.binding.cover).clear(holder.binding.cover)
+            is AlbumGridHolder -> Glide.with(holder.binding.albumArt).clear(holder.binding.albumArt)
             is ArtistHolder -> Glide.with(holder.binding.cover).clear(holder.binding.cover)
+            is ArtistGridHolder -> Glide.with(holder.binding.albumArt).clear(holder.binding.albumArt)
             is GenreHolder -> Glide.with(holder.binding.cover).clear(holder.binding.cover)
+            is GenreGridHolder -> Glide.with(holder.binding.albumArt).clear(holder.binding.albumArt)
             is ComposerHolder -> Glide.with(holder.binding.cover).clear(holder.binding.cover)
+            is ComposerGridHolder -> Glide.with(holder.binding.albumArt).clear(holder.binding.albumArt)
             is YearHolder -> Glide.with(holder.binding.cover).clear(holder.binding.cover)
+            is YearGridHolder -> Glide.with(holder.binding.albumArt).clear(holder.binding.albumArt)
             else -> Unit
         }
     }
@@ -546,6 +586,114 @@ class AdapterSearch : FastScrollAdapter<VerticalListViewHolder>() {
         }
     }
 
+    inner class AlbumGridHolder(val binding: AdapterStyleGridBinding) :
+            VerticalListViewHolder(binding.root) {
+        fun bind(item: SearchAdapterItem.AlbumItem, isLightBind: Boolean) {
+            val album = item.album
+            binding.title.setTextOrUnknown(album.name)
+            binding.tertiaryDetail.setTextOrUnknown(album.artist)
+            binding.secondaryDetail.setTextOrUnknown(
+                    context.resources.getQuantityString(R.plurals.number_of_songs, album.songCount, album.songCount)
+            )
+            if (isLightBind) return
+            binding.albumArt.loadArtCoverWithPayload(album)
+            binding.container.setOnClickListener {
+                if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
+                    generalAdapterCallbacks?.onAlbumClicked(albums, albums.indexOf(album), it)
+                }
+            }
+            binding.container.setOnLongClickListener {
+                if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
+                    generalAdapterCallbacks?.onAlbumLongClicked(albums, albums.indexOf(album), binding.albumArt)
+                }
+                true
+            }
+        }
+    }
+
+    inner class ArtistGridHolder(val binding: AdapterStyleGridBinding) :
+            VerticalListViewHolder(binding.root) {
+        fun bind(item: SearchAdapterItem.ArtistItem, isLightBind: Boolean) {
+            val artist = item.artist
+            binding.title.setTextOrUnknown(artist.name)
+            binding.secondaryDetail.setTextOrUnknown(
+                    context.resources.getQuantityString(R.plurals.number_of_songs, artist.trackCount, artist.trackCount)
+            )
+            binding.tertiaryDetail.setTextOrUnknown(
+                    context.resources.getQuantityString(R.plurals.number_of_albums, artist.albumCount, artist.albumCount)
+            )
+            if (isLightBind) return
+            binding.albumArt.loadArtCoverWithPayload(item = artist)
+            binding.container.setOnClickListener {
+                if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
+                    generalAdapterCallbacks?.onArtistClicked(artists, artists.indexOf(artist), it)
+                }
+            }
+            binding.container.setOnLongClickListener {
+                if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
+                    generalAdapterCallbacks?.onArtistLongClicked(artists, artists.indexOf(artist), binding.albumArt)
+                }
+                true
+            }
+        }
+    }
+
+    inner class GenreGridHolder(val binding: AdapterStyleGridBinding) :
+            VerticalListViewHolder(binding.root) {
+        fun bind(item: SearchAdapterItem.GenreItem) {
+            val genre = item.genre
+            binding.title.text = genre.name ?: context.getString(R.string.unknown)
+            binding.secondaryDetail.text = context.resources.getQuantityString(
+                    R.plurals.number_of_songs, genre.songCount, genre.songCount
+            )
+            binding.tertiaryDetail.gone(false)
+            binding.albumArt.loadArtCoverWithPayload(genre)
+            binding.container.setOnClickListener {
+                generalAdapterCallbacks?.onGenreClicked(genre, it)
+            }
+        }
+    }
+
+    inner class ComposerGridHolder(val binding: AdapterStyleGridBinding) :
+            VerticalListViewHolder(binding.root) {
+        fun bind(item: SearchAdapterItem.ComposerItem) {
+            val composer = item.composer
+            binding.title.setTextOrUnknown(composer.name)
+            binding.secondaryDetail.setTextOrUnknown(
+                    context.resources.getQuantityString(R.plurals.number_of_songs, composer.trackCount, composer.trackCount)
+            )
+            binding.tertiaryDetail.gone(false)
+            binding.albumArt.loadArtCoverWithPayload(item = composer)
+            binding.container.setOnClickListener {
+                if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
+                    generalAdapterCallbacks?.onComposerClicked(composers, composers.indexOf(composer), it)
+                }
+            }
+            binding.container.setOnLongClickListener {
+                if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
+                    generalAdapterCallbacks?.onComposerLongClicked(composers, composers.indexOf(composer), binding.albumArt)
+                }
+                true
+            }
+        }
+    }
+
+    inner class YearGridHolder(val binding: AdapterStyleGridBinding) :
+            VerticalListViewHolder(binding.root) {
+        fun bind(item: SearchAdapterItem.YearItem) {
+            val yearGroup = item.yearGroup
+            binding.title.text = yearGroup.year
+            binding.secondaryDetail.text = context.resources.getQuantityString(
+                    R.plurals.number_of_songs, yearGroup.songCount, yearGroup.songCount
+            )
+            binding.tertiaryDetail.gone(false)
+            binding.albumArt.loadArtCoverWithPayload(yearGroup)
+            binding.container.setOnClickListener {
+                generalAdapterCallbacks?.onYearGroupClicked(yearGroup, it)
+            }
+        }
+    }
+
     companion object {
         /** View type for section header rows (Songs, Albums, Artists, Genres, Composers, Years). */
         const val VIEW_TYPE_HEADER = 0
@@ -573,6 +721,12 @@ class AdapterSearch : FastScrollAdapter<VerticalListViewHolder>() {
 
         /** View type for year-group result rows. */
         const val VIEW_TYPE_YEAR = 8
+
+        const val VIEW_TYPE_ALBUM_GRID = 9
+        const val VIEW_TYPE_ARTIST_GRID = 10
+        const val VIEW_TYPE_GENRE_GRID = 11
+        const val VIEW_TYPE_COMPOSER_GRID = 12
+        const val VIEW_TYPE_YEAR_GRID = 13
     }
 }
 
