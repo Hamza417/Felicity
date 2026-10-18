@@ -7,7 +7,6 @@ import android.content.Context
 import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 import app.simple.felicity.repository.R
-import app.simple.felicity.repository.notifications.LoaderNotification.Companion.NOTIFICATION_UPDATE_INTERVAL
 
 /**
  * Manages the "Scanning Library" notification that pops up while Felicity
@@ -29,7 +28,12 @@ class LoaderNotification(private val context: Context) {
 
     companion object {
         private const val SCAN_CHANNEL_ID = "felicity_library_scanner"
-        private const val SCAN_NOTIFICATION_ID = 1001
+
+        /**
+         * Do not use 1001 because it is used as default notification id in AndroidX Media library:
+         * https://github.com/androidx/media/blob/8c6678b657ede1e7883fc164ef73ed483c7796c3/libraries/session/src/main/java/androidx/media3/session/DefaultMediaNotificationProvider.java#L229
+         */
+        private const val SCAN_NOTIFICATION_ID = 1002
 
         /**
          * How often (in files evaluated) the notification text is refreshed.
