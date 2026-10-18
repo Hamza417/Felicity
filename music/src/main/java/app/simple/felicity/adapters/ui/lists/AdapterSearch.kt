@@ -359,7 +359,7 @@ class AdapterSearch : FastScrollAdapter<VerticalListViewHolder>() {
             binding.albumArt.loadArtCoverWithPayload(audio)
             binding.container.setOnLongClickListener {
                 if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
-                    generalAdapterCallbacks?.onSongLongClicked(songs, songs.indexOf(audio), null)
+                    generalAdapterCallbacks?.onSongLongClicked(songs, songs.indexOf(audio), binding.albumArt)
                 }
                 true
             }
