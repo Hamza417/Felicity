@@ -146,11 +146,16 @@ class Search : PanelFragment() {
                     openFragment(AlbumPage.newInstance(albums[position]), AlbumPage.TAG)
                 }
 
-                override fun onArtistClicked(
-                        artist: MutableList<Artist>,
-                        position: Int,
-                        view: View) {
+                override fun onAlbumLongClicked(albums: List<Album>, position: Int, imageView: ImageView?) {
+                    openAlbumMenu(albums[position], imageView)
+                }
+
+                override fun onArtistClicked(artist: MutableList<Artist>, position: Int, view: View) {
                     openFragment(ArtistPage.newInstance(artist[position]), ArtistPage.TAG)
+                }
+
+                override fun onArtistLongClicked(artists: List<Artist>, position: Int, imageView: ImageView?) {
+                    openArtistMenu(artists[position], imageView)
                 }
 
                 override fun onGenreClicked(genre: Genre, view: View) {
