@@ -207,41 +207,47 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             val dbChannel = Channel<PendingWrite>(capacity = Channel.BUFFERED)
 
             val consumerJob = myScope.launch {
-                val insertBatch = mutableListOf<Audio>()
-                val updateBatch = mutableListOf<Audio>()
+                try {
+                    val insertBatch = mutableListOf<Audio>()
+                    val updateBatch = mutableListOf<Audio>()
 
-                for (write in dbChannel) {
-                    indexedMap[write.path] = write.indexedFile
+                    for (write in dbChannel) {
+                        indexedMap[write.path] = write.indexedFile
 
-                    when (write) {
-                        is PendingWrite.Insert -> {
-                            insertBatch.add(write.audio)
-                            if (insertBatch.size >= BATCH_SIZE) {
-                                val batch = insertBatch.toList()
-                                insertBatch.clear()
-                                Log.d(TAG, "Inserting batch of ${batch.size} audio items")
-                                dao?.insertBatch(batch)
+                        when (write) {
+                            is PendingWrite.Insert -> {
+                                insertBatch.add(write.audio)
+                                if (insertBatch.size >= BATCH_SIZE) {
+                                    val batch = insertBatch.toList()
+                                    insertBatch.clear()
+                                    Log.d(TAG, "Inserting batch of ${batch.size} audio items")
+                                    dao?.insertBatch(batch)
+                                }
                             }
-                        }
-                        is PendingWrite.Update -> {
-                            updateBatch.add(write.audio)
-                            if (updateBatch.size >= BATCH_SIZE) {
-                                val batch = updateBatch.toList()
-                                updateBatch.clear()
-                                Log.d(TAG, "Updating batch of ${batch.size} audio items")
-                                dao?.update(batch)
+                            is PendingWrite.Update -> {
+                                updateBatch.add(write.audio)
+                                if (updateBatch.size >= BATCH_SIZE) {
+                                    val batch = updateBatch.toList()
+                                    updateBatch.clear()
+                                    Log.d(TAG, "Updating batch of ${batch.size} audio items")
+                                    dao?.update(batch)
+                                }
                             }
                         }
                     }
-                }
 
-                if (insertBatch.isNotEmpty()) {
-                    Log.d(TAG, "Inserting final batch of ${insertBatch.size} audio items")
-                    dao?.insertBatch(insertBatch)
-                }
-                if (updateBatch.isNotEmpty()) {
-                    Log.d(TAG, "Updating final batch of ${updateBatch.size} audio items")
-                    dao?.update(updateBatch)
+                    if (insertBatch.isNotEmpty()) {
+                        Log.d(TAG, "Inserting final batch of ${insertBatch.size} audio items")
+                        dao?.insertBatch(insertBatch)
+                    }
+                    if (updateBatch.isNotEmpty()) {
+                        Log.d(TAG, "Updating final batch of ${updateBatch.size} audio items")
+                        dao?.update(updateBatch)
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Consumer job failed, cancelling dbChannel to prevent producer deadlocks", e)
+                    dbChannel.cancel(CancellationException("Consumer job died", e))
+                    throw e
                 }
             }
 
