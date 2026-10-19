@@ -261,6 +261,9 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     private SpringAnimation boxTopSpring;
     private SpringAnimation boxBottomSpring;
     private Paint boxPaint;
+    private Paint boxFillPaint;
+    private int boxTargetWordIndex = -1;
+    private int boxTargetLineIndex = -1;
     
     public FelicityLrcView(Context context) {
         this(context, null);
@@ -348,6 +351,9 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         boxPaint.setStrokeWidth(dp2px(context, 1.5f));
         boxPaint.setStrokeJoin(Paint.Join.ROUND);
         boxPaint.setStrokeCap(Paint.Cap.ROUND);
+        
+        boxFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        boxFillPaint.setStyle(Paint.Style.FILL);
         
         // Initialize fade paint for vertical gradient effect
         fadePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -664,21 +670,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                 normalPaint.setAlpha(Math.round(savedAlpha * cAlpha));
             }
             
-            // Draw the moving word box if applicable
-            if (isCurrentHighlight && !isStaticMode() && entry.hasWordSync() && boxAlpha > 0f && boxPaint != null) {
-                int boxColor = currentTextColor;
-                boxPaint.setColor(boxColor);
-                
-                float finalBoxAlpha = boxAlpha;
-                if (cAlpha != null) {
-                    finalBoxAlpha *= cAlpha;
-                }
-                
-                boxPaint.setAlpha(Math.round(255 * finalBoxAlpha));
-                float corner = dp2px(getContext(), 4f);
-                canvas.drawRoundRect(currentBoxBounds, corner, corner, boxPaint);
-            }
-            
             layout.draw(canvas);
             
             // Restore paint state so nothing leaks between lines
@@ -694,6 +685,27 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         
         // Clear mask filter so the paint is clean for the next draw pass
         normalPaint.setMaskFilter(null);
+        
+        // Draw the moving word box
+        if (!isStaticMode() && boxAlpha > 0f && boxPaint != null) {
+            canvas.save();
+            canvas.translate(0, offsetY);
+            
+            int boxColor = currentTextColor;
+            float corner = dp2px(getContext(), 8f);
+            
+            if (isAlbumArtBackground && boxFillPaint != null) {
+                boxFillPaint.setColor(boxColor);
+                boxFillPaint.setAlpha(Math.round(255 * boxAlpha * 0.15f));
+                canvas.drawRoundRect(currentBoxBounds, corner, corner, boxFillPaint);
+            }
+            
+            boxPaint.setColor(boxColor);
+            boxPaint.setAlpha(Math.round(255 * boxAlpha));
+            canvas.drawRoundRect(currentBoxBounds, corner, corner, boxPaint);
+            
+            canvas.restore();
+        }
         
         // Restore canvas state
         canvas.restore();
@@ -878,16 +890,23 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         boxAlphaAnimator.start();
     }
     
-    private void updateWordBoxTarget(int wordIndex) {
-        if (wordIndex < 0 || wordSyncCurrentLayout == null || lrcData == null || currentLineIndex < 0) {
+    private void updateWordBoxTarget(int wordIndex, int lineIndex) {
+        if (wordIndex < 0 || lrcData == null || lineIndex < 0 || lineIndex >= lrcData.size()) {
             return;
         }
         
-        LrcEntry entry = lrcData.getEntries().get(currentLineIndex);
+        if (this.boxTargetWordIndex == wordIndex && this.boxTargetLineIndex == lineIndex) {
+            return;
+        }
+        this.boxTargetWordIndex = wordIndex;
+        this.boxTargetLineIndex = lineIndex;
+        
+        LrcEntry entry = lrcData.getEntries().get(lineIndex);
         if (wordIndex >= entry.getWords().size()) {
             return;
         }
         
+        StaticLayout layout = getOrCreateWordSyncLayout(entry, normalPaint, lineIndex);
         WordEntry word = entry.getWords().get(wordIndex);
         
         int charStart = 0;
@@ -899,18 +918,26 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             charEnd = charStart + word.getText().length(); // fallback for empty or space-only words
         }
         
-        float left = wordSyncCurrentLayout.getPrimaryHorizontal(charStart);
-        float right = wordSyncCurrentLayout.getPrimaryHorizontal(charEnd);
+        float left = layout.getPrimaryHorizontal(charStart);
+        float right = layout.getPrimaryHorizontal(charEnd);
         
-        int lineStart = wordSyncCurrentLayout.getLineForOffset(charStart);
-        float top = wordSyncCurrentLayout.getLineTop(lineStart);
-        float bottom = wordSyncCurrentLayout.getLineBottom(lineStart);
+        int lineStart = layout.getLineForOffset(charStart);
+        float top = layout.getLineTop(lineStart);
+        float bottom = layout.getLineBottom(lineStart);
         
         float actualLeft = Math.min(left, right);
         float actualRight = Math.max(left, right);
         
-        float paddingX = dp2px(getContext(), 4f);
-        float paddingY = dp2px(getContext(), 0f);
+        float layoutX = calculateXPositionForLayout(layout, normalPaint, lineIndex);
+        float layoutY = getLineOffset(lineIndex) - (layout.getHeight() / 2f);
+        
+        actualLeft += layoutX;
+        actualRight += layoutX;
+        top += layoutY;
+        bottom += layoutY;
+        
+        float paddingX = dp2px(getContext(), 8f);
+        float paddingY = dp2px(getContext(), 4f);
         
         targetBoxBounds.set(actualLeft - paddingX, top - paddingY, actualRight + paddingX, bottom + paddingY);
         
@@ -1436,7 +1463,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         } else if (durationMs > 0) {
             float maxScroll = getMaxScrollY();
             if (maxScroll > 0) {
-                fraction = Math.max(0f, Math.min(1f, (float) timeInMillis / (float) durationMs));
+                fraction = Math.clamp((float) timeInMillis / (float) durationMs, 0f, 1f);
                 scrollY = fraction * maxScroll;
                 targetScrollY = scrollY;
             }
@@ -1449,7 +1476,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         // fraction. This way the curtain reveal radiates outward from where the user
         // is actually looking instead of always starting from the very first line.
         final int anchorLine;
-        if (isStaticMode() && data.size() > 0 && durationMs > 0) {
+        if (isStaticMode() && !data.isEmpty() && durationMs > 0) {
             anchorLine = Math.round(fraction * (data.size() - 1));
         } else {
             anchorLine = currentLineIndex;
@@ -1642,9 +1669,16 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                     wordSyncLayoutLineIndex = -1;
                     
                     if (currentWordIndex >= 0) {
-                        getOrCreateWordSyncLayout(wordSyncEntry, normalPaint, currentLineIndex);
-                        updateWordBoxTarget(currentWordIndex);
+                        updateWordBoxTarget(currentWordIndex, currentLineIndex);
                         setBoxAlphaTarget(1f);
+                    } else if (!wordSyncEntry.getWords().isEmpty()) {
+                        updateWordBoxTarget(0, currentLineIndex);
+                        long gap = wordSyncEntry.getWords().get(0).getStartMs() - timeInMillis;
+                        if (gap > 350) {
+                            setBoxAlphaTarget(0f);
+                        } else {
+                            setBoxAlphaTarget(1f);
+                        }
                     } else {
                         setBoxAlphaTarget(0f);
                     }
@@ -1652,13 +1686,36 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                     invalidate();
                 } else if (currentWordIndex >= 0) {
                     WordEntry currentWord = wordSyncEntry.getWords().get(currentWordIndex);
-                    boolean isFinished = timeInMillis > currentWord.getEndMs() + 100; // 100ms grace period gap
+                    boolean isFinished = timeInMillis > currentWord.getEndMs() + 100;
                     if (isFinished) {
-                        setBoxAlphaTarget(0f);
+                        long nextStartMs = -1;
+                        if (currentWordIndex + 1 < wordSyncEntry.getWords().size()) {
+                            nextStartMs = wordSyncEntry.getWords().get(currentWordIndex + 1).getStartMs();
+                            if (nextStartMs != -1 && (nextStartMs - timeInMillis) < 350) {
+                                updateWordBoxTarget(currentWordIndex + 1, currentLineIndex);
+                                setBoxAlphaTarget(1f);
+                            } else {
+                                setBoxAlphaTarget(0f);
+                            }
+                        } else if (currentLineIndex + 1 < lrcData.size()) {
+                            LrcEntry nextEntry = lrcData.getEntries().get(currentLineIndex + 1);
+                            if (nextEntry.hasWordSync() && !nextEntry.getWords().isEmpty()) {
+                                nextStartMs = nextEntry.getWords().get(0).getStartMs();
+                                if (nextStartMs != -1 && (nextStartMs - timeInMillis) < 350) {
+                                    updateWordBoxTarget(0, currentLineIndex + 1);
+                                    setBoxAlphaTarget(1f);
+                                } else {
+                                    setBoxAlphaTarget(0f);
+                                }
+                            } else {
+                                setBoxAlphaTarget(0f);
+                            }
+                        } else {
+                            setBoxAlphaTarget(0f);
+                        }
                     } else {
                         if (targetBoxAlpha == 0f) {
-                            getOrCreateWordSyncLayout(wordSyncEntry, normalPaint, currentLineIndex);
-                            updateWordBoxTarget(currentWordIndex);
+                            updateWordBoxTarget(currentWordIndex, currentLineIndex);
                             setBoxAlphaTarget(1f);
                         }
                     }
