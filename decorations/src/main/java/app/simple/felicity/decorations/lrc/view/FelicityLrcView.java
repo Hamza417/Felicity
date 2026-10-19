@@ -699,9 +699,13 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             int boxColor = currentTextColor;
             float corner = dp2px(getContext(), 8f);
             
-            if (isAlbumArtBackground && boxFillPaint != null) {
+            if (boxFillPaint != null) {
                 boxFillPaint.setColor(boxColor);
-                boxFillPaint.setAlpha(Math.round(255 * boxAlpha * 0.35f)); // alpha of the box fill
+                if (isAlbumArtBackground) {
+                    boxFillPaint.setAlpha(Math.round(255 * boxAlpha * 0.35f)); // 35% alpha of the box fill
+                } else {
+                    boxFillPaint.setAlpha(Math.round(255 * boxAlpha * 0.15f)); // 15% alpha of the box fill
+                }
                 canvas.drawRoundRect(currentBoxBounds, corner, corner, boxFillPaint);
             }
             
