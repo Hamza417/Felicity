@@ -202,6 +202,66 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     private float rippleX = 0f;
     private float rippleY = 0f;
     
+    // Word box highlight state
+    private final android.graphics.RectF currentBoxBounds = new android.graphics.RectF();
+    private final android.graphics.RectF targetBoxBounds = new android.graphics.RectF();
+    private final FloatPropertyCompat <FelicityLrcView> BOX_LEFT = new FloatPropertyCompat <>("boxLeft") {
+        @Override
+        public float getValue(FelicityLrcView view) {
+            return view.currentBoxBounds.left;
+        }
+        
+        @Override
+        public void setValue(FelicityLrcView view, float value) {
+            view.currentBoxBounds.left = value;
+            view.invalidate();
+        }
+    };
+    private final FloatPropertyCompat <FelicityLrcView> BOX_RIGHT = new FloatPropertyCompat <>("boxRight") {
+        @Override
+        public float getValue(FelicityLrcView view) {
+            return view.currentBoxBounds.right;
+        }
+        
+        @Override
+        public void setValue(FelicityLrcView view, float value) {
+            view.currentBoxBounds.right = value;
+            view.invalidate();
+        }
+    };
+    private final FloatPropertyCompat <FelicityLrcView> BOX_TOP = new FloatPropertyCompat <>("boxTop") {
+        @Override
+        public float getValue(FelicityLrcView view) {
+            return view.currentBoxBounds.top;
+        }
+        
+        @Override
+        public void setValue(FelicityLrcView view, float value) {
+            view.currentBoxBounds.top = value;
+            view.invalidate();
+        }
+    };
+    private final FloatPropertyCompat <FelicityLrcView> BOX_BOTTOM = new FloatPropertyCompat <>("boxBottom") {
+        @Override
+        public float getValue(FelicityLrcView view) {
+            return view.currentBoxBounds.bottom;
+        }
+        
+        @Override
+        public void setValue(FelicityLrcView view, float value) {
+            view.currentBoxBounds.bottom = value;
+            view.invalidate();
+        }
+    };
+    private float boxAlpha = 0f;
+    private float targetBoxAlpha = 0f;
+    private android.animation.ValueAnimator boxAlphaAnimator;
+    private SpringAnimation boxLeftSpring;
+    private SpringAnimation boxRightSpring;
+    private SpringAnimation boxTopSpring;
+    private SpringAnimation boxBottomSpring;
+    private Paint boxPaint;
+    
     public FelicityLrcView(Context context) {
         this(context, null);
     }
@@ -282,6 +342,12 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         if (!isInEditMode()) {
             currentPaint.setTypeface(TypeFace.INSTANCE.getBlackTypeFace(context));
         }
+        
+        boxPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        boxPaint.setStyle(Paint.Style.STROKE);
+        boxPaint.setStrokeWidth(dp2px(context, 1.5f));
+        boxPaint.setStrokeJoin(Paint.Join.ROUND);
+        boxPaint.setStrokeCap(Paint.Cap.ROUND);
         
         // Initialize fade paint for vertical gradient effect
         fadePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -598,6 +664,21 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                 normalPaint.setAlpha(Math.round(savedAlpha * cAlpha));
             }
             
+            // Draw the moving word box if applicable
+            if (isCurrentHighlight && !isStaticMode() && entry.hasWordSync() && boxAlpha > 0f && boxPaint != null) {
+                int boxColor = currentTextColor;
+                boxPaint.setColor(boxColor);
+                
+                float finalBoxAlpha = boxAlpha;
+                if (cAlpha != null) {
+                    finalBoxAlpha *= cAlpha;
+                }
+                
+                boxPaint.setAlpha(Math.round(255 * finalBoxAlpha));
+                float corner = dp2px(getContext(), 4f);
+                canvas.drawRoundRect(currentBoxBounds, corner, corner, boxPaint);
+            }
+            
             layout.draw(canvas);
             
             // Restore paint state so nothing leaks between lines
@@ -760,6 +841,102 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         return lrcData.getEntries().get(0).getTimeInMillis() == TxtParser.NO_TIMESTAMP;
     }
     
+    private void initBoxSprings() {
+        if (boxLeftSpring == null) {
+            boxLeftSpring = new SpringAnimation(this, BOX_LEFT, 0f);
+            boxLeftSpring.getSpring().setStiffness(SpringForce.STIFFNESS_LOW);
+            boxLeftSpring.getSpring().setDampingRatio(SpringForce.DAMPING_RATIO_NO_BOUNCY);
+            
+            boxRightSpring = new SpringAnimation(this, BOX_RIGHT, 0f);
+            boxRightSpring.getSpring().setStiffness(SpringForce.STIFFNESS_LOW);
+            boxRightSpring.getSpring().setDampingRatio(SpringForce.DAMPING_RATIO_NO_BOUNCY);
+            
+            boxTopSpring = new SpringAnimation(this, BOX_TOP, 0f);
+            boxTopSpring.getSpring().setStiffness(SpringForce.STIFFNESS_LOW);
+            boxTopSpring.getSpring().setDampingRatio(SpringForce.DAMPING_RATIO_NO_BOUNCY);
+            
+            boxBottomSpring = new SpringAnimation(this, BOX_BOTTOM, 0f);
+            boxBottomSpring.getSpring().setStiffness(SpringForce.STIFFNESS_LOW);
+            boxBottomSpring.getSpring().setDampingRatio(SpringForce.DAMPING_RATIO_NO_BOUNCY);
+        }
+    }
+    
+    private void setBoxAlphaTarget(float target) {
+        if (targetBoxAlpha == target) {
+            return;
+        }
+        targetBoxAlpha = target;
+        if (boxAlphaAnimator != null) {
+            boxAlphaAnimator.cancel();
+        }
+        boxAlphaAnimator = android.animation.ValueAnimator.ofFloat(boxAlpha, target);
+        boxAlphaAnimator.setDuration(150);
+        boxAlphaAnimator.addUpdateListener(a -> {
+            boxAlpha = (float) a.getAnimatedValue();
+            invalidate();
+        });
+        boxAlphaAnimator.start();
+    }
+    
+    private void updateWordBoxTarget(int wordIndex) {
+        if (wordIndex < 0 || wordSyncCurrentLayout == null || lrcData == null || currentLineIndex < 0) {
+            return;
+        }
+        
+        LrcEntry entry = lrcData.getEntries().get(currentLineIndex);
+        if (wordIndex >= entry.getWords().size()) {
+            return;
+        }
+        
+        WordEntry word = entry.getWords().get(wordIndex);
+        
+        int charStart = 0;
+        for (int i = 0; i < wordIndex; i++) {
+            charStart += entry.getWords().get(i).getText().length();
+        }
+        int charEnd = charStart + word.getText().trim().length();
+        if (charEnd <= charStart) {
+            charEnd = charStart + word.getText().length(); // fallback for empty or space-only words
+        }
+        
+        float left = wordSyncCurrentLayout.getPrimaryHorizontal(charStart);
+        float right = wordSyncCurrentLayout.getPrimaryHorizontal(charEnd);
+        
+        int lineStart = wordSyncCurrentLayout.getLineForOffset(charStart);
+        float top = wordSyncCurrentLayout.getLineTop(lineStart);
+        float bottom = wordSyncCurrentLayout.getLineBottom(lineStart);
+        
+        float actualLeft = Math.min(left, right);
+        float actualRight = Math.max(left, right);
+        
+        float paddingX = dp2px(getContext(), 4f);
+        float paddingY = dp2px(getContext(), 0f);
+        
+        targetBoxBounds.set(actualLeft - paddingX, top - paddingY, actualRight + paddingX, bottom + paddingY);
+        
+        initBoxSprings();
+        
+        if (boxAlpha == 0f || targetBoxAlpha == 0f) {
+            // Box is invisible or fading out, so jump to new position instead of animating from nowhere
+            currentBoxBounds.set(targetBoxBounds);
+            // Sync springs to target to avoid them animating from 0
+            boxLeftSpring.getSpring().setFinalPosition(targetBoxBounds.left);
+            boxRightSpring.getSpring().setFinalPosition(targetBoxBounds.right);
+            boxTopSpring.getSpring().setFinalPosition(targetBoxBounds.top);
+            boxBottomSpring.getSpring().setFinalPosition(targetBoxBounds.bottom);
+            boxLeftSpring.cancel();
+            boxRightSpring.cancel();
+            boxTopSpring.cancel();
+            boxBottomSpring.cancel();
+        } else {
+            // Box is visible, smoothly animate to new bounds
+            boxLeftSpring.animateToFinalPosition(targetBoxBounds.left);
+            boxRightSpring.animateToFinalPosition(targetBoxBounds.right);
+            boxTopSpring.animateToFinalPosition(targetBoxBounds.top);
+            boxBottomSpring.animateToFinalPosition(targetBoxBounds.bottom);
+        }
+    }
+    
     /**
      * Figures out which word inside {@code entry} is currently active based on
      * the playback position.  We return the index of the last word whose start
@@ -884,6 +1061,10 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     /**
      * Updates the lyrics data reference and re-evaluates the highlighted line without
      * resetting the user's manual scroll position or blowing away existing caches.
+     *
+     * @param data         new {@link LrcData} (typically with shifted timestamps for sync
+     *                     offset adjustments; same logical line count as the previous data)
+     * @param timeInMillis current playback position in milliseconds
      * @noinspection unused
      *
      * <p>Unlike {@link #setLrcData(LrcData)}, caches are kept intact so that lines which
@@ -894,10 +1075,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
      * populated from the first draw pass before {@link #getLineOffset} is consulted.
      * This prevents the highlight from landing at a wrong position when the view's cache
      * is empty (e.g. immediately after {@link #reset()}).</p>
-     *
-     * @param data         new {@link LrcData} (typically with shifted timestamps for sync
-     *                     offset adjustments; same logical line count as the previous data)
-     * @param timeInMillis current playback position in milliseconds
      */
     public void updateLrcDataInPlace(LrcData data, long timeInMillis) {
         this.lrcData = data;
@@ -956,7 +1133,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     public void setLrcData(LrcData data) {
         // Remember whether we had any lyrics before so we know which animation to play.
         boolean wasEmpty = (this.lrcData == null || this.lrcData.isEmpty());
-
+        
         this.lrcData = data;
         this.currentLineIndex = -1;
         this.scrollY = 0f;
@@ -966,7 +1143,8 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         this.currentWordIndex = -1;
         this.wordSyncCurrentLayout = null;
         this.wordSyncLayoutLineIndex = -1;
-
+        setBoxAlphaTarget(0f);
+        
         // Cancel any running curtain animations
         for (android.animation.Animator anim : curtainAnimators) {
             if (anim != null && anim.isRunning()) {
@@ -986,9 +1164,9 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                 curtainAlpha.put(i, 0f);
             }
         }
-
+        
         invalidate();
-
+        
         if (data != null && !data.isEmpty()) {
             if (wasEmpty) {
                 // First arrival of lyrics — play the grand curtain entrance.
@@ -1001,6 +1179,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     }
     
     public void setEmptyLrcData() {
+        setBoxAlphaTarget(0f);
         setLrcData(new LrcData());
     }
     
@@ -1114,7 +1293,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         curtainAnimators.add(fadeAnim);
         fadeAnim.start();
     }
-
+    
     /**
      * Animate a single line's curtain reveal (alpha 0→1, blur X→0, scale 1.2→1) after the given delay.
      * Each line blooms into view on its own schedule, which is what gives the curtain effect its
@@ -1204,7 +1383,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     public void setLrcData(LrcData data, long timeInMillis) {
         // Remember if we had lyrics before so we know which animation to use afterward.
         boolean wasEmpty = (this.lrcData == null || this.lrcData.isEmpty());
-
+        
         this.lrcData = data;
         this.currentLineIndex = -1;
         this.previousLineIndex = -1;
@@ -1215,7 +1394,8 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         this.currentWordIndex = -1;
         this.wordSyncCurrentLayout = null;
         this.wordSyncLayoutLineIndex = -1;
-
+        setBoxAlphaTarget(0f);
+        
         for (android.animation.Animator anim : curtainAnimators) {
             if (anim != null && anim.isRunning()) {
                 anim.cancel();
@@ -1225,7 +1405,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         curtainBlur.clear();
         curtainScale.clear();
         curtainAlpha.clear();
-
+        
         if (data == null || data.isEmpty()) {
             invalidate();
             return;
@@ -1236,7 +1416,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         for (int i = 0; i < data.size(); i++) {
             curtainAlpha.put(i, 0f);
         }
-
+        
         // All lines share normalTextSize, so no per-line size priming is needed here.
         float fraction = 0f;
         if (!isStaticMode()) {
@@ -1261,7 +1441,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                 targetScrollY = scrollY;
             }
         }
-
+        
         invalidate();
         
         // For plain (static) lyrics there is no real "current line", so we estimate
@@ -1274,7 +1454,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         } else {
             anchorLine = currentLineIndex;
         }
-
+        
         final boolean firstLoad = wasEmpty;
         post(() -> {
             // Snap scroll to the active line now that heights are known.
@@ -1365,7 +1545,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                 wordSyncLayoutLineIndex = -1;
             }
         }
-
+        
         // Post the scroll snap so that layout heights are guaranteed to be populated
         // (getLineOffset relies on animatedHeights which are filled during the first draw pass)
         final int lineToSnap = currentLineIndex;
@@ -1429,6 +1609,9 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             wordSyncCurrentLayout = null;
             wordSyncLayoutLineIndex = -1;
             
+            // Start fading out the word box when switching lines
+            setBoxAlphaTarget(0f);
+            
             // Kick off a smooth color cross-fade between the old and new highlighted lines.
             startHighlightTransition();
             
@@ -1457,7 +1640,28 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                     // Drop the cached layout so it is rebuilt with the fresh coloring.
                     wordSyncCurrentLayout = null;
                     wordSyncLayoutLineIndex = -1;
+                    
+                    if (currentWordIndex >= 0) {
+                        getOrCreateWordSyncLayout(wordSyncEntry, normalPaint, currentLineIndex);
+                        updateWordBoxTarget(currentWordIndex);
+                        setBoxAlphaTarget(1f);
+                    } else {
+                        setBoxAlphaTarget(0f);
+                    }
+                    
                     invalidate();
+                } else if (currentWordIndex >= 0) {
+                    WordEntry currentWord = wordSyncEntry.getWords().get(currentWordIndex);
+                    boolean isFinished = timeInMillis > currentWord.getEndMs() + 100; // 100ms grace period gap
+                    if (isFinished) {
+                        setBoxAlphaTarget(0f);
+                    } else {
+                        if (targetBoxAlpha == 0f) {
+                            getOrCreateWordSyncLayout(wordSyncEntry, normalPaint, currentLineIndex);
+                            updateWordBoxTarget(currentWordIndex);
+                            setBoxAlphaTarget(1f);
+                        }
+                    }
                 }
             }
         }
@@ -1661,7 +1865,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     private void snapBackFromOverscroll() {
         float maxScroll = getMaxScrollY();
         float targetY = scrollY;
-
+        
         if (scrollY < 0) {
             targetY = 0;
         } else if (scrollY > maxScroll) {
@@ -1963,6 +2167,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         this.currentWordIndex = -1;
         this.wordSyncCurrentLayout = null;
         this.wordSyncLayoutLineIndex = -1;
+        setBoxAlphaTarget(0f);
         
         removeCallbacks(autoScrollRunnable);
         if (highlightAnimator != null && highlightAnimator.isRunning()) {
@@ -2013,7 +2218,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         ThemeChangedListener.super.onThemeChanged(theme, animate);
         updateColorsFromTheme(theme);
     }
-
+    
     private void updateColorsFromTheme(Theme theme) {
         if (isAlbumArtBackground) {
             setNormalTextColor(Color.LTGRAY);
@@ -2218,17 +2423,17 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             // It could be just slightly past them due to floating-point drift during dragging.
             float clampedStart = Math.max(flingMin, Math.min(flingMax, scrollY));
             scrollY = clampedStart;
-
+            
             FloatValueHolder holder = new FloatValueHolder();
             holder.setValue(clampedStart);
-
+            
             flingAnimation = new FlingAnimation(holder, holder.getProperty());
             flingAnimation.setStartVelocity(acceleratedVelocity);
             flingAnimation.setFriction(FLING_FRICTION);
             
             flingAnimation.setMinValue(flingMin);
             flingAnimation.setMaxValue(flingMax);
-
+            
             flingAnimation.addUpdateListener((animation, value, velocity) -> {
                 scrollY = value;
                 invalidate();
