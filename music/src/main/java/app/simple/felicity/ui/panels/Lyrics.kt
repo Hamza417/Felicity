@@ -314,6 +314,9 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
     @Suppress("SameParameterValue")
     private fun setAlbumArtBackground(animate: Boolean = false) {
         val enabled = LyricsPreferences.isAlbumArtBackground()
+
+        binding.lrc.setAlbumArtBackground(enabled)
+
         if (enabled) {
             if (animate) {
                 binding.coverContainer.animate()

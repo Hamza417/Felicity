@@ -160,6 +160,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     private float targetScrollY = 0f;
     private boolean isUserScrolling = false;
     private boolean isAutoScrollEnabled = true;
+    private boolean isAlbumArtBackground = false;
     private boolean isTapSeek = true; // Flag to prevent auto-scroll after tap seek
     private float scrollMultiplier;
     private float maxOverscrollDistance;
@@ -2012,13 +2013,27 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         ThemeChangedListener.super.onThemeChanged(theme, animate);
         updateColorsFromTheme(theme);
     }
-    
+
     private void updateColorsFromTheme(Theme theme) {
-        setNormalTextColor(theme.getTextViewTheme().getTertiaryTextColor());
+        if (isAlbumArtBackground) {
+            setNormalTextColor(Color.LTGRAY);
+        } else {
+            setNormalTextColor(theme.getTextViewTheme().getTertiaryTextColor());
+        }
+    }
+    
+    public void setAlbumArtBackground(boolean isAlbumArtBackground) {
+        this.isAlbumArtBackground = isAlbumArtBackground;
+        updateColorsFromTheme(ThemeManager.INSTANCE.getTheme());
+        updateColorsFromAccent(ThemeManager.INSTANCE.getAccent());
     }
     
     private void updateColorsFromAccent(Accent accent) {
-        setCurrentTextColor(accent.getPrimaryAccentColor());
+        if (isAlbumArtBackground) {
+            setCurrentTextColor(Color.WHITE);
+        } else {
+            setCurrentTextColor(accent.getPrimaryAccentColor());
+        }
         
         // Update ripple color
         if (rippleDrawable != null) {
