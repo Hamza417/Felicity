@@ -1730,54 +1730,71 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                     if (currentWordIndex >= 0) {
                         updateWordBoxTarget(currentWordIndex, currentLineIndex);
                         setBoxAlphaTarget(1f);
-                    } else if (!wordSyncEntry.getWords().isEmpty()) {
-                        updateWordBoxTarget(0, currentLineIndex);
-                        @SuppressWarnings ("SequencedCollectionMethodCanBeUsed")
-                        long gap = wordSyncEntry.getWords().get(0).getStartMs() - timeInMillis;
-                        if (gap > INSTRUMENTAL_GAP_THRESHOLD) {
-                            setBoxAlphaTarget(0f);
-                        } else {
-                            setBoxAlphaTarget(1f);
-                        }
-                    } else {
-                        setBoxAlphaTarget(0f);
                     }
                     
                     invalidate();
-                } else if (currentWordIndex >= 0) {
+                }
+                
+                // Continuous logic to handle gaps, slides, and fading.
+                if (currentWordIndex >= 0) {
                     WordEntry currentWord = wordSyncEntry.getWords().get(currentWordIndex);
                     boolean isFinished = timeInMillis > currentWord.getEndMs() + 100;
                     if (isFinished) {
                         long nextStartMs = -1;
+                        int nextWordIdx = -1;
+                        int nextLineIdx = -1;
+                        
                         if (currentWordIndex + 1 < wordSyncEntry.getWords().size()) {
                             nextStartMs = wordSyncEntry.getWords().get(currentWordIndex + 1).getStartMs();
-                            if (nextStartMs != -1 && (nextStartMs - timeInMillis) < INSTRUMENTAL_GAP_THRESHOLD) {
-                                updateWordBoxTarget(currentWordIndex + 1, currentLineIndex);
-                                setBoxAlphaTarget(1f);
-                            } else {
-                                setBoxAlphaTarget(0f);
-                            }
+                            nextWordIdx = currentWordIndex + 1;
+                            nextLineIdx = currentLineIndex;
                         } else if (currentLineIndex + 1 < lrcData.size()) {
                             LrcEntry nextEntry = lrcData.getEntries().get(currentLineIndex + 1);
                             if (nextEntry.hasWordSync() && !nextEntry.getWords().isEmpty()) {
-                                //noinspection SequencedCollectionMethodCanBeUsed
-                                nextStartMs = nextEntry.getWords().get(0).getStartMs();
-                                if (nextStartMs != -1 && (nextStartMs - timeInMillis) < INSTRUMENTAL_GAP_THRESHOLD) {
-                                    updateWordBoxTarget(0, currentLineIndex + 1);
-                                    setBoxAlphaTarget(1f);
-                                } else {
-                                    setBoxAlphaTarget(0f);
-                                }
-                            } else {
+                                @SuppressWarnings ("SequencedCollectionMethodCanBeUsed")
+                                long startMs = nextEntry.getWords().get(0).getStartMs();
+                                nextStartMs = startMs;
+                                nextWordIdx = 0;
+                                nextLineIdx = currentLineIndex + 1;
+                            }
+                        }
+                        
+                        if (nextStartMs != -1) {
+                            long gapToNext = nextStartMs - timeInMillis;
+                            
+                            if (gapToNext > INSTRUMENTAL_GAP_THRESHOLD) {
+                                // Long gap, fade out
                                 setBoxAlphaTarget(0f);
+                            } else {
+                                // Short gap, stay visible. But only slide when close to the next word.
+                                setBoxAlphaTarget(1f);
+                                if (gapToNext <= 400) {
+                                    updateWordBoxTarget(nextWordIdx, nextLineIdx);
+                                }
                             }
                         } else {
+                            // No next word
                             setBoxAlphaTarget(0f);
                         }
                     } else {
+                        // Currently singing this word
                         if (targetBoxAlpha == 0f) {
                             updateWordBoxTarget(currentWordIndex, currentLineIndex);
                             setBoxAlphaTarget(1f);
+                        }
+                    }
+                } else if (!wordSyncEntry.getWords().isEmpty()) {
+                    // Waiting for the very first word of the current line
+                    @SuppressWarnings ("SequencedCollectionMethodCanBeUsed")
+                    long nextStartMs = wordSyncEntry.getWords().get(0).getStartMs();
+                    long gapToNext = nextStartMs - timeInMillis;
+                    
+                    if (gapToNext > INSTRUMENTAL_GAP_THRESHOLD) {
+                        setBoxAlphaTarget(0f);
+                    } else {
+                        setBoxAlphaTarget(1f);
+                        if (gapToNext <= 400) {
+                            updateWordBoxTarget(0, currentLineIndex);
                         }
                     }
                 }
