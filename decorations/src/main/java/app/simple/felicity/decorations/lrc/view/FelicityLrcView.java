@@ -18,7 +18,6 @@ import android.text.Spanned;
 import android.text.StaticLayout;
 import android.text.TextDirectionHeuristics;
 import android.text.TextPaint;
-import android.text.style.ForegroundColorSpan;
 import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.GestureDetector;
@@ -696,7 +695,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             
             if (isAlbumArtBackground && boxFillPaint != null) {
                 boxFillPaint.setColor(boxColor);
-                boxFillPaint.setAlpha(Math.round(255 * boxAlpha * 0.15f));
+                boxFillPaint.setAlpha(Math.round(255 * boxAlpha * 0.35f)); // alpha of the box fill
                 canvas.drawRoundRect(currentBoxBounds, corner, corner, boxFillPaint);
             }
             
@@ -1006,10 +1005,9 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             int wordEnd = Math.min(charPos + word.getText().length(), fullText.length());
             
             if (wordStart < wordEnd) {
-                // Words up to and including the active one glow in the accent color.
-                int color = (i <= currentWordIndex) ? currentTextColor : normalTextColor;
+                boolean isHighlight = (i <= currentWordIndex);
                 spannable.setSpan(
-                        new ForegroundColorSpan(color),
+                        new DynamicMarginSpan(isHighlight),
                         wordStart, wordEnd,
                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                                  );
@@ -1022,6 +1020,64 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         }
         
         return spannable;
+    }
+    
+    private class DynamicMarginSpan extends android.text.style.ReplacementSpan {
+        private final boolean isHighlight;
+        
+        public DynamicMarginSpan(boolean isHighlight) {
+            this.isHighlight = isHighlight;
+        }
+        
+        @Override
+        public int getSize(@NonNull Paint paint, CharSequence text, int start, int end, @Nullable Paint.FontMetricsInt fm) {
+            return Math.round(paint.measureText(text, start, end));
+        }
+        
+        @Override
+        public void draw(@NonNull Canvas canvas, CharSequence text, int start, int end, float x, int top, int y, int bottom, @NonNull Paint paint) {
+            int targetColor = isHighlight ? currentTextColor : normalTextColor;
+            int finalColor = blendColors(normalTextColor, targetColor, highlightFraction);
+            
+            Float cAlpha = curtainAlpha.get(currentLineIndex);
+            if (cAlpha != null) {
+                int a = Math.round(Color.alpha(finalColor) * cAlpha);
+                finalColor = Color.argb(a, Color.red(finalColor), Color.green(finalColor), Color.blue(finalColor));
+            }
+            paint.setColor(finalColor);
+            
+            float shift = 0f;
+            if (boxAlpha > 0f && wordSyncCurrentLayout != null && currentLineIndex >= 0) {
+                float layoutX = calculateXPositionForLayout(wordSyncCurrentLayout, normalPaint, currentLineIndex);
+                float layoutY = getLineOffset(currentLineIndex) - (wordSyncCurrentLayout.getHeight() / 2f);
+                
+                float wordWidth = paint.measureText(text, start, end);
+                float cx = layoutX + x + wordWidth / 2f;
+                float cy = layoutY + top + (bottom - top) / 2f;
+                
+                float boxCenterX = (currentBoxBounds.left + currentBoxBounds.right) / 2f;
+                float boxCenterY = (currentBoxBounds.top + currentBoxBounds.bottom) / 2f;
+                float halfWidth = (currentBoxBounds.right - currentBoxBounds.left) / 2f;
+                
+                float normalizedDistance = 0f;
+                if (halfWidth > 0) {
+                    normalizedDistance = (cx - boxCenterX) / halfWidth;
+                    normalizedDistance = Math.max(-1f, Math.min(1f, normalizedDistance));
+                }
+                
+                float diffY = Math.abs(cy - boxCenterY);
+                float maxDiffY = (currentBoxBounds.bottom - currentBoxBounds.top);
+                float yFactor = 0f;
+                if (maxDiffY > 0) {
+                    yFactor = Math.max(0f, 1f - (diffY / maxDiffY));
+                }
+                
+                float maxShift = dp2px(getContext(), 8f);
+                shift = normalizedDistance * maxShift * yFactor;
+            }
+            
+            canvas.drawText(text, start, end, x + shift, y, paint);
+        }
     }
     
     /**
