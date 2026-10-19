@@ -840,6 +840,8 @@ open class MediaFragment : KeyboardScopedFragment(), MiniPlayerPolicy {
                     MediaPlaybackManager.duck()
                 }
 
+                binding.deleteLyricsCheckbox.isChecked = true // By default, delete lyrics files too
+
                 val title = audio.getProperTitle()
                 val fullText = getString(R.string.delete_audio_summary, title)
 
