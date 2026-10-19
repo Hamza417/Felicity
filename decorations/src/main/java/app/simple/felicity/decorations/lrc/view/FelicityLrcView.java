@@ -93,6 +93,12 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
      * Higher than the auto-scroll stiffness so the rubber-band feel is snappy but not jarring.
      */
     private static final float OVERSCROLL_SPRING_STIFFNESS = 400f;
+    
+    /**
+     * threshold of 3 seconds to avoid glitches during short instrumental breaks,
+     * it defines when the box should just fade out.
+     */
+    private static final int INSTRUMENTAL_GAP_THRESHOLD = 3000;
     // Data
     private LrcData lrcData;
     private int currentLineIndex = -1;
@@ -942,8 +948,8 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         
         initBoxSprings();
         
-        if (boxAlpha == 0f || targetBoxAlpha == 0f) {
-            // Box is invisible or fading out, so jump to new position instead of animating from nowhere
+        if (boxAlpha == 0f) {
+            // Box is invisible, so jump to new position instead of animating from nowhere
             currentBoxBounds.set(targetBoxBounds);
             // Sync springs to target to avoid them animating from 0
             boxLeftSpring.getSpring().setFinalPosition(targetBoxBounds.left);
@@ -1692,9 +1698,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             wordSyncCurrentLayout = null;
             wordSyncLayoutLineIndex = -1;
             
-            // Start fading out the word box when switching lines
-            setBoxAlphaTarget(0f);
-            
             // Kick off a smooth color cross-fade between the old and new highlighted lines.
             startHighlightTransition();
             
@@ -1729,8 +1732,9 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                         setBoxAlphaTarget(1f);
                     } else if (!wordSyncEntry.getWords().isEmpty()) {
                         updateWordBoxTarget(0, currentLineIndex);
+                        @SuppressWarnings ("SequencedCollectionMethodCanBeUsed")
                         long gap = wordSyncEntry.getWords().get(0).getStartMs() - timeInMillis;
-                        if (gap > 350) {
+                        if (gap > INSTRUMENTAL_GAP_THRESHOLD) {
                             setBoxAlphaTarget(0f);
                         } else {
                             setBoxAlphaTarget(1f);
@@ -1747,7 +1751,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                         long nextStartMs = -1;
                         if (currentWordIndex + 1 < wordSyncEntry.getWords().size()) {
                             nextStartMs = wordSyncEntry.getWords().get(currentWordIndex + 1).getStartMs();
-                            if (nextStartMs != -1 && (nextStartMs - timeInMillis) < 350) {
+                            if (nextStartMs != -1 && (nextStartMs - timeInMillis) < INSTRUMENTAL_GAP_THRESHOLD) {
                                 updateWordBoxTarget(currentWordIndex + 1, currentLineIndex);
                                 setBoxAlphaTarget(1f);
                             } else {
@@ -1756,8 +1760,9 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                         } else if (currentLineIndex + 1 < lrcData.size()) {
                             LrcEntry nextEntry = lrcData.getEntries().get(currentLineIndex + 1);
                             if (nextEntry.hasWordSync() && !nextEntry.getWords().isEmpty()) {
+                                //noinspection SequencedCollectionMethodCanBeUsed
                                 nextStartMs = nextEntry.getWords().get(0).getStartMs();
-                                if (nextStartMs != -1 && (nextStartMs - timeInMillis) < 350) {
+                                if (nextStartMs != -1 && (nextStartMs - timeInMillis) < INSTRUMENTAL_GAP_THRESHOLD) {
                                     updateWordBoxTarget(0, currentLineIndex + 1);
                                     setBoxAlphaTarget(1f);
                                 } else {
