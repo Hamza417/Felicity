@@ -202,6 +202,37 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     private float rippleX = 0f;
     private float rippleY = 0f;
     
+    private final FloatPropertyCompat <FelicityLrcView> WORD_POP_PROPERTY =
+            new FloatPropertyCompat <>("wordPopFraction") {
+                @Override
+                public float getValue(FelicityLrcView view) {
+                    return view.wordPopFraction;
+                }
+                
+                @Override
+                public void setValue(FelicityLrcView view, float value) {
+                    view.wordPopFraction = value;
+                    view.invalidate();
+                }
+            };
+    // Word pop animation state
+    private float wordPopFraction = 1f;
+    private SpringAnimation wordPopSpring;
+    
+    private void startWordPopAnimation() {
+        if (wordPopSpring == null) {
+            wordPopSpring = new SpringAnimation(this, WORD_POP_PROPERTY, 1f);
+            wordPopSpring.getSpring().setStiffness(SpringForce.STIFFNESS_VERY_LOW);
+            wordPopSpring.getSpring().setDampingRatio(SpringForce.DAMPING_RATIO_MEDIUM_BOUNCY);
+        }
+        if (wordPopSpring.isRunning()) {
+            wordPopSpring.cancel();
+        }
+        wordPopFraction = 0f;
+        wordPopSpring.setStartValue(0f);
+        wordPopSpring.start();
+    }
+    
     public FelicityLrcView(Context context) {
         this(context, null);
     }
@@ -785,6 +816,8 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
      * Builds a {@link SpannableString} for the given word-sync entry where words
      * that have already been reached (index ≤ {@link #currentWordIndex}) are painted
      * in the highlight color and upcoming words stay in the normal dimmed color.
+     * The currently active word is wrapped in a {@link PopWordSpan} to apply a dynamic
+     * organic scaling pop animation.
      *
      * <p>Character positions in the spannable are derived directly from each
      * {@link WordEntry}'s text length, so they always match what was parsed — no
@@ -802,13 +835,20 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             int wordEnd = Math.min(charPos + word.getText().length(), fullText.length());
             
             if (wordStart < wordEnd) {
-                // Words up to and including the active one glow in the accent color.
-                int color = (i <= currentWordIndex) ? currentTextColor : normalTextColor;
-                spannable.setSpan(
-                        new ForegroundColorSpan(color),
-                        wordStart, wordEnd,
-                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                                 );
+                if (i == currentWordIndex) {
+                    // Active word gets the pop span
+                    spannable.setSpan(
+                            new PopWordSpan(normalTextColor, currentTextColor),
+                            wordStart, wordEnd,
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                } else {
+                    // Words up to and including the active one glow in the accent color.
+                    int color = (i < currentWordIndex) ? currentTextColor : normalTextColor;
+                    spannable.setSpan(
+                            new ForegroundColorSpan(color),
+                            wordStart, wordEnd,
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                }
             }
             
             charPos += word.getText().length();
@@ -818,6 +858,72 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         }
         
         return spannable;
+    }
+    
+    /**
+     * Updates the lyrics data reference and re-evaluates the highlighted line without
+     * resetting the user's manual scroll position or blowing away existing caches.
+     *
+     * @param data         new {@link LrcData} (typically with shifted timestamps for sync
+     *                     offset adjustments; same logical line count as the previous data)
+     * @param timeInMillis current playback position in milliseconds
+     * @noinspection unused
+     *
+     * <p>Unlike {@link #setLrcData(LrcData)}, caches are kept intact so that lines which
+     * have already been measured keep their correct positions.  Only the highlighted line
+     * is re-evaluated and its text-size animated accordingly.</p>
+     *
+     * <p>The scroll snap is deferred via {@link #post} so that layout heights are fully
+     * populated from the first draw pass before {@link #getLineOffset} is consulted.
+     * This prevents the highlight from landing at a wrong position when the view's cache
+     * is empty (e.g. immediately after {@link #reset()}).</p>
+     */
+    public void updateLrcDataInPlace(LrcData data, long timeInMillis) {
+        this.lrcData = data;
+        int newLineIndex = findLineIndexByTime(timeInMillis + (data != null ? data.getOffset() : 0));
+        
+        if (newLineIndex != currentLineIndex) {
+            previousLineIndex = currentLineIndex;
+            currentLineIndex = newLineIndex;
+            
+            // Drop the word-sync layout so it is rebuilt for the new active line.
+            currentWordIndex = -1;
+            wordSyncCurrentLayout = null;
+            wordSyncLayoutLineIndex = -1;
+            
+            // This assigns the index directly (no startHighlightTransition() call), so make
+            // sure the new active line is immediately shown as fully highlighted rather than
+            // staying unhighlighted until the line changes again.
+            if (highlightAnimator != null && highlightAnimator.isRunning()) {
+                highlightAnimator.cancel();
+            }
+            if (dehighlightAnimator != null && dehighlightAnimator.isRunning()) {
+                dehighlightAnimator.cancel();
+            }
+            highlightFraction = 1f;
+            dehighlightFraction = 0f;
+        }
+        
+        invalidate();
+        
+        // Defer the scroll snap until after at least one draw pass so that animatedHeights
+        // are populated and getLineOffset() returns the correct value.
+        if (isAutoScrollEnabled && currentLineIndex >= 0 && !isUserScrolling) {
+            final int lineToSnap = currentLineIndex;
+            post(() -> {
+                if (!isUserScrolling && isAutoScrollEnabled) {
+                    float targetY = getLineOffset(lineToSnap);
+                    scrollY = targetY;
+                    targetScrollY = targetY;
+                    if (scrollSpringAnimation != null && scrollSpringAnimation.isRunning()) {
+                        scrollSpringAnimation.cancel();
+                    }
+                    invalidate();
+                }
+            });
+        }
+        // No curtain or ripple here — this method is called during normal playback
+        // (e.g. when the sync offset is nudged) and should be completely invisible to the user.
     }
     
     /**
@@ -882,72 +988,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     }
     
     /**
-     * Updates the lyrics data reference and re-evaluates the highlighted line without
-     * resetting the user's manual scroll position or blowing away existing caches.
-     * @noinspection unused
-     *
-     * <p>Unlike {@link #setLrcData(LrcData)}, caches are kept intact so that lines which
-     * have already been measured keep their correct positions.  Only the highlighted line
-     * is re-evaluated and its text-size animated accordingly.</p>
-     *
-     * <p>The scroll snap is deferred via {@link #post} so that layout heights are fully
-     * populated from the first draw pass before {@link #getLineOffset} is consulted.
-     * This prevents the highlight from landing at a wrong position when the view's cache
-     * is empty (e.g. immediately after {@link #reset()}).</p>
-     *
-     * @param data         new {@link LrcData} (typically with shifted timestamps for sync
-     *                     offset adjustments; same logical line count as the previous data)
-     * @param timeInMillis current playback position in milliseconds
-     */
-    public void updateLrcDataInPlace(LrcData data, long timeInMillis) {
-        this.lrcData = data;
-        int newLineIndex = findLineIndexByTime(timeInMillis + (data != null ? data.getOffset() : 0));
-        
-        if (newLineIndex != currentLineIndex) {
-            previousLineIndex = currentLineIndex;
-            currentLineIndex = newLineIndex;
-            
-            // Drop the word-sync layout so it is rebuilt for the new active line.
-            currentWordIndex = -1;
-            wordSyncCurrentLayout = null;
-            wordSyncLayoutLineIndex = -1;
-            
-            // This assigns the index directly (no startHighlightTransition() call), so make
-            // sure the new active line is immediately shown as fully highlighted rather than
-            // staying unhighlighted until the line changes again.
-            if (highlightAnimator != null && highlightAnimator.isRunning()) {
-                highlightAnimator.cancel();
-            }
-            if (dehighlightAnimator != null && dehighlightAnimator.isRunning()) {
-                dehighlightAnimator.cancel();
-            }
-            highlightFraction = 1f;
-            dehighlightFraction = 0f;
-        }
-        
-        invalidate();
-        
-        // Defer the scroll snap until after at least one draw pass so that animatedHeights
-        // are populated and getLineOffset() returns the correct value.
-        if (isAutoScrollEnabled && currentLineIndex >= 0 && !isUserScrolling) {
-            final int lineToSnap = currentLineIndex;
-            post(() -> {
-                if (!isUserScrolling && isAutoScrollEnabled) {
-                    float targetY = getLineOffset(lineToSnap);
-                    scrollY = targetY;
-                    targetScrollY = targetY;
-                    if (scrollSpringAnimation != null && scrollSpringAnimation.isRunning()) {
-                        scrollSpringAnimation.cancel();
-                    }
-                    invalidate();
-                }
-            });
-        }
-        // No curtain or ripple here — this method is called during normal playback
-        // (e.g. when the sync offset is nudged) and should be completely invisible to the user.
-    }
-    
-    /**
      * Set lyrics data. The first time this is called with actual lyrics (coming from an empty
      * or null state), it plays the full curtain reveal animation — blur, scale, stagger and all.
      * For every subsequent song change it just fades lines in smoothly so nobody gets a seizure
@@ -956,7 +996,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     public void setLrcData(LrcData data) {
         // Remember whether we had any lyrics before so we know which animation to play.
         boolean wasEmpty = (this.lrcData == null || this.lrcData.isEmpty());
-
+        
         this.lrcData = data;
         this.currentLineIndex = -1;
         this.scrollY = 0f;
@@ -966,7 +1006,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         this.currentWordIndex = -1;
         this.wordSyncCurrentLayout = null;
         this.wordSyncLayoutLineIndex = -1;
-
+        
         // Cancel any running curtain animations
         for (android.animation.Animator anim : curtainAnimators) {
             if (anim != null && anim.isRunning()) {
@@ -986,9 +1026,9 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                 curtainAlpha.put(i, 0f);
             }
         }
-
+        
         invalidate();
-
+        
         if (data != null && !data.isEmpty()) {
             if (wasEmpty) {
                 // First arrival of lyrics — play the grand curtain entrance.
@@ -997,6 +1037,42 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                 // Song changed while we already had lyrics — a subtle fade is plenty.
                 post(this :: triggerFadeInAnimation);
             }
+        }
+    }
+    
+    /**
+     * Trigger the ripple-from-highlight curtain when {@link #setLrcData} is used.
+     * Lines radiate outward from {@code anchorLine}:
+     * - Lines at/below anchor stagger downward (anchorLine first, then anchor+1, anchor+2 …)
+     * - Lines above anchor stagger upward   (anchor-1, anchor-2 …)
+     *
+     * @param anchorLine the currently highlighted line index to ripple from
+     */
+    private void triggerRippleCurtainAnimation(int anchorLine) {
+        if (lrcData == null || lrcData.isEmpty()) {
+            return;
+        }
+        
+        for (android.animation.Animator anim : curtainAnimators) {
+            if (anim != null && anim.isRunning()) {
+                anim.cancel();
+            }
+        }
+        curtainAnimators.clear();
+        
+        int count = lrcData.size();
+        int clampedAnchor = Math.clamp(anchorLine, 0, count - 1);
+        
+        // Lines from anchor downward
+        for (int i = clampedAnchor; i < count; i++) {
+            long delay = (long) (i - clampedAnchor) * CURTAIN_STAGGER_MS;
+            animateCurtainLine(i, delay);
+        }
+        
+        // Lines above anchor, going up
+        for (int i = clampedAnchor - 1; i >= 0; i--) {
+            long delay = (long) (clampedAnchor - i) * CURTAIN_STAGGER_MS;
+            animateCurtainLine(i, delay);
         }
     }
     
@@ -1031,17 +1107,35 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     }
     
     /**
-     * Trigger the ripple-from-highlight curtain when {@link #setLrcData} is used.
-     * Lines radiate outward from {@code anchorLine}:
-     * - Lines at/below anchor stagger downward (anchorLine first, then anchor+1, anchor+2 …)
-     * - Lines above anchor stagger upward   (anchor-1, anchor-2 …)
+     * Convenience method that sets lyrics data <em>and</em> immediately positions the view at
+     * the given playback time in a single call.
+     * <p>
+     * Unlike calling {@link #setLrcData} followed by {@link #setPosition}, this method uses a
+     * <b>ripple curtain</b> reveal animation instead of the top-to-bottom curtain:
+     * <ul>
+     *   <li>The highlighted line and all lines below it animate outward downward.</li>
+     *   <li>All lines above the highlighted line animate outward upward.</li>
+     * </ul>
+     * The scroll position is snapped immediately to the correct line so there is no
+     * "stuck-at-top" delay.
      *
-     * @param anchorLine the currently highlighted line index to ripple from
+     * @param data         the {@link LrcData} to display
+     * @param timeInMillis current playback position in milliseconds
      */
-    private void triggerRippleCurtainAnimation(int anchorLine) {
-        if (lrcData == null || lrcData.isEmpty()) {
-            return;
-        }
+    public void setLrcData(LrcData data, long timeInMillis) {
+        // Remember if we had lyrics before so we know which animation to use afterward.
+        boolean wasEmpty = (this.lrcData == null || this.lrcData.isEmpty());
+        
+        this.lrcData = data;
+        this.currentLineIndex = -1;
+        this.previousLineIndex = -1;
+        this.scrollY = 0f;
+        this.targetScrollY = 0f;
+        this.normalLayoutCache.clear();
+        this.blurMaskFilters.clear();
+        this.currentWordIndex = -1;
+        this.wordSyncCurrentLayout = null;
+        this.wordSyncLayoutLineIndex = -1;
         
         for (android.animation.Animator anim : curtainAnimators) {
             if (anim != null && anim.isRunning()) {
@@ -1049,21 +1143,80 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             }
         }
         curtainAnimators.clear();
+        curtainBlur.clear();
+        curtainScale.clear();
+        curtainAlpha.clear();
         
-        int count = lrcData.size();
-        int clampedAnchor = Math.max(0, Math.min(anchorLine, count - 1));
-        
-        // Lines from anchor downward
-        for (int i = clampedAnchor; i < count; i++) {
-            long delay = (long) (i - clampedAnchor) * CURTAIN_STAGGER_MS;
-            animateCurtainLine(i, delay);
+        if (data == null || data.isEmpty()) {
+            invalidate();
+            return;
         }
         
-        // Lines above anchor, going up
-        for (int i = clampedAnchor - 1; i >= 0; i--) {
-            long delay = (long) (clampedAnchor - i) * CURTAIN_STAGGER_MS;
-            animateCurtainLine(i, delay);
+        // Pre-populate curtainAlpha = 0 so the very first frame shows invisible lines
+        // rather than a flash of opaque text that vanishes once the animation begins.
+        for (int i = 0; i < data.size(); i++) {
+            curtainAlpha.put(i, 0f);
         }
+        
+        // All lines share normalTextSize, so no per-line size priming is needed here.
+        float fraction = 0f;
+        if (!isStaticMode()) {
+            long adjustedTime = timeInMillis + data.getOffset();
+            currentLineIndex = findLineIndexByTime(adjustedTime);
+            // The initial active line is set directly (no startHighlightTransition() call),
+            // so make sure it renders fully highlighted right away instead of staying at
+            // the default unhighlighted color until the *next* line change animates it in.
+            if (highlightAnimator != null && highlightAnimator.isRunning()) {
+                highlightAnimator.cancel();
+            }
+            if (dehighlightAnimator != null && dehighlightAnimator.isRunning()) {
+                dehighlightAnimator.cancel();
+            }
+            highlightFraction = 1f;
+            dehighlightFraction = 0f;
+        } else if (durationMs > 0) {
+            float maxScroll = getMaxScrollY();
+            if (maxScroll > 0) {
+                fraction = Math.clamp((float) timeInMillis / (float) durationMs, 0f, 1f);
+                scrollY = fraction * maxScroll;
+                targetScrollY = scrollY;
+            }
+        }
+        
+        invalidate();
+        
+        // For plain (static) lyrics there is no real "current line", so we estimate
+        // which line would be near the middle of the viewport based on the playback
+        // fraction. This way the curtain reveal radiates outward from where the user
+        // is actually looking instead of always starting from the very first line.
+        final int anchorLine;
+        if (isStaticMode() && !data.isEmpty() && durationMs > 0) {
+            anchorLine = Math.round(fraction * (data.size() - 1));
+        } else {
+            anchorLine = currentLineIndex;
+        }
+        
+        final boolean firstLoad = wasEmpty;
+        post(() -> {
+            // Snap scroll to the active line now that heights are known.
+            // For static mode the proportional scroll position is already set above,
+            // so we only snap when there is a real timestamp-based current line.
+            if (!isStaticMode() && anchorLine >= 0) {
+                float targetY = getLineOffset(anchorLine);
+                scrollY = targetY;
+                targetScrollY = targetY;
+                if (scrollSpringAnimation != null && scrollSpringAnimation.isRunning()) {
+                    scrollSpringAnimation.cancel();
+                }
+            }
+            if (firstLoad) {
+                // Grand entrance — ripple outward from the current line.
+                triggerRippleCurtainAnimation(anchorLine);
+            } else {
+                // Just fade everything in quietly; the scroll already moved to the right spot.
+                triggerFadeInAnimation();
+            }
+        });
     }
     
     /**
@@ -1114,7 +1267,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         curtainAnimators.add(fadeAnim);
         fadeAnim.start();
     }
-
+    
     /**
      * Animate a single line's curtain reveal (alpha 0→1, blur X→0, scale 1.2→1) after the given delay.
      * Each line blooms into view on its own schedule, which is what gives the curtain effect its
@@ -1186,119 +1339,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     }
     
     /**
-     * Convenience method that sets lyrics data <em>and</em> immediately positions the view at
-     * the given playback time in a single call.
-     * <p>
-     * Unlike calling {@link #setLrcData} followed by {@link #setPosition}, this method uses a
-     * <b>ripple curtain</b> reveal animation instead of the top-to-bottom curtain:
-     * <ul>
-     *   <li>The highlighted line and all lines below it animate outward downward.</li>
-     *   <li>All lines above the highlighted line animate outward upward.</li>
-     * </ul>
-     * The scroll position is snapped immediately to the correct line so there is no
-     * "stuck-at-top" delay.
-     *
-     * @param data         the {@link LrcData} to display
-     * @param timeInMillis current playback position in milliseconds
-     */
-    public void setLrcData(LrcData data, long timeInMillis) {
-        // Remember if we had lyrics before so we know which animation to use afterward.
-        boolean wasEmpty = (this.lrcData == null || this.lrcData.isEmpty());
-
-        this.lrcData = data;
-        this.currentLineIndex = -1;
-        this.previousLineIndex = -1;
-        this.scrollY = 0f;
-        this.targetScrollY = 0f;
-        this.normalLayoutCache.clear();
-        this.blurMaskFilters.clear();
-        this.currentWordIndex = -1;
-        this.wordSyncCurrentLayout = null;
-        this.wordSyncLayoutLineIndex = -1;
-
-        for (android.animation.Animator anim : curtainAnimators) {
-            if (anim != null && anim.isRunning()) {
-                anim.cancel();
-            }
-        }
-        curtainAnimators.clear();
-        curtainBlur.clear();
-        curtainScale.clear();
-        curtainAlpha.clear();
-
-        if (data == null || data.isEmpty()) {
-            invalidate();
-            return;
-        }
-        
-        // Pre-populate curtainAlpha = 0 so the very first frame shows invisible lines
-        // rather than a flash of opaque text that vanishes once the animation begins.
-        for (int i = 0; i < data.size(); i++) {
-            curtainAlpha.put(i, 0f);
-        }
-
-        // All lines share normalTextSize, so no per-line size priming is needed here.
-        float fraction = 0f;
-        if (!isStaticMode()) {
-            long adjustedTime = timeInMillis + data.getOffset();
-            currentLineIndex = findLineIndexByTime(adjustedTime);
-            // The initial active line is set directly (no startHighlightTransition() call),
-            // so make sure it renders fully highlighted right away instead of staying at
-            // the default unhighlighted color until the *next* line change animates it in.
-            if (highlightAnimator != null && highlightAnimator.isRunning()) {
-                highlightAnimator.cancel();
-            }
-            if (dehighlightAnimator != null && dehighlightAnimator.isRunning()) {
-                dehighlightAnimator.cancel();
-            }
-            highlightFraction = 1f;
-            dehighlightFraction = 0f;
-        } else if (durationMs > 0) {
-            float maxScroll = getMaxScrollY();
-            if (maxScroll > 0) {
-                fraction = Math.max(0f, Math.min(1f, (float) timeInMillis / (float) durationMs));
-                scrollY = fraction * maxScroll;
-                targetScrollY = scrollY;
-            }
-        }
-
-        invalidate();
-        
-        // For plain (static) lyrics there is no real "current line", so we estimate
-        // which line would be near the middle of the viewport based on the playback
-        // fraction. This way the curtain reveal radiates outward from where the user
-        // is actually looking instead of always starting from the very first line.
-        final int anchorLine;
-        if (isStaticMode() && data.size() > 0 && durationMs > 0) {
-            anchorLine = Math.round(fraction * (data.size() - 1));
-        } else {
-            anchorLine = currentLineIndex;
-        }
-
-        final boolean firstLoad = wasEmpty;
-        post(() -> {
-            // Snap scroll to the active line now that heights are known.
-            // For static mode the proportional scroll position is already set above,
-            // so we only snap when there is a real timestamp-based current line.
-            if (!isStaticMode() && anchorLine >= 0) {
-                float targetY = getLineOffset(anchorLine);
-                scrollY = targetY;
-                targetScrollY = targetY;
-                if (scrollSpringAnimation != null && scrollSpringAnimation.isRunning()) {
-                    scrollSpringAnimation.cancel();
-                }
-            }
-            if (firstLoad) {
-                // Grand entrance — ripple outward from the current line.
-                triggerRippleCurtainAnimation(anchorLine);
-            } else {
-                // Just fade everything in quietly; the scroll already moved to the right spot.
-                triggerFadeInAnimation();
-            }
-        });
-    }
-    
-    /**
      * <p>
      * This is the recommended method to call when opening a fragment / activity so that the
      * view instantly shows the correct highlighted line and scroll position rather than
@@ -1322,7 +1362,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             if (durationMs > 0) {
                 float maxScroll = getMaxScrollY();
                 if (maxScroll > 0) {
-                    float fraction = Math.max(0f, Math.min(1f, (float) timeInMillis / (float) durationMs));
+                    float fraction = Math.clamp((float) timeInMillis / (float) durationMs, 0f, 1f);
                     scrollY = fraction * maxScroll;
                     targetScrollY = scrollY;
                     invalidate();
@@ -1365,7 +1405,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                 wordSyncLayoutLineIndex = -1;
             }
         }
-
+        
         // Post the scroll snap so that layout heights are guaranteed to be populated
         // (getLineOffset relies on animatedHeights which are filled during the first draw pass)
         final int lineToSnap = currentLineIndex;
@@ -1403,7 +1443,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             if (!isUserScrolling && isAutoScrollEnabled && durationMs > 0) {
                 float maxScroll = getMaxScrollY();
                 if (maxScroll > 0) {
-                    float fraction = Math.max(0f, Math.min(1f, (float) timeInMillis / (float) durationMs));
+                    float fraction = Math.clamp((float) timeInMillis / (float) durationMs, 0f, 1f);
                     float targetY = fraction * maxScroll;
                     if (Math.abs(targetY - scrollY) > 1f) {
                         animateScroll(scrollY, targetY);
@@ -1457,9 +1497,65 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                     // Drop the cached layout so it is rebuilt with the fresh coloring.
                     wordSyncCurrentLayout = null;
                     wordSyncLayoutLineIndex = -1;
+                    
+                    if (currentWordIndex >= 0) {
+                        startWordPopAnimation();
+                    }
+                    
                     invalidate();
                 }
             }
+        }
+    }
+    
+    /**
+     * When the finger lifts while the content is stretched past its natural boundary,
+     * we spring it back smoothly — like a rubber band gently releasing rather than
+     * a door slamming shut. Nobody likes abrupt stops.
+     */
+    private void snapBackFromOverscroll() {
+        float maxScroll = getMaxScrollY();
+        float targetY = scrollY;
+        
+        if (scrollY < 0) {
+            targetY = 0;
+        } else if (scrollY > maxScroll) {
+            targetY = maxScroll;
+        }
+        
+        // Only spring back if we are actually past the valid range.
+        if (targetY != scrollY) {
+            isInOverscroll = false;
+            
+            // Cancel any pending fling so they don't fight the spring.
+            if (flingAnimation != null && flingAnimation.isRunning()) {
+                flingAnimation.cancel();
+            }
+            if (scrollSpringAnimation != null && scrollSpringAnimation.isRunning()) {
+                scrollSpringAnimation.cancel();
+            }
+            
+            // Use a snappy spring so the rubber-band release feels quick but not jarring.
+            final float snapTarget = targetY;
+            FloatValueHolder holder = new FloatValueHolder();
+            holder.setValue(scrollY);
+            
+            scrollSpringAnimation = new SpringAnimation(holder, holder.getProperty());
+            scrollSpringAnimation.setSpring(new SpringForce(snapTarget)
+                    .setStiffness(OVERSCROLL_SPRING_STIFFNESS)
+                    .setDampingRatio(SpringForce.DAMPING_RATIO_NO_BOUNCY));
+            
+            scrollSpringAnimation.addUpdateListener((anim, value, velocity) -> {
+                scrollY = value;
+                invalidate();
+            });
+            scrollSpringAnimation.addEndListener((anim, canceled, value, velocity) -> {
+                if (!canceled) {
+                    scrollY = snapTarget;
+                    invalidate();
+                }
+            });
+            scrollSpringAnimation.start();
         }
     }
     
@@ -1654,53 +1750,48 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     }
     
     /**
-     * When the finger lifts while the content is stretched past its natural boundary,
-     * we spring it back smoothly — like a rubber band gently releasing rather than
-     * a door slamming shut. Nobody likes abrupt stops.
+     * ReplacementSpan that applies a dynamic scale and color to the currently active word.
      */
-    private void snapBackFromOverscroll() {
-        float maxScroll = getMaxScrollY();
-        float targetY = scrollY;
-
-        if (scrollY < 0) {
-            targetY = 0;
-        } else if (scrollY > maxScroll) {
-            targetY = maxScroll;
+    private class PopWordSpan extends android.text.style.ReplacementSpan {
+        private final int fromColor;
+        private final int toColor;
+        
+        public PopWordSpan(int fromColor, int toColor) {
+            this.fromColor = fromColor;
+            this.toColor = toColor;
         }
         
-        // Only spring back if we are actually past the valid range.
-        if (targetY != scrollY) {
-            isInOverscroll = false;
+        @Override
+        public int getSize(@NonNull Paint paint, CharSequence text, int start, int end, @Nullable Paint.FontMetricsInt fm) {
+            // Keep the original layout width unscaled to avoid text shifting during layout phase
+            return Math.round(paint.measureText(text, start, end));
+        }
+        
+        @Override
+        public void draw(@NonNull Canvas canvas, CharSequence text, int start, int end, float x, int top, int y, int bottom, @NonNull Paint paint) {
+            // Calculate scale based on wordPopFraction (0.0 to 1.0)
+            // scale = 1.0 + 0.2 * (1.0 - wordPopFraction) => max scale 1.2
+            float currentScale = 1.0f + 0.2f * (1.0f - wordPopFraction);
             
-            // Cancel any pending fling so they don't fight the spring.
-            if (flingAnimation != null && flingAnimation.isRunning()) {
-                flingAnimation.cancel();
+            // Calculate color easing alongside the animation (clamp fraction to 0-1 to avoid
+            // Color.argb exceptions during spring overscroll)
+            float colorFraction = Math.clamp(wordPopFraction, 0f, 1f);
+            int color = blendColors(fromColor, toColor, colorFraction);
+            
+            paint.setColor(color);
+            
+            if (Math.abs(currentScale - 1.0f) > 0.001f) {
+                canvas.save();
+                float width = paint.measureText(text, start, end);
+                float midX = x + width / 2f;
+                // Use ascent and descent to find the vertical center of the text bounds
+                float midY = y + (paint.ascent() + paint.descent()) / 2f;
+                canvas.scale(currentScale, currentScale, midX, midY);
+                canvas.drawText(text, start, end, x, y, paint);
+                canvas.restore();
+            } else {
+                canvas.drawText(text, start, end, x, y, paint);
             }
-            if (scrollSpringAnimation != null && scrollSpringAnimation.isRunning()) {
-                scrollSpringAnimation.cancel();
-            }
-            
-            // Use a snappy spring so the rubber-band release feels quick but not jarring.
-            final float snapTarget = targetY;
-            FloatValueHolder holder = new FloatValueHolder();
-            holder.setValue(scrollY);
-            
-            scrollSpringAnimation = new SpringAnimation(holder, holder.getProperty());
-            scrollSpringAnimation.setSpring(new SpringForce(snapTarget)
-                    .setStiffness(OVERSCROLL_SPRING_STIFFNESS)
-                    .setDampingRatio(SpringForce.DAMPING_RATIO_NO_BOUNCY));
-            
-            scrollSpringAnimation.addUpdateListener((anim, value, velocity) -> {
-                scrollY = value;
-                invalidate();
-            });
-            scrollSpringAnimation.addEndListener((anim, canceled, value, velocity) -> {
-                if (!canceled) {
-                    scrollY = snapTarget;
-                    invalidate();
-                }
-            });
-            scrollSpringAnimation.start();
         }
     }
     
@@ -2013,7 +2104,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         ThemeChangedListener.super.onThemeChanged(theme, animate);
         updateColorsFromTheme(theme);
     }
-
+    
     private void updateColorsFromTheme(Theme theme) {
         if (isAlbumArtBackground) {
             setNormalTextColor(Color.LTGRAY);
@@ -2218,17 +2309,17 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             // It could be just slightly past them due to floating-point drift during dragging.
             float clampedStart = Math.max(flingMin, Math.min(flingMax, scrollY));
             scrollY = clampedStart;
-
+            
             FloatValueHolder holder = new FloatValueHolder();
             holder.setValue(clampedStart);
-
+            
             flingAnimation = new FlingAnimation(holder, holder.getProperty());
             flingAnimation.setStartVelocity(acceleratedVelocity);
             flingAnimation.setFriction(FLING_FRICTION);
             
             flingAnimation.setMinValue(flingMin);
             flingAnimation.setMaxValue(flingMax);
-
+            
             flingAnimation.addUpdateListener((animation, value, velocity) -> {
                 scrollY = value;
                 invalidate();
