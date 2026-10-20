@@ -13,11 +13,12 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles
 import app.simple.felicity.adapters.home.main.AdapterSpannedHomeTiles.SpannedTile
 import app.simple.felicity.databinding.FragmentHomeSpannedBinding
+import app.simple.felicity.decorations.layoutmanager.spanned.SpanSize
+import app.simple.felicity.decorations.layoutmanager.spanned.SpannedGridLayoutManager
 import app.simple.felicity.decorations.utils.RecyclerViewUtils.forEachViewHolderIndexed
 import app.simple.felicity.extensions.fragments.BaseHomeFragment
 import app.simple.felicity.preferences.UserInterfacePreferences
@@ -67,41 +68,34 @@ class TiledHome : BaseHomeFragment() {
 
         setupRecyclerView()
         observeRecommended()
+        observeLiveTileUpdates()
     }
 
     /**
-     * Wires up the [GridLayoutManager] with the right column count for the current orientation
-     * and a [GridLayoutManager.SpanSizeLookup] that makes hero tiles eat twice as many columns
-     * as regular tiles — giving us that satisfying large-tile-small-tile contrast.
-     *
-     * Portrait uses 3 columns (big tiles span 2, small tiles span 1).
-     * Landscape uses 6 columns (big tiles span 4, small tiles span 2) so the proportions
-     * stay identical regardless of how the user is holding their phone.
+     * Wires up the [SpannedGridLayoutManager] with orientation-aware column count
+     * (3 columns portrait, 6 columns landscape) and 2x2 hero spans vs 1x1 standard spans.
      */
     private fun setupRecyclerView() {
         val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
         val spanCount = if (isLandscape) SPAN_COUNT_LANDSCAPE else SPAN_COUNT_PORTRAIT
-        val bigTileSpan = 2
-        val smallTileSpan = 1
 
-        val layoutManager = GridLayoutManager(requireContext(), spanCount)
-
-        layoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
-            override fun getSpanSize(position: Int): Int {
-                // Hero positions get the wide treatment; everything else stays compact.
-                return if (position in AdapterSpannedHomeTiles.BIG_TILE_POSITIONS) bigTileSpan else smallTileSpan
+        val layoutManager = SpannedGridLayoutManager(SpannedGridLayoutManager.Orientation.VERTICAL, spanCount)
+        layoutManager.spanSizeLookup = SpannedGridLayoutManager.SpanSizeLookup { position ->
+            if (position in AdapterSpannedHomeTiles.BIG_TILE_POSITIONS) {
+                SpanSize(2, 2)
+            } else {
+                SpanSize(1, 1)
             }
         }
 
         binding.recyclerView.layoutManager = layoutManager
         binding.recyclerView.setHasFixedSize(false)
-        binding.recyclerView.itemAnimator = null
+        // binding.recyclerView.itemAnimator = FlipItemAnimator()
     }
 
     /**
      * Waits for the first non-empty emission from [HomeViewModel.recommended] and then
-     * builds the adapter. We only do this once — subsequent emissions are ignored because
-     * the recommended list is stable for the duration of the session. No surprises.
+     * builds the adapter.
      */
     private fun observeRecommended() {
         viewLifecycleOwner.lifecycleScope.launch {
@@ -110,6 +104,22 @@ class TiledHome : BaseHomeFragment() {
                     // Only build the adapter on first arrival
                     if (songs.isEmpty() || tilesAdapter != null) return@collect
                     buildAndAttachAdapter(songs)
+                }
+            }
+        }
+    }
+
+    /**
+     * Observes live tile updates from [HomeViewModel.liveTileUpdate] and forwards them
+     * to the adapter to produce the Windows Phone live-tile flip animation.
+     */
+    private fun observeLiveTileUpdates() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                homeViewModel.liveTileUpdate.collect { update ->
+                    if (update != null) {
+                        tilesAdapter?.updateSongAt(update.position, update.audio)
+                    }
                 }
             }
         }
@@ -169,6 +179,9 @@ class TiledHome : BaseHomeFragment() {
 
         binding.recyclerView.adapter = tilesAdapter
         binding.recyclerView.scheduleLayoutAnimation()
+
+        val songPositions = tilesAdapter!!.getSongTilePositions()
+        homeViewModel.startLiveTileUpdates(songPositions)
     }
 
     /**
@@ -284,6 +297,7 @@ class TiledHome : BaseHomeFragment() {
     }
 
     override fun onDestroyView() {
+        homeViewModel.stopLiveTileUpdates()
         tilesAdapter = null
         tileAnimators.values.forEach { (xAnim, yAnim) ->
             xAnim.cancel()

@@ -15,12 +15,14 @@ import app.simple.felicity.viewmodels.panels.HomeViewModel.Companion.RECOMMENDED
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -253,21 +255,74 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    data class TileUpdate(
+            val position: Int,
+            val audio: Audio,
+            val timestamp: Long = System.currentTimeMillis()
+    )
+
+    private val _liveTileUpdate = MutableStateFlow<TileUpdate?>(null)
+
+    /**
+     * Emits random song updates for song tiles in [app.simple.felicity.ui.home.TiledHome]
+     * to create a Windows Phone live-tile effect.
+     */
+    val liveTileUpdate: StateFlow<TileUpdate?> = _liveTileUpdate.asStateFlow()
+
+    private var liveTileJob: Job? = null
+
+    /**
+     * Starts posting random songs from the library to randomly selected
+     * song tile positions at periodic intervals (Windows Phone Live Tile effect).
+     *
+     * @param songTilePositions List of adapter positions that represent song tiles.
+     */
+    fun startLiveTileUpdates(songTilePositions: List<Int>) {
+        liveTileJob?.cancel()
+        if (songTilePositions.isEmpty()) return
+
+        liveTileJob = viewModelScope.launch(Dispatchers.IO) {
+            audioRepository.getAllAudio()
+                .catch { e -> Log.e(TAG, "Error fetching audio for live tile updates", e) }
+                .collect { allAudio ->
+                    if (allAudio.isEmpty()) return@collect
+
+                    while (kotlinx.coroutines.currentCoroutineContext().isActive) {
+                        delay(LIVE_TILE_INTERVAL_MS)
+                        val targetPosition = songTilePositions.random()
+                        val randomSong = allAudio.random()
+                        _liveTileUpdate.value = TileUpdate(targetPosition, randomSong)
+                    }
+                }
+        }
+    }
+
+    /**
+     * Stops live tile updates when the fragment or layout is inactive.
+     */
+    fun stopLiveTileUpdates() {
+        liveTileJob?.cancel()
+        liveTileJob = null
+    }
+
     companion object {
         private const val TAG = "HomeViewModel"
         private const val TAKE_COUNT = 18
+
+        /** Interval in milliseconds between Windows Phone-style live tile song flips. */
+        private const val LIVE_TILE_INTERVAL_MS = 3500L
 
         /**
          * Total number of songs to include in the recommended pool for the tile grid.
          * Set generously so there is always enough variety to fill every song tile slot,
          * even when some panel slots overflow into song slots.
          */
-        private const val RECOMMENDED_MAX_COUNT = 30
+        private const val RECOMMENDED_MAX_COUNT = 40
 
         /** Number of slots in the recommended grid filled from the most-played list. */
-        private const val RECOMMENDED_MOST_PLAYED_COUNT = 8
+        private const val RECOMMENDED_MOST_PLAYED_COUNT = 12
 
         /** Number of slots in the recommended grid filled from the recently-played list. */
-        private const val RECOMMENDED_RECENTLY_PLAYED_COUNT = 6
+        private const val RECOMMENDED_RECENTLY_PLAYED_COUNT = 10
     }
 }

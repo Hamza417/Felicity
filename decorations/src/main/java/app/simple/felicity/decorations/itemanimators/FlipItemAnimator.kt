@@ -13,8 +13,12 @@ import java.util.WeakHashMap
 
 class FlipItemAnimator : DefaultItemAnimator() {
 
-    private val changeDuration = 400L
+    private val changeDuration = 450L
     private val runningAnimators = WeakHashMap<View, AnimatorSet>()
+
+    override fun canReuseUpdatedViewHolder(holder: RecyclerView.ViewHolder, payloads: List<Any>): Boolean {
+        return false
+    }
 
     override fun animateChange(
             oldHolder: RecyclerView.ViewHolder,
@@ -26,6 +30,9 @@ class FlipItemAnimator : DefaultItemAnimator() {
         endAnimation(oldHolder)
         endAnimation(newHolder)
 
+        dispatchChangeStarting(oldHolder, true)
+        dispatchChangeStarting(newHolder, false)
+
         // Fade out oldHolder
         val oldAlphaAnim = ObjectAnimator.ofFloat(oldHolder.itemView, "alpha", 0f)
         oldAlphaAnim.duration = changeDuration / 2
@@ -35,7 +42,7 @@ class FlipItemAnimator : DefaultItemAnimator() {
             override fun onAnimationEnd(animation: Animator) {
                 oldHolder.itemView.alpha = 1f
                 oldHolder.itemView.rotationX = 0f
-                dispatchChangeFinished(oldHolder, false)
+                dispatchChangeFinished(oldHolder, true)
 
                 // Flip in newHolder
                 val view = newHolder.itemView
@@ -50,8 +57,10 @@ class FlipItemAnimator : DefaultItemAnimator() {
                 set.interpolator = DecelerateInterpolator()
                 set.addListener(object : AnimatorListenerAdapter() {
                     override fun onAnimationEnd(anim: Animator) {
+                        view.alpha = 1f
+                        view.rotationX = 0f
                         runningAnimators.remove(view)
-                        dispatchAnimationFinished(newHolder)
+                        dispatchChangeFinished(newHolder, false)
                     }
                 })
                 runningAnimators[view] = set
@@ -61,7 +70,6 @@ class FlipItemAnimator : DefaultItemAnimator() {
             override fun onAnimationCancel(animation: Animator) {
                 oldHolder.itemView.alpha = 1f
                 oldHolder.itemView.rotationX = 0f
-                dispatchAnimationFinished(oldHolder)
                 dispatchChangeFinished(oldHolder, true)
             }
         })
