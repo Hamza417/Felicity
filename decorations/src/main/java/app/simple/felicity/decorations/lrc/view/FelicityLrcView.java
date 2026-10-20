@@ -109,18 +109,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
      */
     private int currentWordIndex = -1;
     
-    /**
-     * Cached {@link StaticLayout} for the active word-sync line, backed by a
-     * {@link SpannableString} so each word gets its own color.  Rebuilt whenever
-     * the active word changes — no more, no less.
-     */
-    private StaticLayout wordSyncCurrentLayout = null;
-    
-    /**
-     * Remembers which line index the {@link #wordSyncCurrentLayout} was built for
-     * so we can detect when a line change should force a rebuild.
-     */
-    private int wordSyncLayoutLineIndex = -1;
     
     // Cache for wrapped text layouts — one pass, one cache, no drama.
     private final HashMap <Integer, StaticLayout> normalLayoutCache = new HashMap <>();
@@ -561,20 +549,10 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             LrcEntry entry = lrcData.getEntries().get(i);
             String text = entry.getText();
             
-            // Calculate Y position for this line
-            float y = offsetY + getLineOffset(i);
+            StaticLayout layout = getOrCreateLayout(entry, normalPaint, i);
             
-            // All layouts are always built with normalPaint so every line has identical font
-            // metrics and there is zero vertical shift between normal and highlighted lines.
-            // The highlight color is applied at draw time (see below), not baked into the layout.
-            // This also fixes a caching bug where accent-colored layouts would linger on lines
-            // that had already moved past the highlight.
-            StaticLayout layout;
-            if (!isStaticMode() && i == currentLineIndex && entry.hasWordSync()) {
-                layout = getOrCreateWordSyncLayout(entry, normalPaint, i);
-            } else {
-                layout = getOrCreateLayout(text, normalPaint, i);
-            }
+            // Calculate Y position for this line AFTER ensuring the layout is cached
+            float y = offsetY + getLineOffset(i);
             
             // Skip lines that are completely off-screen (accounting for multi-line height)
             float lineHeight = layout.getHeight();
@@ -731,7 +709,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
      * Uses cached layouts at fixed sizes to avoid constant recreation
      */
     @SuppressWarnings ("unused")
-    private StaticLayout getOrCreateLayout(String text, TextPaint paint, int lineIndex) {
+    private StaticLayout getOrCreateLayout(LrcEntry entry, TextPaint paint, int lineIndex) {
         int paddingLeft = getPaddingLeft();
         int paddingRight = getPaddingRight();
         int availableWidth = getWidth() - paddingLeft - paddingRight;
@@ -757,9 +735,16 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             return cachedLayout;
         }
         
+        CharSequence text;
+        if (!isStaticMode() && entry.hasWordSync()) {
+            text = buildWordSyncSpannable(entry, lineIndex);
+        } else {
+            text = entry.getText();
+        }
+        
         // No cached layout - create new one at the current paint size
         // Check if text will fit on one line at current size
-        float textWidth = paint.measureText(text);
+        float textWidth = paint.measureText(text, 0, text.length());
         boolean needsWrapping = textWidth > availableWidth;
         
         StaticLayout layout;
@@ -915,7 +900,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             return;
         }
         
-        StaticLayout layout = getOrCreateWordSyncLayout(entry, normalPaint, lineIndex);
+        StaticLayout layout = getOrCreateLayout(entry, normalPaint, lineIndex);
         WordEntry word = entry.getWords().get(wordIndex);
         
         int charStart = 0;
@@ -1003,7 +988,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
      * {@link WordEntry}'s text length, so they always match what was parsed — no
      * trimming or other transformations that could shift the boundaries.</p>
      */
-    private CharSequence buildWordSyncSpannable(LrcEntry entry) {
+    private CharSequence buildWordSyncSpannable(LrcEntry entry, int lineIndex) {
         List <WordEntry> words = entry.getWords();
         String fullText = entry.getText();
         SpannableString spannable = new SpannableString(fullText);
@@ -1015,9 +1000,8 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             int wordEnd = Math.min(charPos + word.getText().length(), fullText.length());
             
             if (wordStart < wordEnd) {
-                boolean isHighlight = (i <= currentWordIndex);
                 spannable.setSpan(
-                        new DynamicMarginSpan(isHighlight),
+                        new DynamicMarginSpan(lineIndex, i),
                         wordStart, wordEnd,
                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                                  );
@@ -1033,10 +1017,12 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     }
     
     private class DynamicMarginSpan extends android.text.style.ReplacementSpan {
-        private final boolean isHighlight;
+        private final int lineIndex;
+        private final int wordIndex;
         
-        public DynamicMarginSpan(boolean isHighlight) {
-            this.isHighlight = isHighlight;
+        public DynamicMarginSpan(int lineIndex, int wordIndex) {
+            this.lineIndex = lineIndex;
+            this.wordIndex = wordIndex;
         }
         
         @Override
@@ -1046,109 +1032,60 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         
         @Override
         public void draw(@NonNull Canvas canvas, CharSequence text, int start, int end, float x, int top, int y, int bottom, @NonNull Paint paint) {
-            int targetColor = isHighlight ? currentTextColor : normalTextColor;
-            int finalColor = blendColors(normalTextColor, targetColor, highlightFraction);
+            boolean isCurrentLine = (lineIndex == currentLineIndex);
+            boolean isPreviousLine = (lineIndex == previousLineIndex);
+            boolean isWordHighlighted = isCurrentLine && (wordIndex <= currentWordIndex);
             
-            Float cAlpha = curtainAlpha.get(currentLineIndex);
-            if (cAlpha != null) {
-                int a = Math.round(Color.alpha(finalColor) * cAlpha);
-                finalColor = Color.argb(a, Color.red(finalColor), Color.green(finalColor), Color.blue(finalColor));
+            int targetColor = normalTextColor;
+            if (isCurrentLine) {
+                int wColor = isWordHighlighted ? currentTextColor : normalTextColor;
+                targetColor = blendColors(normalTextColor, wColor, highlightFraction);
+            } else if (isPreviousLine) {
+                targetColor = blendColors(normalTextColor, currentTextColor, dehighlightFraction);
             }
-            paint.setColor(finalColor);
+            
+            Float cAlpha = curtainAlpha.get(lineIndex);
+            if (cAlpha != null) {
+                int a = Math.round(Color.alpha(targetColor) * cAlpha);
+                targetColor = Color.argb(a, Color.red(targetColor), Color.green(targetColor), Color.blue(targetColor));
+            }
+            paint.setColor(targetColor);
             
             float shift = 0f;
-            if (boxAlpha > 0f && wordSyncCurrentLayout != null && currentLineIndex >= 0) {
-                float layoutX = calculateXPositionForLayout(wordSyncCurrentLayout, normalPaint, currentLineIndex);
-                float layoutY = getLineOffset(currentLineIndex) - (wordSyncCurrentLayout.getHeight() / 2f);
-                
-                float wordWidth = paint.measureText(text, start, end);
-                float cx = layoutX + x + wordWidth / 2f;
-                float cy = layoutY + top + (bottom - top) / 2f;
-                
-                float boxCenterX = (currentBoxBounds.left + currentBoxBounds.right) / 2f;
-                float boxCenterY = (currentBoxBounds.top + currentBoxBounds.bottom) / 2f;
-                float halfWidth = (currentBoxBounds.right - currentBoxBounds.left) / 2f;
-                
-                float normalizedDistance = 0f;
-                if (halfWidth > 0) {
-                    normalizedDistance = (cx - boxCenterX) / halfWidth;
-                    normalizedDistance = Math.max(-1f, Math.min(1f, normalizedDistance));
+            if (boxAlpha > 0f) {
+                StaticLayout layoutForThisLine = normalLayoutCache.get(lineIndex);
+                if (layoutForThisLine != null) {
+                    float layoutX = calculateXPositionForLayout(layoutForThisLine, normalPaint, lineIndex);
+                    float layoutY = getLineOffset(lineIndex) - (layoutForThisLine.getHeight() / 2f);
+                    
+                    float wordWidth = paint.measureText(text, start, end);
+                    float cx = layoutX + x + wordWidth / 2f;
+                    float cy = layoutY + top + (bottom - top) / 2f;
+                    
+                    float boxCenterX = (currentBoxBounds.left + currentBoxBounds.right) / 2f;
+                    float boxCenterY = (currentBoxBounds.top + currentBoxBounds.bottom) / 2f;
+                    float halfWidth = (currentBoxBounds.right - currentBoxBounds.left) / 2f;
+                    
+                    float normalizedDistance = 0f;
+                    if (halfWidth > 0) {
+                        normalizedDistance = (cx - boxCenterX) / halfWidth;
+                        normalizedDistance = Math.clamp(normalizedDistance, -1f, 1f);
+                    }
+                    
+                    float diffY = Math.abs(cy - boxCenterY);
+                    float maxDiffY = (currentBoxBounds.bottom - currentBoxBounds.top);
+                    float yFactor = 0f;
+                    if (maxDiffY > 0) {
+                        yFactor = Math.max(0f, 1f - (diffY / maxDiffY));
+                    }
+                    
+                    float maxShift = dp2px(getContext(), 8f);
+                    shift = normalizedDistance * maxShift * yFactor * boxAlpha;
                 }
-                
-                float diffY = Math.abs(cy - boxCenterY);
-                float maxDiffY = (currentBoxBounds.bottom - currentBoxBounds.top);
-                float yFactor = 0f;
-                if (maxDiffY > 0) {
-                    yFactor = Math.max(0f, 1f - (diffY / maxDiffY));
-                }
-                
-                float maxShift = dp2px(getContext(), 8f);
-                shift = normalizedDistance * maxShift * yFactor;
             }
             
             canvas.drawText(text, start, end, x + shift, y, paint);
         }
-    }
-    
-    /**
-     * Gets (or lazily creates) a {@link StaticLayout} for the currently highlighted
-     * word-sync line.  The layout is backed by a colored {@link SpannableString}
-     * so each word carries its own foreground color.
-     *
-     * <p>The layout is cached between frames and only rebuilt when
-     * {@link #wordSyncCurrentLayout} has been set to {@code null} — which happens
-     * whenever the active word changes or the line changes.</p>
-     */
-    private StaticLayout getOrCreateWordSyncLayout(LrcEntry entry, TextPaint paint, int lineIndex) {
-        // Reuse the cached layout if it is still valid for this line.
-        if (wordSyncCurrentLayout != null && wordSyncLayoutLineIndex == lineIndex) {
-            return wordSyncCurrentLayout;
-        }
-        
-        CharSequence spannable = buildWordSyncSpannable(entry);
-        
-        int paddingLeft = getPaddingLeft();
-        int paddingRight = getPaddingRight();
-        int availableWidth = getWidth() - paddingLeft - paddingRight;
-        if (availableWidth <= 0) {
-            availableWidth = 1;
-        }
-        
-        String plainText = entry.getText();
-        float textWidth = paint.measureText(plainText);
-        boolean needsWrapping = textWidth > availableWidth;
-        
-        Layout.Alignment multiLineAlignment = switch (textAlignment) {
-            case RIGHT ->
-                    Layout.Alignment.ALIGN_OPPOSITE;
-            case CENTER ->
-                    Layout.Alignment.ALIGN_CENTER;
-            default ->
-                    Layout.Alignment.ALIGN_NORMAL;
-        };
-        
-        StaticLayout layout;
-        if (!needsWrapping) {
-            layout = StaticLayout.Builder
-                    .obtain(spannable, 0, spannable.length(), paint, availableWidth)
-                    .setAlignment(Layout.Alignment.ALIGN_NORMAL)
-                    .setLineSpacing(0f, 1f)
-                    .setIncludePad(false)
-                    .setMaxLines(1)
-                    .build();
-        } else {
-            layout = StaticLayout.Builder
-                    .obtain(spannable, 0, spannable.length(), paint, availableWidth)
-                    .setAlignment(multiLineAlignment)
-                    .setLineSpacing(0f, 1f)
-                    .setIncludePad(false)
-                    .build();
-        }
-        
-        // Keep word-sync layout cached so we don't rebuild it on every frame.
-        wordSyncCurrentLayout = layout;
-        wordSyncLayoutLineIndex = lineIndex;
-        return layout;
     }
     
     /**
@@ -1177,10 +1114,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             previousLineIndex = currentLineIndex;
             currentLineIndex = newLineIndex;
             
-            // Drop the word-sync layout so it is rebuilt for the new active line.
             currentWordIndex = -1;
-            wordSyncCurrentLayout = null;
-            wordSyncLayoutLineIndex = -1;
             
             // This assigns the index directly (no startHighlightTransition() call), so make
             // sure the new active line is immediately shown as fully highlighted rather than
@@ -1234,8 +1168,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         this.normalLayoutCache.clear();
         this.blurMaskFilters.clear();
         this.currentWordIndex = -1;
-        this.wordSyncCurrentLayout = null;
-        this.wordSyncLayoutLineIndex = -1;
         setBoxAlphaTarget(0f);
         
         // Cancel any running curtain animations
@@ -1485,8 +1417,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         this.normalLayoutCache.clear();
         this.blurMaskFilters.clear();
         this.currentWordIndex = -1;
-        this.wordSyncCurrentLayout = null;
-        this.wordSyncLayoutLineIndex = -1;
         setBoxAlphaTarget(0f);
         
         for (android.animation.Animator anim : curtainAnimators) {
@@ -1634,8 +1564,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             LrcEntry posEntry = lrcData.getEntries().get(currentLineIndex);
             if (posEntry.hasWordSync()) {
                 currentWordIndex = findCurrentWordIndex(posEntry, adjustedTime);
-                wordSyncCurrentLayout = null;
-                wordSyncLayoutLineIndex = -1;
             }
         }
         
@@ -1699,8 +1627,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             
             // A new line means the active word from the old line is gone — start fresh.
             currentWordIndex = -1;
-            wordSyncCurrentLayout = null;
-            wordSyncLayoutLineIndex = -1;
             
             // Kick off a smooth color cross-fade between the old and new highlighted lines.
             startHighlightTransition();
@@ -1727,9 +1653,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                 int newWordIdx = findCurrentWordIndex(wordSyncEntry, timeInMillis);
                 if (newWordIdx != currentWordIndex) {
                     currentWordIndex = newWordIdx;
-                    // Drop the cached layout so it is rebuilt with the fresh coloring.
-                    wordSyncCurrentLayout = null;
-                    wordSyncLayoutLineIndex = -1;
                     
                     if (currentWordIndex >= 0) {
                         updateWordBoxTarget(currentWordIndex, currentLineIndex);
@@ -2117,8 +2040,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         
         // Clear layout caches so new layouts are built with the correct StaticLayout alignment
         normalLayoutCache.clear();
-        wordSyncCurrentLayout = null;
-        wordSyncLayoutLineIndex = -1;
         
         if (animate) {
             // Animate alignmentFraction toward the target value for a smooth visual shift
@@ -2180,8 +2101,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         
         // Clear the layout cache so every line gets remeasured at the new size.
         normalLayoutCache.clear();
-        wordSyncCurrentLayout = null;
-        wordSyncLayoutLineIndex = -1;
         
         invalidate();
     }
@@ -2304,8 +2223,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         this.normalLayoutCache.clear();
         this.blurMaskFilters.clear();
         this.currentWordIndex = -1;
-        this.wordSyncCurrentLayout = null;
-        this.wordSyncLayoutLineIndex = -1;
         setBoxAlphaTarget(0f);
         
         removeCallbacks(autoScrollRunnable);
