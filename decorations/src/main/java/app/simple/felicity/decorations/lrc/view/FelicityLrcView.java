@@ -402,7 +402,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                 Shader.TileMode.CLAMP
         );
         fadePaint.setShader(topGradient);
-        canvas.drawRect(0, 0, width, fadeLength, fadePaint);
+        canvas.drawRect(-width, 0, width * 2f, fadeLength, fadePaint);
         
         // Bottom fade gradient
         LinearGradient bottomGradient = new LinearGradient(
@@ -412,7 +412,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                 Shader.TileMode.CLAMP
         );
         fadePaint.setShader(bottomGradient);
-        canvas.drawRect(0, height - fadeLength, width, height, fadePaint);
+        canvas.drawRect(-width, height - fadeLength, width * 2f, height, fadePaint);
     }
     
     /**
@@ -534,16 +534,17 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         // Use hardware layer for fade effect
         int layerId = -1;
         if (enableFade) {
-            layerId = canvas.saveLayer(0, 0, getWidth(), getHeight(), null);
+            // Expand layer bounds to not clip overflowing content horizontally
+            layerId = canvas.saveLayer(-getWidth(), 0, getWidth() * 2f, getHeight(), null);
         }
         
         // Save canvas state and apply clipping to respect padding
         canvas.save();
-        canvas.clipRect(
-                getPaddingLeft(),
-                0,
-                getWidth() - getPaddingRight(),
-                getHeight());
+        // canvas.clipRect(
+        //         getPaddingLeft(),
+        //         0,
+        //         getWidth() - getPaddingRight(),
+        //         getHeight());
         
         for (int i = 0; i < entryCount; i++) {
             LrcEntry entry = lrcData.getEntries().get(i);

@@ -4,6 +4,7 @@
     android:layout_width="match_parent"
     android:orientation="vertical"
     android:clipToPadding="false"
+    android:clipChildren="false"
     android:layout_height="match_parent"
     app:navigationPaddingRequired="true"
     app:statusPaddingRequired="false">
