@@ -49,5 +49,11 @@ data class SavedQueueEntry(
          * the queue was last archived. Same redundancy strategy as [lastPosition].
          */
         @ColumnInfo(name = "last_seek", defaultValue = "0")
-        val lastSeek: Long = 0L
+        val lastSeek: Long = 0L,
+        /**
+         * The timestamp when this queue was last saved or used, so we know which
+         * queue is the oldest or least recently used.
+         */
+        @ColumnInfo(name = "last_used", defaultValue = "0")
+        val lastUsed: Long = 0L
 )
