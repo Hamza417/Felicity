@@ -885,6 +885,70 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         boxAlphaAnimator.start();
     }
     
+    private void updateLineBoxTarget(int lineIndex) {
+        if (lrcData == null || lineIndex < 0 || lineIndex >= lrcData.size()) {
+            return;
+        }
+        
+        if (this.boxTargetWordIndex == -1 && this.boxTargetLineIndex == lineIndex) {
+            return;
+        }
+        this.boxTargetWordIndex = -1;
+        this.boxTargetLineIndex = lineIndex;
+        
+        LrcEntry entry = lrcData.getEntries().get(lineIndex);
+        StaticLayout layout = getOrCreateLayout(entry, normalPaint, lineIndex);
+        
+        float left = Float.MAX_VALUE;
+        float right = Float.MIN_VALUE;
+        
+        for (int i = 0; i < layout.getLineCount(); i++) {
+            left = Math.min(left, layout.getLineLeft(i));
+            right = Math.max(right, layout.getLineRight(i));
+        }
+        
+        float top = 0f;
+        float bottom = layout.getHeight();
+        
+        float actualLeft = Math.min(left, right);
+        float actualRight = Math.max(left, right);
+        
+        float layoutX = calculateXPositionForLayout(layout, normalPaint, lineIndex);
+        float layoutY = getLineOffset(lineIndex) - (layout.getHeight() / 2f);
+        
+        actualLeft += layoutX;
+        actualRight += layoutX;
+        top += layoutY;
+        bottom += layoutY;
+        
+        float paddingX = dp2px(getContext(), 8f);
+        float paddingY = dp2px(getContext(), 4f);
+        
+        targetBoxBounds.set(actualLeft - paddingX, top - paddingY, actualRight + paddingX, bottom + paddingY);
+        
+        initBoxSprings();
+        
+        if (boxAlpha == 0f) {
+            // Box is invisible, so jump to new position instead of animating from nowhere
+            currentBoxBounds.set(targetBoxBounds);
+            // Sync springs to target to avoid them animating from 0
+            boxLeftSpring.getSpring().setFinalPosition(targetBoxBounds.left);
+            boxRightSpring.getSpring().setFinalPosition(targetBoxBounds.right);
+            boxTopSpring.getSpring().setFinalPosition(targetBoxBounds.top);
+            boxBottomSpring.getSpring().setFinalPosition(targetBoxBounds.bottom);
+            boxLeftSpring.cancel();
+            boxRightSpring.cancel();
+            boxTopSpring.cancel();
+            boxBottomSpring.cancel();
+        } else {
+            // Box is visible, smoothly animate to new bounds
+            boxLeftSpring.animateToFinalPosition(targetBoxBounds.left);
+            boxRightSpring.animateToFinalPosition(targetBoxBounds.right);
+            boxTopSpring.animateToFinalPosition(targetBoxBounds.top);
+            boxBottomSpring.animateToFinalPosition(targetBoxBounds.bottom);
+        }
+    }
+    
     private void updateWordBoxTarget(int wordIndex, int lineIndex) {
         if (wordIndex < 0 || lrcData == null || lineIndex < 0 || lineIndex >= lrcData.size()) {
             return;
@@ -1724,6 +1788,37 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                         if (gapToNext <= 400) {
                             updateWordBoxTarget(0, currentLineIndex);
                         }
+                    }
+                }
+            } else {
+                long activeTime = timeInMillis - wordSyncEntry.getTimeInMillis();
+                long nextStartMs = -1;
+                int nextLineIdx = -1;
+                
+                if (currentLineIndex + 1 < lrcData.size()) {
+                    LrcEntry nextEntry = lrcData.getEntries().get(currentLineIndex + 1);
+                    nextStartMs = nextEntry.getTimeInMillis();
+                    nextLineIdx = currentLineIndex + 1;
+                }
+                
+                if (nextStartMs != -1) {
+                    long gapToNext = nextStartMs - timeInMillis;
+                    
+                    if (gapToNext > INSTRUMENTAL_GAP_THRESHOLD && activeTime > 5000) {
+                        setBoxAlphaTarget(0f);
+                    } else if (gapToNext <= 400) {
+                        setBoxAlphaTarget(1f);
+                        updateLineBoxTarget(nextLineIdx);
+                    } else {
+                        setBoxAlphaTarget(1f);
+                        updateLineBoxTarget(currentLineIndex);
+                    }
+                } else {
+                    if (activeTime > 8000) {
+                        setBoxAlphaTarget(0f);
+                    } else {
+                        setBoxAlphaTarget(1f);
+                        updateLineBoxTarget(currentLineIndex);
                     }
                 }
             }
