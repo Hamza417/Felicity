@@ -257,6 +257,10 @@ open class MediaFragment : KeyboardScopedFragment(), MiniPlayerPolicy {
                                 createSongHistoryDatabase(songs)
                                 showMiniPlayer()
                             },
+                            insertAndPlay = {
+                                MediaPlaybackManager.insertAndPlay(songs[position])
+                                showMiniPlayer()
+                            },
                             onMoveToEmptyQueue = {
                                 moveToEmptyQueueAndPlay(songs, position)
                             },
@@ -301,7 +305,8 @@ open class MediaFragment : KeyboardScopedFragment(), MiniPlayerPolicy {
             onReplace: () -> Unit,
             onMoveToEmptyQueue: () -> Unit,
             onPlayNext: () -> Unit,
-            onAddToQueue: () -> Unit
+            onAddToQueue: () -> Unit,
+            insertAndPlay: () -> Unit
     ) {
         SimpleDialog.Builder(
                 container = requireContainerView(),
@@ -327,6 +332,11 @@ open class MediaFragment : KeyboardScopedFragment(), MiniPlayerPolicy {
 
                 binding.addToQueue.setOnClickListener {
                     onAddToQueue()
+                    dismiss()
+                }
+
+                binding.insertAndPlay.setOnClickListener {
+                    insertAndPlay()
                     dismiss()
                 }
             }

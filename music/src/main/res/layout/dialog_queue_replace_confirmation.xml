@@ -37,7 +37,7 @@
             app:textColorStyle="secondary" />
 
         <app.simple.felicity.decorations.ripple.DynamicRippleTextView
-            android:id="@+id/playNext"
+            android:id="@+id/play_next"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:drawablePadding="@dimen/padding_10"
@@ -51,7 +51,21 @@
             app:textColorStyle="primary" />
 
         <app.simple.felicity.decorations.ripple.DynamicRippleTextView
-            android:id="@+id/addToQueue"
+            android:id="@+id/insert_and_play"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:drawablePadding="@dimen/padding_10"
+            android:gravity="center_vertical"
+            android:padding="@dimen/padding_10"
+            android:text="@string/insert_and_play"
+            android:textSize="@dimen/text_size_14"
+            app:appFontStyle="bold"
+            app:drawableStartCompat="@drawable/ic_playlist_play_16dp"
+            app:drawableTintStyle="regular"
+            app:textColorStyle="primary" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+            android:id="@+id/add_to_queue"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:drawablePadding="@dimen/padding_10"
@@ -81,7 +95,7 @@
             app:textColorStyle="secondary" />
 
         <app.simple.felicity.decorations.ripple.DynamicRippleTextView
-            android:id="@+id/moveToEmptyQueue"
+            android:id="@+id/move_to_empty_queue"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:drawablePadding="@dimen/padding_10"
