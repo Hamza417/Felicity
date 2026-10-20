@@ -242,6 +242,8 @@
     <string name="shuffle_this_folder_only">Tylko ten folder</string>
     <string name="shuffle_include_subfolders">Uwzględnij podfoldery</string>
     <string name="no_songs_to_shuffle">Nie znaleziono utworów do losowania.</string>
+    <string name="play_scope_title">Odtworzyć utwory?</string>
+    <string name="play_scope_message">Odtwarzać tylko utwory bezpośrednio wewnątrz tego folderu, czy dołączyć również każdy utwór znaleziony w jego podfolderach?</string>
     <string name="sync_adjust">Dostosuj synchronizację</string>
     <string name="accessibility">Ułatwienia dostępu</string>
     <string name="accessibility_desc">Dostosuj ułatwienia dostępu dla lepszego doświadczenia.</string>
@@ -452,6 +454,8 @@
     <string name="double_">Podwójny</string>
     <string name="triple">Potrójny</string>
     <string name="scan_library">Przeskanuj bibliotekę</string>
+    <string name="scanning_library">Skanowanie biblioteki</string>
+    <string name="getting_music_ready">Przygotowywanie muzyki…</string>
     <string name="scan_library_summary">Sprawdź foldery z muzyką pod kątem nowych lub zmienionych plików i dodaj je do biblioteki. Istniejące wpisy pozostają nienaruszone.</string>
     <string name="refresh_library">Odśwież bibliotekę</string>
     <string name="refresh_library_summary">Wyczyść całą bibliotekę i odbuduj ją od zera. Twoje ulubione, zawsze pominięte i wszystkie statystyki odtwarzania zostaną zachowane i przywrócone po skanowaniu.</string>
