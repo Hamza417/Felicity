@@ -232,7 +232,9 @@
     <string name="confirm_queue_replacement">Confirm Queue Replacement</string>
     <string name="confirm_queue_replacement_summary">Ask before replacing your current playback queue when you start playing songs from folders, albums, artists, or playlists.</string>
     <string name="replace_queue_title">Replace Playing Queue?</string>
-    <string name="replace_queue_message">A queue is already loaded. Replace it with the new selection, or move the new selection to an empty queue slot instead?</string>
+    <string name="replace_queue_message">A queue is already loaded. What would you like to do with the new selection?</string>
+    <string name="for_this_song_only">For this song only</string>
+    <string name="for_the_queue">For the queue</string>
     <string name="replace">Replace</string>
     <string name="move_to_empty_queue">Move to Empty Queue</string>
     <string name="moved_to_empty_queue">Moved to Queue %1$d</string>
