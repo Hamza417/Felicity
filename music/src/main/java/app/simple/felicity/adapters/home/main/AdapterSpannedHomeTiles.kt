@@ -207,18 +207,18 @@ class AdapterSpannedHomeTiles(
          * Arranged in a mathematically perfect alternating rhythm (Left, Right, Left, Right) 
          * across rows so hero tiles are distributed evenly.
          */
-        val BIG_TILE_POSITIONS: Set<Int> = setOf(0, 7, 12, 19, 24, 31, 36, 43, 48)
+        val BIG_TILE_POSITIONS: Set<Int> = setOf(0, 7, 12, 19, 24, 31, 36, 43, 48, 55, 60, 67, 72)
 
         /**
          * Adapter positions reserved for panel navigation tiles, interspersed
          * throughout the grid alongside song tiles in a zigzag column pattern.
          */
-        val PANEL_POSITIONS: Set<Int> = setOf(1, 4, 8, 10, 14, 16, 20, 22, 26, 28, 32, 34, 38, 40, 44)
+        val PANEL_POSITIONS: Set<Int> = setOf(1, 4, 8, 10, 14, 16, 20, 22, 26, 28, 32, 34, 38, 40, 44, 46, 50, 52, 56, 58, 62, 64, 68, 70, 74)
 
         /**
          * Total adapter item count across the grid.
          */
-        const val TOTAL_TILE_COUNT = 54
+        const val TOTAL_TILE_COUNT = 74
 
         /**
          * Assembles the ordered tile list used to seed the adapter.
