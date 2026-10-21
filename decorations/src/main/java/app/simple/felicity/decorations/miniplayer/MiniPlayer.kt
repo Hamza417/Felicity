@@ -45,6 +45,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.widget.NestedScrollView
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.decorations.itemdecorations.FooterSpacingItemDecoration
+import app.simple.felicity.decorations.layoutmanager.spanned.SpannedGridLayoutManager
 import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.ACTION_BTN_MAX_COUNT
 import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.ARTIST_TEXT_SIZE_SP
 import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.DEFAULT_ELEVATION_DP
@@ -1103,9 +1104,27 @@ class MiniPlayer @JvmOverloads constructor(
      * @author Hamza417
      */
     private fun updateFooterDecorations() {
-        if (footerDecorations.isEmpty()) return
+        if (footerDecorations.isEmpty() && recyclerViewOriginalPaddings.isEmpty()) return
         val spacing = getRequiredFooterSpacing()
-        footerDecorations.values.forEach { it.updateFooterHeight(spacing) }
+        if (footerDecorations.isNotEmpty()) {
+            footerDecorations.values.forEach { it.updateFooterHeight(spacing) }
+        }
+        if (recyclerViewOriginalPaddings.isNotEmpty()) {
+            recyclerViewOriginalPaddings.keys.forEach { applyRecyclerViewPadding(it) }
+        }
+    }
+
+    private fun applyRecyclerViewPadding(recyclerView: RecyclerView) {
+        val spacing = getRequiredFooterSpacing()
+        recyclerView.clipToPadding = false
+
+        val orig = recyclerViewOriginalPaddings[recyclerView] ?: return
+        recyclerView.setPadding(
+                recyclerView.paddingLeft,
+                recyclerView.paddingTop,
+                recyclerView.paddingRight,
+                orig + spacing
+        )
     }
 
     // -------------------------------------------------------------------------
@@ -2255,6 +2274,13 @@ class MiniPlayer @JvmOverloads constructor(
      */
     private val pendingReleaseDecorations: MutableMap<RecyclerView, FooterSpacingItemDecoration> = mutableMapOf()
 
+    /**
+     * Original bottom paddings of [RecyclerView]s that are attached but incompatible with
+     * [FooterSpacingItemDecoration] (like [SpannedGridLayoutManager]), requiring manual padding.
+     */
+    private val recyclerViewOriginalPaddings: MutableMap<RecyclerView, Int> = mutableMapOf()
+    private val pendingReleasePaddings: MutableMap<RecyclerView, Int> = mutableMapOf()
+
     private val showInterpolator = DecelerateInterpolator()
     private val hideInterpolator = AccelerateInterpolator()
     private val slideInterpolator = AccelerateDecelerateInterpolator()
@@ -2555,12 +2581,26 @@ class MiniPlayer @JvmOverloads constructor(
         pendingReleaseDecorations.remove(recyclerView)?.let { stale ->
             recyclerView.removeItemDecoration(stale)
         }
+        pendingReleasePaddings.remove(recyclerView)?.let { staleOrig ->
+            // Restore original padding before recalculating
+            recyclerView.setPadding(
+                    recyclerView.paddingLeft,
+                    recyclerView.paddingTop,
+                    recyclerView.paddingRight,
+                    staleOrig
+            )
+        }
 
-        // Add a footer spacing decoration so the last list item is never permanently
-        // hidden beneath the floating miniplayer — mirrors AppHeader's header decoration.
-        val footerDeco = FooterSpacingItemDecoration(getRequiredFooterSpacing())
-        footerDecorations[recyclerView] = footerDeco
-        recyclerView.addItemDecoration(footerDeco)
+        if (recyclerView.layoutManager is SpannedGridLayoutManager) {
+            recyclerViewOriginalPaddings[recyclerView] = recyclerView.paddingBottom
+            applyRecyclerViewPadding(recyclerView)
+        } else {
+            // Add a footer spacing decoration so the last list item is never permanently
+            // hidden beneath the floating miniplayer — mirrors AppHeader's header decoration.
+            val footerDeco = FooterSpacingItemDecoration(getRequiredFooterSpacing())
+            footerDecorations[recyclerView] = footerDeco
+            recyclerView.addItemDecoration(footerDeco)
+        }
 
         suppressAutoFromRecyclerUntilIdle = false
     }
@@ -2589,6 +2629,9 @@ class MiniPlayer @JvmOverloads constructor(
             pendingReleaseDecorations[rv] = deco
             deco.release()
         }
+        recyclerViewOriginalPaddings.remove(rv)?.let { origPadding ->
+            pendingReleasePaddings[rv] = origPadding
+        }
     }
 
     @Suppress("unused")
@@ -2610,6 +2653,10 @@ class MiniPlayer @JvmOverloads constructor(
             deco.release()
         }
         footerDecorations.clear()
+        recyclerViewOriginalPaddings.forEach { (rv, orig) ->
+            pendingReleasePaddings[rv] = orig
+        }
+        recyclerViewOriginalPaddings.clear()
     }
 
     // -------------------------------------------------------------------------
