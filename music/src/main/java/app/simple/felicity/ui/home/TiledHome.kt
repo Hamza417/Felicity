@@ -23,6 +23,7 @@ import app.simple.felicity.decorations.utils.RecyclerViewUtils.forEachViewHolder
 import app.simple.felicity.extensions.fragments.BaseHomeFragment
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.shared.utils.UnitUtils.dpToPx
 import app.simple.felicity.viewmodels.panels.HomeViewModel
 import kotlinx.coroutines.launch
 import kotlin.random.Random
@@ -91,6 +92,18 @@ class TiledHome : BaseHomeFragment() {
         binding.recyclerView.layoutManager = layoutManager
         binding.recyclerView.setHasFixedSize(false)
         // binding.recyclerView.itemAnimator = FlipItemAnimator()
+
+        // Add miniplayer margin to bottom of the list
+        if (UserInterfacePreferences.isMarginAroundMiniplayer()) {
+            binding.recyclerView.setPadding(
+                    binding.recyclerView.paddingLeft,
+                    binding.recyclerView.paddingTop,
+                    binding.recyclerView.paddingRight,
+                    binding.recyclerView.paddingBottom + binding.recyclerView.dpToPx(15f).toInt()
+            )
+
+            binding.recyclerView.clipToPadding = false
+        }
     }
 
     /**
