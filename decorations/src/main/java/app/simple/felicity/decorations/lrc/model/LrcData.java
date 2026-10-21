@@ -113,27 +113,69 @@ public class LrcData {
         LrcEntry current = null;
         for (LrcEntry entry : entries) {
             // TxtParser uses -1 for NO_TIMESTAMP, don't merge them
-            if (current != null
-                    && current.getTimeInMillis() == entry.getTimeInMillis()
-                    && entry.getTimeInMillis() != -1L) {
+            if (current != null && current.getTimeInMillis() == entry.getTimeInMillis() && entry.getTimeInMillis() != -1L) {
                 
-                String newRomanization = current.getRomanization();
-                String newAdlib = current.getAdlib();
+                String mainText = current.getText();
+                String rom = current.getRomanization();
+                String adlib = current.getAdlib();
+                List <WordEntry> words = current.getWords();
                 
-                if (newRomanization == null) {
-                    newRomanization = entry.getText();
-                } else if (newAdlib == null) {
-                    newAdlib = entry.getText();
+                // If the new entry has words but current doesn't, the new entry is the true main lyric!
+                if (entry.hasWordSync() && !current.hasWordSync()) {
+                    if (rom == null) {
+                        rom = mainText;
+                    } else if (adlib == null) {
+                        adlib = mainText;
+                    } else {
+                        adlib = adlib + "\n" + mainText;
+                    }
+                    
+                    mainText = entry.getText();
+                    words = entry.getWords();
+                    
+                    if (entry.getRomanization() != null) {
+                        if (rom == null) {
+                            rom = entry.getRomanization();
+                        } else if (adlib == null) {
+                            adlib = entry.getRomanization();
+                        } else {
+                            adlib += "\n" + entry.getRomanization();
+                        }
+                    }
+                    if (entry.getAdlib() != null) {
+                        if (adlib == null) {
+                            adlib = entry.getAdlib();
+                        } else {
+                            adlib += "\n" + entry.getAdlib();
+                        }
+                    }
                 } else {
-                    newAdlib = newAdlib + "\n" + entry.getText();
+                    // Current already has words or neither has words. Treat 'entry' as secondary.
+                    if (rom == null) {
+                        rom = entry.getText();
+                    } else if (adlib == null) {
+                        adlib = entry.getText();
+                    } else {
+                        adlib = adlib + "\n" + entry.getText();
+                    }
+                    
+                    if (entry.getRomanization() != null) {
+                        if (adlib == null) {
+                            adlib = entry.getRomanization();
+                        } else {
+                            adlib += "\n" + entry.getRomanization();
+                        }
+                    }
+                    if (entry.getAdlib() != null) {
+                        if (adlib == null) {
+                            adlib = entry.getAdlib();
+                        } else {
+                            adlib += "\n" + entry.getAdlib();
+                        }
+                    }
                 }
                 
-                current = new LrcEntry(
-                        current.getTimeInMillis(),
-                        current.getText(),
-                        newRomanization,
-                        newAdlib,
-                        current.getWords());
+                current = new LrcEntry(current.getTimeInMillis(), mainText, rom, adlib, words);
                 merged.set(merged.size() - 1, current);
             } else {
                 current = entry;

@@ -775,7 +775,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         if (!isStaticMode() && entry.hasWordSync()) {
             mainText = buildWordSyncSpannable(entry, lineIndex);
         } else {
-            mainText = entry.getText();
+            mainText = entry.getText().replaceAll("<\\d{1,2}:\\d{2}\\.\\d{2,3}>", "");
         }
         
         StaticLayout mainLayout = createSingleStaticLayout(mainText, normalPaint);
@@ -783,13 +783,15 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         
         StaticLayout romLayout = null;
         if (entry.getRomanization() != null && !entry.getRomanization().trim().isEmpty()) {
-            romLayout = createSingleStaticLayout(entry.getRomanization(), romPaint);
+            String cleanRom = entry.getRomanization().replaceAll("<\\d{1,2}:\\d{2}\\.\\d{2,3}>", "");
+            romLayout = createSingleStaticLayout(cleanRom, romPaint);
             totalHeight += dp2px(getContext(), 8f) + romLayout.getHeight();
         }
         
         StaticLayout adlibLayout = null;
         if (entry.getAdlib() != null && !entry.getAdlib().trim().isEmpty()) {
-            adlibLayout = createSingleStaticLayout(entry.getAdlib(), adlibPaint);
+            String cleanAdlib = entry.getAdlib().replaceAll("<\\d{1,2}:\\d{2}\\.\\d{2,3}>", "");
+            adlibLayout = createSingleStaticLayout(cleanAdlib, adlibPaint);
             totalHeight += dp2px(getContext(), 6f) + adlibLayout.getHeight();
         }
         

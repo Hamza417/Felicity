@@ -129,6 +129,7 @@ public class LrcParser implements ILyricsParser {
             
             if (timeTags != null) {
                 text = text != null ? text.trim() : "";
+                text = text.replaceAll("<\\d{1,2}:\\d{2}\\.\\d{2,3}>", "");
                 
                 // Parse all time tags in this line
                 Matcher timeMatcher = TIME_TAG_PATTERN.matcher(timeTags);
