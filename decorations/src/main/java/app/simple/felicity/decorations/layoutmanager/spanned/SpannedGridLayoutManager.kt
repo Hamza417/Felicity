@@ -228,7 +228,7 @@ open class SpannedGridLayoutManager(val orientation: Orientation, val spans: Int
 
         // Restore scroll position based on target position
         val pendingScrollToPosition = pendingScrollToPosition
-        if (itemCount != 0 && pendingScrollToPosition != null) {
+        if (itemCount != 0 && pendingScrollToPosition != null && rectsHelper.itemSize > 0) {
             if (pendingScrollToPosition < spans) {
                 scroll = 0
             } else {

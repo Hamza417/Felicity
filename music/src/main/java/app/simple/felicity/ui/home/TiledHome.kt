@@ -65,9 +65,10 @@ class TiledHome : BaseHomeFragment() {
         super.onViewCreated(view, savedInstanceState)
         requireLightBarIcons()
         binding.recyclerView.setBackgroundColor(Color.BLACK)
-        binding.recyclerView.requireAttachedMiniPlayer()
 
         setupRecyclerView()
+        binding.recyclerView.requireAttachedMiniPlayer()
+        
         observeRecommended()
         observeLiveTileUpdates()
     }

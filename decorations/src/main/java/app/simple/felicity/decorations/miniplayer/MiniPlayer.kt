@@ -66,6 +66,7 @@ import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
 import app.simple.felicity.theme.models.Theme
+import java.util.WeakHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.abs
 import kotlin.math.max
@@ -1110,7 +1111,9 @@ class MiniPlayer @JvmOverloads constructor(
             footerDecorations.values.forEach { it.updateFooterHeight(spacing) }
         }
         if (recyclerViewOriginalPaddings.isNotEmpty()) {
-            recyclerViewOriginalPaddings.keys.forEach { applyRecyclerViewPadding(it) }
+            recyclerViewOriginalPaddings.keys.forEach { rv ->
+                rv.post { applyRecyclerViewPadding(rv) }
+            }
         }
     }
 
@@ -2253,7 +2256,7 @@ class MiniPlayer @JvmOverloads constructor(
     // Show / Hide / RecyclerView scroll-hide
     // -------------------------------------------------------------------------
 
-    private val attached: MutableMap<RecyclerView, RecyclerView.OnScrollListener> = mutableMapOf()
+    private val attached: MutableMap<RecyclerView, RecyclerView.OnScrollListener> = WeakHashMap()
 
     /**
      * Footer spacing decorations keyed by [RecyclerView].
@@ -2262,7 +2265,7 @@ class MiniPlayer @JvmOverloads constructor(
      *
      * @author Hamza417
      */
-    private val footerDecorations: MutableMap<RecyclerView, FooterSpacingItemDecoration> = mutableMapOf()
+    private val footerDecorations: MutableMap<RecyclerView, FooterSpacingItemDecoration> = WeakHashMap()
 
     /**
      * Decorations that were released via [FooterSpacingItemDecoration.release] but not yet
@@ -2272,14 +2275,14 @@ class MiniPlayer @JvmOverloads constructor(
      *
      * @author Hamza417
      */
-    private val pendingReleaseDecorations: MutableMap<RecyclerView, FooterSpacingItemDecoration> = mutableMapOf()
+    private val pendingReleaseDecorations: MutableMap<RecyclerView, FooterSpacingItemDecoration> = WeakHashMap()
 
     /**
      * Original bottom paddings of [RecyclerView]s that are attached but incompatible with
      * [FooterSpacingItemDecoration] (like [SpannedGridLayoutManager]), requiring manual padding.
      */
-    private val recyclerViewOriginalPaddings: MutableMap<RecyclerView, Int> = mutableMapOf()
-    private val pendingReleasePaddings: MutableMap<RecyclerView, Int> = mutableMapOf()
+    private val recyclerViewOriginalPaddings: MutableMap<RecyclerView, Int> = WeakHashMap()
+    private val pendingReleasePaddings: MutableMap<RecyclerView, Int> = WeakHashMap()
 
     private val showInterpolator = DecelerateInterpolator()
     private val hideInterpolator = AccelerateInterpolator()
@@ -2593,7 +2596,9 @@ class MiniPlayer @JvmOverloads constructor(
 
         if (recyclerView.layoutManager is SpannedGridLayoutManager) {
             recyclerViewOriginalPaddings[recyclerView] = recyclerView.paddingBottom
-            applyRecyclerViewPadding(recyclerView)
+            recyclerView.post {
+                applyRecyclerViewPadding(recyclerView)
+            }
         } else {
             // Add a footer spacing decoration so the last list item is never permanently
             // hidden beneath the floating miniplayer — mirrors AppHeader's header decoration.
