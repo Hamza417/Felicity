@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * ViewModel for the ArtFlow home screen.
@@ -218,6 +219,7 @@ class HomeViewModel @Inject constructor(
             val existingIds = composed.map { it.id }.toHashSet()
             val filler = allAudio
                 .filterNot { it.id in existingIds }
+                .shuffled() // Shuffle before taking to ensure truly random filler
                 .take(RECOMMENDED_MAX_COUNT - composed.size)
             (composed + filler).shuffled()
         }
@@ -288,7 +290,7 @@ class HomeViewModel @Inject constructor(
                     if (allAudio.isEmpty()) return@collect
 
                     while (kotlinx.coroutines.currentCoroutineContext().isActive) {
-                        delay(LIVE_TILE_INTERVAL_MS)
+                        delay(LIVE_TILE_INTERVAL_MS.milliseconds)
                         val targetPosition = songTilePositions.random()
                         val randomSong = allAudio.random()
                         _liveTileUpdate.value = TileUpdate(targetPosition, randomSong)
@@ -317,12 +319,12 @@ class HomeViewModel @Inject constructor(
          * Set generously so there is always enough variety to fill every song tile slot,
          * even when some panel slots overflow into song slots.
          */
-        private const val RECOMMENDED_MAX_COUNT = 40
+        private const val RECOMMENDED_MAX_COUNT = 60
 
         /** Number of slots in the recommended grid filled from the most-played list. */
-        private const val RECOMMENDED_MOST_PLAYED_COUNT = 12
+        private const val RECOMMENDED_MOST_PLAYED_COUNT = 25
 
         /** Number of slots in the recommended grid filled from the recently-played list. */
-        private const val RECOMMENDED_RECENTLY_PLAYED_COUNT = 10
+        private const val RECOMMENDED_RECENTLY_PLAYED_COUNT = 15
     }
 }
