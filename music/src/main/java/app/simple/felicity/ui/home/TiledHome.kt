@@ -30,7 +30,7 @@ import kotlin.random.Random
 
 /**
  * Home screen that renders a flat Windows Phone-style tile grid using a single
- * [GridLayoutManager] — no nesting, no inner RecyclerViews, just clean tiles.
+ * [SpannedGridLayoutManager] — no nesting, no inner RecyclerViews, just clean tiles.
  *
  * The grid is 3 columns wide and contains 45 fixed positions:
  *

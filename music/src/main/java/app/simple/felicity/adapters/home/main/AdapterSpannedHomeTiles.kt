@@ -114,7 +114,7 @@ class AdapterSpannedHomeTiles(
      * @param audio    The new [Audio] item to display.
      */
     fun updateSongAt(position: Int, audio: Audio) {
-        if (position in 0 until tiles.size && tiles[position] is SpannedTile.SongTile) {
+        if (position in tiles.indices && tiles[position] is SpannedTile.SongTile) {
             tiles[position] = SpannedTile.SongTile(audio)
             notifyItemChanged(position)
         }
@@ -202,20 +202,18 @@ class AdapterSpannedHomeTiles(
         private const val TYPE_SONG = 0
         private const val TYPE_PANEL = 1
 
-        /** Payload string passed to [notifyItemChanged] during live tile updates. */
-        const val PAYLOAD_LIVE_TILE = "payload_live_tile"
-
         /**
          * Adapter positions that render as 2x2 hero tiles in [app.simple.felicity.decorations.layoutmanager.spanned.SpannedGridLayoutManager].
-         * Arranged in an alternating rhythm across rows so hero tiles don't overlap.
+         * Arranged in a mathematically perfect alternating rhythm (Left, Right, Left, Right) 
+         * across rows so hero tiles are distributed evenly.
          */
-        val BIG_TILE_POSITIONS: Set<Int> = setOf(0, 7, 16, 25, 34, 43, 52)
+        val BIG_TILE_POSITIONS: Set<Int> = setOf(0, 7, 12, 19, 24, 31, 36, 43, 48)
 
         /**
          * Adapter positions reserved for panel navigation tiles, interspersed
-         * throughout the grid alongside song tiles for a Windows Phone UI layout.
+         * throughout the grid alongside song tiles in a zigzag column pattern.
          */
-        val PANEL_POSITIONS: Set<Int> = setOf(1, 4, 8, 11, 15, 18, 22, 27, 30, 33, 37, 40, 44, 48, 51)
+        val PANEL_POSITIONS: Set<Int> = setOf(1, 4, 8, 10, 14, 16, 20, 22, 26, 28, 32, 34, 38, 40, 44)
 
         /**
          * Total adapter item count across the grid.
