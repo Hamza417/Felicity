@@ -69,6 +69,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.FileNotFoundException
+import app.simple.felicity.manager.SharedPreferences as FelicitySharedPreferences
 
 open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceChangeListener, ThemeChangedListener {
 
@@ -85,13 +86,20 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
     private var lastPaletteSongId: Long = -1L
 
     override fun attachBaseContext(newBase: Context?) {
-        app.simple.felicity.manager.SharedPreferences.init(newBase!!)
-        app.simple.felicity.manager.SharedPreferences.initEncrypted(newBase)
+
+        /**
+         * Init global preferences here, it is a suspected low cost blocking call
+         * in a singleton to keep the preferences alive and can be accessed globally
+         */
+        FelicitySharedPreferences.init(newBase!!)
+        FelicitySharedPreferences.initEncrypted(newBase)
         registerSharedPreferenceChangeListener()
         registerEncryptedSharedPreferencesListener()
-        super.attachBaseContext(/* newBase = */ ContextUtils.updateLocale(
-                baseContext = newBase,
-                languageCode = ConfigurationPreferences.getAppLanguage()))
+
+        super.attachBaseContext(
+                /* newBase = */ ContextUtils.updateLocale(baseContext = newBase,
+                                                          languageCode = ConfigurationPreferences.getAppLanguage())
+        )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -206,6 +206,7 @@ public class MonetPalette {
     }
     
     private static double clamp(double v, double min, double max) {
+        //noinspection MathClampMigration
         return Math.max(min, Math.min(max, v));
     }
     
@@ -261,7 +262,10 @@ public class MonetPalette {
      */
     @ColorInt
     public int getNeutralTone(double tone) {
-        return hctToRgb(hue, NEUTRAL_CHROMA, tone);
+        // Taper chroma for very dark tones to prevent out-of-gamut clipping
+        // and "harsh" tinted colors (e.g., green/paan) in dark mode backgrounds.
+        double adjustedChroma = NEUTRAL_CHROMA * Math.min(1.0, tone / 50.0);
+        return hctToRgb(hue, adjustedChroma, tone);
     }
     
     /**
@@ -274,6 +278,8 @@ public class MonetPalette {
      */
     @ColorInt
     public int getNeutralVariantTone(double tone) {
-        return hctToRgb(hue, NEUTRAL_VARIANT_CHROMA, tone);
+        // Taper chroma for very dark tones just like neutral tones.
+        double adjustedChroma = NEUTRAL_VARIANT_CHROMA * Math.min(1.0, tone / 50.0);
+        return hctToRgb(hue, adjustedChroma, tone);
     }
 }
