@@ -81,6 +81,7 @@ class TiledHome : BaseHomeFragment() {
         val spanCount = if (isLandscape) SPAN_COUNT_LANDSCAPE else SPAN_COUNT_PORTRAIT
 
         val layoutManager = SpannedGridLayoutManager(SpannedGridLayoutManager.Orientation.VERTICAL, spanCount)
+        layoutManager.itemOrderIsStable = true
         layoutManager.spanSizeLookup = SpannedGridLayoutManager.SpanSizeLookup { position ->
             if (position in AdapterSpannedHomeTiles.BIG_TILE_POSITIONS) {
                 SpanSize(2, 2)
