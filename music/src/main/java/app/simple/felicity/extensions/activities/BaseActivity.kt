@@ -36,6 +36,7 @@ import app.simple.felicity.manager.SharedPreferences.registerEncryptedSharedPref
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterEncryptedSharedPreferencesListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
+import app.simple.felicity.preferences.AlbumArtPreferences
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.preferences.ConfigurationPreferences
@@ -348,10 +349,16 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
     protected open fun onStateReady() = Unit
 
     protected fun generateAlbumArtPalette() {
+        Log.d(TAG, "generateAlbumArtPalette() called")
         val isAlbumArtAccent = AppearancePreferences.getAccentColorName() == AlbumArt.IDENTIFIER
         val isAlbumArtTheme = ThemeUtils.isEffectiveAlbumArtTheme(resources)
 
-        if (!isAlbumArtAccent && !isAlbumArtTheme) return
+        Log.d(TAG, "isAlbumArtAccent: $isAlbumArtAccent, isAlbumArtTheme: $isAlbumArtTheme")
+
+        if (!isAlbumArtAccent && !isAlbumArtTheme) {
+            Log.d(TAG, "generateAlbumArtPalette() returning early because neither AlbumArt accent nor theme is active.")
+            return
+        }
 
         val audio = MediaPlaybackManager.getCurrentSong()
 
@@ -381,7 +388,10 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
         }
 
         // Skip re-extraction when the same track is already applied.
-        if (audio.id == lastPaletteSongId) return
+        if (audio.id == lastPaletteSongId) {
+            Log.d(TAG, "generateAlbumArtPalette() returning early because the same track (id: ${audio.id}) is already applied.")
+            return
+        }
 
         // Cancel any in-flight extraction for a previous song (e.g. rapid skipping).
         paletteJob?.cancel()
@@ -442,8 +452,17 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
                 }
 
                 // Run palette extraction on the Default (CPU) dispatcher.
+                val stylePref = AlbumArtPreferences.getPaletteStyle()
+                val paletteStyle = when (stylePref) {
+                    AlbumArtPreferences.PALETTE_STYLE_PASTEL -> MonetPalette.Style.PASTEL
+                    AlbumArtPreferences.PALETTE_STYLE_CHIC -> MonetPalette.Style.CHIC
+                    else -> MonetPalette.Style.RETRO
+                }
+
+                Log.i(TAG, "Applying palette style: $paletteStyle")
+
                 val palette: MonetPalette = withContext(Dispatchers.Default) {
-                    val p = MonetPalette(thumb)
+                    val p = MonetPalette(thumb, paletteStyle)
                     thumb.recycle()
                     p
                 }
@@ -670,6 +689,22 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
             .show()
     }
 
+    fun clearColors() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            runCatching {
+                AudioDatabase.getInstance(applicationContext)
+                    .albumArtColorsDao()
+                    .deleteAllColors()
+            }.onSuccess {
+                Log.i(TAG, "Saved album art palettes have been purged")
+                lastPaletteSongId = -1L // reset the last palette memory
+                generateAlbumArtPalette() // Generate new colors immediately
+            }.onFailure { throwable ->
+                Log.e(TAG, "Failed to purge album art palettes", throwable)
+            }
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         unregisterSharedPreferenceChangeListener()
@@ -720,6 +755,9 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
                 // to or from an album art theme, ensuring fresh colors are applied immediately.
                 lastPaletteSongId = -1L
                 initTheme()
+            }
+            AlbumArtPreferences.ALBUM_ART_PALETTE_STYLE -> {
+                clearColors()
             }
             BehaviourPreferences.PREDICTIVE_BACK -> {
                 applyPredictiveBackGesture()

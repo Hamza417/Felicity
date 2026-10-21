@@ -132,6 +132,11 @@
     <string name="behavior_desc">Adjust interaction logic and app behavior.</string>
     <string name="number_of_albums">Number of Albums</string>
     <string name="album_art">Album Art</string>
+    <string name="album_art_palette_style">Album Art Palette Style</string>
+    <string name="album_art_palette_style_summary">Choose the style of the album art palette.</string>
+    <string name="album_art_palette_style_pastel">Pastel</string>
+    <string name="album_art_palette_style_chic">Chic</string>
+    <string name="album_art_palette_style_retro">Retro</string>
     <string name="shadows">Shadows</string>
     <string name="album_art_shadows_summary">Toggle shadows below the album arts.</string>
     <string name="album_art_rounded_corners_summary">Toggle corner radius on album arts. If enabled the Corner Radius value is used to round the corners.</string>

@@ -28,21 +28,9 @@ import androidx.core.graphics.ColorUtils;
 public class MonetPalette {
     
     /**
-     * MD3 minimum chroma to keep some color presence in the primary palette.
+     * Clamped chroma of the primary tonal palette.
      */
-    private static final double MIN_CHROMA = 16.0;
-    /**
-     * MD3 maximum chroma to prevent oversaturation (MD3 spec caps at ~48).
-     */
-    private static final double MAX_CHROMA = 48.0;
-    /**
-     * Chroma used for the neutral palette (near-grey, hue-tinted).
-     */
-    private static final double NEUTRAL_CHROMA = 4.0;
-    /**
-     * Chroma used for the neutral-variant palette (slightly more colorful than neutral).
-     */
-    private static final double NEUTRAL_VARIANT_CHROMA = 8.0;
+    private final double chroma;
     
     @ColorInt
     private final int seedColor;
@@ -57,16 +45,44 @@ public class MonetPalette {
      * Hue angle of the seed color in degrees (0–360).
      */
     private final double hue;
-    /** Clamped chroma of the primary tonal palette. */
-    private final double chroma;
+    @NonNull
+    private final Style style;
     
-    public MonetPalette(@NonNull Bitmap bitmap) {
+    public MonetPalette(@NonNull Bitmap bitmap, @NonNull Style style) {
+        this.style = style;
         this.seedColor = extractSeed(bitmap);
         
         // Convert to HCT color space via LAB
         double[] hct = rgbToHct(seedColor);
         this.hue = hct[0];
-        this.chroma = clamp(hct[1], MIN_CHROMA, MAX_CHROMA);
+        
+        double minChroma;
+        double maxChroma = switch (style) {
+            case PASTEL -> {
+                minChroma = 4.0;
+                yield 12.0;
+            }
+            case CHIC -> {
+                minChroma = 16.0;
+                yield 36.0;
+            }
+            default -> { // RETRO style
+                minChroma = 50.0; // Forces a much higher baseline saturation
+                yield 100.0;      // Allows maximum saturation before gamut tapering
+            }
+        };
+        
+        // Scale the raw chroma based on the style to guarantee strong separation
+        double multiplier = switch (style) {
+            case PASTEL ->
+                    0.5;
+            case CHIC ->
+                    1.0;
+            default ->
+                    1.5;
+        };
+        
+        this.chroma = clamp(hct[1] * multiplier, minChroma, maxChroma);
         
         // Generate MD3-compliant tones
         // Tone 40: medium contrast for primary surfaces (light-theme primary)
@@ -118,7 +134,7 @@ public class MonetPalette {
                 }
                 
                 // Exponential weighting based on color purity (delta).
-                // A higher delta means the color is further from grey.
+                // A higher delta means the color is further from gray.
                 // We shift right by 6 as a fast division to keep numbers manageable.
                 int weight = (delta * delta) >> 6;
                 if (weight < 1) {
@@ -158,6 +174,30 @@ public class MonetPalette {
     }
     
     /**
+     * Convert HCT back to RGB.
+     * Uses target tone and chroma to generate perceptually uniform colors.
+     */
+    @ColorInt
+    private static int hctToRgb(double hue, double chroma, double tone) {
+        tone = clamp(tone, 0.0, 100.0);
+        
+        // Taper maximum allowable chroma at the extreme light/dark ends
+        // to prevent gamut clipping from turning bold colors into pastels.
+        double toneDistanceToCenter = Math.abs(tone - 50.0); // 0 to 50
+        double gamutMultiplier = 1.0 - (toneDistanceToCenter / 50.0);
+        
+        // Allow more chroma in the mid-tones, crush it at the ends
+        double safeChroma = Math.min(chroma, 100.0 * gamutMultiplier);
+        
+        double L = tone;
+        double hueRad = Math.toRadians(hue);
+        double a = safeChroma * Math.cos(hueRad);
+        double b = safeChroma * Math.sin(hueRad);
+        
+        return opaque(ColorUtils.LABToColor(L, a, b));
+    }
+    
+    /**
      * Convert RGB color to HCT (Hue, Chroma, Tone).
      * Uses LAB color space as intermediate for perceptually uniform tone calculation.
      */
@@ -183,26 +223,26 @@ public class MonetPalette {
     }
     
     /**
-     * Convert HCT back to RGB.
-     * Uses target tone and chroma to generate perceptually uniform colors.
+     * Returns a color from the neutral tonal palette at the requested MD3 tone.
+     * Uses the same hue as the seed but with very low chroma (~4), producing near-gray
+     * tones that are suitable for backgrounds, text, and icon colors.
+     *
+     * @param tone perceptual lightness value in the range [0, 100]
+     * @return an opaque ARGB color at the given tone
      */
     @ColorInt
-    private static int hctToRgb(double hue, double chroma, double tone) {
-        // Clamp tone to valid range
-        tone = clamp(tone, 0.0, 100.0);
-        chroma = Math.max(0.0, chroma);
-        
-        // Convert to LAB coordinates
-        double L = tone;
-        double hueRad = Math.toRadians(hue);
-        double a = chroma * Math.cos(hueRad);
-        double b = chroma * Math.sin(hueRad);
-        
-        // Convert LAB to RGB
-        int color = ColorUtils.LABToColor(L, a, b);
-        
-        // Ensure result is valid and opaque
-        return opaque(color);
+    public int getNeutralTone(double tone) {
+        double baseChroma = switch (style) {
+            case PASTEL ->
+                    1.0;
+            case CHIC ->
+                    3.0;
+            default ->
+                    8.0;
+        };
+        // Taper chroma for very dark tones to prevent out-of-gamut clipping in dark mode
+        double adjustedChroma = baseChroma * Math.min(1.0, tone / 50.0);
+        return hctToRgb(hue, adjustedChroma, tone);
     }
     
     private static double clamp(double v, double min, double max) {
@@ -253,22 +293,6 @@ public class MonetPalette {
     }
     
     /**
-     * Returns a color from the neutral tonal palette at the requested MD3 tone.
-     * Uses the same hue as the seed but with very low chroma (~4), producing near-grey
-     * tones that are suitable for backgrounds, text, and icon colors.
-     *
-     * @param tone perceptual lightness value in the range [0, 100]
-     * @return an opaque ARGB color at the given tone
-     */
-    @ColorInt
-    public int getNeutralTone(double tone) {
-        // Taper chroma for very dark tones to prevent out-of-gamut clipping
-        // and "harsh" tinted colors (e.g., green/paan) in dark mode backgrounds.
-        double adjustedChroma = NEUTRAL_CHROMA * Math.min(1.0, tone / 50.0);
-        return hctToRgb(hue, adjustedChroma, tone);
-    }
-    
-    /**
      * Returns a color from the neutral-variant tonal palette at the requested MD3 tone.
      * Uses slightly higher chroma than the neutral palette (~8), suited for surface variants,
      * outlines, dividers, and switch tracks.
@@ -278,8 +302,21 @@ public class MonetPalette {
      */
     @ColorInt
     public int getNeutralVariantTone(double tone) {
-        // Taper chroma for very dark tones just like neutral tones.
-        double adjustedChroma = NEUTRAL_VARIANT_CHROMA * Math.min(1.0, tone / 50.0);
+        double baseChroma = switch (style) {
+            case PASTEL ->
+                    2.0;
+            case CHIC ->
+                    6.0;
+            default ->
+                    16.0;
+        };
+        double adjustedChroma = baseChroma * Math.min(1.0, tone / 50.0);
         return hctToRgb(hue, adjustedChroma, tone);
+    }
+    
+    public enum Style {
+        PASTEL,
+        CHIC,
+        RETRO
     }
 }

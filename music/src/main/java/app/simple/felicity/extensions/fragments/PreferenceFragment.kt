@@ -29,6 +29,7 @@ import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.repositories.SongStatRepository
 import app.simple.felicity.repository.services.AudioDatabaseService
+import app.simple.felicity.theme.accents.AlbumArt
 import app.simple.felicity.ui.preferences.sub.AccentColors
 import app.simple.felicity.ui.preferences.sub.Language
 import app.simple.felicity.ui.preferences.sub.MusicFolders
@@ -84,6 +85,47 @@ abstract class PreferenceFragment : MediaFragment() {
                 type = PreferenceType.PANEL,
                 onPreferenceAction = { view, callback ->
                     openFragment(AccentColors.newInstance(), AccentColors.TAG)
+                }
+        )
+
+        val albumArtPaletteStyle = Preference(
+                title = R.string.album_art_palette_style,
+                summary = R.string.album_art_palette_style_summary,
+                icon = R.drawable.ic_tonality,
+                type = PreferenceType.POPUP,
+                valueProvider = {
+                    when (AlbumArtPreferences.getPaletteStyle()) {
+                        AlbumArtPreferences.PALETTE_STYLE_PASTEL -> getString(R.string.album_art_palette_style_pastel)
+                        AlbumArtPreferences.PALETTE_STYLE_CHIC -> getString(R.string.album_art_palette_style_chic)
+                        else -> getString(R.string.album_art_palette_style_retro)
+                    }
+                },
+                onPreferenceAction = { view, callback ->
+                    SharedScrollViewPopup(
+                            container = requireContainerView(),
+                            anchorView = view,
+                            menuItems = listOf(
+                                    PopupMenuItem(title = R.string.album_art_palette_style_pastel),
+                                    PopupMenuItem(title = R.string.album_art_palette_style_chic),
+                                    PopupMenuItem(title = R.string.album_art_palette_style_retro)
+                            ),
+                            onMenuItemClick = {
+                                when (it) {
+                                    R.string.album_art_palette_style_pastel -> {
+                                        AlbumArtPreferences.setPaletteStyle(AlbumArtPreferences.PALETTE_STYLE_PASTEL)
+                                        (view as TextView).text = getString(R.string.album_art_palette_style_pastel)
+                                    }
+                                    R.string.album_art_palette_style_chic -> {
+                                        AlbumArtPreferences.setPaletteStyle(AlbumArtPreferences.PALETTE_STYLE_CHIC)
+                                        (view as TextView).text = getString(R.string.album_art_palette_style_chic)
+                                    }
+                                    R.string.album_art_palette_style_retro -> {
+                                        AlbumArtPreferences.setPaletteStyle(AlbumArtPreferences.PALETTE_STYLE_RETRO)
+                                        (view as TextView).text = getString(R.string.album_art_palette_style_retro)
+                                    }
+                                }
+                            }
+                    ).show()
                 }
         )
 
@@ -222,6 +264,9 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(colors)
         preferences.add(themes)
         preferences.add(accentColor)
+        if (AppearancePreferences.getAccentColorName() == AlbumArt.IDENTIFIER) {
+            preferences.add(albumArtPaletteStyle)
+        }
         preferences.add(font)
         preferences.add(typeface)
         preferences.add(header)
@@ -1360,5 +1405,9 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(telegram)
 
         return preferences
+    }
+
+    companion object {
+        private const val TAG = "PreferenceFragment"
     }
 }
