@@ -99,6 +99,12 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
      * it defines when the box should just fade out.
      */
     private static final int INSTRUMENTAL_GAP_THRESHOLD = 3000;
+    
+    /**
+     * How much the highlight box should fade when encountering the instrumental breaks.
+     */
+    private static final float INSTRUMENTAL_FADE_FACTOR = 0.3f;
+    
     // Data
     private LrcData lrcData;
     private int currentLineIndex = -1;
@@ -130,11 +136,12 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     private TextPaint normalPaint;
     private TextPaint currentPaint;
     private TextPaint adlibPaint;
-
+    
     private static int applyAlpha(int color, float factor) {
         int alpha = Math.round(Color.alpha(color) * factor);
         return Color.argb(alpha, Color.red(color), Color.green(color), Color.blue(color));
     }
+    
     private Paint fadePaint;
     // Cache for blur mask filters to avoid constant recreation
     private final HashMap <Float, BlurMaskFilter> blurMaskFilters = new HashMap <>();
@@ -1844,8 +1851,8 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                             long gapToNext = nextStartMs - timeInMillis;
                             
                             if (gapToNext > INSTRUMENTAL_GAP_THRESHOLD) {
-                                // Long gap, fade out
-                                setBoxAlphaTarget(0f);
+                                // Long gap, fade out partially
+                                setBoxAlphaTarget(INSTRUMENTAL_FADE_FACTOR);
                             } else {
                                 // Short gap, stay visible. But only slide when close to the next word.
                                 setBoxAlphaTarget(1f);
@@ -1855,7 +1862,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                             }
                         } else {
                             // No next word
-                            setBoxAlphaTarget(0f);
+                            setBoxAlphaTarget(INSTRUMENTAL_FADE_FACTOR);
                         }
                     } else {
                         // Currently singing this word
@@ -1871,7 +1878,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                     long gapToNext = nextStartMs - timeInMillis;
                     
                     if (gapToNext > INSTRUMENTAL_GAP_THRESHOLD) {
-                        setBoxAlphaTarget(0f);
+                        setBoxAlphaTarget(INSTRUMENTAL_FADE_FACTOR);
                     } else {
                         setBoxAlphaTarget(1f);
                         if (gapToNext <= 400) {
@@ -1894,7 +1901,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                     long gapToNext = nextStartMs - timeInMillis;
                     
                     if (gapToNext > INSTRUMENTAL_GAP_THRESHOLD && activeTime > 5000) {
-                        setBoxAlphaTarget(0f);
+                        setBoxAlphaTarget(INSTRUMENTAL_FADE_FACTOR);
                     } else if (gapToNext <= 400) {
                         setBoxAlphaTarget(1f);
                         updateLineBoxTarget(nextLineIdx);
@@ -1904,7 +1911,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                     }
                 } else {
                     if (activeTime > 8000) {
-                        setBoxAlphaTarget(0f);
+                        setBoxAlphaTarget(INSTRUMENTAL_FADE_FACTOR);
                     } else {
                         setBoxAlphaTarget(1f);
                         updateLineBoxTarget(currentLineIndex);
@@ -2333,7 +2340,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                     }
                     
                     float maxShift = dp2px(getContext(), 8f);
-                    shift = normalizedDistance * maxShift * yFactor * boxAlpha;
+                    shift = normalizedDistance * maxShift * yFactor;
                 }
             }
             
