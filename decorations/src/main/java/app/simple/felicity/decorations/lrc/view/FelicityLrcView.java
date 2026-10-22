@@ -176,7 +176,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     // Blur/fade interaction state
     // 0f = fully blurred (default), 1f = fully unblurred (finger down)
     private float blurInterpolation = 0f;
-    private android.animation.ValueAnimator blurAnimator;
     
     /**
      * When true the view will yield touch control to its parent (e.g. BottomSheetBehavior) once
@@ -2021,9 +2020,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                 getParent().requestDisallowInterceptTouchEvent(true);
             }
             
-            // Smoothly remove blur/fade while the finger is touching
-            animateBlurTo(1f);
-            
             // Find which line was touched and show ripple immediately.
             // In static (plain-text) mode lines are not seekable, so skip the ripple.
             if (!isStaticMode()) {
@@ -2042,9 +2038,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                 }
             }
         } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
-            // Smoothly reapply blur/fade once the finger lifts
-            animateBlurTo(0f);
-            
             // Release ripple state
             if (rippleDrawable != null) {
                 rippleDrawable.setState(new int[] {});
@@ -2148,41 +2141,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     public void setScrollMultiplier(float multiplier) {
         this.scrollMultiplier = Math.max(0.1f, multiplier); // Ensure positive value
         invalidate();
-    }
-    
-    /**
-     * Smoothly animate the blur/fade overlay towards {@code target}.
-     * target = 0f → fully blurred (normal idle state, finger lifted)
-     * target = 1f → fully unblurred (finger touching the view)
-     * <p>
-     * Uses a ValueAnimator with DecelerateInterpolator for a slow, natural deceleration.
-     * Unblur (finger down) takes ~1500 ms; re-blur (finger up) takes ~800 ms.
-     */
-    private void animateBlurTo(float target) {
-        if (blurAnimator != null && blurAnimator.isRunning()) {
-            blurAnimator.cancel();
-        }
-        
-        //
-        long duration = 750;
-        
-        blurAnimator = android.animation.ValueAnimator.ofFloat(blurInterpolation, target);
-        blurAnimator.setDuration(duration);
-        blurAnimator.setInterpolator(new DecelerateInterpolator());
-        blurAnimator.addUpdateListener(anim -> {
-            blurInterpolation = (float) anim.getAnimatedValue();
-            blurMaskFilters.clear();
-            invalidate();
-        });
-        blurAnimator.addListener(new android.animation.AnimatorListenerAdapter() {
-            @Override
-            public void onAnimationEnd(android.animation.Animator animation) {
-                blurInterpolation = target;
-                blurMaskFilters.clear();
-                invalidate();
-            }
-        });
-        blurAnimator.start();
     }
     
     private float dp2px(Context context, float dp) {
@@ -2456,9 +2414,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         }
         highlightFraction = 0f;
         dehighlightFraction = 0f;
-        if (blurAnimator != null && blurAnimator.isRunning()) {
-            blurAnimator.cancel();
-        }
         blurInterpolation = 0f;
         
         // Cancel and clear curtain animations
@@ -2467,6 +2422,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                 anim.cancel();
             }
         }
+        
         curtainAnimators.clear();
         curtainBlur.clear();
         curtainScale.clear();
