@@ -2644,6 +2644,14 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         
         @Override
         public boolean onFling(MotionEvent e1, @NonNull MotionEvent e2, float velocityX, float velocityY) {
+            float maxScroll = getMaxScrollY();
+            
+            // If already in overscroll territory, don't fling further.
+            // Let the snapBackFromOverscroll (triggered on ACTION_UP) handle the rubber band release.
+            if (scrollY < 0 || scrollY > maxScroll) {
+                return true;
+            }
+            
             // Cancel any existing fling before starting a fresh one.
             if (flingAnimation != null && flingAnimation.isRunning()) {
                 flingAnimation.cancel();
@@ -2652,7 +2660,6 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             // Apply scroll multiplier to fling velocity.
             float acceleratedVelocity = -velocityY * scrollMultiplier;
             
-            float maxScroll = getMaxScrollY();
             // Use the full drag-overscroll range as fling bounds so that a fling started
             // while the content is already stretched (e.g. user swiped past the edge then
             // flicked) never puts the starting value outside the allowed range — that would
