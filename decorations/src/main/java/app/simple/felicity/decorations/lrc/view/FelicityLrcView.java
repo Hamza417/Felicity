@@ -534,8 +534,20 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                         blurMaskFilters.put(roundedBlur, blurFilter);
                     }
                     normalPaint.setMaskFilter(blurFilter);
+                    if (romPaint != null) {
+                        romPaint.setMaskFilter(blurFilter);
+                    }
+                    if (adlibPaint != null) {
+                        adlibPaint.setMaskFilter(blurFilter);
+                    }
                 } else {
                     normalPaint.setMaskFilter(null);
+                    if (romPaint != null) {
+                        romPaint.setMaskFilter(null);
+                    }
+                    if (adlibPaint != null) {
+                        adlibPaint.setMaskFilter(null);
+                    }
                 }
             } else {
                 if (cBlur != null && cBlur > 0.5f) {
@@ -546,8 +558,20 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                         blurMaskFilters.put(roundedBlur, blurFilter);
                     }
                     normalPaint.setMaskFilter(blurFilter);
+                    if (romPaint != null) {
+                        romPaint.setMaskFilter(blurFilter);
+                    }
+                    if (adlibPaint != null) {
+                        adlibPaint.setMaskFilter(blurFilter);
+                    }
                 } else {
                     normalPaint.setMaskFilter(null);
+                    if (romPaint != null) {
+                        romPaint.setMaskFilter(null);
+                    }
+                    if (adlibPaint != null) {
+                        adlibPaint.setMaskFilter(null);
+                    }
                 }
             }
             
@@ -662,6 +686,12 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         
         // Clear mask filter so the paint is clean for the next draw pass
         normalPaint.setMaskFilter(null);
+        if (romPaint != null) {
+            romPaint.setMaskFilter(null);
+        }
+        if (adlibPaint != null) {
+            adlibPaint.setMaskFilter(null);
+        }
         
         // Draw the moving word box
         if (!isStaticMode() && boxAlpha > 0f && boxPaint != null) {
