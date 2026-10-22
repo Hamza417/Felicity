@@ -95,10 +95,10 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     private static final float OVERSCROLL_SPRING_STIFFNESS = 400f;
     
     /**
-     * threshold of 3 seconds to avoid glitches during short instrumental breaks,
+     * threshold of 5 seconds to avoid glitches during short instrumental breaks,
      * it defines when the box should just fade out.
      */
-    private static final int INSTRUMENTAL_GAP_THRESHOLD = 3000;
+    private static final int INSTRUMENTAL_GAP_THRESHOLD = 5000;
     
     /**
      * How much the highlight box should fade when encountering the instrumental breaks.
@@ -398,6 +398,14 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         }
     }
     
+    @Override
+    protected void onSizeChanged(int w, int h, int oldWidth, int oldHeight) {
+        super.onSizeChanged(w, h, oldWidth, oldHeight);
+        if (w != oldWidth || h != oldHeight) {
+            normalLayoutCache.clear();
+        }
+    }
+    
     private void drawEmptyText(Canvas canvas) {
         normalPaint.setTextAlign(Paint.Align.CENTER);
         float x = getWidth() / 2f;
@@ -586,7 +594,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
                 float yOffset = y - (lineHeight / 2f);
                 int paddingLeft = getPaddingLeft();
                 int paddingRight = getPaddingRight();
-                int availableWidth = getWidth() - paddingLeft - paddingRight;
+                int availableWidth = Math.max(0, getWidth() - paddingLeft - paddingRight);
                 
                 rippleDrawable.setBounds(
                         paddingLeft,
@@ -840,7 +848,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     private StaticLayout createSingleStaticLayout(CharSequence text, TextPaint paint) {
         int paddingLeft = getPaddingLeft();
         int paddingRight = getPaddingRight();
-        int availableWidth = getWidth() - paddingLeft - paddingRight;
+        int availableWidth = Math.max(0, getWidth() - paddingLeft - paddingRight);
         
         Layout.Alignment multiLineAlignment = switch (textAlignment) {
             case RIGHT ->
@@ -962,7 +970,7 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
     private float calculateXPositionForLayout(StaticLayout layout, TextPaint paint, int lineIndex) {
         int paddingLeft = getPaddingLeft();
         int paddingRight = getPaddingRight();
-        int availableWidth = getWidth() - paddingLeft - paddingRight;
+        int availableWidth = Math.max(0, getWidth() - paddingLeft - paddingRight);
         
         // Multi-line layouts have their alignment baked in by StaticLayout (ALIGN_NORMAL /
         // ALIGN_CENTER / ALIGN_OPPOSITE), so they are always placed at paddingLeft.
