@@ -28,12 +28,25 @@
 #include <aaudio/AAudio.h>
 #include <atomic>
 #include <cstdint>
+#include <mutex>
 
 /**
  * Aggregate state for the AAudio output stream.
  *
  * One [AaudioContext] is allocated per [nativeAaudioCreate] call and freed by
  * [nativeAaudioDestroy].
+ *
+ * **Disconnect recovery:** Exclusive low-latency AAudio streams are forcibly
+ * disconnected by the audio HAL when a higher-priority client needs the DSP —
+ * most notably an incoming/outgoing phone call. This is distinct from a normal
+ * audio-focus loss (another app ducking/pausing us), which never disconnects
+ * the stream. Without handling this, every later call into the dead stream
+ * handle (start/pause/write) either fails silently or — on some HALs — blocks
+ * forever, which is what causes the whole app to freeze until force-closed.
+ * [AAudioStream_setErrorCallback] plus [streamMutex] here let the native layer
+ * detect the disconnect and transparently reopen a fresh stream on a background
+ * thread, with every Kotlin-facing entry point using a bounded try-lock so it
+ * can never hang even if recovery itself is slow or stuck.
  *
  * @author Hamza417
  */
@@ -80,4 +93,26 @@ struct AaudioContext {
      * Updated by [nativeAaudioGetLatencyMs]; -1 when unavailable.
      */
     int32_t latencyMs;
+
+    /**
+     * Guards every read/write of [stream]. All JNI entry points acquire this with a
+     * short bounded timeout (see aaudio-player.cpp) instead of a plain lock, so a
+     * slow or stuck recovery can never freeze the audio thread or the caller —
+     * worst case a single buffer/call is dropped and retried next time.
+     */
+    std::timed_mutex streamMutex;
+
+    /**
+     * Set while a background reopen (triggered by [aaudioErrorCallback]) is in
+     * flight, so a burst of extra error callbacks doesn't spawn duplicate
+     * recovery threads racing each other.
+     */
+    std::atomic<bool> recovering{false};
+
+    /**
+     * Flipped to true at the very start of [nativeAaudioDestroy], before it takes
+     * the lock, so any recovery thread that is mid-flight bails out early instead
+     * of resurrecting a stream nobody owns anymore.
+     */
+    std::atomic<bool> destroyed{false};
 };

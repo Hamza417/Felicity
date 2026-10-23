@@ -400,6 +400,7 @@ object MediaPlaybackManager {
     }
 
     fun getSongs(): List<Audio> = songs
+    fun getQueueSize(): Int = songs.size
 
     /**
      * Returns the queue in its original, unshuffled order. When shuffle is off this is
@@ -546,6 +547,52 @@ object MediaPlaybackManager {
                     mediaController?.play()
                 }
                 _songPositionFlow.emit(newCurrentPosition)
+            }
+        }
+
+        scope.launch {
+            _songListFlow.emit(this@MediaPlaybackManager.songs)
+        }
+    }
+
+    /**
+     * Removes every song from the queue except the currently playing one, without
+     * interrupting playback. The currently playing song becomes the sole item in the
+     * queue at index 0. Safe to call for a "Clear queue" action.
+     *
+     * Unlike [moveQueueItemSilently] (a pure reorder), the queue actually shrinks here and
+     * the playing song's index genuinely changes (e.g. 3 -> 0) — exactly like the "some other
+     * item removed, current position shifts" branch of [removeQueueItemSilently]. So this
+     * DOES let [currentSongPosition]'s normal setter run and emit [_songPositionFlow],
+     * ensuring every observer that keys off the raw index (not just the song list) learns
+     * the position is now 0 instead of being left showing the old, stale index.
+     */
+    fun clearQueueExceptCurrent() {
+        if (songs.size <= 1) return
+        val current = getCurrentSong() ?: return
+        val currentIndex = currentSongPosition.coerceIn(0, songs.size - 1)
+
+        this.songs = listOf(current)
+        currentSongPosition = 0
+
+        // Surgically remove every item except the current one from ExoPlayer's queue —
+        // no setMediaItems, no prepare, no gap in playback.
+        val controller = mediaController
+        if (controller != null) {
+            val count = controller.mediaItemCount
+            if (count > 1) {
+                if (currentIndex + 1 < count) {
+                    controller.removeMediaItems(currentIndex + 1, count)
+                }
+                if (currentIndex > 0) {
+                    controller.removeMediaItems(0, currentIndex)
+                }
+            }
+            // Belt-and-suspenders: explicitly confirm the controller's active index now
+            // matches position 0, in case ExoPlayer doesn't reflect the reindex in
+            // currentMediaItemIndex immediately after the surgical removals above.
+            if (controller.currentMediaItemIndex != 0) {
+                controller.seekTo(0, controller.currentPosition)
             }
         }
 
@@ -1043,12 +1090,21 @@ object MediaPlaybackManager {
         seekJob?.cancel()
         seekJob = scope.launch {
             var lastEmittedPosition: Long? = null
+
             while (isActive) {
                 val position = getSeekPosition()
-                // Only emit if position actually changed to reduce overhead
+
                 if (position != lastEmittedPosition) {
-                    _songSeekPositionFlow.value = position
-                    lastEmittedPosition = position
+                    // If the position drops backward by less than 1000ms, it's likely a pipeline correction.
+                    // Ignore it and let the next loop catch up naturally.
+                    val isMinorStutter = lastEmittedPosition != null &&
+                            position < lastEmittedPosition &&
+                            (lastEmittedPosition - position) < 1000L
+
+                    if (!isMinorStutter) {
+                        _songSeekPositionFlow.value = position
+                        lastEmittedPosition = position
+                    }
                 }
 
                 delay(intervalMs.milliseconds)

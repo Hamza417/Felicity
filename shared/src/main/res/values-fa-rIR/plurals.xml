@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="number_of_songs">
+        <item quantity="one">%d آهنگ</item>
+        <item quantity="other">%d آهنگ</item>
+    </plurals>
+    <plurals name="songs_selected">
+        <item quantity="one">%d آهنگ انتخاب شد</item>
+        <item quantity="other">%d آهنگ انتخاب شد</item>
+    </plurals>
+    <plurals name="number_of_albums">
+        <item quantity="one">%d آلبوم</item>
+        <item quantity="other">%d آلبوم</item>
+    </plurals>
+    <plurals name="total_times">
+        <item quantity="one">%d بار</item>
+        <item quantity="other">%d بار</item>
+    </plurals>
+    <plurals name="number_of_bookmarks">
+        <item quantity="one">%d نشانک</item>
+        <item quantity="other">%d نشانک</item>
+    </plurals>
+</resources>

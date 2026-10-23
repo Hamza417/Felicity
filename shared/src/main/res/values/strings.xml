@@ -69,13 +69,13 @@
     <string name="date_added">Date Added</string>
     <string name="duration">Duration</string>
     <string name="year">Year</string>
+    <string name="years">Years</string>
     <string name="sorting_style">Sorting Style</string>
     <string name="normal">Normal</string>
     <string name="reversed">Reversed</string>
     <string name="track_number">Track Number</string>
     <string name="composer">Composer</string>
     <string name="open_app_settings">Open App Settings…</string>
-    <string name="artflow">ArtFlow</string>
     <string name="artflow_desc">Focuses on visual discovery with multiple album art carousels.</string>
     <string name="sort_by">Sort By</string>
     <string name="date_modified">Date Modified</string>
@@ -115,7 +115,6 @@
     <string name="soapstone">Soapstone</string>
     <string name="high_contrast">High Contrast</string>
     <string name="dark">Dark</string>
-    <string name="amoled">AMOLED</string>
     <string name="slate">Slate</string>
     <string name="oil">Oil</string>
     <string name="follow_system">Follow System</string>
@@ -133,6 +132,11 @@
     <string name="behavior_desc">Adjust interaction logic and app behavior.</string>
     <string name="number_of_albums">Number of Albums</string>
     <string name="album_art">Album Art</string>
+    <string name="album_art_palette_style">Album Art Palette Style</string>
+    <string name="album_art_palette_style_summary">Choose the style of the album art palette.</string>
+    <string name="album_art_palette_style_pastel">Pastel</string>
+    <string name="album_art_palette_style_chic">Chic</string>
+    <string name="album_art_palette_style_retro">Retro</string>
     <string name="shadows">Shadows</string>
     <string name="album_art_shadows_summary">Toggle shadows below the album arts.</string>
     <string name="album_art_rounded_corners_summary">Toggle corner radius on album arts. If enabled the Corner Radius value is used to round the corners.</string>
@@ -227,6 +231,30 @@
     <string name="fallback_to_software_decoder">Fallback To Software Decoder</string>
     <string name="fallback_to_software_decoder_summary">Quietly fallback to software decoder if system hardware fails to play an audio file.</string>
     <string name="playing_queue">Playing Queue</string>
+
+    <!-- Queue replacement confirmation -->
+    <string name="queue_management">Queue Management</string>
+    <string name="confirm_queue_replacement">Confirm Queue Replacement</string>
+    <string name="confirm_queue_replacement_summary">Ask before replacing your current playback queue when you start playing songs from folders, albums, artists, or playlists.</string>
+    <string name="replace_queue_title">Replace Playing Queue?</string>
+    <string name="replace_queue_message">A queue is already loaded. What would you like to do with the new selection?</string>
+    <string name="for_this_song_only">For this song only</string>
+    <string name="for_the_queue">For the queue</string>
+    <string name="replace">Replace</string>
+    <string name="move_to_empty_queue">Move to Empty Queue</string>
+    <string name="moved_to_empty_queue">Moved to Queue %1$d</string>
+    <string name="no_empty_queue_available">No empty queue slot available. Replaced current queue instead.</string>
+
+    <!-- Folder hierarchy shuffle scope confirmation -->
+    <string name="shuffle_scope_title">Shuffle Songs?</string>
+    <string name="shuffle_scope_message">Shuffle only the songs directly inside this folder, or include every song found in its sub-folders too?</string>
+    <string name="shuffle_this_folder_only">This Folder Only</string>
+    <string name="shuffle_include_subfolders">Include Sub-folders</string>
+    <string name="no_songs_to_shuffle">No songs found to shuffle.</string>
+
+    <string name="play_scope_title">Play Songs?</string>
+    <string name="play_scope_message">Play only the songs directly inside this folder, or include every song found in its sub-folders too?</string>
+
     <string name="sync_adjust">Sync Adjust</string>
     <string name="accessibility">Accessibility</string>
     <string name="accessibility_desc">Adjust accessibility settings for a better experience.</string>
@@ -263,7 +291,6 @@
     <string name="tape_saturation">Tape Saturation</string>
     <string name="pitch">Pitch</string>
     <string name="playback_speed">Speed</string>
-    <string name="replay_gain">Replay Gain</string>
     <string name="auto_replay_gain">Auto Replay Gain</string>
     <string name="auto_replay_gain_summary">Automatically apply the gain value embedded in each track\'s ReplayGain tags when a new song starts playing. The Replay Gain knob in the equalizer still works on top of this.</string>
     <string name="replay_gain_mode">Replay Gain Mode</string>
@@ -452,6 +479,8 @@
     <string name="double_">Double</string>
     <string name="triple">Triple</string>
     <string name="scan_library">Scan Library</string>
+    <string name="scanning_library">Scanning Library</string>
+    <string name="getting_music_ready">Getting your music ready…</string>
     <string name="scan_library_summary">Check your music folders for new or changed files and add them to the library. Existing entries are kept intact.</string>
     <string name="refresh_library">Refresh Library</string>
     <string name="refresh_library_summary">Wipe the entire library and rebuild it from scratch. Your favorites, always skipped and all playback stats are preserved and restored after the scan.</string>
@@ -491,6 +520,7 @@
     <string name="bars">Bars</string>
     <string name="current_queue">Queue %1$d</string>
     <string name="rename">Rename</string>
+    <string name="clear_queue">Clear</string>
     <string name="volume_controls">Volume Controls</string>
     <string name="volume_controls_summary">Show volume controls when volume buttons are pressed.</string>
     <string name="usb_dac_control_summary">Use app\'s internal DAC driver to create a direct audio output via DAC.</string>
@@ -502,4 +532,9 @@
     <string name="timer_position">Timer Position</string>
     <string name="waveform_menu">Waveform Menu</string>
     <string name="optics">Optics</string>
+    <string name="reduce_animations">Reduce Animations</string>
+    <string name="reduce_animations_summary">Disable some unnecessary animations throughout the app. May improve app\'s performance in some devices.\n\nTo disable transition animations, go to %1$s panel.</string>
+    <string name="animations">Animations</string>
+    <string name="miniplayer_width">Mini Player Width</string>
+    <string name="miniplayer_width_summary">Adjust horizontal width of the Mini Player in landscape mode.</string>
 </resources>

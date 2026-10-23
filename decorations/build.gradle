@@ -23,10 +23,10 @@ dependencies {
     implementation project(':core')
     implementation project(':preferences')
 
-    implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
+    implementation 'androidx.constraintlayout:constraintlayout:2.2.2'
     implementation 'androidx.viewpager2:viewpager2:1.1.0'
     implementation 'androidx.recyclerview:recyclerview:1.4.0'
-    implementation 'androidx.databinding:viewbinding:9.2.1'
+    implementation 'androidx.databinding:viewbinding:9.4.1'
 
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.11.0'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.11.0'

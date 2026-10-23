@@ -12,8 +12,10 @@ import app.simple.felicity.repository.models.Album
 import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Genre
+import app.simple.felicity.repository.models.YearGroup
 import app.simple.felicity.repository.repositories.AudioRepository
 import app.simple.felicity.repository.sort.SearchSort.searchSorted
+import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -32,11 +34,13 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * ViewModel for the Search panel. Searches all audio fields (title, artist, album,
- * genre, composer) and groups results into [SearchResults] by category.
+ * ViewModel for the Search panel. Searches all audio fields (title, file name, path,
+ * artist, album, genre, composer, year) and groups results into [SearchResults] by
+ * category (songs, albums, artists, genres, composers, years).
  * A 300 ms debounce prevents excessive queries while the user is typing.
  * Category visibility is driven by [SearchCategoryFilter] which is persisted
- * through [SearchPreferences].
+ * through [SearchPreferences]. Song results are additionally ranked by title-match
+ * relevance so the most relevant track always appears first (see [titleRelevanceRank]).
  *
  * @author Hamza417
  */
@@ -71,14 +75,22 @@ class SearchViewModel @Inject constructor(
                 if (query.isBlank()) {
                     flowOf(SearchResults.empty())
                 } else {
-                    combine(
+                    val coreAudioResults = combine(
                             audioRepository.searchByTitleFlow(query),
                             audioRepository.searchArtistsFlow(query),
                             audioRepository.searchByAlbumFlow(query),
                             audioRepository.searchByGenreFlow(query),
                             audioRepository.searchByComposerFlow(query)
                     ) { byTitle, artists, byAlbum, byGenre, byComposer ->
-                        buildSearchResults(byTitle, artists, byAlbum, byGenre, byComposer, filter)
+                        CoreAudioResults(byTitle, artists, byAlbum, byGenre, byComposer)
+                    }
+
+                    combine(
+                            coreAudioResults,
+                            audioRepository.searchComposersFlow(query),
+                            audioRepository.searchYearGroupsFlow(query)
+                    ) { core, composers, years ->
+                        buildSearchResults(core, composers, years, query, filter)
                     }
                 }
             }.catch { e ->
@@ -87,26 +99,49 @@ class SearchViewModel @Inject constructor(
             }.flowOn(Dispatchers.IO)
                 .collect { results ->
                     _searchResults.value = results
-                    Log.d(TAG, "observeSearchQuery: songs=${results.songs.size}, albums=${results.albums.size}, artists=${results.artists.size}, genres=${results.genres.size}")
+                    Log.d(TAG, "observeSearchQuery: songs=${results.songs.size}, albums=${results.albums.size}, " +
+                            "artists=${results.artists.size}, genres=${results.genres.size}, " +
+                            "composers=${results.composers.size}, years=${results.years.size}")
                 }
         }
     }
 
     /**
+     * Intermediate holder for the five audio-table queries that make up the "core" of a
+     * search pass (songs, artists, albums, genres, composer-matched songs), combined in a
+     * single step before being merged with the composer/year grouping flows.
+     */
+    private data class CoreAudioResults(
+            val byTitle: List<Audio>,
+            val artists: List<Artist>,
+            val byAlbum: List<Audio>,
+            val byGenre: List<Audio>,
+            val byComposer: List<Audio>
+    )
+
+    /**
      * Aggregates raw per-field query results into a [SearchResults] instance,
      * applying the current [SearchCategoryFilter] to suppress disabled categories.
+     *
+     * Songs are additionally ranked by how closely their title matches [query] — an exact
+     * (or "starts with") title match is always surfaced above other songs that only matched
+     * through an unrelated field (e.g. the album name), even if those other songs would
+     * otherwise sort earlier alphabetically. This fixes the case where a song shares its
+     * name with its album: previously every track on that album would be interleaved
+     * alphabetically, burying the actual match.
      */
     private fun buildSearchResults(
-            byTitle: List<Audio>,
-            artists: List<Artist>,
-            byAlbum: List<Audio>,
-            byGenre: List<Audio>,
-            byComposer: List<Audio>,
+            core: CoreAudioResults,
+            composers: List<Artist>,
+            years: List<YearGroup>,
+            query: String,
             filter: SearchCategoryFilter): SearchResults {
+        val (byTitle, artists, byAlbum, byGenre, byComposer) = core
 
         val allAudio = (byTitle + byAlbum + byGenre + byComposer)
             .distinctBy { it.id }
             .searchSorted()
+            .sortedBy { it.titleRelevanceRank(query) }
 
         val songs = if (filter.songsEnabled) allAudio else emptyList()
 
@@ -147,12 +182,33 @@ class SearchViewModel @Inject constructor(
             emptyList()
         }
 
+        val filteredComposers = if (filter.composersEnabled) composers else emptyList()
+        val filteredYears = if (filter.yearsEnabled) years else emptyList()
+
         return SearchResults(
                 songs = songs,
                 albums = albums,
                 artists = filteredArtists,
-                genres = genres
+                genres = genres,
+                composers = filteredComposers,
+                years = filteredYears
         )
+    }
+
+
+    /**
+     * Ranks how closely this track's title matches [query], for sorting purposes.
+     * Lower is a better match: 0 = exact match, 1 = starts with, 2 = contains, 3 = no title match
+     * (i.e. the track only matched through another field like album, genre, or composer).
+     */
+    private fun Audio.titleRelevanceRank(query: String): Int {
+        val title = getProperTitle()
+        return when {
+            title.equals(query, ignoreCase = true) -> 0
+            title.startsWith(query, ignoreCase = true) -> 1
+            title.contains(query, ignoreCase = true) -> 2
+            else -> 3
+        }
     }
 
     private fun resort() {
@@ -174,7 +230,9 @@ class SearchViewModel @Inject constructor(
             songsEnabled = SearchPreferences.isSongsEnabled(),
             albumsEnabled = SearchPreferences.isAlbumsEnabled(),
             artistsEnabled = SearchPreferences.isArtistsEnabled(),
-            genresEnabled = SearchPreferences.isGenresEnabled()
+            genresEnabled = SearchPreferences.isGenresEnabled(),
+            composersEnabled = SearchPreferences.isComposersEnabled(),
+            yearsEnabled = SearchPreferences.isYearsEnabled()
     )
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, s: String?) {
@@ -184,7 +242,9 @@ class SearchViewModel @Inject constructor(
             SearchPreferences.FILTER_SONGS,
             SearchPreferences.FILTER_ALBUMS,
             SearchPreferences.FILTER_ARTISTS,
-            SearchPreferences.FILTER_GENRES -> {
+            SearchPreferences.FILTER_GENRES,
+            SearchPreferences.FILTER_COMPOSERS,
+            SearchPreferences.FILTER_YEARS -> {
                 _categoryFilter.value = loadCategoryFilter()
             }
         }

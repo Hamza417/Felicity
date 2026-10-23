@@ -10,6 +10,7 @@ import app.simple.felicity.glide.transformation.Darken
 import app.simple.felicity.glide.transformation.Greyscale
 import app.simple.felicity.glide.transformation.Padding
 import app.simple.felicity.glide.transformation.RoundedCorners
+import app.simple.felicity.glide.transformation.VignetteTransformation
 import app.simple.felicity.preferences.AlbumArtPreferences
 import app.simple.felicity.preferences.AppearancePreferences
 import com.bumptech.glide.Glide
@@ -27,7 +28,8 @@ object AudioCoverUtils {
             blur: Boolean = false,
             greyscale: Boolean = false,
             darken: Boolean = false,
-            crop: Boolean = true
+            crop: Boolean = true,
+            vignette: Boolean = false
     ) {
         val transformations = mutableListOf<Transformation<Bitmap>>()
 
@@ -45,6 +47,7 @@ object AudioCoverUtils {
         if (blur) transformations.add(Blur(72))
         if (greyscale) transformations.add(Greyscale())
         if (darken) transformations.add(Darken(0.3F))
+        if (vignette) transformations.add(VignetteTransformation())
 
         val glideRequest = Glide.with(this)
             .asBitmap()

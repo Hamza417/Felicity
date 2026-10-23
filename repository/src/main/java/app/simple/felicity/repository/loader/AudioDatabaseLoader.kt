@@ -157,11 +157,13 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
          */
         val myScope = scanScope
 
-        notification.begin()
+        var notificationGeneration = -1
 
         try {
             val startTime = System.currentTimeMillis()
             Log.d(TAG, "Starting audio file processing...")
+
+            notificationGeneration = notification.begin(context)
 
             val dao = audioDatabase.audioDao()
 
@@ -196,50 +198,55 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                 allSAFFiles.addAll(files)
             }
 
-            notification.setTotal(allSAFFiles.size)
+            notification.setTotal(notificationGeneration, allSAFFiles.size)
             Log.d(TAG, "Total audio files to evaluate: ${allSAFFiles.size}")
-
 
             val processedCount = AtomicInteger(0)
 
             val dbChannel = Channel<PendingWrite>(capacity = Channel.BUFFERED)
 
             val consumerJob = myScope.launch {
-                val insertBatch = mutableListOf<Audio>()
-                val updateBatch = mutableListOf<Audio>()
+                try {
+                    val insertBatch = mutableListOf<Audio>()
+                    val updateBatch = mutableListOf<Audio>()
 
-                for (write in dbChannel) {
-                    indexedMap[write.path] = write.indexedFile
+                    for (write in dbChannel) {
+                        indexedMap[write.path] = write.indexedFile
 
-                    when (write) {
-                        is PendingWrite.Insert -> {
-                            insertBatch.add(write.audio)
-                            if (insertBatch.size >= BATCH_SIZE) {
-                                val batch = insertBatch.toList()
-                                insertBatch.clear()
-                                Log.d(TAG, "Inserting batch of ${batch.size} audio items")
-                                dao?.insertBatch(batch)
+                        when (write) {
+                            is PendingWrite.Insert -> {
+                                insertBatch.add(write.audio)
+                                if (insertBatch.size >= BATCH_SIZE) {
+                                    val batch = insertBatch.toList()
+                                    insertBatch.clear()
+                                    Log.d(TAG, "Inserting batch of ${batch.size} audio items")
+                                    dao?.insertBatch(batch)
+                                }
                             }
-                        }
-                        is PendingWrite.Update -> {
-                            updateBatch.add(write.audio)
-                            if (updateBatch.size >= BATCH_SIZE) {
-                                val batch = updateBatch.toList()
-                                updateBatch.clear()
-                                Log.d(TAG, "Updating batch of ${batch.size} audio items")
-                                dao?.update(batch)
+                            is PendingWrite.Update -> {
+                                updateBatch.add(write.audio)
+                                if (updateBatch.size >= BATCH_SIZE) {
+                                    val batch = updateBatch.toList()
+                                    updateBatch.clear()
+                                    Log.d(TAG, "Updating batch of ${batch.size} audio items")
+                                    dao?.update(batch)
+                                }
                             }
                         }
                     }
-                }
 
-                if (insertBatch.isNotEmpty()) {
-                    Log.d(TAG, "Inserting final batch of ${insertBatch.size} audio items")
-                    dao?.insertBatch(insertBatch)
-                }
-                if (updateBatch.isNotEmpty()) {
-                    Log.d(TAG, "Updating final batch of ${updateBatch.size} audio items")
-                    dao?.update(updateBatch)
+                    if (insertBatch.isNotEmpty()) {
+                        Log.d(TAG, "Inserting final batch of ${insertBatch.size} audio items")
+                        dao?.insertBatch(insertBatch)
+                    }
+                    if (updateBatch.isNotEmpty()) {
+                        Log.d(TAG, "Updating final batch of ${updateBatch.size} audio items")
+                        dao?.update(updateBatch)
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Consumer job failed, cancelling dbChannel to prevent producer deadlocks", e)
+                    dbChannel.cancel(CancellationException("Consumer job died", e))
+                    throw e
                 }
             }
 
@@ -266,7 +273,6 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                                 return@launch
                             }
 
-
                             val storedId = pathToStoredId[uriKey]
                             val stored = indexedMap[uriKey]
                             val newIndexEntry = IndexedFile(audio.dateModified, audio.size)
@@ -285,7 +291,7 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
 
                             val done = processedCount.incrementAndGet()
                             if (done % LoaderNotification.NOTIFICATION_UPDATE_INTERVAL == 0) {
-                                notification.updateProgress(done)
+                                notification.updateProgress(notificationGeneration, done)
                             }
                         } catch (e: CancellationException) {
                             Log.d(TAG, "Processing canceled for: ${safFile.name}")
@@ -310,7 +316,7 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             // a final progress update would cause a split-second notification flash
             // (indeterminate → 100% → dismissed) that looks broken to the user.
             if (pendingJobs.isNotEmpty()) {
-                notification.updateProgress(allSAFFiles.size)
+                notification.updateProgress(notificationGeneration, allSAFFiles.size, force = true)
             }
 
             // Post-processing: fill in real filesystem paths for any audio rows that are missing one.
@@ -330,11 +336,33 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "Error during audio file processing", e)
         } finally {
-            // Force-dismiss so any notification this scan posted is always cleaned up,
-            // even if a parallel ghost scan somehow slipped through the lock above and
-            // already bumped the generation counter past ours.
-            notification.dismissForce()
-            isScanRunning.set(false)
+            // Generation-aware dismissal: if a newer scan already bumped the
+            // generation, dismiss() quietly does nothing and returns false, so the
+            // newer scan's notification stays untouched. Force-dismissing here was
+            // exactly what made the notification flicker whenever a refresh
+            // overlapped a running scan.
+            //
+            // Crucially, `owned` also gates the isScanRunning reset below. A scan
+            // that was superseded (canceled) by a newer one must NEVER flip
+            // isScanRunning back to false — doing so unconditionally let a stale,
+            // already-canceled coroutine's cleanup race with the genuinely active
+            // scan, letting a stray third scan sneak in, bump the notification
+            // generation again, and then itself get canceled with nothing left to
+            // ever call dismiss() on the now-current generation. That left the
+            // "Scanning Library" notification stuck forever — most noticeable on
+            // fast scans (e.g. no new songs found) where this race window is most
+            // likely to be hit.
+            val owned = if (notificationGeneration != -1) {
+                notification.dismiss(notificationGeneration)
+            } else {
+                // begin() itself failed (e.g. POST_NOTIFICATIONS was revoked) —
+                // make sure nothing stale is left showing.
+                notification.dismissForce()
+                true
+            }
+            if (owned) {
+                isScanRunning.set(false)
+            }
         }
     }
 
@@ -554,7 +582,7 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
      */
     suspend fun cancelAndRestartScan() {
         Log.d(TAG, "cancelAndRestartScan: tearing down current scan")
-        cancelCurrentScan()
+        cancelCurrentScan(dismissNotification = false)
         Log.d(TAG, "cancelAndRestartScan: starting fresh scan")
         processAudioFiles()
     }
@@ -562,8 +590,15 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
     /**
      * Cancels the currently running scan and resets all state so a new one can
      * start cleanly. Unlike [cleanup], this leaves the loader fully operational.
+     *
+     * @param dismissNotification Whether to clear the scan notification right away.
+     *                            Pass false when a fresh scan is about to post its own
+     *                            notification immediately — invalidating instead of
+     *                            dismissing means the old scan can no longer cancel the
+     *                            new one, and the new scan's begin() simply replaces the
+     *                            old notification in place with no visible blink.
      */
-    private fun cancelCurrentScan() {
+    private fun cancelCurrentScan(dismissNotification: Boolean = true) {
         Log.d(TAG, "Canceling scanScope (all child coroutines will be cancelled automatically)")
         scanScope.coroutineContext[Job]?.cancel()
         scanScope = newScanScope()
@@ -572,7 +607,11 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
 
         isScanRunning.set(false)
 
-        notification.dismissForce()
+        if (dismissNotification) {
+            notification.dismissForce()
+        } else {
+            notification.invalidate()
+        }
     }
 
     /**

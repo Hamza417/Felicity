@@ -103,9 +103,6 @@ abstract class BasePlayerFragment : MediaFragment() {
     /** The text view showing the current queue position (e.g. "3/12"). */
     protected abstract val count: TextView
 
-    /** The button that opens the playing queue panel. */
-    protected abstract val queue: View
-
     /** The button that opens the search panel. */
     protected abstract val search: View
 
@@ -276,12 +273,16 @@ abstract class BasePlayerFragment : MediaFragment() {
             }
         })
 
-        queue.setOnClickListener {
-            openFragment(PlayingQueue.newInstance(), PlayingQueue.TAG)
+        count.setOnClickListener {
+            openFragment(PlayingQueue.newInstance(fromPlayer = true), PlayingQueue.TAG)
         }
 
-        count.setOnClickListener {
-            queue.callOnClick()
+        artist.setOnClickListener {
+            openArtistPage(MediaPlaybackManager.getCurrentSong() ?: return@setOnClickListener)
+        }
+
+        album.setOnClickListener {
+            openAlbumPage(MediaPlaybackManager.getCurrentSong() ?: return@setOnClickListener)
         }
 
         search.setOnClickListener {
@@ -502,6 +503,12 @@ abstract class BasePlayerFragment : MediaFragment() {
         updateFavoriteIcon(audio)
         seekbar.optics = UserInterfacePreferences.getWaveformOptics()
 
+        seekbar.layoutMode = if (UserInterfacePreferences.isWaveformFullMode()) {
+            WaveformSeekbar.LAYOUT_MODE_FULL
+        } else {
+            WaveformSeekbar.LAYOUT_MODE_SCROLLING
+        }
+
         // Defer waveform decoding until ExoPlayer is actually playing to avoid
         // Amplituda and ExoPlayer fighting over the same file I/O resources.
         loadWaveformWhenReady(audio)
@@ -528,6 +535,8 @@ abstract class BasePlayerFragment : MediaFragment() {
                 repeat.alpha = 0.4f
             }
         }
+
+        pager.infiniteScrollEnabled = repeatMode == MediaConstants.REPEAT_QUEUE
     }
 
     /**
@@ -693,6 +702,13 @@ abstract class BasePlayerFragment : MediaFragment() {
             }
             UserInterfacePreferences.WAVEFORM_OPTICS -> {
                 seekbar.optics = UserInterfacePreferences.getWaveformOptics()
+            }
+            UserInterfacePreferences.WAVEFORM_FULL_MODE -> {
+                seekbar.layoutMode = if (UserInterfacePreferences.isWaveformFullMode()) {
+                    WaveformSeekbar.LAYOUT_MODE_FULL
+                } else {
+                    WaveformSeekbar.LAYOUT_MODE_SCROLLING
+                }
             }
         }
     }

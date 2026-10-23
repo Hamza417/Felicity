@@ -29,6 +29,7 @@ class WaveformMenu : MediaBottomDialogFragment() {
         binding.stackMediaControlsSwitch.isChecked = UserInterfacePreferences.isStackMediaControls()
         binding.opticsSeekbar.setProgress(UserInterfacePreferences.getWaveformOptics() * WAVEFORM_COMPENSATION)
         setTimerPosition()
+        setWaveformMode()
 
         binding.stackMediaControlsSwitch.setOnCheckedChangeListener { _, isChecked ->
             UserInterfacePreferences.setStackMediaControls(isChecked)
@@ -87,6 +88,26 @@ class WaveformMenu : MediaBottomDialogFragment() {
                     1 -> UserInterfacePreferences.setTimerPosition(UserInterfacePreferences.TIMER_POSITION_CENTER)
                     2 -> UserInterfacePreferences.setTimerPosition(UserInterfacePreferences.TIMER_POSITION_BOTTOM)
                 }
+            }
+        }
+    }
+
+    private fun setWaveformMode() {
+        binding.waveformModeButtonGroup.setButtons(
+                listOf(
+                        Button(iconResId = R.drawable.ic_close_fullscreen),
+                        Button(iconResId = R.drawable.ic_swipe)
+                )
+        )
+
+        binding.waveformModeButtonGroup.setSelectedIndex(
+                if (UserInterfacePreferences.isWaveformFullMode()) 0 else 1
+        )
+
+        binding.waveformModeButtonGroup.setOnButtonSelectedListener {
+            when (it) {
+                0 -> UserInterfacePreferences.setWaveformFullMode(true)
+                1 -> UserInterfacePreferences.setWaveformFullMode(false)
             }
         }
     }

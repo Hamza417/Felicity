@@ -87,7 +87,7 @@ class ArtFlowHome : MediaFragment() {
         binding.sideBar.setItemStyle(backgroundColor = ThemeManager.theme.viewGroupTheme.backgroundColor)
         binding.sideBar.setItems(listOf(
                 FelicitySideBar.SidebarItem(R.drawable.ic_song),
-                FelicitySideBar.SidebarItem(R.drawable.ic_people),
+                FelicitySideBar.SidebarItem(R.drawable.ic_artist),
                 FelicitySideBar.SidebarItem(R.drawable.ic_album),
                 FelicitySideBar.SidebarItem(R.drawable.ic_menu),
                 FelicitySideBar.SidebarItem(R.drawable.ic_search),

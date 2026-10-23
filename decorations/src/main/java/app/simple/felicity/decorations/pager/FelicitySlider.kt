@@ -79,11 +79,11 @@ class FelicitySlider @JvmOverloads constructor(
         defStyleAttr: Int = 0,
 ) : FrameLayout(context, attrs, defStyleAttr) {
 
-    // ── Sub-views ────────────────────────────────────────────────────────────────
+    // == Sub-views ================================================================
     val pager: FelicityPager = FelicityPager(context)
     val dots: DotsIndicatorView = DotsIndicatorView(context)
 
-    // ── Configurable properties ──────────────────────────────────────────────────
+    // == Configurable properties ==================================================
 
     /**
      * Interval in milliseconds between automatic page advances.
@@ -251,9 +251,20 @@ class FelicitySlider @JvmOverloads constructor(
             pager.carouselSideScaleDp = v
         }
 
+    /**
+     * Whether the pager loops infinitely in both directions (`… 8 → 9 → 10 → 0 → 1 …`),
+     * e.g. when "repeat all" is on. When `false` (the default) the pager is bounded at
+     * both ends. Delegates to [FelicityPager.infiniteScrollEnabled].
+     */
+    var infiniteScrollEnabled: Boolean
+        get() = pager.infiniteScrollEnabled
+        set(v) {
+            pager.infiniteScrollEnabled = v
+        }
+
     private var isRunning = false
 
-    // ── Initialisation ───────────────────────────────────────────────────────────
+    // == Initialisation ===========================================================
 
     init {
         // Read XML attributes if present
@@ -318,7 +329,7 @@ class FelicitySlider @JvmOverloads constructor(
         })
     }
 
-    // ── Public API ───────────────────────────────────────────────────────────────
+    // == Public API ===============================================================
 
     /**
      * Sets the [FelicityPager.PageAdapter] on the underlying pager and updates the dot count.
@@ -365,7 +376,7 @@ class FelicitySlider @JvmOverloads constructor(
         pager.setCurrentItem(item, smoothScroll)
     }
 
-    // ── Lifecycle ────────────────────────────────────────────────────────────────
+    // == Lifecycle ================================================================
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
@@ -377,7 +388,7 @@ class FelicitySlider @JvmOverloads constructor(
         stop()
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────────
+    // == Helpers ======
 
     private fun restartAutoSlide() {
         pager.stopAutoSlide()

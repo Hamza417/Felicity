@@ -55,7 +55,7 @@ class MilkdropGLRenderer : GLSurfaceView.Renderer, VisualizerProcessor.PcmWindow
      */
     private var lastPresetContent: String? = null
 
-    // ── VisualizerProcessor.PcmWindowCallback ─────────────────────────────────
+    // == VisualizerProcessor.PcmWindowCallback =================================
 
     /**
      * Receives a raw mono PCM window from the audio thread and feeds it to projectM.
@@ -73,7 +73,7 @@ class MilkdropGLRenderer : GLSurfaceView.Renderer, VisualizerProcessor.PcmWindow
         bridge.addPcmData(samples, count, isStereo = false)
     }
 
-    // ── GLSurfaceView.Renderer ────────────────────────────────────────────────
+    // == GLSurfaceView.Renderer ================================================
 
     /**
      * Called by the GL thread when a fresh EGL context is created.
@@ -140,7 +140,7 @@ class MilkdropGLRenderer : GLSurfaceView.Renderer, VisualizerProcessor.PcmWindow
         bridge.renderFrame()
     }
 
-    // ── Cleanup ────────────────────────────────────────────────────────────────
+    // == Cleanup ================================================================
 
     /**
      * Loads a Milkdrop preset from raw text content.

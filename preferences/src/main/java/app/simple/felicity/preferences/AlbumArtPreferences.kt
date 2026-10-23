@@ -10,6 +10,12 @@ object AlbumArtPreferences {
     private const val ALBUM_ART_CROP = "album_art_crop"
     private const val ALBUM_ART_GREYSCALE = "album_art_greyscale"
 
+    const val ALBUM_ART_PALETTE_STYLE = "album_art_palette_style"
+
+    const val PALETTE_STYLE_PASTEL = 0
+    const val PALETTE_STYLE_CHIC = 1
+    const val PALETTE_STYLE_RETRO = 2
+
     fun isShadowEnabled(): Boolean {
         return SharedPreferences.getSharedPreferences().getBoolean(ALBUM_ART_SHADOW, true)
     }
@@ -47,6 +53,16 @@ object AlbumArtPreferences {
     fun setGreyscaleEnabled(enabled: Boolean) {
         SharedPreferences.getSharedPreferences().edit {
             putBoolean(ALBUM_ART_GREYSCALE, enabled)
+        }
+    }
+
+    fun getPaletteStyle(): Int {
+        return SharedPreferences.getSharedPreferences().getInt(ALBUM_ART_PALETTE_STYLE, PALETTE_STYLE_CHIC)
+    }
+
+    fun setPaletteStyle(style: Int) {
+        SharedPreferences.getSharedPreferences().edit {
+            putInt(ALBUM_ART_PALETTE_STYLE, style)
         }
     }
 }

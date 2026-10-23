@@ -36,6 +36,7 @@ import app.simple.felicity.databinding.DialogBookmarksListBinding
 import app.simple.felicity.databinding.DialogDeleteSongBinding
 import app.simple.felicity.databinding.DialogEditPlaylistBinding
 import app.simple.felicity.databinding.DialogPlaylistMenuBinding
+import app.simple.felicity.databinding.DialogQueueReplaceConfirmationBinding
 import app.simple.felicity.databinding.DialogSongMenuBinding
 import app.simple.felicity.databinding.DialogSureBinding
 import app.simple.felicity.decorations.highlight.HighlightTextView
@@ -51,6 +52,7 @@ import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.engine.managers.PlaybackStateManager
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
 import app.simple.felicity.interfaces.MiniPlayerPolicy
+import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.covers.ArtistCover
@@ -63,6 +65,8 @@ import app.simple.felicity.repository.models.AudioBookmark
 import app.simple.felicity.repository.models.PlaylistWithSongs
 import app.simple.felicity.repository.repositories.LrcRepository
 import app.simple.felicity.repository.shuffle.Shuffle.smartShuffle
+import app.simple.felicity.repository.sort.PageSort.sortedForAlbumPage
+import app.simple.felicity.repository.sort.PageSort.sortedForArtistPage
 import app.simple.felicity.repository.utils.AudioUtils.getProperAlbum
 import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
 import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
@@ -84,8 +88,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
+import kotlin.time.Duration.Companion.milliseconds
 
-open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
+open class MediaFragment : KeyboardScopedFragment(), MiniPlayerPolicy {
 
     private var shouldShowMiniPlayer = true
     private var lastSavedSeekPosition = 0L
@@ -241,7 +246,36 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 updateQueueSilently(songs, position)
             }
             else -> {
-                // Case 3: Different queue and different song — default behavior
+                // Case 3: Different queue and different song — default behavior.
+                // If the user has opted into queue-replacement confirmation and a different,
+                // non-empty queue is already loaded, ask before silently destroying it.
+                val hasExistingQueue = MediaPlaybackManager.getSongs().isNotEmpty()
+                if (LibraryPreferences.isConfirmQueueReplacementEnabled() && hasExistingQueue) {
+                    confirmQueueReplacement(
+                            onReplace = {
+                                MediaPlaybackManager.setSongs(songs, position, autoPlay = true)
+                                createSongHistoryDatabase(songs)
+                                showMiniPlayer()
+                            },
+                            insertAndPlay = {
+                                MediaPlaybackManager.insertAndPlay(songs[position])
+                                showMiniPlayer()
+                            },
+                            onMoveToEmptyQueue = {
+                                moveToEmptyQueueAndPlay(songs, position)
+                            },
+                            onPlayNext = {
+                                MediaPlaybackManager.playNext(songs[position])
+                                showMiniPlayer()
+                            },
+                            onAddToQueue = {
+                                MediaPlaybackManager.addToQueue(songs[position])
+                                showMiniPlayer()
+                            }
+                    )
+                    return
+                }
+
                 MediaPlaybackManager.setSongs(songs, position, autoPlay = true)
                 createSongHistoryDatabase(songs)
             }
@@ -253,6 +287,107 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
          * is visible when navigating to the player from a different screen (e.g. from the playing queue or from a notification)
          */
         showMiniPlayer()
+    }
+
+    /**
+     * Shows a confirmation dialog asking the user whether an already-loaded, different queue
+     * should be replaced by the new selection, or whether the new selection should instead be
+     * moved into an empty queue slot so the existing queue is preserved untouched.
+     *
+     * Only shown when [LibraryPreferences.isConfirmQueueReplacementEnabled] is turned on;
+     * otherwise the queue is always replaced, exactly like before this feature existed.
+     *
+     * @param onReplace         Invoked when the user chooses to overwrite the current queue.
+     * @param onMoveToEmptyQueue Invoked when the user chooses to preserve the current queue and
+     *                           play the new selection from an empty queue slot instead.
+     */
+    private fun confirmQueueReplacement(
+            onReplace: () -> Unit,
+            onMoveToEmptyQueue: () -> Unit,
+            onPlayNext: () -> Unit,
+            onAddToQueue: () -> Unit,
+            insertAndPlay: () -> Unit
+    ) {
+        SimpleDialog.Builder(
+                container = requireContainerView(),
+                inflateBinding = DialogQueueReplaceConfirmationBinding::inflate)
+            .onViewCreated { _ ->
+                hideMiniPlayer()
+            }
+            .onDialogInflated { binding, dismiss, _ ->
+                binding.moveToEmptyQueue.setOnClickListener {
+                    onMoveToEmptyQueue()
+                    dismiss()
+                }
+
+                binding.replace.setOnClickListener {
+                    onReplace()
+                    dismiss()
+                }
+
+                binding.playNext.setOnClickListener {
+                    onPlayNext()
+                    dismiss()
+                }
+
+                binding.addToQueue.setOnClickListener {
+                    onAddToQueue()
+                    dismiss()
+                }
+
+                binding.insertAndPlay.setOnClickListener {
+                    insertAndPlay()
+                    dismiss()
+                }
+            }
+            .onDismiss {
+                showMiniPlayer()
+            }
+            .build()
+            .show()
+    }
+
+    /**
+     * Archives the currently active queue into its own saved slot (so it survives untouched),
+     * finds the first empty queue slot, switches the active queue to it, and starts playing
+     * [songs] there. If every slot already has songs archived, falls back to replacing the
+     * current queue and warns the user.
+     *
+     * @param songs    The new songs to play (e.g. tapped from a Music Folder).
+     * @param position The position within [songs] that was tapped.
+     */
+    private fun moveToEmptyQueueAndPlay(songs: List<Audio>, position: Int) {
+        // Capture main-thread-only state (media controller reads) before hopping to IO.
+        val currentQueueId = MediaPlaybackManager.getActiveQueueId()
+        val currentSongs = MediaPlaybackManager.getSongs()
+        val currentPosition = MediaPlaybackManager.getCurrentSongPosition()
+        val currentSeek = MediaPlaybackManager.getSeekPosition()
+
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            val db = AudioDatabase.getInstance(requireContext())
+
+            if (currentSongs.isNotEmpty()) {
+                PlaybackStateManager.saveQueueToSlot(
+                        db, currentQueueId, currentSongs.map { it.hash }, currentPosition, currentSeek)
+            }
+
+            val emptySlot = PlaybackStateManager.findFirstEmptySlot(db, excludeQueueId = currentQueueId)
+
+            withContext(Dispatchers.Main) {
+                if (emptySlot != null) {
+                    MediaPlaybackManager.setActiveQueueId(emptySlot)
+                    MediaPlaybackManager.setSongs(songs, position, autoPlay = true)
+                    createSongHistoryDatabase(songs)
+                    showWarning(getString(R.string.moved_to_empty_queue, emptySlot + 1))
+                } else {
+                    // Every slot is already occupied — nothing left to do but replace, same as before.
+                    MediaPlaybackManager.setSongs(songs, position, autoPlay = true)
+                    createSongHistoryDatabase(songs)
+                    showWarning(getString(R.string.no_empty_queue_available))
+                }
+                showMiniPlayer()
+            }
+        }
     }
 
     /**
@@ -355,7 +490,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         // show mini player briefly then hide it again
         showMiniPlayer()
         viewLifecycleOwner.lifecycleScope.launch {
-            delay(2000) // Show for 2 seconds
+            delay(2000.milliseconds) // Show for 2 seconds
 
             if (wantsMiniPlayerVisible.not()) {
                 hideMiniPlayer()
@@ -387,8 +522,8 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
      */
     protected fun NestedScrollView.requireAttachedMiniPlayer() {
         viewLifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
-            override fun onCreate(owner: LifecycleOwner) {
-                super.onCreate(owner)
+            override fun onStart(owner: LifecycleOwner) {
+                super.onStart(owner)
                 miniPlayerCallbacks?.onAttachMiniPlayerScrollView(this@requireAttachedMiniPlayer)
             }
 
@@ -500,6 +635,9 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
 
                 if (audio.artist.isNullOrBlank()) binding.goToArtist.gone(animate = false)
                 if (audio.album.isNullOrBlank()) binding.goToAlbum.gone(animate = false)
+                if (audio.artist.isNullOrBlank() && audio.album.isNullOrBlank()) {
+                    binding.pageDivider.gone(animate = false)
+                }
                 if (audio.isFavorite) binding.addToFavorites.text = getString(R.string.remove_from_favorites)
                 if (audio.isAlwaysSkip) binding.alwaysSkip.text = getString(R.string.never_skip)
 
@@ -564,27 +702,12 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 }
 
                 binding.goToArtist.setOnClickListener {
-                    val artistName = audio.artist ?: return@setOnClickListener
-                    val artist = Artist(
-                            id = artistName.hashCode().toLong(),
-                            name = artistName,
-                            albumCount = 0,
-                            trackCount = 0
-                    )
-                    openFragment(ArtistPage.newInstance(artist), ArtistPage.TAG)
+                    openArtistPage(audio)
                     dismissImmediately()
                 }
 
                 binding.goToAlbum.setOnClickListener {
-                    val albumName = audio.album ?: return@setOnClickListener
-                    val artistName = audio.artist ?: ""
-                    val album = Album(
-                            id = audio.albumId,
-                            name = albumName,
-                            artist = artistName,
-                            artistId = artistName.hashCode().toLong()
-                    )
-                    openFragment(AlbumPage.newInstance(album), AlbumPage.TAG)
+                    openAlbumPage(audio)
                     dismissImmediately()
                 }
 
@@ -593,7 +716,17 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                         val newFav = !audio.isFavorite
                         AudioDatabase.getInstance(requireContext()).audioDao()?.setFavorite(audio.id, newFav)
                         audio.isFavorite = newFav
-                        if (MediaPlaybackManager.getCurrentSong()?.id == audio.id) {
+
+                        // `audio` here may be a completely different Audio instance than the one
+                        // MediaPlaybackManager actually holds as the "now playing" song (e.g. this
+                        // menu was opened from a Songs/Album/Artist list, each backed by its own
+                        // DB query), even though they share the same id. Mutating `audio` alone
+                        // would leave the real current-song object's isFavorite stale, so the
+                        // player screen and notification would never see the change. Update the
+                        // actual instance too, if it's the one currently playing.
+                        val currentSong = MediaPlaybackManager.getCurrentSong()
+                        if (currentSong?.id == audio.id) {
+                            currentSong.isFavorite = newFav
                             withContext(Dispatchers.Main) { MediaPlaybackManager.notifyCurrentSongUpdated() }
                         }
                     }
@@ -604,9 +737,16 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                     viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                         val newSkip = !audio.isAlwaysSkip
                         AudioDatabase.getInstance(requireContext()).audioDao()?.setAlwaysSkip(audio.id, newSkip)
-                        audio.setAlwaysSkip(newSkip)
-                        if (newSkip && MediaPlaybackManager.getCurrentSong()?.id == audio.id) {
-                            withContext(Dispatchers.Main) { MediaPlaybackManager.next() }
+                        audio.isAlwaysSkip = newSkip
+                        // Same instance-mismatch concern as favorites above: `audio` may not be the
+                        // same object MediaPlaybackManager holds in its queue, so mirror the flag
+                        // onto the real current-song instance before deciding whether to skip.
+                        val currentSong = MediaPlaybackManager.getCurrentSong()
+                        if (currentSong?.id == audio.id) {
+                            currentSong.isAlwaysSkip = newSkip
+                            if (newSkip) {
+                                withContext(Dispatchers.Main) { MediaPlaybackManager.next() }
+                            }
                         }
                     }
                     dismiss()
@@ -732,6 +872,8 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
                 if (MediaPlaybackManager.getCurrentSong()?.id == audio.id) {
                     MediaPlaybackManager.duck()
                 }
+
+                binding.deleteLyricsCheckbox.isChecked = true // By default, delete lyrics files too
 
                 val title = audio.getProperTitle()
                 val fullText = getString(R.string.delete_audio_summary, title)
@@ -1056,7 +1198,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
 
             binding.addAllToQueue.setOnClickListener {
                 viewLifecycleOwner.lifecycleScope.launch {
-                    val songs = fetchAudiosByPaths(album.songPaths)
+                    val songs = fetchAudiosByPaths(album.songPaths).sortedForAlbumPage()
                     songs.forEach { MediaPlaybackManager.addToQueue(it) }
                 }
                 dismiss()
@@ -1152,7 +1294,7 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
 
             binding.addAllToQueue.setOnClickListener {
                 viewLifecycleOwner.lifecycleScope.launch {
-                    val songs = fetchAudiosByPaths(artist.songPaths)
+                    val songs = fetchAudiosByPaths(artist.songPaths).sortedForArtistPage()
                     songs.forEach { MediaPlaybackManager.addToQueue(it) }
                 }
                 dismiss()
@@ -1247,6 +1389,29 @@ open class MediaFragment : ScopedFragment(), MiniPlayerPolicy {
         } else {
 
         }
+    }
+
+    protected fun openArtistPage(audio: Audio) {
+        val artistName = audio.artist ?: return
+        val artist = Artist(
+                id = artistName.hashCode().toLong(),
+                name = artistName,
+                albumCount = 0,
+                trackCount = 0
+        )
+        openFragment(ArtistPage.newInstance(artist), ArtistPage.TAG)
+    }
+
+    protected fun openAlbumPage(audio: Audio) {
+        val albumName = audio.album ?: return
+        val artistName = audio.artist ?: ""
+        val album = Album(
+                id = audio.albumId,
+                name = albumName,
+                artist = artistName,
+                artistId = artistName.hashCode().toLong()
+        )
+        openFragment(AlbumPage.newInstance(album), AlbumPage.TAG)
     }
 
     protected open fun getShuffleButton(): HighlightTextView? = null

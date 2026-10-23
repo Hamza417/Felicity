@@ -17,6 +17,7 @@ object UserInterfacePreferences {
     const val LIKE_ICON_INSTEAD_OF_HEART = "like_icon_instead_of_heart"
 
     const val MARGIN_AROUND_MINIPLAYER = "margin_around_miniplayer"
+    const val MINIPLAYER_WIDTH = "miniplayer_width"
     const val HOME_INTERFACE = "home_interface_"
     const val PLAYER_INTERFACE = "player_interface_"
 
@@ -24,6 +25,13 @@ object UserInterfacePreferences {
     const val STACK_MEDIA_CONTROLS = "stack_media_controls"
     const val TIMER_POSITION = "timer_position"
     const val WAVEFORM_OPTICS = "waveform_optics"
+
+    /**
+     * Preference key that toggles the waveform seekbar's layout: a horizontally scrolling
+     * playhead-centered view (default), or the entire track laid out across the available
+     * width at once, acting like a conventional non-scrolling seekbar.
+     */
+    const val WAVEFORM_FULL_MODE = "waveform_full_mode"
 
     /**
      * Preference key that decides whether the song list leads the detail pages
@@ -44,6 +52,10 @@ object UserInterfacePreferences {
     const val TIMER_POSITION_CENTER = 1
     const val TIMER_POSITION_BOTTOM = 2
 
+    const val MAX_LANDSCAPE_MINIPLAYER_WIDTH = 1.0f
+    const val MIN_LANDSCAPE_MINIPLAYER_WIDTH = 0f
+    const val DEFAULT_LANDSCAPE_MINIPLAYER_WIDTH = 0.8f
+
     fun setLikeIconInsteadOfThumb(value: Boolean) {
         getSharedPreferences().edit { putBoolean(LIKE_ICON_INSTEAD_OF_HEART, value) }
     }
@@ -58,6 +70,14 @@ object UserInterfacePreferences {
 
     fun isMarginAroundMiniplayer(): Boolean {
         return getSharedPreferences().getBoolean(MARGIN_AROUND_MINIPLAYER, true)
+    }
+
+    fun setMiniplayerWidth(value: Float) {
+        getSharedPreferences().edit { putFloat(MINIPLAYER_WIDTH, value) }
+    }
+
+    fun getMiniplayerWidth(): Float {
+        return getSharedPreferences().getFloat(MINIPLAYER_WIDTH, DEFAULT_LANDSCAPE_MINIPLAYER_WIDTH)
     }
 
     fun getHomeInterface(): Int {
@@ -142,6 +162,31 @@ object UserInterfacePreferences {
         getSharedPreferences()
             .edit {
                 putFloat(WAVEFORM_OPTICS, value)
+            }
+    }
+
+    /**
+     * Returns whether the waveform seekbar should display the entire track at once
+     * (full-track layout) instead of the default horizontally scrolling, playhead-centered
+     * layout. Defaults to `false`.
+     *
+     * Use with [app.simple.felicity.decorations.seekbars.WaveformSeekbar.LAYOUT_MODE_FULL] /
+     * [app.simple.felicity.decorations.seekbars.WaveformSeekbar.LAYOUT_MODE_SCROLLING].
+     */
+    fun isWaveformFullMode(): Boolean {
+        return getSharedPreferences()
+            .getBoolean(WAVEFORM_FULL_MODE, false)
+    }
+
+    /**
+     * Persists the waveform seekbar's layout mode toggle.
+     *
+     * @param value `true` to show the entire track at once; `false` for the scrolling layout.
+     */
+    fun setWaveformFullMode(value: Boolean) {
+        getSharedPreferences()
+            .edit {
+                putBoolean(WAVEFORM_FULL_MODE, value)
             }
     }
 

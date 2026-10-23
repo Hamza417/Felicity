@@ -175,7 +175,7 @@ public class WordLrcParser implements ILyricsParser {
         // If there are no inline timestamps in the content this line is regular LRC.
         // Build a plain LrcEntry so we don't accidentally lose lines from mixed files.
         if (!INLINE_TIME_TAG.matcher(content).find()) {
-            String plainText = content.trim();
+            String plainText = content.replaceAll("<\\d{1,2}:\\d{2}\\.\\d{2,3}>", "").trim();
             Matcher timeMatcher = OUTER_TIME_TAG.matcher(timeTags);
             while (timeMatcher.find()) {
                 long ms = parseTime(timeMatcher);
@@ -192,7 +192,7 @@ public class WordLrcParser implements ILyricsParser {
         // SpannableString align exactly with what was parsed from each word.
         StringBuilder fullText = new StringBuilder();
         for (WordEntry word : words) {
-            fullText.append(word.getText());
+            fullText.append(word.getText().replaceAll("<\\d{1,2}:\\d{2}\\.\\d{2,3}>", ""));
         }
         String plainText = fullText.toString();
         
@@ -253,6 +253,20 @@ public class WordLrcParser implements ILyricsParser {
             long startMs = matchMs.get(i);
             long endMs = matchMs.get(i + 1);
             words.add(new WordEntry(startMs, endMs, wordText));
+        }
+        
+        // Handle the last word if there is text after the final tag
+        if (!matchMs.isEmpty()) {
+            int lastIndex = matchMs.size() - 1;
+            int textStart = matchEnds.get(lastIndex);
+            if (textStart < content.length()) {
+                String wordText = content.substring(textStart);
+                if (!wordText.isEmpty()) {
+                    long startMs = matchMs.get(lastIndex);
+                    // We don't have an explicit end time for the last word, so we give it a reasonable default duration
+                    words.add(new WordEntry(startMs, startMs + 500, wordText));
+                }
+            }
         }
         
         return words;

@@ -6,7 +6,6 @@ import android.content.res.ColorStateList
 import android.content.res.TypedArray
 import android.graphics.Color
 import android.graphics.text.LineBreaker
-import android.os.Build
 import android.text.Layout
 import android.util.AttributeSet
 import androidx.appcompat.widget.AppCompatTextView
@@ -71,29 +70,12 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
         setTextColor(false)
         setDrawableTint(false)
 
-        //        if (DevelopmentPreferences.get(DevelopmentPreferences.preferencesIndicator) && isDrawableHidden) {
-        //            setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0)
-        //        } else {
-        //            setDrawableTint(false)
-        //        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            if (isSingleLine) {
-                if (BehaviourPreferences.isMarqueeOn()) {
-                    isSelected = true
-                } else {
-                    isSingleLine = false
-                    ellipsize = null
-                }
-            }
-        } else {
-            if (lineCount <= 1) {
-                if (BehaviourPreferences.isMarqueeOn()) {
-                    isSelected = true
-                } else {
-                    isSingleLine = false
-                    ellipsize = null
-                }
+        if (isSingleLine) {
+            if (BehaviourPreferences.isMarqueeOn()) {
+                isSelected = true
+            } else {
+                isSingleLine = false
+                ellipsize = null
             }
         }
     }
@@ -132,6 +114,7 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
                 QUATERNARY -> this.animateColorChange(ThemeManager.theme.textViewTheme.quaternaryTextColor)
                 ACCENT -> this.animateColorChange(ThemeManager.accent.primaryAccentColor)
                 WHITE -> this.animateColorChange(Color.WHITE)
+                SECONDARY_WHITE -> this.animateColorChange(Color.LTGRAY)
             }
         } else {
             when (colorMode) {
@@ -142,6 +125,7 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
                 QUATERNARY -> setTextColor(ThemeManager.theme.textViewTheme.quaternaryTextColor)
                 ACCENT -> setTextColor(ThemeManager.accent.primaryAccentColor)
                 WHITE -> setTextColor(ColorStateList.valueOf(Color.WHITE))
+                SECONDARY_WHITE -> setTextColor(ColorStateList.valueOf(Color.LTGRAY))
             }
         }
     }
@@ -264,6 +248,7 @@ open class TypeFaceTextView : AppCompatTextView, ThemeChangedListener, SharedPre
         const val QUATERNARY = 4
         const val ACCENT = 5
         const val WHITE = 6
+        const val SECONDARY_WHITE = 7
 
         const val DRAWABLE_ACCENT = 0
         const val DRAWABLE_REGULAR = 1

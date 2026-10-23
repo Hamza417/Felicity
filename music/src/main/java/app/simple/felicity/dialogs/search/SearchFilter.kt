@@ -11,7 +11,7 @@ import app.simple.felicity.preferences.SearchPreferences
 
 /**
  * Bottom-sheet dialog that lets the user toggle which result categories
- * (Songs, Albums, Artists, Genres) are included in the Search panel output.
+ * (Songs, Albums, Artists, Genres, Composers, Years) are included in the Search panel output.
  * Preference changes are persisted immediately and picked up by [SearchViewModel]
  * through the shared-preference change listener.
  *
@@ -40,6 +40,8 @@ class SearchFilter : ScopedBottomSheetFragment() {
         binding.albums.isChecked = SearchPreferences.isAlbumsEnabled()
         binding.artists.isChecked = SearchPreferences.isArtistsEnabled()
         binding.genres.isChecked = SearchPreferences.isGenresEnabled()
+        binding.composers.isChecked = SearchPreferences.isComposersEnabled()
+        binding.years.isChecked = SearchPreferences.isYearsEnabled()
     }
 
     private fun attachChipListeners() {
@@ -54,6 +56,12 @@ class SearchFilter : ScopedBottomSheetFragment() {
         }
         binding.genres.setOnCheckedChangeListener { _, isChecked ->
             SearchPreferences.setGenresEnabled(isChecked)
+        }
+        binding.composers.setOnCheckedChangeListener { _, isChecked ->
+            SearchPreferences.setComposersEnabled(isChecked)
+        }
+        binding.years.setOnCheckedChangeListener { _, isChecked ->
+            SearchPreferences.setYearsEnabled(isChecked)
         }
     }
 

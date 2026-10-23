@@ -14,6 +14,7 @@ future.
 ## Stats
 
 [![](https://img.shields.io/github/downloads/Hamza417/Felicity/total?color=blue&label=Total%20Downloads%20(GitHub)&logo=github&logoColor=white)](https://tooomm.github.io/github-release-stats/?username=Hamza417&repository=Felicity)
+![](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgithub.com%2Fkitswas%2Ffdroid-metrics-dashboard%2Fraw%2Frefs%2Fheads%2Fmain%2Fprocessed%2Ftotal%2Fapp.simple.felicity.json&query=%24.total_downloads&logo=fdroid&label=Total%20Downloads%20(F-Droid))
 [![](https://img.shields.io/endpoint?url=https://ghloc.vercel.app/api/Hamza417/Felicity/badge?style=flat&logo=kotlin&logoColor=white&label=Total%20Lines&color=indianred)](https://ghloc.vercel.app/Hamza417/Felicity?branch=master)
 [![Release](https://img.shields.io/github/v/release/Hamza417/Felicity?color=52be80&label=Current%20Release)](https://github.com/Hamza417/Felicity/releases)
 ![](https://img.shields.io/github/languages/count/Hamza417/Felicity?color=white&label=Languages)

@@ -68,7 +68,7 @@ class SimpleBaseKnobDrawable(
      */
     private var glowEnabled: Boolean = false
 
-    // ── Paints ──────────────────────────────────────────────────────────────────
+    // == Paints ======
 
     private val bodyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
@@ -95,7 +95,7 @@ class SimpleBaseKnobDrawable(
         style = Paint.Style.FILL
     }
 
-    // ── Animation state ──────────────────────────────────────────────────────────
+    // == Animation state ==========================================================
 
     /**
      * Normalized press / release state in [0..1].
@@ -115,14 +115,14 @@ class SimpleBaseKnobDrawable(
     private var indicatorGlowProgress: Float = 0f
     private var indicatorGlowAnimator: ValueAnimator? = null
 
-    // ── State color ───────────────────────────────────────────────────────────────
+    // == State color ===============================================================
 
     @ColorInt
     @get:JvmName("getAnimatedStateColor")
     var currentStateColor: Int = idleColor
         private set
 
-    // ── BaseKnobDrawable ───────────────────────────────────────────────────────
+    // == BaseKnobDrawable =======================================================
 
     override fun getCurrentStateColor(): Int = currentStateColor
 
@@ -208,7 +208,7 @@ class SimpleBaseKnobDrawable(
         }
     }
 
-    // ── ThemeChangedListener ──────────────────────────────────────────────────────
+    // == ThemeChangedListener ======================================================
 
     override fun onThemeChanged(theme: Theme, animate: Boolean) {
         applyTheme(theme)
@@ -218,7 +218,7 @@ class SimpleBaseKnobDrawable(
         applyAccent(accent)
     }
 
-    // ── Drawable ─────────────────────────────────────────────────────────────────
+    // == Drawable =================================================================
 
     override fun draw(canvas: Canvas) {
         val b = bounds
@@ -285,7 +285,7 @@ class SimpleBaseKnobDrawable(
     @Suppress("OVERRIDE_DEPRECATION")
     override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
 
-    // ── Helpers ──────────────────────────────────────────────────────────────────
+    // == Helpers ======
 
     /** Immediately snaps to the idle state without animation (useful when attaching to a new view). */
     fun resetToIdle() {

@@ -39,8 +39,6 @@ public class Audio implements Parcelable {
     public static final int AUDIO_QUALITY_HQ = 2;
     public static final int AUDIO_QUALITY_LOSSLESS = 3;
     public static final int AUDIO_QUALITY_HI_RES = 4;
-    
-    public static final String NOT_AVAILABLE = "N/A";
     public static final Creator <Audio> CREATOR = new Creator <>() {
         @Override
         public Audio createFromParcel(Parcel in) {

@@ -70,13 +70,13 @@
     <string name="date_added">Data dodania</string>
     <string name="duration">Czas trwania</string>
     <string name="year">Rok</string>
+    <string name="years">Lata</string>
     <string name="sorting_style">Styl sortowania</string>
     <string name="normal">Normalny</string>
     <string name="reversed">Odwrócony</string>
     <string name="track_number">Numer ścieżki</string>
     <string name="composer">Kompozytor</string>
     <string name="open_app_settings">Otwórz ustawienia aplikacji…</string>
-    <string name="artflow">ArtFlow</string>
     <string name="artflow_desc">Skupia się na wizualnym wyszukiwaniu z wieloma karuzelami okładek albumów.</string>
     <string name="sort_by">Sortuj według</string>
     <string name="date_modified">Data modyfikacji</string>
@@ -116,7 +116,6 @@
     <string name="soapstone">Steatyt</string>
     <string name="high_contrast">Wysoki kontrast</string>
     <string name="dark">Ciemny</string>
-    <string name="amoled">AMOLED</string>
     <string name="slate">Popielaty</string>
     <string name="oil">Olej</string>
     <string name="follow_system">Zgodnie z systemem</string>
@@ -227,6 +226,24 @@
     <string name="fallback_to_software_decoder">Odwrót do dekodera programowego</string>
     <string name="fallback_to_software_decoder_summary">Automatycznie użyj dekodera programowego, jeśli dekoder sprzętowy nie potrafi odtworzyć danego pliku audio.</string>
     <string name="playing_queue">Kolejka odtwarzania</string>
+    <!-- Queue replacement confirmation -->
+    <string name="queue_management">Zarządzanie kolejką</string>
+    <string name="confirm_queue_replacement">Potwierdź zastąpienie kolejki</string>
+    <string name="confirm_queue_replacement_summary">Zapytaj przed zastąpieniem aktualnej kolejki odtwarzania, gdy zaczniesz odtwarzać utwory z folderów, albumów, wykonawców lub list odtwarzania.</string>
+    <string name="replace_queue_title">Zastąpić kolejkę odtwarzania?</string>
+    <string name="replace_queue_message">Kolejka jest już załadowana. Zastąpić ją nowym wyborem, czy przenieść nowy wybór do pustego miejsca kolejki?</string>
+    <string name="replace">Zastąp</string>
+    <string name="move_to_empty_queue">Przenieś do pustej kolejki</string>
+    <string name="moved_to_empty_queue">Przeniesiono do kolejki %1$d</string>
+    <string name="no_empty_queue_available">Brak wolnego miejsca w kolejce. Zamiast tego zastąpiono bieżącą kolejkę.</string>
+    <!-- Folder hierarchy shuffle scope confirmation -->
+    <string name="shuffle_scope_title">Losować utwory?</string>
+    <string name="shuffle_scope_message">Losować tylko utwory bezpośrednio wewnątrz tego folderu, czy uwzględnić każdy utwór również w jego podfolderach?</string>
+    <string name="shuffle_this_folder_only">Tylko ten folder</string>
+    <string name="shuffle_include_subfolders">Uwzględnij podfoldery</string>
+    <string name="no_songs_to_shuffle">Nie znaleziono utworów do losowania.</string>
+    <string name="play_scope_title">Odtworzyć utwory?</string>
+    <string name="play_scope_message">Odtwarzać tylko utwory bezpośrednio wewnątrz tego folderu, czy dołączyć również każdy utwór znaleziony w jego podfolderach?</string>
     <string name="sync_adjust">Dostosuj synchronizację</string>
     <string name="accessibility">Ułatwienia dostępu</string>
     <string name="accessibility_desc">Dostosuj ułatwienia dostępu dla lepszego doświadczenia.</string>
@@ -262,7 +279,6 @@
     <string name="tape_saturation">Nasycenie taśmy</string>
     <string name="pitch">Wysokość</string>
     <string name="playback_speed">Prędkość</string>
-    <string name="replay_gain">Replay Gain</string>
     <string name="auto_replay_gain">Automatyczny Replay Gain</string>
     <string name="auto_replay_gain_summary">Automatycznie zastosuj wartość wzmocnienia osadzoną w tagach ReplayGain każdego utworu, gdy rozpocznie się odtwarzanie. Pokrętło Replay Gain w korektorze wciąż działa niezależnie od tego ustawienia.</string>
     <string name="replay_gain_mode">Tryb Replay Gain</string>
@@ -438,6 +454,8 @@
     <string name="double_">Podwójny</string>
     <string name="triple">Potrójny</string>
     <string name="scan_library">Przeskanuj bibliotekę</string>
+    <string name="scanning_library">Skanowanie biblioteki</string>
+    <string name="getting_music_ready">Przygotowywanie muzyki…</string>
     <string name="scan_library_summary">Sprawdź foldery z muzyką pod kątem nowych lub zmienionych plików i dodaj je do biblioteki. Istniejące wpisy pozostają nienaruszone.</string>
     <string name="refresh_library">Odśwież bibliotekę</string>
     <string name="refresh_library_summary">Wyczyść całą bibliotekę i odbuduj ją od zera. Twoje ulubione, zawsze pominięte i wszystkie statystyki odtwarzania zostaną zachowane i przywrócone po skanowaniu.</string>
@@ -476,11 +494,21 @@
     <string name="bars">Paski</string>
     <string name="current_queue">Kolejka %1$d</string>
     <string name="rename">Zmień nazwę</string>
+    <string name="clear_queue">Wyczyść</string>
     <string name="volume_controls">Regulacja głośności</string>
     <string name="volume_controls_summary">Pokaż regulację głośności po naciśnięciu przycisków głośności.</string>
     <string name="usb_dac_control_summary">Użyj sterownika DAC wbudowanego w aplikację, aby utworzyć bezpośrednie wyjście audio przez DAC.</string>
     <string name="stack_media_controls">Połączone sterowanie mediami</string>
     <string name="stack_media_controls_summary">Umieść przyciski sterowania mediami na wykresie kształtu fali, by zyskać więcej pionowej przestrzeni.</string>
+    <string name="pages">Strony</string>
+    <string name="show_songs_first">Pokaż najpierw utwory</string>
+    <string name="show_songs_first_summary">Pokaż listę utworów przed sekcjami albumów, wykonawców i gatunków na stronach szczegółów.</string>
     <string name="timer_position">Pozycja licznika czasu</string>
     <string name="waveform_menu">Menu kształtu fali</string>
+    <string name="optics">Optyka</string>
+    <string name="reduce_animations">Zredukuj animacje</string>
+    <string name="reduce_animations_summary">Wyłącz niektóre niepotrzebne animacje w całej aplikacji. Może poprawić wydajność aplikacji na niektórych urządzeniach.\n\nAby wyłączyć animacje przejść, przejdź do panelu %1$s.</string>
+    <string name="animations">Animacje</string>
+    <string name="miniplayer_width">Szerokość miniodtwarzacza</string>
+    <string name="miniplayer_width_summary">Dostosuj poziomą szerokość miniodtwarzacza w trybie poziomej orientacji.</string>
 </resources>

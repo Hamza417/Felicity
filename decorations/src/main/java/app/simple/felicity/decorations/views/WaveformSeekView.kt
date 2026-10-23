@@ -46,7 +46,7 @@ class WaveformSeekView @JvmOverloads constructor(
         defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr), ThemeChangedListener {
 
-    // ── Seek listener ─────────────────────────────────────────────────────────
+    // == Seek listener =========================================================
 
     /**
      * Callback interface delivered when the user seeks by dragging within the view.
@@ -77,7 +77,7 @@ class WaveformSeekView @JvmOverloads constructor(
         fun onSeekStop(seekView: WaveformSeekView, fraction: Float) {}
     }
 
-    // ── Band state ────────────────────────────────────────────────────────────
+    // == Band state ============================================================
 
     /** Smoothed magnitude for each band — the value actually rendered each frame. */
     private val currentBands = FloatArray(BAND_COUNT)
@@ -85,7 +85,7 @@ class WaveformSeekView @JvmOverloads constructor(
     /** Target magnitude toward which each band lerps each frame. */
     private val targetBands = FloatArray(BAND_COUNT)
 
-    // ── Progress ──────────────────────────────────────────────────────────────
+    // == Progress ==============================================================
 
     /** Normalized playback position [0..1] applied by [setProgress]. */
     private var progressFraction = 0f
@@ -96,7 +96,7 @@ class WaveformSeekView @JvmOverloads constructor(
     /** True while the user's finger is on the view. */
     private var isDragging = false
 
-    // ── AGC ───────────────────────────────────────────────────────────────────
+    // == AGC =======
 
     /**
      * Smoothed peak across all bands, used as the AGC divisor.
@@ -104,7 +104,7 @@ class WaveformSeekView @JvmOverloads constructor(
      */
     private var smoothedMax = MIN_SMOOTHED_MAX
 
-    // ── Paints ────────────────────────────────────────────────────────────────
+    // == Paints ================================================================
 
     /** Gradient-filled paint for equalizer bars; shader is rebuilt on size or accent changes. */
     private val barPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
@@ -121,7 +121,7 @@ class WaveformSeekView @JvmOverloads constructor(
     /** Background fill for the container rectangle. Updated on theme changes. */
     private val containerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
 
-    // ── Reusable geometry ─────────────────────────────────────────────────────
+    // == Reusable geometry =====================================================
 
     private val containerRect = RectF()
     private val overlayRect = RectF()
@@ -135,18 +135,18 @@ class WaveformSeekView @JvmOverloads constructor(
      */
     private val barCornerRadii = FloatArray(8)
 
-    // ── Gradient ──────────────────────────────────────────────────────────────
+    // == Gradient ==============================================================
 
     private var gradient: LinearGradient? = null
     private var cachedWidth = 0
     private var accentColors = buildAccentColors()
 
-    // ── Corner radius ─────────────────────────────────────────────────────────
+    // == Corner radius =========================================================
 
     /** Container corner radius in pixels, sourced live from [AppearancePreferences]. */
     private var cornerRadius = 0f
 
-    // ── Animation guard ───────────────────────────────────────────────────────
+    // == Animation guard =======================================================
 
     /**
      * Whether a redraw frame is already scheduled via [postInvalidateOnAnimation].
@@ -154,11 +154,11 @@ class WaveformSeekView @JvmOverloads constructor(
      */
     private var animating = false
 
-    // ── Listener ──────────────────────────────────────────────────────────────
+    // == Listener ==============================================================
 
     private var seekListener: OnSeekListener? = null
 
-    // ── Preference change listener ────────────────────────────────────────────
+    // == Preference change listener ============================================
 
     private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key == AppearancePreferences.APP_CORNER_RADIUS) {
@@ -167,7 +167,7 @@ class WaveformSeekView @JvmOverloads constructor(
         }
     }
 
-    // ── Init ──────────────────────────────────────────────────────────────────
+    // == Init ======
 
     init {
         setBackgroundColor(Color.TRANSPARENT)
@@ -177,7 +177,7 @@ class WaveformSeekView @JvmOverloads constructor(
         cornerRadius = computeCornerRadius()
     }
 
-    // ── Public API ────────────────────────────────────────────────────────────
+    // == Public API ============================================================
 
     /**
      * Registers a listener for seek gestures. Pass `null` to remove the current listener.
@@ -246,7 +246,7 @@ class WaveformSeekView @JvmOverloads constructor(
         invalidate()
     }
 
-    // ── Touch ─────────────────────────────────────────────────────────────────
+    // == Touch =================================================================
 
     override fun performClick(): Boolean {
         super.performClick()
@@ -285,7 +285,7 @@ class WaveformSeekView @JvmOverloads constructor(
         return super.onTouchEvent(event)
     }
 
-    // ── Size / gradient ───────────────────────────────────────────────────────
+    // == Size / gradient =======================================================
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
@@ -312,7 +312,7 @@ class WaveformSeekView @JvmOverloads constructor(
         overlayPaint.alpha = OVERLAY_ALPHA
     }
 
-    // ── Drawing ───────────────────────────────────────────────────────────────
+    // == Drawing ===============================================================
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
@@ -382,7 +382,7 @@ class WaveformSeekView @JvmOverloads constructor(
         }
     }
 
-    // ── Lifecycle ─────────────────────────────────────────────────────────────
+    // == Lifecycle =============================================================
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
@@ -399,7 +399,7 @@ class WaveformSeekView @JvmOverloads constructor(
         unregisterListener(prefsListener)
     }
 
-    // ── ThemeChangedListener ──────────────────────────────────────────────────
+    // == ThemeChangedListener ==================================================
 
     override fun onAccentChanged(accent: Accent) {
         super.onAccentChanged(accent)
@@ -413,7 +413,7 @@ class WaveformSeekView @JvmOverloads constructor(
         invalidate()
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // == Helpers ===============================================================
 
     private fun scheduleRedraw() {
         if (!animating) {

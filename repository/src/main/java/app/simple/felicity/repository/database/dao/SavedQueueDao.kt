@@ -50,6 +50,14 @@ interface SavedQueueDao {
     suspend fun insertAll(entries: List<SavedQueueEntry>)
 
     /**
+     * Finds the queue ID that was least recently used (has the oldest `last_used` timestamp).
+     * If multiple queues share the same oldest timestamp, the one with the smallest ID is returned.
+     * Optionally excludes a specific queue ID.
+     */
+    @Query("SELECT queue_id FROM saved_queue WHERE queue_id != :excludeQueueId ORDER BY last_used ASC, queue_id ASC LIMIT 1")
+    suspend fun getOldestQueueId(excludeQueueId: Int = -1): Int?
+
+    /**
      * Removes every entry for a specific queue, leaving it empty.
      */
     @Query("DELETE FROM saved_queue WHERE queue_id = :queueId")

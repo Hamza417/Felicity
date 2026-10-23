@@ -40,9 +40,6 @@ class PlayerFaded : BasePlayerFragment() {
     override val mediaControls: FelicityMediaControls
         get() = binding.mediaControls
 
-    override val queue: View
-        get() = binding.queue
-
     override val search: View
         get() = binding.search
 
@@ -72,7 +69,6 @@ class PlayerFaded : BasePlayerFragment() {
 
     override val visualizer: FelicityVisualizer
         get() = binding.visualizer
-
 
     override val title: TextView
         get() = binding.title

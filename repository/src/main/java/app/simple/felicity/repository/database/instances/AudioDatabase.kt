@@ -70,6 +70,8 @@ import app.simple.felicity.repository.models.WaveformData
  *   samples as a comma-separated TEXT column. On first play the samples are extracted
  *   from the audio file and saved here; every subsequent play just reads this row
  *   instead of decoding the file again.
+ *   22 → 23: Added {@code last_used} timestamp to {@code saved_queue} so that we can
+ *   find the least recently used or oldest queue slot.
  *
  * @author Hamza417
  */
@@ -88,7 +90,7 @@ import app.simple.felicity.repository.models.WaveformData
             AlbumArtColors::class,
             WaveformData::class
         ],
-        version = 22,
+        version = 23,
         exportSchema = true
 )
 abstract class AudioDatabase : RoomDatabase() {
@@ -366,6 +368,16 @@ abstract class AudioDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Adds a timestamp to each saved queue to identify when it was last used, allowing us
+         * to find the oldest or least recently used queue slot.
+         */
+        private val MIGRATION_22_23 = object : Migration(22, 23) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `saved_queue` ADD COLUMN `last_used` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun getInstance(context: Context): AudioDatabase {
             return instance ?: synchronized(this) {
                 instance ?: buildDatabase(context.applicationContext).also {
@@ -417,7 +429,8 @@ abstract class AudioDatabase : RoomDatabase() {
                         MIGRATION_18_19,
                         MIGRATION_19_20,
                         MIGRATION_20_21,
-                        MIGRATION_21_22)
+                        MIGRATION_21_22,
+                        MIGRATION_22_23)
                 .fallbackToDestructiveMigration(dropAllTables = true)
                 .build()
         }

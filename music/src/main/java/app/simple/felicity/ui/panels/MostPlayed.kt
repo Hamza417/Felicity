@@ -74,6 +74,11 @@ class MostPlayed : BasePanelFragment() {
         return headerBinding.shuffle
     }
 
+    override fun onShuffleClicked() {
+        super.onShuffleClicked()
+        shuffleMediaItems(mostPlayedViewModel.songs.value.map { it.audio })
+    }
+
     private fun setupClickListeners() {
         headerBinding.search.setOnClickListener {
             openSearch()

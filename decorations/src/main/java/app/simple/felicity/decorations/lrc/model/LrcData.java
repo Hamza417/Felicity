@@ -16,16 +16,16 @@ import java.util.Map;
 public class LrcData {
     private final List <LrcEntry> entries;
     private final Map <String, String> metadata;
-
+    
     public LrcData() {
         this.entries = new ArrayList <>();
         this.metadata = new HashMap <>();
     }
-
+    
     public void addEntry(LrcEntry entry) {
         entries.add(entry);
     }
-
+    
     public void addMetadata(String key, String value) {
         metadata.put(key, value);
     }
@@ -37,27 +37,27 @@ public class LrcData {
     public Map <String, String> getMetadata() {
         return metadata;
     }
-
+    
     public String getMetadata(String key) {
         return metadata.get(key);
     }
-
+    
     public String getTitle() {
         return metadata.get("ti");
     }
-
+    
     public String getArtist() {
         return metadata.get("ar");
     }
-
+    
     public String getAlbum() {
         return metadata.get("al");
     }
-
+    
     public String getAuthor() {
         return metadata.get("au");
     }
-
+    
     public String getCreator() {
         return metadata.get("by");
     }
@@ -83,11 +83,11 @@ public class LrcData {
         long millis = ms % 1000;
         return String.format(java.util.Locale.US, "[%02d:%02d.%03d]", minutes, seconds, millis);
     }
-
+    
     public boolean isEmpty() {
         return entries.isEmpty();
     }
-
+    
     public int size() {
         return entries.size();
     }
@@ -107,6 +107,84 @@ public class LrcData {
      */
     public void sort() {
         Collections.sort(entries);
+        
+        // Merge entries with the exact same time
+        List <LrcEntry> merged = new ArrayList <>();
+        LrcEntry current = null;
+        for (LrcEntry entry : entries) {
+            // TxtParser uses -1 for NO_TIMESTAMP, don't merge them
+            if (current != null && current.getTimeInMillis() == entry.getTimeInMillis() && entry.getTimeInMillis() != -1L) {
+                
+                String mainText = current.getText();
+                String rom = current.getRomanization();
+                String adlib = current.getAdlib();
+                List <WordEntry> words = current.getWords();
+                
+                // If the new entry has words but current doesn't, the new entry is the true main lyric!
+                if (entry.hasWordSync() && !current.hasWordSync()) {
+                    if (rom == null) {
+                        rom = mainText;
+                    } else if (adlib == null) {
+                        adlib = mainText;
+                    } else {
+                        adlib = adlib + "\n" + mainText;
+                    }
+                    
+                    mainText = entry.getText();
+                    words = entry.getWords();
+                    
+                    if (entry.getRomanization() != null) {
+                        if (rom == null) {
+                            rom = entry.getRomanization();
+                        } else if (adlib == null) {
+                            adlib = entry.getRomanization();
+                        } else {
+                            adlib += "\n" + entry.getRomanization();
+                        }
+                    }
+                    if (entry.getAdlib() != null) {
+                        if (adlib == null) {
+                            adlib = entry.getAdlib();
+                        } else {
+                            adlib += "\n" + entry.getAdlib();
+                        }
+                    }
+                } else {
+                    // Current already has words or neither has words. Treat 'entry' as secondary.
+                    if (rom == null) {
+                        rom = entry.getText();
+                    } else if (adlib == null) {
+                        adlib = entry.getText();
+                    } else {
+                        adlib = adlib + "\n" + entry.getText();
+                    }
+                    
+                    if (entry.getRomanization() != null) {
+                        if (adlib == null) {
+                            adlib = entry.getRomanization();
+                        } else {
+                            adlib += "\n" + entry.getRomanization();
+                        }
+                    }
+                    if (entry.getAdlib() != null) {
+                        if (adlib == null) {
+                            adlib = entry.getAdlib();
+                        } else {
+                            adlib += "\n" + entry.getAdlib();
+                        }
+                    }
+                }
+                
+                current = new LrcEntry(current.getTimeInMillis(), mainText, rom, adlib, words);
+                merged.set(merged.size() - 1, current);
+            } else {
+                current = entry;
+                merged.add(current);
+            }
+        }
+        
+        this.entries.clear();
+        this.entries.addAll(merged);
     }
     
     /**
@@ -133,9 +211,21 @@ public class LrcData {
                     long newEnd = Math.max(0, word.getEndMs() + deltaMs);
                     shiftedWords.add(new WordEntry(newStart, newEnd, word.getText()));
                 }
-                shifted.addEntry(new LrcEntry(newLineTime, entry.getText(), shiftedWords));
+                shifted.addEntry(
+                        new LrcEntry(
+                                newLineTime,
+                                entry.getText(),
+                                entry.getRomanization(),
+                                entry.getAdlib(),
+                                shiftedWords));
             } else {
-                shifted.addEntry(new LrcEntry(newLineTime, entry.getText()));
+                shifted.addEntry(
+                        new LrcEntry(
+                                newLineTime,
+                                entry.getText(),
+                                entry.getRomanization(),
+                                entry.getAdlib(),
+                                Collections.emptyList()));
             }
         }
         shifted.sort();
@@ -180,6 +270,14 @@ public class LrcData {
                 sb.append('\n');
             } else {
                 sb.append(lineTag).append(entry.getText()).append('\n');
+            }
+            if (entry.getRomanization() != null) {
+                sb.append(lineTag).append(entry.getRomanization()).append('\n');
+            }
+            if (entry.getAdlib() != null) {
+                for (String adlibLine : entry.getAdlib().split("\n")) {
+                    sb.append(lineTag).append(adlibLine).append('\n');
+                }
             }
         }
         return sb.toString();

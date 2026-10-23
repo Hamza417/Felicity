@@ -14,12 +14,11 @@ import java.io.File
 class ArtistCoverLoader(private val context: Context) : ModelLoader<Artist, Bitmap> {
     override fun buildLoadData(model: Artist, width: Int, height: Int, options: Options): ModelLoader.LoadData<Bitmap> {
         /**
-         * We mix the artist id with the saved image file's last-modified time so that
-         * whenever the user picks a new image (which overwrites the file on disk), the
-         * cache key changes and Glide fetches the fresh image instead of the old cached one.
+         * The saved image timestap invalidates manually picked or downloaded artwork,
+         * while song paths invalidate local fallback artwork when the library changes.
          */
         val lastModified = artistImageFile(model.name)?.lastModified() ?: 0L
-        val key = ObjectKey("${model.id}_$lastModified")
+        val key = createCacheKey(model, lastModified)
         return ModelLoader.LoadData(key, ArtistCoverFetcher(context, model))
     }
 
@@ -50,5 +49,23 @@ class ArtistCoverLoader(private val context: Context) : ModelLoader<Artist, Bitm
         }
 
         override fun teardown() {}
+    }
+
+    private data class ArtistCoverCacheKey(
+            val artistId: Long,
+            val artistName: String?,
+            val lastModified: Long,
+            val songPaths: List<String>
+    )
+
+    internal companion object {
+        fun createCacheKey(model: Artist, lastModified: Long): ObjectKey {
+            return ObjectKey(ArtistCoverCacheKey(
+                    artistId = model.id,
+                    artistName = model.name,
+                    lastModified = lastModified,
+                    songPaths = model.songPaths.toList()
+            ))
+        }
     }
 }

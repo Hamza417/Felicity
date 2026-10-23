@@ -23,6 +23,6 @@
     <string name="all_features_summary">Получите полное приложение без ограничений.</string>
     <!-- Restore purchase button and result messages -->
     <string name="restore_purchase">Восстановить покупку</string>
-    <string name="restore_purchase_failed">На этом аккаунте не найдено покупок.\n\nЕсли вы купили Felicity с другого аккаунта Google, пожалуйста, переключитесь на него в Play Маркете и попробуйте снова. Если вы считаете, что это ошибка, обратитесь в службу поддержки.</string>
+    <string name="restore_purchase_failed">На этом аккаунте не найдено покупок.\n\nЕсли вы купили Felicity с другого аккаунта Google, пожалуйста, переключитесь на него в Play Store и попробуйте снова. Если вы считаете, что это ошибка, обратитесь в службу поддержки.</string>
     <string name="restore_purchase_restoring">Восстановление\u2026</string>
 </resources>

@@ -84,11 +84,11 @@ abstract class EqualizerDatabase : RoomDatabase() {
          * which is correct — all presets saved before this migration are graphic presets.
          */
         private val MIGRATION_1_2 = object : Migration(1, 2) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                database.execSQL(
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
                         "ALTER TABLE equalizer_presets ADD COLUMN preset_type TEXT NOT NULL DEFAULT '$PRESET_TYPE_GRAPHIC'"
                 )
-                database.execSQL(
+                db.execSQL(
                         "ALTER TABLE equalizer_presets ADD COLUMN peq_bands_raw TEXT"
                 )
             }

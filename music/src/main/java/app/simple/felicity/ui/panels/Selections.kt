@@ -50,8 +50,6 @@ class Selections : BasePanelFragment() {
         binding.recyclerView.requireAttachedMiniPlayer()
         binding.appHeader.setContentView(headerBinding.root)
         binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
-
-        // One column list — same comfortable feel as the Songs panel in list mode.
         binding.recyclerView.setupGridLayoutManager(1)
 
         setupClickListeners()
@@ -73,8 +71,12 @@ class Selections : BasePanelFragment() {
         // Tapping the X button clears everything and sends the user back —
         // essentially "cancel" for the whole selection session.
         headerBinding.close.setOnClickListener {
-            SelectionManager.clear()
-            requireActivity().onBackPressedDispatcher.onBackPressed()
+            withSureDialog {
+                if (it) {
+                    SelectionManager.clear()
+                    popBackStack()
+                }
+            }
         }
 
         // Tapping "Play" queues up all selected songs in order and starts from the first one.

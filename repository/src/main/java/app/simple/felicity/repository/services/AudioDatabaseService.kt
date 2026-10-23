@@ -27,19 +27,32 @@ class AudioDatabaseService : Service() {
     lateinit var playlistDatabaseLoader: PlaylistDatabaseLoader
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    @Volatile
     private var currentStartId: Int = -1
 
     /**
      * This flag is set to true BEFORE we launch a scan coroutine, and cleared when
-     * the coroutine finishes. Because [onStartCommand] always runs on the main thread,
-     * checking and flipping this flag here is effectively race-free — no two
+     * the latest coroutine finishes. Because [onStartCommand] always runs on the main
+     * thread, checking and flipping this flag here is effectively race-free — no two
      * [onStartCommand] calls can overlap. This prevents the situation where two rapid
      * start commands both see the scan as idle (the coroutine from the first command
-     * hasn't had a chance to run and flip the scan-running flag yet), both launch coroutines,
-     * and the second one's empty finally block calls [stopSelfResult] with a high ID —
-     * which kills the service and cancels the real scan that the first coroutine started.
+     * hasn't had a chance to run and flip the scan-running flag yet), both launch
+     * coroutines, and the second one's empty finally block calls [stopSelfResult] with
+     * a high ID — which kills the service and cancels the real scan that the first
+     * coroutine started.
      */
     private var scanCoroutineLaunched = false
+
+    /**
+     * Every launched scan coroutine gets a unique token. Only the coroutine whose
+     * token is still the latest is allowed to stop the service in its finally block.
+     * Without this, a scan superseded by a forced refresh would still call
+     * [stopSelfResult] on its way out and kill the service out from under the fresh
+     * scan — the source of the random "notification appears and vanishes" loops.
+     */
+    @Volatile
+    private var latestRunToken: Int = 0
 
     companion object {
         private const val TAG = "AudioDatabaseService"
@@ -143,22 +156,33 @@ class AudioDatabaseService : Service() {
         }
 
         scanCoroutineLaunched = true
+        val runToken = ++latestRunToken
         serviceScope.launch {
             try {
                 Log.d(TAG, "Starting audio database scan (idle path)…")
                 audioDatabaseLoader.processAudioFiles()
+                if (runToken != latestRunToken) {
+                    Log.d(TAG, "Superseded by a newer scan — skipping M3U playlist scan")
+                    return@launch
+                }
                 Log.d(TAG, "Audio scan completed — starting M3U playlist scan…")
                 playlistDatabaseLoader.processM3uFiles()
                 Log.d(TAG, "M3U playlist scan completed successfully")
             } catch (e: Exception) {
                 Log.e(TAG, "Error during scan", e)
             } finally {
-                scanCoroutineLaunched = false
-                // Use currentStartId here, not the captured startId from the lambda.
-                // If more start commands arrived while the scan was running, currentStartId
-                // will be the highest one — which is exactly what stopSelfResult needs to
-                // see in order to actually stop the service.
-                stopSelfResult(currentStartId)
+                // Only the newest run may stop the service. If a forced refresh
+                // superseded us while we were running, stopping here would kill
+                // the fresh scan that replaced us.
+                if (runToken == latestRunToken) {
+                    scanCoroutineLaunched = false
+                    // Use currentStartId here, not the captured startId from the
+                    // lambda. If more start commands arrived while the scan was
+                    // running, currentStartId will be the highest one — which is
+                    // exactly what stopSelfResult needs to see in order to
+                    // actually stop the service.
+                    stopSelfResult(currentStartId)
+                }
             }
         }
     }
@@ -170,18 +194,25 @@ class AudioDatabaseService : Service() {
      */
     private fun startForcedScan() {
         scanCoroutineLaunched = true
+        val runToken = ++latestRunToken
         serviceScope.launch {
             try {
                 Log.d(TAG, "Forced refresh: cancelling existing scan and starting fresh…")
                 audioDatabaseLoader.cancelAndRestartScan()
+                if (runToken != latestRunToken) {
+                    Log.d(TAG, "Superseded by a newer scan — skipping M3U playlist scan")
+                    return@launch
+                }
                 Log.d(TAG, "Audio scan completed — starting M3U playlist scan…")
                 playlistDatabaseLoader.processM3uFiles()
                 Log.d(TAG, "Forced scan completed successfully")
             } catch (e: Exception) {
                 Log.e(TAG, "Error during forced scan", e)
             } finally {
-                scanCoroutineLaunched = false
-                stopSelfResult(currentStartId)
+                if (runToken == latestRunToken) {
+                    scanCoroutineLaunched = false
+                    stopSelfResult(currentStartId)
+                }
             }
         }
     }
@@ -193,18 +224,25 @@ class AudioDatabaseService : Service() {
      */
     private fun startWipeAndScan() {
         scanCoroutineLaunched = true
+        val runToken = ++latestRunToken
         serviceScope.launch {
             try {
                 Log.d(TAG, "Wipe-and-scan: clearing audio table and starting fresh…")
                 audioDatabaseLoader.wipeAndScan()
+                if (runToken != latestRunToken) {
+                    Log.d(TAG, "Superseded by a newer scan — skipping M3U playlist scan")
+                    return@launch
+                }
                 Log.d(TAG, "Audio scan completed — starting M3U playlist scan…")
                 playlistDatabaseLoader.processM3uFiles()
                 Log.d(TAG, "Wipe-and-scan completed successfully")
             } catch (e: Exception) {
                 Log.e(TAG, "Error during wipe-and-scan", e)
             } finally {
-                scanCoroutineLaunched = false
-                stopSelfResult(currentStartId)
+                if (runToken == latestRunToken) {
+                    scanCoroutineLaunched = false
+                    stopSelfResult(currentStartId)
+                }
             }
         }
     }
@@ -223,6 +261,7 @@ class AudioDatabaseService : Service() {
 
     override fun onDestroy() {
         Log.d(TAG, "Service destroyed - cleaning up")
+        latestRunToken++ // invalidate any in-flight run tokens
         scanCoroutineLaunched = false
         audioDatabaseLoader.cleanup()
         serviceScope.coroutineContext.cancel()
@@ -231,6 +270,7 @@ class AudioDatabaseService : Service() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         Log.d(TAG, "Task removed - cleaning up and stopping service")
+        latestRunToken++ // invalidate any in-flight run tokens
         scanCoroutineLaunched = false
         audioDatabaseLoader.cleanup()
         stopSelf()

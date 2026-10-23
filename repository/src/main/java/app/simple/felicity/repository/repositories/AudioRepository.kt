@@ -533,6 +533,32 @@ class AudioRepository @Inject constructor(
     )
 
     /**
+     * Returns every song located anywhere under [folderPath], including all nested sub-folders,
+     * flattened into a single list. Pass `null` to get every song across every granted folder
+     * (used for the hierarchy's root level, which has no folder of its own).
+     *
+     * This is a one-shot suspend fetch (not a live [Flow]) intended for one-off actions like
+     * "shuffle everything inside this folder and its sub-folders", where a reactive stream isn't
+     * needed. Results are filtered by [LibraryPreferences] minimum duration and size.
+     *
+     * @param folderPath The folder's document ID (as stored in [Folder.path]), or null for the root.
+     * @return A flat list of every [Audio] found at or below [folderPath].
+     */
+    suspend fun getSongsRecursively(folderPath: String?): MutableList<Audio> = withContext(Dispatchers.IO) {
+        val audioList = audioDatabase.audioDao()?.getFilteredAudioList(minDurationMs(), minSizeBytes())
+            ?: return@withContext mutableListOf()
+
+        if (folderPath == null) {
+            audioList
+        } else {
+            audioList.filter { audio ->
+                val docId = docIdOf(audio.uri) ?: return@filter false
+                docId.startsWith("$folderPath/")
+            }.toMutableList()
+        }
+    }
+
+    /**
      * Get all data for an album page including songs, artists, and genres.
      * This method filters audio files by album name and aggregates related data.
      * Results are filtered in real-time by [LibraryPreferences] minimum duration and size.
@@ -1141,6 +1167,64 @@ class AudioRepository @Inject constructor(
     fun searchByComposerFlow(composer: String): Flow<MutableList<Audio>> {
         return audioDatabase.audioDao()?.searchByComposerFiltered(composer, minDurationMs(), minSizeBytes())
             ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
+     * Reactive composer search that returns proper [Artist] objects (composers are modeled
+     * as [Artist] elsewhere in the app, e.g. [getAllComposersWithAggregation]) with accurate counts.
+     *
+     * @param query The text the user typed in the search box.
+     * @return Flow of composers (as [Artist]) whose name matches [query], sorted by name.
+     */
+    fun searchComposersFlow(query: String): Flow<List<Artist>> {
+        return audioDatabase.audioDao()?.searchByComposerFiltered(query, minDurationMs(), minSizeBytes())?.map { songs ->
+            songs.mapNotNull { it.composer?.takeIf { name -> name.isNotBlank() } }
+                .distinct()
+                .filter { it.contains(query, ignoreCase = true) }
+                .map { name ->
+                    val matchedSongs = songs.filter { it.composer == name }
+                    val uniqueAlbums = matchedSongs.mapNotNull { it.album }.distinct().size
+                    Artist(
+                            id = name.hashCode().toLong(),
+                            name = name,
+                            albumCount = uniqueAlbums,
+                            trackCount = matchedSongs.size,
+                            songPaths = matchedSongs.map { it.uri }
+                    )
+                }
+                .sortedBy { it.name?.lowercase() }
+        } ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
+     * Reactive search by year – re-emits whenever the audio table changes.
+     * Filtered in real-time by [LibraryPreferences] minimum duration and size.
+     */
+    fun searchByYearFlow(year: String): Flow<MutableList<Audio>> {
+        return audioDatabase.audioDao()?.searchByYearFiltered(year, minDurationMs(), minSizeBytes())
+            ?: throw IllegalStateException("AudioDao is null")
+    }
+
+    /**
+     * Reactive year search that groups matches into [YearGroup] objects.
+     *
+     * @param query The text the user typed in the search box.
+     * @return Flow of [YearGroup] objects whose year string matches [query], sorted descending.
+     */
+    fun searchYearGroupsFlow(query: String): Flow<List<YearGroup>> {
+        return audioDatabase.audioDao()?.searchByYearFiltered(query, minDurationMs(), minSizeBytes())?.map { songs ->
+            songs.groupBy { it.year }
+                .mapNotNull { (year, matchedSongs) ->
+                    if (year.isNullOrEmpty()) return@mapNotNull null
+                    YearGroup(
+                            id = year.hashCode().toLong(),
+                            year = year,
+                            songPaths = matchedSongs.map { it.uri },
+                            songCount = matchedSongs.size
+                    )
+                }
+                .sortedByDescending { it.year }
+        } ?: throw IllegalStateException("AudioDao is null")
     }
 
     /**

@@ -38,12 +38,21 @@ class OboeOutputProcessor(
 
     private var nativeHandle: Long = 0L
 
-    /** Tracks whether the native stream has been started and is currently running.
-     *  Updated synchronously by [start] and [stop] so callers on any thread can
-     *  check this without a JNI round-trip. */
-    @Volatile
-    var isRunning: Boolean = false
-        private set
+    /**
+     * Tracks whether the native stream is currently started and running.
+     *
+     * This delegates straight to the native `OboeContext::running` flag on every
+     * read instead of caching a Kotlin-side boolean. That matters for disconnect
+     * recovery: if the audio HAL forcibly disconnects the stream (most commonly
+     * because a phone call took over the DSP), Oboe's own error callback flips
+     * the native flag to `false` and reopens a fresh stream in the background.
+     * Reading it live here is what lets [FelicityAudioSink]'s existing
+     * `if (!isPaused && !stream.isRunning) stream.start()` auto-restart check in
+     * `handleBuffer` notice the disconnect and resume playback automatically once
+     * recovery finishes — with no extra plumbing on the Kotlin side.
+     */
+    val isRunning: Boolean
+        get() = nativeHandle != 0L && nativeOboeIsRunning(nativeHandle)
 
     init {
         nativeHandle = nativeOboeCreate(sampleRate, channelCount, useSafeBuffers)
@@ -63,9 +72,7 @@ class OboeOutputProcessor(
      */
     fun start(): Boolean {
         if (nativeHandle == 0L) return false
-        val ok = nativeOboeStart(nativeHandle)
-        if (ok) isRunning = true
-        return ok
+        return nativeOboeStart(nativeHandle)
     }
 
     /**
@@ -122,21 +129,18 @@ class OboeOutputProcessor(
     /** Pauses output without closing the stream. Safe to restart via [start]. */
     fun pause() {
         if (nativeHandle == 0L) return
-        isRunning = false
         nativeOboePause(nativeHandle)
     }
 
     /** Pauses output without closing the stream. Safe to restart via [start]. */
     fun stop() {
         if (nativeHandle == 0L) return
-        isRunning = false
         nativeOboeStop(nativeHandle)
     }
 
     /** Stops, closes, and frees all native resources. Must not be used after this call. */
     fun release() {
         if (nativeHandle == 0L) return
-        isRunning = false
         nativeOboeDestroy(nativeHandle)
         nativeHandle = 0L
         Log.i(TAG, "OboeOutputProcessor released")
@@ -154,6 +158,9 @@ class OboeOutputProcessor(
     private external fun nativeOboeGetLatencyMs(handle: Long): Int
     private external fun nativeOboeGetPlaybackPositionUs(handle: Long, sourceEnded: Boolean): Long
     private external fun nativeOboeGetApiName(handle: Long): String
+
+    /** Live native running state — see [isRunning]. */
+    private external fun nativeOboeIsRunning(handle: Long): Boolean
     private external fun nativeOboePause(handle: Long)
     private external fun nativeOboeStop(handle: Long)
     private external fun nativeOboeDestroy(handle: Long)

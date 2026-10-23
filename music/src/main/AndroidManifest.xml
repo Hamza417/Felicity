@@ -27,7 +27,6 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:largeHeap="true"
-        android:extractNativeLibs="false"
         android:theme="@style/Theme.Felicity"
         tools:targetApi="tiramisu">
         <activity

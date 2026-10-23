@@ -190,15 +190,19 @@ object PlaybackStateManager {
             seek: Long = 0L
     ) {
         if (queueHash.isEmpty()) return
+        val timestamp = System.currentTimeMillis()
+
         val entries = queueHash.mapIndexed { pos, hash ->
             SavedQueueEntry(
                     queueId = queueId,
                     queuePos = pos,
                     audioHash = hash,
                     lastPosition = position,
-                    lastSeek = seek
+                    lastSeek = seek,
+                    lastUsed = timestamp
             )
         }
+
         db.savedQueueDao().clear(queueId)
         db.savedQueueDao().insertAll(entries)
     }
@@ -315,6 +319,33 @@ object PlaybackStateManager {
                 "restoredPosition=$clampedPosition, restoredSeek=$restoredSeek"
         )
         return QueueSwitchResult(targetSongs, clampedPosition, restoredSeek)
+    }
+
+    /**
+     * Finds the first queue slot (0 until [QUEUE_COUNT]) that has no songs archived in it.
+     * If all queues are full, it returns the oldest (least recently used) queue slot.
+     *
+     * <p>Used by the "Move to Empty Queue" flow: when the user starts playback from a
+     * browsing screen (e.g. a Music Folder) while a different queue is already active and
+     * they don't want to overwrite it, the newly-selected songs are placed into the first
+     * free slot instead of destroying the currently loaded queue.</p>
+     *
+     * @param db             The open [AudioDatabase] instance.
+     * @param excludeQueueId Optional slot to skip during the search (e.g. the currently
+     *                       active queue, which is never actually empty at the moment of
+     *                       the check).
+     * @return The zero-based index of the first empty slot, or the oldest slot if all are full.
+     */
+    suspend fun findFirstEmptySlot(db: AudioDatabase, excludeQueueId: Int = -1): Int? {
+        for (i in 0 until QUEUE_COUNT) {
+            if (i == excludeQueueId) continue
+            val audios = db.savedQueueDao().getQueuedAudios(i)
+            if (audios.isEmpty()) return i
+        }
+
+        // If all slots are full, find the oldest (least recently used) one,
+        // making sure we don't accidentally overwrite the excluded queue.
+        return db.savedQueueDao().getOldestQueueId(excludeQueueId)
     }
 
     /**

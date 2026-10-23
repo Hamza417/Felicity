@@ -140,6 +140,38 @@
                 app:textColorStyle="tertiary" />
 
             <app.simple.felicity.decorations.highlight.HighlightTextView
+                android:id="@+id/chip_composers"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:paddingVertical="@dimen/padding_5"
+                android:paddingHorizontal="@dimen/padding_10"
+                android:layout_marginEnd="@dimen/padding_10"
+                android:drawableStart="@drawable/ic_composer_16dp"
+                android:drawablePadding="@dimen/padding_5"
+                android:textSize="@dimen/text_size_14"
+                android:visibility="gone"
+                app:appFontStyle="bold"
+                app:drawableTintStyle="accent"
+                app:textColorStyle="tertiary" />
+
+            <app.simple.felicity.decorations.highlight.HighlightTextView
+                android:id="@+id/chip_years"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:paddingVertical="@dimen/padding_5"
+                android:paddingHorizontal="@dimen/padding_10"
+                android:layout_marginEnd="@dimen/padding_10"
+                android:drawableStart="@drawable/ic_date_range_16dp"
+                android:drawablePadding="@dimen/padding_5"
+                android:textSize="@dimen/text_size_14"
+                android:visibility="gone"
+                app:appFontStyle="bold"
+                app:drawableTintStyle="accent"
+                app:textColorStyle="tertiary" />
+
+            <app.simple.felicity.decorations.highlight.HighlightTextView
                 android:id="@+id/hours"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

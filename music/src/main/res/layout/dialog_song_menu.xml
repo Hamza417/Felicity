@@ -195,6 +195,7 @@
                     app:textColorStyle="primary" />
 
                 <app.simple.felicity.decorations.theme.ThemeDivider
+                    android:id="@+id/page_divider"
                     android:layout_width="match_parent"
                     android:layout_height="1px"
                     android:layout_marginVertical="@dimen/padding_5" />

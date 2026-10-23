@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="number_of_songs">
+        <item quantity="one">%d Трек</item>
+        <item quantity="few">%d Треки</item>
+        <item quantity="many">%d Треків</item>
+        <item quantity="other">%d Трека</item>
+    </plurals>
+    <plurals name="songs_selected">
+        <item quantity="one">%d Вибраний трек</item>
+        <item quantity="few">%d Вибрані треки</item>
+        <item quantity="many">%d Вибраних треків</item>
+        <item quantity="other">%d Вибраного трека</item>
+    </plurals>
+    <plurals name="number_of_albums">
+        <item quantity="one">%d Альбом</item>
+        <item quantity="few">%d Альбоми</item>
+        <item quantity="many">%d Альбомів</item>
+        <item quantity="other">%d Альбома</item>
+    </plurals>
+    <plurals name="total_times">
+        <item quantity="one">%d Раз</item>
+        <item quantity="few">%d Рази</item>
+        <item quantity="many">%d Разів</item>
+        <item quantity="other">%d Разу</item>
+    </plurals>
+    <plurals name="number_of_bookmarks">
+        <item quantity="one">%d Закладка</item>
+        <item quantity="few">%d Закладки</item>
+        <item quantity="many">%d Закладок</item>
+        <item quantity="other">%d Закладки</item>
+    </plurals>
+</resources>

@@ -1,28 +1,20 @@
 #### User Interface
 
-- Added **Shuffle** button in the **Playing Queue** panel.
-- Added optical adjustment option for waveform in **Player Screens**.
-- Added **Clear Button** in **Search** panel.
-- Added toggle to show songs first or after the **Albums**, **Artists** and **Genres** in *
-  *Pages/Details** panel.
+- Revamped the **Lyrics** interface.
+    - Added an album art toggle.
+- Added Felicity media controls to the **Lyrics** interface.
+- Added a dialog to play songs recursively in the **Folders Hierarchy**.
 
 #### Bug Fixes
 
-- Fixed curtain animations in lyrics starting from the beginning in plain lyrics mode causing the
-  lyrics taking too long to fully appear on the screen.
-- Fixed critical latency issues when using **AAudio** and **Oboe** audio sinks.
-- Fixed **Bookmarks** list not animating.
-- Fixed irregular fading edges in **Dashboard** strip.
+- Fixed playback freezing after audio focus loss during calls.
+- Fixed a crash on the dashboard when playing a song too early upon app launch.
+- Fixed low tile count in the tiled home screen.
+- Fixed an issue where clearing selections pops two screens at once.
+- Fixed the dot indicator color in the volume knob.
+- Fixed hidden shuffle buttons when only one song is playing.
+- Fixed media state inconsistencies in the **Folders Hierarchy**.
 
-#### Improvements
+#### Translations
 
-- Tapping the widget should launch/open the app.
-- Hide fast scroll button when search results are empty.
-
-#### Changes
-
-- Changed **Skip .nomedia** and **Skip Hidden Files** to off by default.
-
-#### Removed
-
-- Removed toggle to disable visualizer bars in **Player Screens**.
+- Added new **Polish** translations.

@@ -66,6 +66,11 @@ class RecentlyAdded : BasePanelFragment() {
         return headerBinding.shuffle
     }
 
+    override fun onShuffleClicked() {
+        super.onShuffleClicked()
+        shuffleMediaItems(recentlyAddedViewModel.songs.value)
+    }
+
     private fun setupClickListeners() {
         headerBinding.search.setOnClickListener {
             openSearch()

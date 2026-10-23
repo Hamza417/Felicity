@@ -100,6 +100,8 @@ class MetadataEditor : MediaFragment() {
         registerMetadataSearchResult()
         registerLyricsSearchResult()
 
+        requireView().addHeightKeyboardCallbacks()
+
         binding.saveButton.setOnClickListener {
             saveMetadata()
         }

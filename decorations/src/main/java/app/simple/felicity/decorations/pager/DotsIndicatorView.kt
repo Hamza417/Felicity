@@ -39,7 +39,7 @@ class DotsIndicatorView @JvmOverloads constructor(
         defStyleAttr: Int = 0,
 ) : View(context, attrs, defStyleAttr), ThemeChangedListener {
 
-    // ── Dot geometry ────────────────────────────────────────────────────────────
+    // == Dot geometry ============================================================
 
     /** Base radius used for inactive dots and the resting active blob, in pixels. */
     var dotRadius = dpToPx(2f)
@@ -53,7 +53,7 @@ class DotsIndicatorView @JvmOverloads constructor(
             field = v; requestLayout(); invalidate()
         }
 
-    // ── Spring physics (position) ────────────────────────────────────────────────
+    // == Spring physics (position) ================================================
     /**
      * Spring stiffness for the horizontal blob position.
      * Higher = snappier snap. Reasonable range: 200–800 (1/s²).
@@ -66,7 +66,7 @@ class DotsIndicatorView @JvmOverloads constructor(
      */
     var springDamping = 0.35f
 
-    // ── State ────────────────────────────────────────────────────────────────────
+    // == State ========
     private var count = 0
     private var targetPage = 0
 
@@ -76,7 +76,7 @@ class DotsIndicatorView @JvmOverloads constructor(
     /** Current blob horizontal velocity (px/s). */
     private var blobVelocity = 0f
 
-    // ── Drop deformation physics ─────────────────────────────────────────────────
+    // == Drop deformation physics =================================================
     /**
      * The "squash" value in [-1, +1].
      *   0 = perfect circle
@@ -88,12 +88,17 @@ class DotsIndicatorView @JvmOverloads constructor(
     /** Velocity of the squash value (s⁻¹). */
     private var squashVelocity = 0f
 
-    // ── Paint & geometry ─────────────────────────────────────────────────────────
+    // == Paint & geometry =========================================================
     private val inactivePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val activePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val ovalRect = RectF()
+    var useThemeColors = false
+        set(v) {
+            field = v
+            applyThemeColors()
+        }
 
-    // ── Choreographer ────────────────────────────────────────────────────────────
+    // == Choreographer ============================================================
     private val choreographer: Choreographer by lazy { Choreographer.getInstance() }
     private var animPosted = false
     private var lastFrameMs = -1L
@@ -108,7 +113,7 @@ class DotsIndicatorView @JvmOverloads constructor(
         ThemeManager.addListener(this)
     }
 
-    // ── Public API ───────────────────────────────────────────────────────────────
+    // == Public API ===============================================================
 
     /** Updates the total dot count and resets the highlight to page 0. */
     fun setCount(newCount: Int) {
@@ -133,7 +138,7 @@ class DotsIndicatorView @JvmOverloads constructor(
         postFrame()
     }
 
-    // ── Measurement & drawing ────────────────────────────────────────────────────
+    // == Measurement & drawing ====================================================
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         // Reserve enough height for the blob to stretch tall: 3× dotRadius
@@ -158,7 +163,6 @@ class DotsIndicatorView @JvmOverloads constructor(
         val cy = height / 2f
 
         // Draw inactive dots
-        @Suppress("EmptyRange")
         for (i in 0 until count) {
             canvas.drawCircle(cx0 + i * dotSpacing, cy, dotRadius, inactivePaint)
         }
@@ -192,7 +196,7 @@ class DotsIndicatorView @JvmOverloads constructor(
         canvas.drawOval(ovalRect, activePaint)
     }
 
-    // ── Physics simulation ───────────────────────────────────────────────────────
+    // == Physics simulation =======================================================
 
     private fun targetBlobX(): Float = targetPage * dotSpacing
 
@@ -203,7 +207,7 @@ class DotsIndicatorView @JvmOverloads constructor(
         val dt = dtMs / 1000f   // seconds
 
         if (dt > 0f) {
-            // ── Position spring ──────────────────────────────────────────────────
+            // == Position spring ==================================================
             val target = targetBlobX()
             val disp = blobX - target
             val c = 2f * springDamping * sqrt(springStiffness.toDouble()).toFloat()
@@ -211,7 +215,7 @@ class DotsIndicatorView @JvmOverloads constructor(
             blobVelocity += accel * dt
             blobX += blobVelocity * dt
 
-            // ── Squash physics ───────────────────────────────────────────────────
+            // == Squash physics ===================================================
             // Target squash is driven by the *speed* of the blob:
             //   - fast horizontal travel → positive squash (flat drop in freefall)
             //   - blob decelerates hard on arrival (velocity crosses zero near target)
@@ -259,22 +263,27 @@ class DotsIndicatorView @JvmOverloads constructor(
         }
     }
 
-    // ── Theme ────────────────────────────────────────────────────────────────────
+    // == Theme ========
 
     override fun onAccentChanged(accent: Accent) {
         applyThemeColors()
-        invalidate()
     }
 
     override fun onThemeChanged(theme: Theme, animate: Boolean) {
         applyThemeColors()
-        invalidate()
     }
 
     private fun applyThemeColors() {
-        val color = Color.WHITE
-        activePaint.color = color
-        inactivePaint.color = (color and 0x00FFFFFF) or (0x55 shl 24)
+        if (useThemeColors) {
+            activePaint.color = ThemeManager.accent.primaryAccentColor
+            inactivePaint.color = ThemeManager.theme.viewGroupTheme.highlightColor
+        } else {
+            val color = Color.WHITE
+            activePaint.color = color
+            inactivePaint.color = (color and 0x00FFFFFF) or (0x55 shl 24)
+        }
+
+        invalidate()
     }
 
     override fun onDetachedFromWindow() {

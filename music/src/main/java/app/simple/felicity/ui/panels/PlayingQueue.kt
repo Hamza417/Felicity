@@ -17,7 +17,7 @@ import app.simple.felicity.decorations.views.PopupMenuItem
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.app.TotalTime.Companion.showTotalTime
 import app.simple.felicity.dialogs.playlists.AddMultipleToPlaylistDialog.Companion.showAddMultipleToPlaylistDialog
-import app.simple.felicity.dialogs.queue.QueueLabel
+import app.simple.felicity.dialogs.queue.QueueLabel.Companion.QueueLabelCallbacks
 import app.simple.felicity.dialogs.queue.QueueLabel.Companion.openQueueLabel
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.engine.managers.PlaybackStateManager
@@ -122,7 +122,7 @@ class PlayingQueue : BasePanelFragment() {
             val activeQueueId = MediaPlaybackManager.getActiveQueueId()
             childFragmentManager.openQueueLabel(QueueLabelPreferences.getDisplayLabel(activeQueueId) { n ->
                 getString(R.string.current_queue, n)
-            }).setOnQueueLabelChangedListener(object : QueueLabel.Companion.QueueLabelCallbacks {
+            }).setOnQueueLabelChangedListener(object : QueueLabelCallbacks {
                 override fun onQueueLabelChanged(label: String) {
                     QueueLabelPreferences.setLabel(activeQueueId, label)
                     updateQueueHeaderLabel()
@@ -136,6 +136,14 @@ class PlayingQueue : BasePanelFragment() {
 
         headerBinding.shuffle.setOnClickListener {
             shuffleMediaItems(MediaPlaybackManager.getSongs())
+        }
+
+        headerBinding.clearQueue.setOnClickListener {
+            withSureDialog {
+                if (it) {
+                    MediaPlaybackManager.clearQueueExceptCurrent()
+                }
+            }
         }
     }
 
@@ -159,10 +167,28 @@ class PlayingQueue : BasePanelFragment() {
 
             adapterPlayingQueue?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
                 override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
+                    val clickedSong = songs[position]
+
+                    // If we are in multi-select mode, just toggle and stop here.
                     if (SelectionManager.hasSelection) {
-                        SelectionManager.toggle(songs[position])
-                    } else {
+                        SelectionManager.toggle(clickedSong)
+                        return
+                    }
+
+                    // If the user tapped a different song, play it and stop here.
+                    if (MediaPlaybackManager.getCurrentSong()?.id != clickedSong.id) {
                         MediaPlaybackManager.updatePosition(position, forcePlay = true)
+                        return
+                    }
+
+                    // If we reach this point, the user tapped the currently playing song.
+                    // Decide where to navigate them.
+                    val cameFromPlayer = requireArguments().getBoolean(FROM_PLAYER_KEY, false)
+                    
+                    if (cameFromPlayer) {
+                        goBack()
+                    } else {
+                        openDefaultPlayer()
                     }
                 }
 
@@ -254,9 +280,11 @@ class PlayingQueue : BasePanelFragment() {
         const val TAG = "PlayingQueue"
 
         private const val FIRST_LAUNCH_KEY = "first_launch"
+        private const val FROM_PLAYER_KEY = "from_player"
 
-        fun newInstance(): PlayingQueue {
+        fun newInstance(fromPlayer: Boolean = false): PlayingQueue {
             val args = Bundle()
+            args.putBoolean(FROM_PLAYER_KEY, fromPlayer)
             val fragment = PlayingQueue()
             fragment.arguments = args
             return fragment

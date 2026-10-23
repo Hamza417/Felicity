@@ -2,32 +2,32 @@
 <resources>
     <plurals name="number_of_songs">
         <item quantity="one">%d Трек</item>
-        <item quantity="few">%d Треки</item>
-        <item quantity="many">%d Треки</item>
-        <item quantity="other">%d Треки</item>
+        <item quantity="few">%d Трека</item>
+        <item quantity="many">%d Треков</item>
+        <item quantity="other">%d Трека</item>
     </plurals>
     <plurals name="songs_selected">
         <item quantity="one">%d Выбранный трек</item>
-        <item quantity="few">%d Выбранные треки</item>
-        <item quantity="many">%d Выбранные треки</item>
-        <item quantity="other">%d Выбранные треки</item>
+        <item quantity="few">%d Выбранных трека</item>
+        <item quantity="many">%d Выбранных треков</item>
+        <item quantity="other">%d Выбранных трека</item>
     </plurals>
     <plurals name="number_of_albums">
         <item quantity="one">%d Альбом</item>
-        <item quantity="few">%d Альбомы</item>
-        <item quantity="many">%d Альбомы</item>
-        <item quantity="other">%d Альбомы</item>
+        <item quantity="few">%d Альбома</item>
+        <item quantity="many">%d Альбомов</item>
+        <item quantity="other">%d Альбома</item>
     </plurals>
     <plurals name="total_times">
         <item quantity="one">%d Раз</item>
-        <item quantity="few">%d Раз</item>
+        <item quantity="few">%d Раза</item>
         <item quantity="many">%d Раз</item>
-        <item quantity="other">%d Раз</item>
+        <item quantity="other">%d Раза</item>
     </plurals>
     <plurals name="number_of_bookmarks">
         <item quantity="one">%d Закладка</item>
         <item quantity="few">%d Закладки</item>
-        <item quantity="many">%d Закладки</item>
+        <item quantity="many">%d Закладок</item>
         <item quantity="other">%d Закладки</item>
     </plurals>
 </resources>

@@ -45,6 +45,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.widget.NestedScrollView
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.decorations.itemdecorations.FooterSpacingItemDecoration
+import app.simple.felicity.decorations.layoutmanager.spanned.SpannedGridLayoutManager
 import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.ACTION_BTN_MAX_COUNT
 import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.ARTIST_TEXT_SIZE_SP
 import app.simple.felicity.decorations.miniplayer.MiniPlayer.Companion.DEFAULT_ELEVATION_DP
@@ -65,6 +66,7 @@ import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
 import app.simple.felicity.theme.models.Theme
+import java.util.WeakHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.abs
 import kotlin.math.max
@@ -388,9 +390,17 @@ class MiniPlayer @JvmOverloads constructor(
             if (!bitmapCache.containsKey(i)) {
                 bitmapCache[i] = null // placeholder while loading
                 val capturedPos = i
-                callbacks?.onLoadArt(capturedPos, items[i].payload) { bmp ->
-                    bitmapCache[capturedPos] = bmp
-                    invalidate()
+                val capturedPayload = items[i].payload
+                callbacks?.onLoadArt(capturedPos, capturedPayload) { bmp ->
+                    if (capturedPos < items.size && items[capturedPos].payload == capturedPayload) {
+                        val currentCenter = if (width > 0) scrollEngine.scrollPageIndex() else scrollEngine.currentPage.coerceAtLeast(0)
+                        val currentLo = max(0, currentCenter - PAGE_RADIUS)
+                        val currentHi = min(pageCount() - 1, currentCenter + PAGE_RADIUS)
+                        if (capturedPos in currentLo..currentHi) {
+                            bitmapCache[capturedPos] = bmp
+                            invalidate()
+                        }
+                    }
                 }
             }
         }
@@ -1103,9 +1113,29 @@ class MiniPlayer @JvmOverloads constructor(
      * @author Hamza417
      */
     private fun updateFooterDecorations() {
-        if (footerDecorations.isEmpty()) return
+        if (footerDecorations.isEmpty() && recyclerViewOriginalPaddings.isEmpty()) return
         val spacing = getRequiredFooterSpacing()
-        footerDecorations.values.forEach { it.updateFooterHeight(spacing) }
+        if (footerDecorations.isNotEmpty()) {
+            footerDecorations.values.forEach { it.updateFooterHeight(spacing) }
+        }
+        if (recyclerViewOriginalPaddings.isNotEmpty()) {
+            recyclerViewOriginalPaddings.keys.forEach { rv ->
+                rv.post { applyRecyclerViewPadding(rv) }
+            }
+        }
+    }
+
+    private fun applyRecyclerViewPadding(recyclerView: RecyclerView) {
+        val spacing = getRequiredFooterSpacing()
+        recyclerView.clipToPadding = false
+
+        val orig = recyclerViewOriginalPaddings[recyclerView] ?: return
+        recyclerView.setPadding(
+                recyclerView.paddingLeft,
+                recyclerView.paddingTop,
+                recyclerView.paddingRight,
+                orig + spacing
+        )
     }
 
     // -------------------------------------------------------------------------
@@ -2234,7 +2264,7 @@ class MiniPlayer @JvmOverloads constructor(
     // Show / Hide / RecyclerView scroll-hide
     // -------------------------------------------------------------------------
 
-    private val attached: MutableMap<RecyclerView, RecyclerView.OnScrollListener> = mutableMapOf()
+    private val attached: MutableMap<RecyclerView, RecyclerView.OnScrollListener> = WeakHashMap()
 
     /**
      * Footer spacing decorations keyed by [RecyclerView].
@@ -2243,7 +2273,7 @@ class MiniPlayer @JvmOverloads constructor(
      *
      * @author Hamza417
      */
-    private val footerDecorations: MutableMap<RecyclerView, FooterSpacingItemDecoration> = mutableMapOf()
+    private val footerDecorations: MutableMap<RecyclerView, FooterSpacingItemDecoration> = WeakHashMap()
 
     /**
      * Decorations that were released via [FooterSpacingItemDecoration.release] but not yet
@@ -2253,7 +2283,14 @@ class MiniPlayer @JvmOverloads constructor(
      *
      * @author Hamza417
      */
-    private val pendingReleaseDecorations: MutableMap<RecyclerView, FooterSpacingItemDecoration> = mutableMapOf()
+    private val pendingReleaseDecorations: MutableMap<RecyclerView, FooterSpacingItemDecoration> = WeakHashMap()
+
+    /**
+     * Original bottom paddings of [RecyclerView]s that are attached but incompatible with
+     * [FooterSpacingItemDecoration] (like [SpannedGridLayoutManager]), requiring manual padding.
+     */
+    private val recyclerViewOriginalPaddings: MutableMap<RecyclerView, Int> = WeakHashMap()
+    private val pendingReleasePaddings: MutableMap<RecyclerView, Int> = WeakHashMap()
 
     private val showInterpolator = DecelerateInterpolator()
     private val hideInterpolator = AccelerateInterpolator()
@@ -2555,12 +2592,28 @@ class MiniPlayer @JvmOverloads constructor(
         pendingReleaseDecorations.remove(recyclerView)?.let { stale ->
             recyclerView.removeItemDecoration(stale)
         }
+        pendingReleasePaddings.remove(recyclerView)?.let { staleOrig ->
+            // Restore original padding before recalculating
+            recyclerView.setPadding(
+                    recyclerView.paddingLeft,
+                    recyclerView.paddingTop,
+                    recyclerView.paddingRight,
+                    staleOrig
+            )
+        }
 
-        // Add a footer spacing decoration so the last list item is never permanently
-        // hidden beneath the floating miniplayer — mirrors AppHeader's header decoration.
-        val footerDeco = FooterSpacingItemDecoration(getRequiredFooterSpacing())
-        footerDecorations[recyclerView] = footerDeco
-        recyclerView.addItemDecoration(footerDeco)
+        if (recyclerView.layoutManager is SpannedGridLayoutManager) {
+            recyclerViewOriginalPaddings[recyclerView] = recyclerView.paddingBottom
+            recyclerView.post {
+                applyRecyclerViewPadding(recyclerView)
+            }
+        } else {
+            // Add a footer spacing decoration so the last list item is never permanently
+            // hidden beneath the floating miniplayer — mirrors AppHeader's header decoration.
+            val footerDeco = FooterSpacingItemDecoration(getRequiredFooterSpacing())
+            footerDecorations[recyclerView] = footerDeco
+            recyclerView.addItemDecoration(footerDeco)
+        }
 
         suppressAutoFromRecyclerUntilIdle = false
     }
@@ -2589,6 +2642,9 @@ class MiniPlayer @JvmOverloads constructor(
             pendingReleaseDecorations[rv] = deco
             deco.release()
         }
+        recyclerViewOriginalPaddings.remove(rv)?.let { origPadding ->
+            pendingReleasePaddings[rv] = origPadding
+        }
     }
 
     @Suppress("unused")
@@ -2610,6 +2666,10 @@ class MiniPlayer @JvmOverloads constructor(
             deco.release()
         }
         footerDecorations.clear()
+        recyclerViewOriginalPaddings.forEach { (rv, orig) ->
+            pendingReleasePaddings[rv] = orig
+        }
+        recyclerViewOriginalPaddings.clear()
     }
 
     // -------------------------------------------------------------------------

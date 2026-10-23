@@ -82,7 +82,11 @@ class Padding : BitmapTransformation {
 
         val paddedWidth = 0.coerceAtLeast(source.width - (paddingLeft + paddingRight))
         val paddedHeight = 0.coerceAtLeast(source.height - (paddingTop + paddingBottom))
-        val bitmap = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
+        // Pull the output bitmap from Glide's BitmapPool instead of allocating a brand new
+        // one on every transform() call. Repeated raw Bitmap.createBitmap() allocations for
+        // every RecyclerView bind is what fragments the native heap over time, eventually
+        // surfacing as an OutOfMemoryError while inflating unrelated layouts.
+        val bitmap = pool.get(source.width, source.height, Bitmap.Config.ARGB_8888)
         val bitmapBounds = Rect(paddingLeft, paddingTop, paddedWidth + paddingLeft, paddedHeight + paddingTop)
 
         val paint = Paint()

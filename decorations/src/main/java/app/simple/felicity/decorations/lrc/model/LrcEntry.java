@@ -17,6 +17,8 @@ public class LrcEntry implements Comparable <LrcEntry> {
 
     private final long timeInMillis;
     private final String text;
+    private final String romanization;
+    private final String adlib;
     
     /**
      * Optional word-level timing data.  Empty for standard LRC lines,
@@ -28,19 +30,24 @@ public class LrcEntry implements Comparable <LrcEntry> {
      * Standard LRC constructor — no word-level data (the classics never go out of style).
      */
     public LrcEntry(long timeInMillis, String text) {
-        this(timeInMillis, text, Collections.emptyList());
+        this(timeInMillis, text, null, null, Collections.emptyList());
+    }
+
+    /**
+     * Word-sync constructor — carries per-word timing alongside the full line text.
+     */
+    public LrcEntry(long timeInMillis, String text, List <WordEntry> words) {
+        this(timeInMillis, text, null, null, words);
     }
     
     /**
-     * Word-sync constructor — carries per-word timing alongside the full line text.
-     *
-     * @param timeInMillis the line-level start time in milliseconds
-     * @param text         the full line text (join of all word texts)
-     * @param words        list of timed words; may be empty but never null
+     * Full constructor for merging multiple layers of text.
      */
-    public LrcEntry(long timeInMillis, String text, List <WordEntry> words) {
+    public LrcEntry(long timeInMillis, String text, String romanization, String adlib, List <WordEntry> words) {
         this.timeInMillis = timeInMillis;
         this.text = text != null ? text : "";
+        this.romanization = romanization;
+        this.adlib = adlib;
         this.words = (words != null && !words.isEmpty())
                 ? Collections.unmodifiableList(new ArrayList <>(words))
                 : Collections.emptyList();
@@ -52,6 +59,14 @@ public class LrcEntry implements Comparable <LrcEntry> {
 
     public String getText() {
         return text;
+    }
+    
+    public String getRomanization() {
+        return romanization;
+    }
+    
+    public String getAdlib() {
+        return adlib;
     }
     
     /**
@@ -79,6 +94,6 @@ public class LrcEntry implements Comparable <LrcEntry> {
     @Override
     @NonNull
     public String toString() {
-        return "LrcEntry{time=" + timeInMillis + ", text='" + text + "', words=" + words.size() + "}";
+        return "LrcEntry{time=" + timeInMillis + ", text='" + text + "', romanization='" + romanization + "', adlib='" + adlib + "', words=" + words.size() + "}";
     }
 }
