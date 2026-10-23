@@ -390,9 +390,17 @@ class MiniPlayer @JvmOverloads constructor(
             if (!bitmapCache.containsKey(i)) {
                 bitmapCache[i] = null // placeholder while loading
                 val capturedPos = i
-                callbacks?.onLoadArt(capturedPos, items[i].payload) { bmp ->
-                    bitmapCache[capturedPos] = bmp
-                    invalidate()
+                val capturedPayload = items[i].payload
+                callbacks?.onLoadArt(capturedPos, capturedPayload) { bmp ->
+                    if (capturedPos < items.size && items[capturedPos].payload == capturedPayload) {
+                        val currentCenter = if (width > 0) scrollEngine.scrollPageIndex() else scrollEngine.currentPage.coerceAtLeast(0)
+                        val currentLo = max(0, currentCenter - PAGE_RADIUS)
+                        val currentHi = min(pageCount() - 1, currentCenter + PAGE_RADIUS)
+                        if (capturedPos in currentLo..currentHi) {
+                            bitmapCache[capturedPos] = bmp
+                            invalidate()
+                        }
+                    }
                 }
             }
         }
