@@ -238,6 +238,11 @@ class Search : PanelFragment() {
         return headerBinding.shuffle
     }
 
+    override fun onShuffleClicked() {
+        super.onShuffleClicked()
+        shuffleMediaItems(searchViewModel.searchResults.value.songs)
+    }
+
     private fun updateSearchResults(results: SearchResults) {
         val songsHeader = getString(R.string.songs)
         val albumsHeader = getString(R.string.albums)

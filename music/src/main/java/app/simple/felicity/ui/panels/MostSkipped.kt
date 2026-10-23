@@ -74,6 +74,11 @@ class MostSkipped : BasePanelFragment() {
         return headerBinding.shuffle
     }
 
+    override fun onShuffleClicked() {
+        super.onShuffleClicked()
+        shuffleMediaItems(mostSkippedViewModel.songs.value.map { it.audio })
+    }
+
     private fun setupClickListeners() {
         headerBinding.search.setOnClickListener {
             openSearch()
