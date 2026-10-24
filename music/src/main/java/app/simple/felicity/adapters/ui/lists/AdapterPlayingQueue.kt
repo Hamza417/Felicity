@@ -10,6 +10,7 @@ import android.graphics.RectF
 import android.graphics.Shader
 import android.view.LayoutInflater
 import android.view.MotionEvent
+import android.view.View
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import androidx.annotation.ColorInt
@@ -66,11 +67,8 @@ class AdapterPlayingQueue(initial: List<Audio>) : FastScrollAdapter<AdapterPlayi
     private var pendingList: List<Audio>? = null
 
     init {
-        setHasStableIds(true)
         songs.addAll(initial)
     }
-
-    override fun getItemId(position: Int): Long = songs[position].id
 
     override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
         super.onAttachedToRecyclerView(recyclerView)
@@ -104,6 +102,14 @@ class AdapterPlayingQueue(initial: List<Audio>) : FastScrollAdapter<AdapterPlayi
         holder.itemView.alpha = if (position < currentPosition) PAST_SONG_ALPHA else 1f
     }
 
+    override fun onBindPayload(holder: QueueHolder, position: Int, payloads: MutableList<Any>): Boolean {
+        if (payloads.contains(ALPHA_PAYLOAD_TAG)) {
+            holder.itemView.alpha = if (position < currentPosition) PAST_SONG_ALPHA else 1f
+            return true
+        }
+        return super.onBindPayload(holder, position, payloads)
+    }
+
     override fun getItemCount(): Int = songs.size
 
     override fun onViewRecycled(holder: QueueHolder) {
@@ -128,11 +134,17 @@ class AdapterPlayingQueue(initial: List<Audio>) : FastScrollAdapter<AdapterPlayi
      * Tell the adapter which song is currently playing so it can fade out the ones before it.
      * Only the items whose faded-ness actually changed are refreshed — no unnecessary redraws.
      */
-    @SuppressLint("NotifyDataSetChanged")
     fun updateCurrentPosition(newPosition: Int) {
         val old = currentPosition
+        if (old == newPosition) return
         currentPosition = newPosition
-        notifyDataSetChanged()
+
+        if (songs.isEmpty()) return
+        val start = minOf(old, newPosition).coerceAtLeast(0)
+        val end = maxOf(old, newPosition).coerceAtMost(songs.size - 1)
+        if (start <= end) {
+            notifyItemRangeChanged(start, end - start + 1, ALPHA_PAYLOAD_TAG)
+        }
     }
 
     /**
@@ -238,19 +250,12 @@ class AdapterPlayingQueue(initial: List<Audio>) : FastScrollAdapter<AdapterPlayi
         private var dragToPosition = -1
         private var isDragging = false
 
-        override fun getMovementFlags(
-                recyclerView: RecyclerView,
-                viewHolder: RecyclerView.ViewHolder
-        ): Int = makeMovementFlags(
+        override fun getMovementFlags(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder): Int = makeMovementFlags(
                 ItemTouchHelper.UP or ItemTouchHelper.DOWN,
                 ItemTouchHelper.START or ItemTouchHelper.END
         )
 
-        override fun onMove(
-                recyclerView: RecyclerView,
-                viewHolder: RecyclerView.ViewHolder,
-                target: RecyclerView.ViewHolder
-        ): Boolean {
+        override fun onMove(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder): Boolean {
             val from = viewHolder.bindingAdapterPosition
             val to = target.bindingAdapterPosition
             if (from < 0 || to < 0 || from >= songs.size || to >= songs.size) return false
@@ -281,7 +286,7 @@ class AdapterPlayingQueue(initial: List<Audio>) : FastScrollAdapter<AdapterPlayi
             super.onSelectedChanged(viewHolder, actionState)
             if (actionState == ItemTouchHelper.ACTION_STATE_DRAG) {
                 onDragStarted()
-                startShimmer(viewHolder?.itemView?.width?.toFloat() ?: 0f)
+                startShimmer()
             }
         }
 
@@ -339,7 +344,7 @@ class AdapterPlayingQueue(initial: List<Audio>) : FastScrollAdapter<AdapterPlayi
             }
         }
 
-        private fun startShimmer(itemWidth: Float) {
+        private fun startShimmer() {
             releaseAnimator?.cancel()
             shimmerAlpha = 1f
             shimmerAnimator?.cancel()
@@ -353,7 +358,7 @@ class AdapterPlayingQueue(initial: List<Audio>) : FastScrollAdapter<AdapterPlayi
             }
         }
 
-        private fun stopShimmerAndFadeOut(itemView: android.view.View) {
+        private fun stopShimmerAndFadeOut(itemView: View) {
             shimmerAnimator?.cancel()
             shimmerAnimator = null
             releaseAnimator?.cancel()
@@ -377,5 +382,7 @@ class AdapterPlayingQueue(initial: List<Audio>) : FastScrollAdapter<AdapterPlayi
          * "disabled" alpha — dim enough to notice, bright enough to still read.
          */
         private const val PAST_SONG_ALPHA = 0.38f
+
+        private const val ALPHA_PAYLOAD_TAG = "ALPHA_UPDATE"
     }
 }
