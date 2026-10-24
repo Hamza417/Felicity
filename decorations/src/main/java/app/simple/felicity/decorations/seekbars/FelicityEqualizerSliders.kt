@@ -19,6 +19,7 @@ import android.view.ViewConfiguration
 import android.view.animation.DecelerateInterpolator
 import androidx.annotation.ColorInt
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.withRotation
 import androidx.dynamicanimation.animation.FlingAnimation
 import androidx.dynamicanimation.animation.FloatPropertyCompat
 import androidx.dynamicanimation.animation.SpringAnimation
@@ -959,6 +960,16 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
 
     /** Replaces the PEQ band list with the given bands and refreshes the layout. */
     fun setPeqBands(bands: List<PeqBand>) {
+        if (bands.size == peqBands.size) {
+            for (i in bands.indices) {
+                peqBands[i].gain = bands[i].gain
+                peqBands[i].q = bands[i].q
+                peqBands[i].frequencyHz = bands[i].frequencyHz
+            }
+            invalidate()
+            return
+        }
+
         detachAllPeqDrawables()
         peqBands.clear()
         peqBands.addAll(bands)
@@ -1487,10 +1498,9 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         val rotationDeg = (normalizedValue - 0.5f) * KNOB_SWEEP_DEG
         if (drawable != null) {
             drawable.setBounds((cx - r).toInt(), (cy - r).toInt(), (cx + r).toInt(), (cy + r).toInt())
-            canvas.save()
-            canvas.rotate(rotationDeg, cx, cy)
-            drawable.draw(canvas)
-            canvas.restore()
+            canvas.withRotation(rotationDeg, cx, cy) {
+                drawable.draw(this)
+            }
         } else {
             // Fallback for the rare case the drawable list is out of sync.
             knobBodyPaint.color = trackColor
@@ -1958,9 +1968,17 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
             }
             PeqTarget.Q_KNOB, PeqTarget.FREQ_KNOB -> {
                 if (peqTouchBandIndex < 0) return
+
+                // Start gesture when moved beyond touch slop.
+                // Since it's a knob, any movement counts as a gesture for the knob.
+                // We do NOT convert a knob drag into a horizontal scroll.
+                if (!isBandGesture && (abs(dx) > touchSlop || abs(dy) > touchSlop)) {
+                    isBandGesture = true
+                }
+                
                 // A knob rotation gesture is never converted to a horizontal scroll — the
                 // user intentionally landed on the knob so we own all subsequent movement.
-                if (isScrollGesture) return
+                isScrollGesture = false
                 val cx = peqBandSectionCenterX(peqTouchBandIndex)
                 val halfSection = peqSectionWidthPx * 0.5f
                 val hPad = PEQ_SECTION_H_PADDING_DP * d
