@@ -163,7 +163,6 @@ class PlayingQueue : BasePanelFragment() {
     private fun updateQueueList(songs: List<Audio>) {
         if (adapterPlayingQueue == null) {
             adapterPlayingQueue = AdapterPlayingQueue(songs)
-            adapterPlayingQueue?.setHasStableIds(true)
 
             adapterPlayingQueue?.setGeneralAdapterCallbacks(object : GeneralAdapterCallbacks {
                 override fun onSongClicked(songs: MutableList<Audio>, position: Int, view: View) {
