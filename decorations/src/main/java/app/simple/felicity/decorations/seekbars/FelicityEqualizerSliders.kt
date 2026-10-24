@@ -29,7 +29,6 @@ import app.simple.felicity.decorations.ripple.FelicityRippleDrawable
 import app.simple.felicity.decorations.seekbars.FelicityEqualizerSliders.Companion.NO_ACTIVE_BAND
 import app.simple.felicity.decorations.seekbars.FelicityEqualizerSliders.Companion.PEQ_DELETE_BTN_RADIUS_DP
 import app.simple.felicity.decorations.seekbars.FelicityEqualizerSliders.Companion.PEQ_KNOB_DIAMETER_DP
-import app.simple.felicity.decorations.seekbars.FelicityEqualizerSliders.Companion.PREAMP_BAND_INDEX
 import app.simple.felicity.decorations.typeface.TypeFace
 import app.simple.felicity.decorations.utils.VibrateUtils.vibrateEffect
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
@@ -156,7 +155,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         private const val PEQ_KNOB_DIAMETER_DP = 112f
 
         /** Horizontal inset on both sides of each section, in dp. */
-        private const val PEQ_SECTION_H_PADDING_DP = 32F
+        private const val PEQ_SECTION_H_PADDING_DP = 16F
 
         /** Radius of the delete button circle drawn at the top-right corner of each section. */
         private const val PEQ_DELETE_BTN_RADIUS_DP = 12f
@@ -168,14 +167,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
          * Gap in dp between the outer edge of a knob's arc and the nearest label (pill above
          * and value text below). Increase this to prevent text from touching the arc.
          */
-        private const val PEQ_KNOB_LABEL_GAP_DP = 12f
-
-        /**
-         * Extra vertical breathing room inserted between the Q knob's value label and the
-         * FREQ knob's type pill. Without this the two knobs press against each other when
-         * the track height is tight.
-         */
-        private const val PEQ_KNOB_INTER_GAP_DP = 14f
+        private const val PEQ_KNOB_LABEL_GAP_DP = 6f
 
         /** Stroke width of the arc track and progress arc around each knob, in dp. */
         private const val PEQ_ARC_STROKE_DP = 1.5f
@@ -1059,18 +1051,30 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
     private fun computeKnobCenters(sliderCx: Float): KnobCenters {
         val arcR = peqKnobArcRadiusPx
         val innerGap = PEQ_SLIDER_KNOB_GAP_DP * d
-        val trackMid = trackTop + trackLength * 0.5f
+        val bgTop = trackTop - sliderVerticalPaddingPx * 0.5f
+        val bgBottom = (height - paddingBottom).toFloat()
+
+        val labelGap = PEQ_KNOB_LABEL_GAP_DP * d
+        val pillH = knobTypeLabelTextPaint.fontSpacing * 0.9f + 4f * d
+        val singleKnobH = pillH + labelGap + 2f * arcR + labelGap + knobLabelPaint.fontSpacing
+        
         return if (isLandscape) {
             val qKnobCx = sliderCx + thumbHalfWidthPx + innerGap + arcR
             val freqKnobCx = qKnobCx + 2f * arcR + PEQ_KNOB_KNOB_GAP_DP * d
-            KnobCenters(qKnobCx, trackMid, freqKnobCx, trackMid)
+
+            // Center the entire knob block (including labels) vertically on the background.
+            val bgMid = (bgTop + bgBottom) * 0.5f
+            val cy = bgMid + (pillH + labelGap + arcR) - singleKnobH * 0.5f
+            KnobCenters(qKnobCx, cy, freqKnobCx, cy)
         } else {
             val knobCx = sliderCx + thumbHalfWidthPx + innerGap + arcR
-            val labelGap = PEQ_KNOB_LABEL_GAP_DP * d
-            val pillH = knobTypeLabelTextPaint.fontSpacing * 0.9f + 4f * d
-            val knobTotalHeight = pillH + labelGap + 2f * arcR + labelGap + knobLabelPaint.fontSpacing + PEQ_KNOB_INTER_GAP_DP * d
-            val qKnobCy = trackMid - knobTotalHeight * 0.5f - arcR - labelGap - pillH * 0.5f + knobTotalHeight * 0.5f
-            val freqKnobCy = qKnobCy + knobTotalHeight
+
+            val remainingSpace = (bgBottom - bgTop) - 2f * singleKnobH
+            val gap = (remainingSpace / 3f).coerceAtLeast(0f)
+
+            val qKnobCy = bgTop + gap + pillH + labelGap + arcR
+            val freqKnobCy = bgTop + gap + singleKnobH + gap + pillH + labelGap + arcR
+            
             KnobCenters(knobCx, qKnobCy, knobCx, freqKnobCy)
         }
     }
@@ -1406,7 +1410,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         canvas.drawRoundRect(bgLeft, bgTop, bgRight, bgBottom, 8f * d, 8f * d, peqSectionBgPaint)
 
         // Gain slider: left-inset by hPad, centered on the slider's own half-width.
-        val sliderCx = bgLeft + 3f * d + hPad + thumbHalfWidthPx
+        val sliderCx = cx - halfSection + hPad + thumbHalfWidthPx
         val zeroY = gainToThumbY(0f)
         val thumbY = gainToThumbY(band.gain.coerceIn(MIN_DB, MAX_DB))
         val gainPressScale = peqGainPressScales.getOrElse(bandIndex) { 1f }
@@ -1514,7 +1518,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
 
         // Current value label below the arc.
         val labelY = cy + arcR + labelGap + knobLabelPaint.fontSpacing * 0.9f
-        canvas.drawText(valueLabel, cx, labelY.minus(42F), knobLabelPaint)
+        canvas.drawText(valueLabel, cx, labelY, knobLabelPaint)
     }
 
     /**
@@ -1830,10 +1834,9 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
             val halfSection = peqSectionWidthPx * 0.5f
             val hPad = PEQ_SECTION_H_PADDING_DP * d
             val arcR = peqKnobArcRadiusPx
-            val bgLeft = cx - halfSection + 3f * d
             val bgRight = cx + halfSection - 3f * d
             val bgTop = trackTop - sliderVerticalPaddingPx * 0.5f
-            val sliderCx = bgLeft + 3f * d + hPad + thumbHalfWidthPx
+            val sliderCx = cx - halfSection + hPad + thumbHalfWidthPx
             val delR = PEQ_DELETE_BTN_RADIUS_DP * d
             val delMargin = PEQ_DELETE_BTN_MARGIN_DP * d
             val delCx = bgRight - delR - delMargin
@@ -1961,8 +1964,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
                 val cx = peqBandSectionCenterX(peqTouchBandIndex)
                 val halfSection = peqSectionWidthPx * 0.5f
                 val hPad = PEQ_SECTION_H_PADDING_DP * d
-                val bgLeft = cx - halfSection + 3f * d
-                val sliderCx = bgLeft + 3f * d + hPad + thumbHalfWidthPx
+                val sliderCx = cx - halfSection + hPad + thumbHalfWidthPx
 
                 // Mirror the knob center calculation from drawPeqSection (landscape-aware).
                 val kc = computeKnobCenters(sliderCx)
