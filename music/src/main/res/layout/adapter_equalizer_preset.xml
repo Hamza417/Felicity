@@ -25,8 +25,8 @@
             android:layout_weight="1"
             android:ellipsize="end"
             android:maxLines="1"
-            android:textSize="@dimen/text_size_16"
-            app:appFontStyle="bold"
+            android:textSize="@dimen/text_size_14"
+            app:appFontStyle="medium"
             app:textColorStyle="primary" />
 
         <app.simple.felicity.decorations.typeface.TypeFaceTextView
@@ -68,7 +68,8 @@
     <app.simple.felicity.decorations.views.EqualizerWaveView
         android:id="@+id/equalizer_wave"
         android:layout_width="0dp"
-        android:layout_height="50dp"
+        android:layout_height="75dp"
+        android:layout_marginTop="@dimen/padding_10"
         android:layout_marginEnd="@dimen/padding_15"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/preset_options_button"
@@ -81,9 +82,9 @@
         android:layout_height="@dimen/button_size"
         android:src="@drawable/ic_more_vert"
         app:buttonTintType="secondary"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toBottomOf="@+id/equalizer_wave"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="@+id/equalizer_wave" />
 
 </app.simple.felicity.decorations.ripple.DynamicRippleConstraintLayout>
 

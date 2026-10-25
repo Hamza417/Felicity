@@ -7,7 +7,11 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Shader
 import android.util.AttributeSet
+import android.util.TypedValue
 import android.view.View
+import app.simple.felicity.decorations.typeface.TypeFace
+import app.simple.felicity.decorations.typeface.TypefaceStyle
+import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
@@ -68,6 +72,36 @@ class EqualizerWaveView @JvmOverloads constructor(
 
     private var gradient: LinearGradient? = null
 
+    private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textSize = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_SP, 10f, resources.displayMetrics)
+        textAlign = Paint.Align.RIGHT
+    }
+
+    private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 1f * resources.displayMetrics.density
+    }
+
+    init {
+        if (!isInEditMode) {
+            textPaint.typeface = TypeFace.getTypeFace(
+                    AppearancePreferences.getAppFont(), TypefaceStyle.REGULAR.style, context)
+        }
+
+        updateColors()
+    }
+
+    private fun updateColors() {
+        if (!isInEditMode) {
+            textPaint.color = ThemeManager.theme.textViewTheme.primaryTextColor
+            gridPaint.color = ThemeManager.theme.viewGroupTheme.dividerColor
+        } else {
+            textPaint.color = 0xFF000000.toInt()
+            gridPaint.color = 0x40000000.toInt()
+        }
+    }
+
     /**
      * Updates the wave shape to reflect a new set of EQ band gains and triggers a redraw.
      * Call this whenever the displayed preset changes.
@@ -97,21 +131,50 @@ class EqualizerWaveView @JvmOverloads constructor(
 
         val w = width.toFloat()
         val h = height.toFloat()
-        val midY = h / 2f
 
-        // Map each band gain to a Y coordinate. Positive gains go up, negative gains go down.
-        // The full dB range [-15..+15] spans the full view height with a small padding.
         val pad = h * VERTICAL_PADDING_FRACTION
         val drawH = h - 2f * pad
+
+        var maxGain = 0f
+        var minGain = 0f
+        for (gain in bandGains) {
+            if (gain > maxGain) maxGain = gain
+            if (gain < minGain) minGain = gain
+        }
+
+        // Ensure there's some range to avoid division by zero and overly flat look when all zeros
+        val maxAbs = maxOf(kotlin.math.abs(maxGain), kotlin.math.abs(minGain), 3f)
+        val dynamicDbMax = maxAbs
+        val dynamicDbMin = -maxAbs
+        val range = dynamicDbMax - dynamicDbMin
+
+        val midY = h / 2f
+        val textPadding = 8f * resources.displayMetrics.density
+        // Use a wide enough sample string for measurement
+        val textWidth = textPaint.measureText("+00.0") + textPadding
+        val graphW = w - textWidth
+        val graphStartX = textWidth
+
+        // Draw Grid and Values
+        val gridLines = 5
+        for (i in 0 until gridLines) {
+            val y = pad + (drawH * i / (gridLines - 1))
+            val value = dynamicDbMax - (range * i / (gridLines - 1))
+            canvas.drawLine(graphStartX, y, w, y, gridPaint)
+
+            val textY = y - ((textPaint.descent() + textPaint.ascent()) / 2f)
+            val valueStr = if (value > 0) "+%.1f".format(value) else "%.1f".format(value)
+            canvas.drawText(valueStr, graphStartX - textPadding / 2f, textY, textPaint)
+        }
 
         /**
          * Calculate the X position for each band point, spread evenly across the view width.
          * We add a half-slot offset so the first point isn't right at the left edge.
          */
-        val slotW = w / BAND_COUNT
+        val slotW = graphW / BAND_COUNT
         for (i in 0 until BAND_COUNT) {
-            points[i][0] = slotW * i + slotW / 2f
-            val normalizedGain = bandGains[i] / DB_MAX    // -1..+1
+            points[i][0] = graphStartX + slotW * i + slotW / 2f
+            val normalizedGain = bandGains[i] / dynamicDbMax    // -1..+1
             points[i][1] = midY - normalizedGain * (drawH / 2f)  // flip: positive gain = higher
         }
 
@@ -156,6 +219,7 @@ class EqualizerWaveView @JvmOverloads constructor(
     }
 
     override fun onThemeChanged(theme: Theme, animate: Boolean) {
+        updateColors()
         invalidate()
     }
 
@@ -169,8 +233,13 @@ class EqualizerWaveView @JvmOverloads constructor(
                     ThemeManager.accent.secondaryAccentColor
             )
         }
+
+        val textPadding = 8f * resources.displayMetrics.density
+        val textWidth = textPaint.measureText("+00.0") + textPadding
+        val graphStartX = textWidth
+
         gradient = LinearGradient(
-                0f, 0f, w.toFloat(), 0f,
+                graphStartX, 0f, w.toFloat(), 0f,
                 intArrayOf(primary, secondary),
                 floatArrayOf(0f, 1f),
                 Shader.TileMode.CLAMP
