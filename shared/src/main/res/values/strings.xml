@@ -327,6 +327,7 @@
     <string name="depth">Depth</string>
     <string name="drift">Drift</string>
     <string name="presets">Presets</string>
+    <string name="presets_desc">Saved and built-in presets</string>
     <string name="visualizer">Visualizer</string>
     <string name="metadata">Metadata</string>
     <string name="show_album_artists">Show Album Artists</string>

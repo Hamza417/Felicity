@@ -12,13 +12,7 @@
         android:layoutAnimation="@anim/grid_list_animation_controller"
         app:fastScrollEnabled="false"
         app:isFadingEdgeRequired="false"
-        app:statusPaddingRequired="false" />
-
-    <app.simple.felicity.decorations.views.AppHeader
-        android:id="@+id/app_header"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:headerContentLayout="@layout/header_equalizer_presets" />
+        app:statusPaddingRequired="true" />
 
 </app.simple.felicity.decorations.theme.ThemeFrameLayout>
 
