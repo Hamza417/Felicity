@@ -81,6 +81,12 @@ class EqualizerWaveView @JvmOverloads constructor(
         textAlign = Paint.Align.RIGHT
     }
 
+    private val freqPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textSize = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_SP, 8f, resources.displayMetrics)
+        textAlign = Paint.Align.CENTER
+    }
+
     private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = 1f * resources.displayMetrics.density
@@ -89,6 +95,10 @@ class EqualizerWaveView @JvmOverloads constructor(
     private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = 0.5f * resources.displayMetrics.density
+    }
+
+    private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
     }
 
     private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -101,8 +111,10 @@ class EqualizerWaveView @JvmOverloads constructor(
 
     init {
         if (!isInEditMode) {
-            textPaint.typeface = TypeFace.getTypeFace(
+            val typeFace = TypeFace.getTypeFace(
                     AppearancePreferences.getAppFont(), TypefaceStyle.REGULAR.style, context)
+            textPaint.typeface = typeFace
+            freqPaint.typeface = typeFace
         }
 
         updateColors()
@@ -111,12 +123,16 @@ class EqualizerWaveView @JvmOverloads constructor(
     private fun updateColors() {
         if (!isInEditMode) {
             textPaint.color = ThemeManager.theme.textViewTheme.primaryTextColor
+            freqPaint.color = ThemeManager.theme.textViewTheme.tertiaryTextColor
             gridPaint.color = ThemeManager.theme.viewGroupTheme.dividerColor.toHalfAlpha()
             borderPaint.color = ThemeManager.accent.primaryAccentColor
+            dotPaint.color = ThemeManager.theme.textViewTheme.primaryTextColor
         } else {
             textPaint.color = 0xFF000000.toInt()
+            freqPaint.color = 0x88000000.toInt()
             gridPaint.color = 0x40000000.toInt()
             borderPaint.color = 0x40000000.toInt()
+            dotPaint.color = 0xFF000000.toInt()
         }
     }
 
@@ -150,8 +166,19 @@ class EqualizerWaveView @JvmOverloads constructor(
         val w = width.toFloat()
         val h = height.toFloat()
 
-        val pad = h * VERTICAL_PADDING_FRACTION
-        val drawH = h - 2f * pad
+        val textPadding = 8f * resources.displayMetrics.density
+        // Use a wide enough sample string for measurement
+        val textWidth = textPaint.measureText("+00.0") + textPadding
+        val graphW = w - textWidth
+        val graphStartX = textWidth
+
+        val freqTextHeight = freqPaint.descent() - freqPaint.ascent()
+        val bottomPadding = freqTextHeight + textPadding / 2f
+        val graphH = h - bottomPadding
+
+        val pad = graphH * VERTICAL_PADDING_FRACTION
+        val drawH = graphH - 2f * pad
+        val midY = graphH / 2f
 
         var maxGain = 0f
         var minGain = 0f
@@ -166,16 +193,9 @@ class EqualizerWaveView @JvmOverloads constructor(
         val dynamicDbMin = -maxAbs
         val range = dynamicDbMax - dynamicDbMin
 
-        val midY = h / 2f
-        val textPadding = 8f * resources.displayMetrics.density
-        // Use a wide enough sample string for measurement
-        val textWidth = textPaint.measureText("+00.0") + textPadding
-        val graphW = w - textWidth
-        val graphStartX = textWidth
-
         val radius = if (isInEditMode) 20f else AppearancePreferences.getCornerRadius()
         val inset = borderPaint.strokeWidth / 2f
-        borderRect.set(graphStartX + inset, inset, w - inset, h - inset)
+        borderRect.set(graphStartX + inset, inset, w - inset, graphH - inset)
 
         canvas.save()
         clipPath.reset()
@@ -219,14 +239,20 @@ class EqualizerWaveView @JvmOverloads constructor(
         wavePath.lineTo(w, points.last()[1])
 
         fillPath.set(wavePath)
-        fillPath.lineTo(w, h)
-        fillPath.lineTo(graphStartX, h)
+        fillPath.lineTo(w, graphH)
+        fillPath.lineTo(graphStartX, graphH)
         fillPath.close()
 
         canvas.drawPath(fillPath, fillPaint)
 
         wavePaint.shader = gradient
         canvas.drawPath(wavePath, wavePaint)
+
+        // Draw dots
+        val dotRadius = 1.5f * resources.displayMetrics.density
+        for (i in 0 until BAND_COUNT) {
+            canvas.drawCircle(points[i][0], points[i][1], dotRadius, dotPaint)
+        }
 
         canvas.restore()
 
@@ -239,13 +265,9 @@ class EqualizerWaveView @JvmOverloads constructor(
             canvas.drawText(valueStr, graphStartX - textPadding / 2f, textY, textPaint)
         }
 
-        // Draw frequency labels at the bottom
+        // Draw frequency labels at the bottom, outside the borderRect
         val freqs = arrayOf("31", "62", "125", "250", "500", "1k", "2k", "4k", "8k", "16k")
-        val freqPaint = Paint(textPaint).apply {
-            textAlign = Paint.Align.CENTER
-            textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 8f, resources.displayMetrics)
-        }
-        val freqY = h - textPadding / 2f
+        val freqY = h - freqPaint.descent()
         for (i in 0 until BAND_COUNT) {
             canvas.drawText(freqs[i], points[i][0], freqY, freqPaint)
         }
