@@ -78,7 +78,7 @@
                 android:id="@+id/equalizer_wave"
                 android:layout_marginTop="@dimen/padding_15"
                 android:layout_width="match_parent"
-                android:layout_height="75dp" />
+                android:layout_height="85dp" />
 
         </LinearLayout>
 

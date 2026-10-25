@@ -77,7 +77,7 @@ class EqualizerWaveView @JvmOverloads constructor(
 
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textSize = TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_SP, 10f, resources.displayMetrics)
+                TypedValue.COMPLEX_UNIT_SP, 8f, resources.displayMetrics)
         textAlign = Paint.Align.RIGHT
     }
 
@@ -122,13 +122,13 @@ class EqualizerWaveView @JvmOverloads constructor(
 
     private fun updateColors() {
         if (!isInEditMode) {
-            textPaint.color = ThemeManager.theme.textViewTheme.primaryTextColor
+            textPaint.color = ThemeManager.theme.textViewTheme.tertiaryTextColor
             freqPaint.color = ThemeManager.theme.textViewTheme.tertiaryTextColor
             gridPaint.color = ThemeManager.theme.viewGroupTheme.dividerColor.toHalfAlpha()
             borderPaint.color = ThemeManager.accent.primaryAccentColor
             dotPaint.color = ThemeManager.theme.textViewTheme.primaryTextColor
         } else {
-            textPaint.color = 0xFF000000.toInt()
+            textPaint.color = 0x88000000.toInt()
             freqPaint.color = 0x88000000.toInt()
             gridPaint.color = 0x40000000.toInt()
             borderPaint.color = 0x40000000.toInt()
@@ -168,9 +168,9 @@ class EqualizerWaveView @JvmOverloads constructor(
 
         val textPadding = 8f * resources.displayMetrics.density
         // Use a wide enough sample string for measurement
-        val textWidth = textPaint.measureText("+00.0") + textPadding
-        val graphW = w - textWidth
-        val graphStartX = textWidth
+        val textWidth = textPaint.measureText("+00.0")
+        val graphW = w - (textWidth + textPadding)
+        val graphStartX = textWidth + textPadding
 
         val freqTextHeight = freqPaint.descent() - freqPaint.ascent()
         val bottomPadding = freqTextHeight + textPadding / 2f
@@ -262,7 +262,7 @@ class EqualizerWaveView @JvmOverloads constructor(
             val value = dynamicDbMax - (range * i / (gridLines - 1))
             val textY = y - ((textPaint.descent() + textPaint.ascent()) / 2f)
             val valueStr = if (value > 0) "+%.1f".format(value) else "%.1f".format(value)
-            canvas.drawText(valueStr, graphStartX - textPadding / 2f, textY, textPaint)
+            canvas.drawText(valueStr, graphStartX - textPadding, textY, textPaint)
         }
 
         // Draw frequency labels at the bottom, outside the borderRect
