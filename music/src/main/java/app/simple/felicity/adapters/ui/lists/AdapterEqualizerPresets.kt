@@ -43,18 +43,17 @@ class AdapterEqualizerPresets(
     /** The id of the currently applied preset, or -1 if none is active. */
     private var selectedPresetId: Long = -1L
 
-    override fun getItemCount(): Int {
-        val listSize = super.getItemCount()
-
-        return if (listSize > 0) {
-            listSize + 1
+    override fun submitList(list: List<EqualizerPreset>?) {
+        val newList = if (list.isNullOrEmpty()) {
+            emptyList()
         } else {
-            0
+            listOf(HEADER_PRESET) + list
         }
+        super.submitList(newList)
     }
 
     override fun getItemViewType(position: Int): Int {
-        return if (position == 0) {
+        return if (getItem(position).id == HEADER_PRESET.id) {
             RecyclerViewUtils.TYPE_HEADER
         } else {
             RecyclerViewUtils.TYPE_ITEM
@@ -81,14 +80,12 @@ class AdapterEqualizerPresets(
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
             RecyclerViewUtils.TYPE_HEADER -> {
-                val binding = AdapterPreferenceHeaderBinding.inflate(
-                        LayoutInflater.from(parent.context), parent, false)
-                Header(binding)
+                Header(AdapterPreferenceHeaderBinding.inflate(
+                        LayoutInflater.from(parent.context), parent, false))
             }
             RecyclerViewUtils.TYPE_ITEM -> {
-                val binding = AdapterEqualizerPresetBinding.inflate(
-                        LayoutInflater.from(parent.context), parent, false)
-                PresetHolder(binding)
+                PresetHolder(AdapterEqualizerPresetBinding.inflate(
+                        LayoutInflater.from(parent.context), parent, false))
             }
             else -> throw IllegalStateException("Unknown viewType: $viewType")
         }
@@ -96,7 +93,7 @@ class AdapterEqualizerPresets(
 
     override fun onBindViewHolder(holder: VerticalListViewHolder, position: Int) {
         if (holder is PresetHolder) {
-            holder.bind(getItem(position - 1))
+            holder.bind(getItem(position))
         } else if (holder is Header) {
             holder.binding.title.text = holder.getString(R.string.presets)
             holder.binding.summary.text = holder.getString(R.string.presets_desc)
@@ -157,6 +154,11 @@ class AdapterEqualizerPresets(
     }
 
     companion object {
+        /**
+         * Easily distinguishable placeholder preset for header, we can just use position + 1 but this is easier.
+         */
+        val HEADER_PRESET = EqualizerPreset(id = -100L, name = "HEADER", bandGainsRaw = "")
+
         private val DIFF_CALLBACK = object : DiffUtil.ItemCallback<EqualizerPreset>() {
             override fun areItemsTheSame(oldItem: EqualizerPreset, newItem: EqualizerPreset): Boolean {
                 return oldItem.id == newItem.id
