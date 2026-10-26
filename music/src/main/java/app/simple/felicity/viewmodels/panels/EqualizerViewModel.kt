@@ -75,10 +75,16 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
      */
     val currentPresetName: StateFlow<String> = combine(
             EqualizerManager.bandGainsFlow,
+            EqualizerManager.peqBandsFlow,
             EqualizerManager.preampFlow,
+            EqualizerManager.eqModeFlow,
             allPresets
-    ) { gains, preamp, presets ->
-        findMatchingPreset(gains, preamp, presets)?.name ?: CUSTOM_PRESET_NAME
+    ) { gains, peqBands, preamp, mode, presets ->
+        if (mode == EqualizerPreferences.EQ_MODE_PARAMETRIC) {
+            findMatchingPeqPreset(peqBands, preamp, presets)?.name ?: CUSTOM_PRESET_NAME
+        } else {
+            findMatchingPreset(gains, preamp, presets)?.name ?: CUSTOM_PRESET_NAME
+        }
     }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
@@ -230,6 +236,25 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
                     gains.indices.all { i -> abs(gains[i] - presetGains[i]) < GAIN_TOLERANCE }
             val preampMatch = abs(preamp - preset.preampDb) < GAIN_TOLERANCE
             gainsMatch && preampMatch
+        }
+    }
+
+    private fun findMatchingPeqPreset(
+            bands: List<ParsedBand>,
+            preamp: Float,
+            presets: List<EqualizerPreset>
+    ): EqualizerPreset? {
+        return presets.firstOrNull { preset ->
+            if (preset.presetType != EqualizerPreset.PRESET_TYPE_PARAMETRIC) return@firstOrNull false
+            val presetBands = preset.getPeqBands()
+            val bandsMatch = bands.size == presetBands.size &&
+                    bands.indices.all { i ->
+                        abs(bands[i].gain - presetBands[i].gain) < GAIN_TOLERANCE &&
+                                abs(bands[i].q - presetBands[i].q) < 0.05f &&
+                                abs(bands[i].frequencyHz - presetBands[i].frequencyHz) < 1f
+                    }
+            val preampMatch = abs(preamp - preset.preampDb) < GAIN_TOLERANCE
+            bandsMatch && preampMatch
         }
     }
 
