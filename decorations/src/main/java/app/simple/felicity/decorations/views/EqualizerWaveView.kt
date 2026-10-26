@@ -15,6 +15,7 @@ import app.simple.felicity.decorations.typeface.TypeFace
 import app.simple.felicity.decorations.typeface.TypefaceStyle
 import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.shared.utils.ColorUtils.toHalfAlpha
+import app.simple.felicity.shared.utils.ColorUtils.toQuarterAlpha
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
@@ -115,11 +116,6 @@ class EqualizerWaveView @JvmOverloads constructor(
         strokeWidth = 1f * resources.displayMetrics.density
     }
 
-    private val handlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeWidth = 1.5f * resources.displayMetrics.density
-    }
-
     private val handleFillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
     }
@@ -128,6 +124,9 @@ class EqualizerWaveView @JvmOverloads constructor(
     private val fillPath = Path()
     private val borderRect = RectF()
     private val clipPath = Path()
+
+    // Pre-allocated arrays to avoid onDraw allocations
+    private val peqGains: FloatArray by lazy { FloatArray(PEQ_CURVE_RESOLUTION) }
 
     init {
         if (!isInEditMode) {
@@ -148,9 +147,8 @@ class EqualizerWaveView @JvmOverloads constructor(
             borderPaint.color = ThemeManager.accent.primaryAccentColor
             dotPaint.color = ThemeManager.theme.textViewTheme.primaryTextColor
 
-            peqBandPaint.color = androidx.core.graphics.ColorUtils.setAlphaComponent(ThemeManager.accent.primaryAccentColor, 0x4D) // 30% alpha
-            handlePaint.color = ThemeManager.accent.primaryAccentColor
-            handleFillPaint.color = ThemeManager.theme.viewGroupTheme.backgroundColor
+            peqBandPaint.color = ThemeManager.accent.primaryAccentColor.toQuarterAlpha()
+            handleFillPaint.color = ThemeManager.accent.primaryAccentColor.toQuarterAlpha()
         } else {
             textPaint.color = 0x88000000.toInt()
             freqPaint.color = 0x88000000.toInt()
@@ -159,8 +157,7 @@ class EqualizerWaveView @JvmOverloads constructor(
             dotPaint.color = 0xFF000000.toInt()
 
             peqBandPaint.color = 0x4D000000
-            handlePaint.color = 0xFF000000.toInt()
-            handleFillPaint.color = 0xFFFFFFFF.toInt()
+            handleFillPaint.color = 0x4D000000
         }
     }
 
@@ -203,18 +200,18 @@ class EqualizerWaveView @JvmOverloads constructor(
         super.onDraw(canvas)
         if (width == 0 || height == 0) return
 
-        val w = width.toFloat()
-        val h = height.toFloat()
+        val viewWidth = width.toFloat()
+        val viewHeight = height.toFloat()
 
         val textPadding = 8f * resources.displayMetrics.density
         // Use a wide enough sample string for measurement
         val textWidth = textPaint.measureText("+00.0")
-        val graphW = w - (textWidth + textPadding)
+        val graphW = viewWidth - (textWidth + textPadding)
         val graphStartX = textWidth + textPadding
 
         val freqTextHeight = freqPaint.descent() - freqPaint.ascent()
         val bottomPadding = freqTextHeight + textPadding / 2f
-        val graphH = h - bottomPadding
+        val graphH = viewHeight - bottomPadding
 
         val pad = graphH * VERTICAL_PADDING_FRACTION
         val drawH = graphH - 2f * pad
@@ -223,19 +220,18 @@ class EqualizerWaveView @JvmOverloads constructor(
         var maxGain = 0f
         var minGain = 0f
 
-        // Increase samples for a smoother curve, especially on sharp PEQ bells
-        val numSamples = 300
-        val peqGains = FloatArray(numSamples)
-        val stepX = graphW / (numSamples - 1)
+        val stepX = graphW / (PEQ_CURVE_RESOLUTION - 1)
         val slotW = graphW / BAND_COUNT
 
         if (isPeq) {
-            for (i in 0 until numSamples) {
+            for (i in 0 until PEQ_CURVE_RESOLUTION) {
                 val x = graphStartX + i * stepX
-                val freq = 31.25f * 2f.pow((x - graphStartX) / slotW - 0.5f)
-                peqGains[i] = getPeqResponseAt(freq, peqBands)
+                val frequency = BASE_FREQ_HZ * 2f.pow((x - graphStartX) / slotW - 0.5f)
+                peqGains[i] = getPeqResponseAt(frequency, peqBands)
             }
-            for (gain in peqGains) {
+
+            for (i in 0 until PEQ_CURVE_RESOLUTION) {
+                val gain = peqGains[i]
                 if (gain > maxGain) maxGain = gain
                 if (gain < minGain) minGain = gain
             }
@@ -247,14 +243,12 @@ class EqualizerWaveView @JvmOverloads constructor(
         }
 
         // Ensure there's some range to avoid division by zero and overly flat look when all zeros
-        val maxAbs = maxOf(kotlin.math.abs(maxGain), kotlin.math.abs(minGain), 3f)
+        val maxAbs = maxOf(kotlin.math.abs(maxGain), kotlin.math.abs(minGain), MIN_DYNAMIC_RANGE_DB)
         val dynamicDbMax = maxAbs
-        val dynamicDbMin = -maxAbs
-        val range = dynamicDbMax - dynamicDbMin
 
-        val radius = if (isInEditMode) 20f else AppearancePreferences.getCornerRadius()
+        val radius = if (isInEditMode) EDIT_MODE_CORNER_RADIUS else AppearancePreferences.getCornerRadius()
         val inset = borderPaint.strokeWidth / 2f
-        borderRect.set(graphStartX + inset, inset, w - inset, graphH - inset)
+        borderRect.set(graphStartX + inset, inset, viewWidth - inset, graphH - inset)
 
         canvas.save()
         clipPath.reset()
@@ -262,10 +256,9 @@ class EqualizerWaveView @JvmOverloads constructor(
         canvas.clipPath(clipPath)
 
         // Draw Grid inside clip
-        val gridLines = 7
-        for (i in 0 until gridLines) {
-            val y = graphH * i / (gridLines - 1)
-            canvas.drawLine(graphStartX, y, w, y, gridPaint)
+        for (i in 0 until HORIZONTAL_GRID_LINES) {
+            val y = graphH * i / (HORIZONTAL_GRID_LINES - 1)
+            canvas.drawLine(graphStartX, y, viewWidth, y, gridPaint)
         }
 
         for (i in 0 until BAND_COUNT) {
@@ -280,10 +273,10 @@ class EqualizerWaveView @JvmOverloads constructor(
             // Draw individual band curves first (faintly)
             for (band in peqBands) {
                 singleBandPath.reset()
-                for (i in 0 until numSamples) {
+                for (i in 0 until PEQ_CURVE_RESOLUTION) {
                     val x = graphStartX + i * stepX
-                    val freq = 31.25f * 2f.pow((x - graphStartX) / slotW - 0.5f)
-                    val bandGain = getSingleBandResponseAt(freq, band.first, band.second, band.third)
+                    val frequency = BASE_FREQ_HZ * 2f.pow((x - graphStartX) / slotW - 0.5f)
+                    val bandGain = getSingleBandResponseAt(frequency, band.first, band.second, band.third)
                     val normalizedGain = bandGain / dynamicDbMax
                     val y = midY - normalizedGain * (drawH / 2f)
                     if (i == 0) singleBandPath.moveTo(x, y)
@@ -292,7 +285,7 @@ class EqualizerWaveView @JvmOverloads constructor(
                 canvas.drawPath(singleBandPath, peqBandPaint)
             }
 
-            for (i in 0 until numSamples) {
+            for (i in 0 until PEQ_CURVE_RESOLUTION) {
                 val x = graphStartX + i * stepX
                 val normalizedGain = peqGains[i] / dynamicDbMax
                 val y = midY - normalizedGain * (drawH / 2f)
@@ -324,11 +317,11 @@ class EqualizerWaveView @JvmOverloads constructor(
                 val controlX = (x1 + x2) / 2f
                 wavePath.cubicTo(controlX, y1, controlX, y2, x2, y2)
             }
-            wavePath.lineTo(w, points.last()[1])
+            wavePath.lineTo(viewWidth, points.last()[1])
         }
 
         fillPath.set(wavePath)
-        fillPath.lineTo(w, graphH)
+        fillPath.lineTo(viewWidth, graphH)
         fillPath.lineTo(graphStartX, graphH)
         fillPath.close()
 
@@ -339,19 +332,17 @@ class EqualizerWaveView @JvmOverloads constructor(
 
         // Draw dots
         if (isPeq) {
-            val handleOuterRadius = 2.5f * resources.displayMetrics.density
-            val handleInnerRadius = 1.5f * resources.displayMetrics.density
+            val handleOuterRadius = 1.0f * resources.displayMetrics.density
 
-            for ((gainDb, _, f0) in peqBands) {
+            for ((gainDb, _, centerFrequency) in peqBands) {
                 // Find the x position for this band's center frequency
-                // f0 = 31.25f * 2f.pow((x - graphStartX) / slotW - 0.5f)
-                val log2fRatio = kotlin.math.log2(f0 / 31.25f)
+                // centerFrequency = BASE_FREQ_HZ * 2f.pow((x - graphStartX) / slotW - 0.5f)
+                val log2fRatio = kotlin.math.log2(centerFrequency / BASE_FREQ_HZ)
                 val x = graphStartX + slotW * (log2fRatio + 0.5f)
-                if (x in graphStartX..w) {
+                if (x in graphStartX..viewWidth) {
                     val normalizedGain = gainDb / dynamicDbMax
                     val y = midY - normalizedGain * (drawH / 2f)
-                    canvas.drawCircle(x, y, handleOuterRadius, handlePaint)
-                    canvas.drawCircle(x, y, handleInnerRadius, handleFillPaint)
+                    canvas.drawCircle(x, y, handleOuterRadius, handleFillPaint)
                 }
             }
         } else {
@@ -364,20 +355,20 @@ class EqualizerWaveView @JvmOverloads constructor(
         canvas.restore()
 
         // Draw Values outside the clip (so they aren't cut off)
-        for (i in 0 until gridLines) {
-            val y = pad + (drawH * i / (gridLines - 1))
-            val value = dynamicDbMax - (range * i / (gridLines - 1))
+        val gridMax = dynamicDbMax * 1.5f
+        for (i in 0 until HORIZONTAL_GRID_LINES) {
+            val y = graphH * i / (HORIZONTAL_GRID_LINES - 1)
+            val value = gridMax - (gridMax * 2 * i / (HORIZONTAL_GRID_LINES - 1))
             val textY = y - ((textPaint.descent() + textPaint.ascent()) / 2f)
-            val valueStr = if (value > 0) "+%.1f".format(value) else "%.1f".format(value)
+            val valueStr = if (value > 0f) "+%.1f".format(value) else "%.1f".format(value)
             canvas.drawText(valueStr, graphStartX - textPadding, textY, textPaint)
         }
 
         // Draw frequency labels at the bottom, outside the borderRect
-        val freqs = arrayOf("31", "62", "125", "250", "500", "1k", "2k", "4k", "8k", "16k")
-        val freqY = h - freqPaint.descent()
+        val freqY = viewHeight - freqPaint.descent()
         for (i in 0 until BAND_COUNT) {
             val x = graphStartX + slotW * i + slotW / 2f
-            canvas.drawText(freqs[i], x, freqY, freqPaint)
+            canvas.drawText(FREQUENCY_LABELS[i], x, freqY, freqPaint)
         }
 
         // Draw the border
@@ -460,20 +451,44 @@ class EqualizerWaveView @JvmOverloads constructor(
          */
         private const val VERTICAL_PADDING_FRACTION = 0.1f
 
+        /** Number of frequency samples used to calculate and render the PEQ response curve. */
+        private const val PEQ_CURVE_RESOLUTION = 300
+
+        /** Minimum visible gain bounds for drawing so flat EQ graphs don't collapse. */
+        private const val MIN_DYNAMIC_RANGE_DB = 3f
+
+        /** Fallback corner radius used when the view is in layout preview (edit mode). */
+        private const val EDIT_MODE_CORNER_RADIUS = 20f
+
+        /** Base frequency in Hz for the lowest graphic EQ band. */
+        private const val BASE_FREQ_HZ = 31.25f
+
+        /** Number of horizontal grid lines to draw inside the wave bounding box. */
+        private const val HORIZONTAL_GRID_LINES = 7
+
+        /** Hardcoded labels for the frequency x-axis text. */
+        private val FREQUENCY_LABELS = arrayOf("31", "62", "125", "250", "500", "1k", "2k", "4k", "8k", "16k")
+
+        /** Opacity (0-255) for the faint wave gradient fill. */
+        private const val WAVE_FILL_ALPHA = 0x1A
+
+        /** Opacity (0-255) for the faint individual band responses in PEQ mode. */
+        private const val PEQ_BAND_STROKE_ALPHA = 0x4D
+
         /**
          * Calculates the approximate magnitude response in dB of a single parametric EQ band at a given frequency.
          * Uses the analog prototype response of peaking filters.
          */
-        private fun getSingleBandResponseAt(f: Float, gainDb: Float, q: Float, f0: Float): Float {
-            if (gainDb == 0f || f0 <= 0f) return 0f
-            val a = 10f.pow(gainDb / 40f)
-            val fRatio = f / f0
+        private fun getSingleBandResponseAt(frequency: Float, gainDb: Float, qFactor: Float, centerFrequency: Float): Float {
+            if (gainDb == 0f || centerFrequency <= 0f) return 0f
+            val amplitude = 10f.pow(gainDb / 40f)
+            val fRatio = frequency / centerFrequency
             val fRatioSq = fRatio * fRatio
             val oneMinusFRatioSq = 1f - fRatioSq
             val oneMinusFRatioSqSq = oneMinusFRatioSq * oneMinusFRatioSq
 
-            val term1 = a * fRatio / q
-            val term2 = (fRatio / q) / a
+            val term1 = amplitude * fRatio / qFactor
+            val term2 = (fRatio / qFactor) / amplitude
 
             val num = oneMinusFRatioSqSq + term1 * term1
             val den = oneMinusFRatioSqSq + term2 * term2
@@ -484,10 +499,10 @@ class EqualizerWaveView @JvmOverloads constructor(
         /**
          * Calculates the approximate magnitude response in dB of a parametric EQ at a given frequency.
          */
-        private fun getPeqResponseAt(f: Float, bands: List<Triple<Float, Float, Float>>): Float {
+        private fun getPeqResponseAt(frequency: Float, bands: List<Triple<Float, Float, Float>>): Float {
             var totalGainDb = 0f
-            for ((gainDb, q, f0) in bands) {
-                totalGainDb += getSingleBandResponseAt(f, gainDb, q, f0)
+            for ((gainDb, qFactor, centerFrequency) in bands) {
+                totalGainDb += getSingleBandResponseAt(frequency, gainDb, qFactor, centerFrequency)
             }
             return totalGainDb
         }

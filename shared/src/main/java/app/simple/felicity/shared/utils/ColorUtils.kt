@@ -61,6 +61,11 @@ object ColorUtils {
         return changeAlpha(this, alpha)
     }
 
+    fun Int.toQuarterAlpha(): Int {
+        val alpha = Color.alpha(this) / 4
+        return changeAlpha(this, alpha)
+    }
+
     fun Int.toHexColor(): String {
         return String.format("#%06X", 0xFFFFFF and this)
     }
