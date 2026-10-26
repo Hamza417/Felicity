@@ -15,6 +15,7 @@ import androidx.core.graphics.withSave
 import app.simple.felicity.decorations.typeface.TypeFace
 import app.simple.felicity.decorations.typeface.TypefaceStyle
 import app.simple.felicity.preferences.AppearancePreferences
+import app.simple.felicity.shared.models.ParsedBand
 import app.simple.felicity.shared.utils.ColorUtils.toHalfAlpha
 import app.simple.felicity.shared.utils.ColorUtils.toQuarterAlpha
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
@@ -104,7 +105,7 @@ class EqualizerWaveView @JvmOverloads constructor(
     }
 
     private var isPeq = false
-    private var peqBands = emptyList<Triple<Float, Float, Float>>()
+    private var peqBands = emptyList<ParsedBand>()
 
     private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
@@ -188,7 +189,7 @@ class EqualizerWaveView @JvmOverloads constructor(
      *
      * @param bands A list of PEQ bands, where each is a Triple of (gainDb, qFactor, frequencyHz).
      */
-    fun setPeqBands(bands: List<Triple<Float, Float, Float>>) {
+    fun setPeqBands(bands: List<ParsedBand>) {
         isPeq = true
         peqBands = bands
         invalidate()
@@ -507,9 +508,12 @@ class EqualizerWaveView @JvmOverloads constructor(
         /**
          * Calculates the approximate magnitude response in dB of a parametric EQ at a given frequency.
          */
-        private fun getPeqResponseAt(frequency: Float, bands: List<Triple<Float, Float, Float>>): Float {
+        private fun getPeqResponseAt(frequency: Float, bands: List<ParsedBand>): Float {
             var totalGainDb = 0f
-            for ((gainDb, qFactor, centerFrequency) in bands) {
+            for (band in bands) {
+                val gainDb = band.gain
+                val qFactor = band.q
+                val centerFrequency = band.frequencyHz
                 totalGainDb += getSingleBandResponseAt(frequency, gainDb, qFactor, centerFrequency)
             }
             return totalGainDb

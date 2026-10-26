@@ -9,6 +9,7 @@ import app.simple.felicity.engine.processors.NightModeProcessor
 import app.simple.felicity.engine.processors.SilenceTrimmingProcessor
 import app.simple.felicity.engine.processors.VisualizerProcessor
 import app.simple.felicity.preferences.EqualizerPreferences
+import app.simple.felicity.shared.models.ParsedBand
 
 /**
  * Manages all audio processing pipelines for the Felicity playback engine.
@@ -260,11 +261,11 @@ class AudioProcessorManager {
      *
      * @param bands The PEQ band configuration to apply.
      */
-    fun applyPeqState(bands: List<Triple<Float, Float, Float>>) {
+    fun applyPeqState(bands: List<ParsedBand>) {
         if (bands.isEmpty()) return
-        val gains = FloatArray(bands.size) { bands[it].first }
-        val qValues = FloatArray(bands.size) { bands[it].second }
-        val freqs = FloatArray(bands.size) { bands[it].third }
+        val gains = FloatArray(bands.size) { bands[it].gain }
+        val qValues = FloatArray(bands.size) { bands[it].q }
+        val freqs = FloatArray(bands.size) { bands[it].frequencyHz }
         nativeDspProcessor.setPeqBands(gains, freqs, qValues)
     }
 
@@ -278,14 +279,15 @@ class AudioProcessorManager {
      * @param raw The serialized PEQ band string from [EqualizerPreferences].
      * @return A list of (gainDb, qFactor, freqHz) triples, possibly empty.
      */
-    private fun parsePeqBandsRaw(raw: String): List<Triple<Float, Float, Float>> {
+    private fun parsePeqBandsRaw(raw: String): List<ParsedBand> {
         return raw.split("|").mapNotNull { segment ->
             val parts = segment.split(":")
             if (parts.size < 3) return@mapNotNull null
             val gain = parts[0].toFloatOrNull() ?: return@mapNotNull null
             val q = parts[1].toFloatOrNull() ?: return@mapNotNull null
             val freq = parts[2].toFloatOrNull() ?: return@mapNotNull null
-            Triple(gain, q, freq)
+            val color = parts.getOrNull(3)?.toIntOrNull() ?: 0
+            ParsedBand(gain, q, freq, color)
         }
     }
 }

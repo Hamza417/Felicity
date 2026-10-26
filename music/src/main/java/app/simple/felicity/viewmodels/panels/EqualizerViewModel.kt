@@ -7,6 +7,7 @@ import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.preferences.EqualizerPreferences
 import app.simple.felicity.repository.database.instances.EqualizerDatabase
 import app.simple.felicity.repository.models.EqualizerPreset
+import app.simple.felicity.shared.models.ParsedBand
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -159,7 +160,7 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
      */
     fun savePeqPreset(
             name: String,
-            bands: List<Triple<Float, Float, Float>>,
+            bands: List<ParsedBand>,
             preampDb: Float,
             onDuplicate: () -> Unit,
             onSuccess: () -> Unit

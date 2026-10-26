@@ -1,5 +1,6 @@
 package app.simple.felicity.shared.utils
 
+import app.simple.felicity.shared.models.ParsedBand
 import app.simple.felicity.shared.utils.PEQFileParser.CSV_MATCH_THRESHOLD
 import app.simple.felicity.shared.utils.PEQFileParser.MAX_GRAPHIC_EQ_BANDS
 import org.json.JSONArray
@@ -81,7 +82,7 @@ object PEQFileParser {
     data class ParsedPreset(
             val name: String,
             val preampDb: Float,
-            val bands: List<Triple<Float, Float, Float>>
+            val bands: List<ParsedBand>
     )
 
     /**
@@ -157,7 +158,7 @@ object PEQFileParser {
     }
 
     private fun parseJsonBandArray(bandsJson: JSONArray, name: String, preambDb: Float): ParsedPreset? {
-        val bands = mutableListOf<Triple<Float, Float, Float>>()
+        val bands = mutableListOf<ParsedBand>()
         for (i in 0 until bandsJson.length()) {
             val band = bandsJson.optJSONObject(i) ?: continue
 
@@ -171,7 +172,10 @@ object PEQFileParser {
             val q = firstDouble(band, "q", "Q", "qFactor", "bandwidth")?.toFloat() ?: 1.0f
             val gain = firstDouble(band, "gain", "gainDb", "gain_db", "db", "value")?.toFloat() ?: 0f
 
-            bands.add(Triple(gain, q, freq))
+            // "color" field is expected to be an integer (e.g. -11184896)
+            val color = band.optInt("color", 0)
+
+            bands.add(ParsedBand(gain, q, freq, color))
         }
 
         if (bands.isEmpty()) return null
@@ -250,7 +254,7 @@ object PEQFileParser {
             }.distinctBy { it.first }
         }
 
-        val bands = sampled.map { (freq, gain) -> Triple(gain, 1.0f, freq) }
+        val bands = sampled.map { (freq, gain) -> ParsedBand(gain, 1.0f, freq) }
         if (bands.isEmpty()) return null
 
         return ParsedPreset(name = fallbackName, preampDb = preampDb, bands = bands)
@@ -265,7 +269,7 @@ object PEQFileParser {
      */
     private fun parsePlainText(text: String, fallbackName: String): ParsedPreset? {
         var preampDb = 0f
-        val bands = mutableListOf<Triple<Float, Float, Float>>()
+        val bands = mutableListOf<ParsedBand>()
 
         for (line in text.lines()) {
             val trimmed = line.trim()
@@ -304,7 +308,7 @@ object PEQFileParser {
      * presence of the "Filter N:" / "ON" tokens so it handles files produced by a
      * wide variety of tools, not just the canonical Equalizer APO format.
      */
-    private fun parseFilterLine(line: String): Triple<Float, Float, Float>? {
+    private fun parseFilterLine(line: String): ParsedBand? {
         val afterColon = line.substringAfter(":", line).trim()
         val tokens = afterColon.split("\\s+".toRegex()).filter { it.isNotBlank() }
         if (tokens.isEmpty()) return null
@@ -354,7 +358,7 @@ object PEQFileParser {
         // Q is optional in some tool outputs; fall back to a neutral value of 1.0.
         val qVal = q ?: 1.0f
 
-        return Triple(g, qVal, f)
+        return ParsedBand(g, qVal, f)
     }
 
     // -------------------------------------------------------------------------
@@ -381,7 +385,7 @@ object PEQFileParser {
             val gain = parts.getOrNull(1)?.toFloatOrNull() ?: return@mapNotNull null
             if (freq <= 0f) return@mapNotNull null
             val q = parts.getOrNull(2)?.toFloatOrNull() ?: 1.0f
-            Triple(gain, q, freq)
+            ParsedBand(gain, q, freq)
         }
 
         if (bands.isEmpty()) return null

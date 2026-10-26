@@ -1,13 +1,8 @@
 package app.simple.felicity.engine.managers
 
-import app.simple.felicity.engine.managers.EqualizerManager.attachProcessor
-import app.simple.felicity.engine.managers.EqualizerManager.bandGainsFlow
-import app.simple.felicity.engine.managers.EqualizerManager.eqModeFlow
-import app.simple.felicity.engine.managers.EqualizerManager.peqBandsFlow
-import app.simple.felicity.engine.managers.EqualizerManager.preampFlow
-import app.simple.felicity.engine.managers.EqualizerManager.resetAllBands
 import app.simple.felicity.engine.processors.NativeDspAudioProcessor
 import app.simple.felicity.preferences.EqualizerPreferences
+import app.simple.felicity.shared.models.ParsedBand
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -88,7 +83,7 @@ object EqualizerManager {
      * Each entry is a (gainDb, qFactor, centerFreqHz) triple representing one biquad filter.
      * The equalizer UI should collect this to keep all three PEQ knobs per band in sync.
      */
-    val peqBandsFlow: StateFlow<List<Triple<Float, Float, Float>>> = _peqBandsFlow.asStateFlow()
+    val peqBandsFlow: StateFlow<List<ParsedBand>> = _peqBandsFlow.asStateFlow()
 
     /**
      * Backing mutable flow that tracks the currently active EQ mode string.
@@ -214,7 +209,7 @@ object EqualizerManager {
      * layout. The updated bands are persisted and pushed to the DSP engine immediately.
      */
     fun resetPeqGains() {
-        val zeroed = _peqBandsFlow.value.map { (_, q, freq) -> Triple(0f, q, freq) }
+        val zeroed = _peqBandsFlow.value.map { band -> ParsedBand(0f, band.q, band.frequencyHz, band.color) }
         setPeqBands(zeroed)
     }
 
@@ -300,13 +295,13 @@ object EqualizerManager {
      * @param persist Pass false when the caller has already serialized and saved the value,
      *                to avoid a redundant SharedPreferences write.
      */
-    fun setPeqBands(bands: List<Triple<Float, Float, Float>>, persist: Boolean = true) {
+    fun setPeqBands(bands: List<ParsedBand>, persist: Boolean = true) {
         if (persist) {
             EqualizerPreferences.setPeqBandsRaw(serializePeqBands(bands))
         }
-        val gains = FloatArray(bands.size) { bands[it].first }
-        val qValues = FloatArray(bands.size) { bands[it].second }
-        val freqs = FloatArray(bands.size) { bands[it].third }
+        val gains = FloatArray(bands.size) { bands[it].gain }
+        val qValues = FloatArray(bands.size) { bands[it].q }
+        val freqs = FloatArray(bands.size) { bands[it].frequencyHz }
         processor?.setPeqBands(gains, freqs, qValues)
         _peqBandsFlow.value = bands
     }
@@ -322,7 +317,7 @@ object EqualizerManager {
     }
 
     /** Returns a snapshot of the current parametric EQ band list from [peqBandsFlow]. */
-    fun getPeqBands(): List<Triple<Float, Float, Float>> = _peqBandsFlow.value
+    fun getPeqBands(): List<ParsedBand> = _peqBandsFlow.value
 
     /**
      * Serializes a list of PEQ bands into the "gain:q:freq|..." pipe-separated format that
@@ -331,10 +326,10 @@ object EqualizerManager {
      * @param bands The bands to serialize.
      * @return The compact string representation, or null when [bands] is empty.
      */
-    fun serializePeqBands(bands: List<Triple<Float, Float, Float>>): String? {
+    fun serializePeqBands(bands: List<ParsedBand>): String? {
         if (bands.isEmpty()) return null
-        return bands.joinToString("|") { (gain, q, freq) ->
-            "%.2f:%.2f:%.2f".format(gain, q, freq)
+        return bands.joinToString("|") { band ->
+            "%.2f:%.2f:%.2f:%d".format(band.gain, band.q, band.frequencyHz, band.color)
         }
     }
 
@@ -342,7 +337,7 @@ object EqualizerManager {
      * Parses the "gain:q:freq|..." string from [EqualizerPreferences] into a list of triples.
      * Malformed segments are silently skipped.
      */
-    private fun loadPeqBandsFromPreferences(): List<Triple<Float, Float, Float>> {
+    private fun loadPeqBandsFromPreferences(): List<ParsedBand> {
         val raw = EqualizerPreferences.getPeqBandsRaw() ?: return emptyList()
         return raw.split("|").mapNotNull { segment ->
             val parts = segment.split(":")
@@ -350,7 +345,8 @@ object EqualizerManager {
             val gain = parts[0].toFloatOrNull() ?: return@mapNotNull null
             val q = parts[1].toFloatOrNull() ?: return@mapNotNull null
             val freq = parts[2].toFloatOrNull() ?: return@mapNotNull null
-            Triple(gain, q, freq)
+            val color = parts.getOrNull(3)?.toIntOrNull() ?: 0
+            ParsedBand(gain, q, freq, color)
         }
     }
 }

@@ -56,6 +56,19 @@ class SimpleBaseKnobDrawable(
     private var accentColor: Int = DEFAULT_ACCENT_COLOR
 
     @ColorInt
+    var customAccentColor: Int = Color.TRANSPARENT
+        set(value) {
+            if (field != value) {
+                field = value
+                currentStateColor = lerpColor(idleColor, getEffectiveAccentColor(), stateProgress)
+                invalidateSelf()
+            }
+        }
+
+    @ColorInt
+    private fun getEffectiveAccentColor(): Int = if (customAccentColor == 0 || customAccentColor == Color.TRANSPARENT) accentColor else customAccentColor
+
+    @ColorInt
     private var idleColor: Int = DEFAULT_IDLE_COLOR
 
     @ColorInt
@@ -150,7 +163,7 @@ class SimpleBaseKnobDrawable(
             interpolator = if (pressed) AccelerateDecelerateInterpolator() else DecelerateInterpolator()
             addUpdateListener { anim ->
                 stateProgress = anim.animatedValue as Float
-                currentStateColor = lerpColor(idleColor, accentColor, stateProgress)
+                currentStateColor = lerpColor(idleColor, getEffectiveAccentColor(), stateProgress)
                 invalidateSelf()
             }
             start()
@@ -254,7 +267,7 @@ class SimpleBaseKnobDrawable(
         // Indicator: independent glow that also responds to programmatic position pulses.
         // Taking max() means a programmatic pulse is visible only when the knob is not pressed.
         val indicatorT = maxOf(stateProgress, indicatorGlowProgress)
-        val indicatorColor = lerpColor(idleColor, accentColor, indicatorT)
+        val indicatorColor = lerpColor(idleColor, getEffectiveAccentColor(), indicatorT)
         val indicatorGlowRadius = if (glowEnabled) maxGlowRadius * indicatorT else 0f
         if (indicatorGlowRadius > 0f) {
             indicatorPaint.setShadowLayer(indicatorGlowRadius, 0f, 0f, indicatorColor)
@@ -333,7 +346,7 @@ class SimpleBaseKnobDrawable(
     private fun applyAccent(accent: Accent) {
         accentColor = accent.primaryAccentColor
         // Refresh currentStateColor so the arc / tick marks stay in sync with the new accent.
-        currentStateColor = lerpColor(idleColor, accentColor, stateProgress)
+        currentStateColor = lerpColor(idleColor, getEffectiveAccentColor(), stateProgress)
         invalidateSelf()
     }
 

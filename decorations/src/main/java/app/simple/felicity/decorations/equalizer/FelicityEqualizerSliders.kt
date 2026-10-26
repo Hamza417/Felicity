@@ -209,7 +209,8 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         data class PeqBand(
                 var gain: Float = 0f,
                 var q: Float = 1.0f,
-                var frequencyHz: Float = 1000f
+                var frequencyHz: Float = 1000f,
+                @ColorInt var color: Int = 0
         )
 
         /** The available display modes for this equalizer widget. */
@@ -970,6 +971,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
                 peqBands[i].gain = bands[i].gain
                 peqBands[i].q = bands[i].q
                 peqBands[i].frequencyHz = bands[i].frequencyHz
+                peqBands[i].color = bands[i].color
             }
             invalidate()
             return
@@ -1214,7 +1216,15 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
      * @param zeroY     View-space Y corresponding to 0 dB reference.
      * @param scale     Current press-scale for the thumb.
      */
-    private fun drawColumnTrackAndThumb(canvas: Canvas, cx: Float, thumbY: Float, zeroY: Float, scale: Float) {
+    private fun drawColumnTrackAndThumb(canvas: Canvas, cx: Float, thumbY: Float, zeroY: Float, scale: Float, @ColorInt bandColor: Int = accentColor) {
+        val originalTrackColor = trackProgressPaint.color
+        val originalPressColor = pressRingPaint.color
+        val originalThumbColor = thumbPillDrawable.fillColor
+
+        trackProgressPaint.color = bandColor
+        pressRingPaint.color = bandColor
+        thumbPillDrawable.fillColor = bandColor
+
         canvas.drawLine(cx, trackTop, cx, trackBottom, trackPaint)
 
         val progressTop = minOf(zeroY, thumbY)
@@ -1245,6 +1255,10 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
 
         thumbPillDrawable.setBoundsF(cx - halfW, thumbY - halfH, cx + halfW, thumbY + halfH)
         thumbPillDrawable.draw(canvas)
+
+        trackProgressPaint.color = originalTrackColor
+        pressRingPaint.color = originalPressColor
+        thumbPillDrawable.fillColor = originalThumbColor
     }
 
     /**
@@ -1423,18 +1437,25 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         val bgRight = cx + halfSection - 3f * d
         val bgTop = trackTop - sliderVerticalPaddingPx * 0.5f
         val bgBottom = (height - paddingBottom).toFloat()
+
+        val bandColor = if (band.color == 0) accentColor else band.color
+
+        val originalBgColor = peqSectionBgPaint.color
+        val bgAlpha = originalBgColor ushr 24
+        peqSectionBgPaint.color = (bgAlpha shl 24) or (bandColor and 0x00FFFFFF)
         canvas.drawRoundRect(bgLeft, bgTop, bgRight, bgBottom, 8f * d, 8f * d, peqSectionBgPaint)
+        peqSectionBgPaint.color = originalBgColor
 
         // Gain slider: left-inset by hPad, centered on the slider's own half-width.
         val sliderCx = cx - halfSection + hPad + thumbHalfWidthPx
         val zeroY = gainToThumbY(0f)
         val thumbY = gainToThumbY(band.gain.coerceIn(MIN_DB, MAX_DB))
         val gainPressScale = peqGainPressScales.getOrElse(bandIndex) { 1f }
-        drawColumnTrackAndThumb(canvas, sliderCx, thumbY, zeroY, gainPressScale)
+        drawColumnTrackAndThumb(canvas, sliderCx, thumbY, zeroY, gainPressScale, bandColor)
 
         val freqY = textRegionTop + freqTextPaint.fontSpacing * 0.85f
         val valueY = freqY + freqTextPaint.fontSpacing
-        valueTextPaint.color = if (abs(band.gain) < 0.05f) secondaryTextColor else accentColor
+        valueTextPaint.color = if (abs(band.gain) < 0.05f) secondaryTextColor else bandColor
         canvas.drawText(formatGain(band.gain), sliderCx, valueY, valueTextPaint)
         val savedFreqColor = freqTextPaint.color
         freqTextPaint.color = secondaryTextColor
@@ -1446,10 +1467,13 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         // computeKnobCenters handles both cases so this site stays orientation-agnostic.
         val knobCenters = computeKnobCenters(sliderCx)
 
-        drawPeqKnob(canvas, knobCenters.qCx, knobCenters.qCy, qToNormalized(band.q), "Q", formatQLabel(band.q),
-                    peqQKnobDrawables.getOrNull(bandIndex))
-        drawPeqKnob(canvas, knobCenters.freqCx, knobCenters.freqCy, freqToNormalized(band.frequencyHz), "FREQ", formatFreqLabel(band.frequencyHz),
-                    peqFreqKnobDrawables.getOrNull(bandIndex))
+        val qKnob = peqQKnobDrawables.getOrNull(bandIndex)
+        qKnob?.customAccentColor = bandColor
+        drawPeqKnob(canvas, knobCenters.qCx, knobCenters.qCy, qToNormalized(band.q), "Q", formatQLabel(band.q), qKnob, bandColor)
+
+        val freqKnob = peqFreqKnobDrawables.getOrNull(bandIndex)
+        freqKnob?.customAccentColor = bandColor
+        drawPeqKnob(canvas, knobCenters.freqCx, knobCenters.freqCy, freqToNormalized(band.frequencyHz), "FREQ", formatFreqLabel(band.frequencyHz), freqKnob, bandColor)
 
         // Delete button: small circle in the top-right corner of the section background.
         val delR = PEQ_DELETE_BTN_RADIUS_DP * d
@@ -1479,7 +1503,8 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
             normalizedValue: Float,
             typeLabel: String,
             valueLabel: String,
-            drawable: SimpleBaseKnobDrawable? = null
+            drawable: SimpleBaseKnobDrawable? = null,
+            @ColorInt bandColor: Int = accentColor
     ) {
         val r = peqKnobRadiusPx
         val arcR = peqKnobArcRadiusPx
@@ -1491,7 +1516,10 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         // Filled progress arc sweeps from start to the current value.
         val sweepAngle = normalizedValue * KNOB_SWEEP_DEG
         if (sweepAngle > 0f) {
+            val originalArcColor = knobArcProgressPaint.color
+            knobArcProgressPaint.color = bandColor
             canvas.drawArc(knobArcRect, KNOB_ARC_START_DEG, sweepAngle, false, knobArcProgressPaint)
+            knobArcProgressPaint.color = originalArcColor
         }
 
         // Draw the knob body using the SimpleBaseKnobDrawable so the press-state color
@@ -1528,8 +1556,18 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         val pillCy = cy - arcR - labelGap - pillH * 0.5f
         val pillLeft = cx - pillW * 0.5f
         val pillTop = pillCy - pillH * 0.5f
+
+        val originalBgColor = knobTypeLabelBgPaint.color
+        val originalTextColor = knobTypeLabelTextPaint.color
+        val bgAlpha = originalBgColor ushr 24
+        knobTypeLabelBgPaint.color = (bgAlpha shl 24) or (bandColor and 0x00FFFFFF)
+        knobTypeLabelTextPaint.color = bandColor
+
         canvas.drawRoundRect(pillLeft, pillTop, pillLeft + pillW, pillTop + pillH, pillH * 0.5f, pillH * 0.5f, knobTypeLabelBgPaint)
         canvas.drawText(typeLabel, cx, pillCy + knobTypeLabelTextPaint.fontSpacing * 0.35f, knobTypeLabelTextPaint)
+
+        knobTypeLabelBgPaint.color = originalBgColor
+        knobTypeLabelTextPaint.color = originalTextColor
 
         // Current value label below the arc.
         val labelY = cy + arcR + labelGap + knobLabelPaint.fontSpacing * 0.9f
@@ -1667,7 +1705,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
     private fun isTouchWithinContentBounds(x: Float): Boolean {
         val contentLeft = centeringOffset - scrollOffset
         val contentRight = contentLeft + contentWidth
-        return x >= contentLeft && x <= contentRight
+        return x in contentLeft..contentRight
     }
 
     override fun performClick(): Boolean {
