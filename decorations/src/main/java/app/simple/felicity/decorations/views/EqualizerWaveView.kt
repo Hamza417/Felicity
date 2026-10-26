@@ -209,11 +209,16 @@ class EqualizerWaveView @JvmOverloads constructor(
             canvas.drawLine(graphStartX, y, w, y, gridPaint)
         }
 
+        val slotW = graphW / BAND_COUNT
+        for (i in 0 until BAND_COUNT) {
+            val x = graphStartX + slotW * i + slotW / 2f
+            canvas.drawLine(x, 0f, x, graphH, gridPaint)
+        }
+
         /**
          * Calculate the X position for each band point, spread evenly across the view width.
          * We add a half-slot offset so the first point isn't right at the left edge.
          */
-        val slotW = graphW / BAND_COUNT
         for (i in 0 until BAND_COUNT) {
             points[i][0] = graphStartX + slotW * i + slotW / 2f
             val normalizedGain = bandGains[i] / dynamicDbMax    // -1..+1
