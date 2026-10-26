@@ -387,7 +387,9 @@ class FelicityEqualizer @JvmOverloads constructor(
 
     private val scrollFling = FlingAnimation(this, scrollOffsetProperty).apply {
         friction = 1.1f
-        addEndListener { _, _, _, _ -> snapScrollToBounds() }
+        addEndListener { _, _, _, velocity ->
+            snapScrollToBounds(velocity)
+        }
     }
 
     private var velocityTracker: VelocityTracker? = null
@@ -1797,18 +1799,26 @@ class FelicityEqualizer @JvmOverloads constructor(
     private fun handleUp(@Suppress("UNUSED_PARAMETER") event: MotionEvent) {
         if (activeBandIndex != NO_ACTIVE_BAND) startBandPressAnimation(activeBandIndex, false)
 
-        if (isScrollGesture && !centeredMode) {
-            velocityTracker?.computeCurrentVelocity(1000)
-            val flingVelocity = -(velocityTracker?.xVelocity ?: 0f)
-            if (abs(flingVelocity) > 50f) {
-                if (scrollFling.isRunning) scrollFling.cancel()
-                scrollFling.setMinValue(-maxOverscrollPx)
-                scrollFling.setMaxValue(maxScroll + maxOverscrollPx)
-                scrollFling.setStartVelocity(flingVelocity)
-                scrollFling.setStartValue(scrollOffset)
-                scrollFling.start()
-            } else {
-                snapScrollToBounds()
+        if (!centeredMode) {
+            val isOutOfBounds = scrollOffset !in 0f..maxScroll
+            var flung = false
+            if (isScrollGesture && !isOutOfBounds) {
+                velocityTracker?.computeCurrentVelocity(1000)
+                val flingVelocity = -(velocityTracker?.xVelocity ?: 0f)
+                if (abs(flingVelocity) > 50f) {
+                    if (scrollFling.isRunning) scrollFling.cancel()
+                    scrollFling.setMinValue(-maxOverscrollPx)
+                    scrollFling.setMaxValue(maxScroll + maxOverscrollPx)
+                    scrollFling.setStartVelocity(flingVelocity)
+                    scrollFling.setStartValue(scrollOffset)
+                    scrollFling.start()
+                    flung = true
+                }
+            }
+            if (!flung) {
+                velocityTracker?.computeCurrentVelocity(1000)
+                val springVelocity = if (isScrollGesture) -(velocityTracker?.xVelocity ?: 0f) else 0f
+                snapScrollToBounds(springVelocity)
             }
         }
 
@@ -2116,18 +2126,26 @@ class FelicityEqualizer @JvmOverloads constructor(
             }
         }
 
-        if (isScrollGesture && !centeredMode) {
-            velocityTracker?.computeCurrentVelocity(1000)
-            val flingVelocity = -(velocityTracker?.xVelocity ?: 0f)
-            if (abs(flingVelocity) > 50f) {
-                if (scrollFling.isRunning) scrollFling.cancel()
-                scrollFling.setMinValue(-maxOverscrollPx)
-                scrollFling.setMaxValue(maxScroll + maxOverscrollPx)
-                scrollFling.setStartVelocity(flingVelocity)
-                scrollFling.setStartValue(scrollOffset)
-                scrollFling.start()
-            } else {
-                snapScrollToBounds()
+        if (!centeredMode) {
+            val isOutOfBounds = scrollOffset < 0f || scrollOffset > maxScroll
+            var flung = false
+            if (isScrollGesture && !isOutOfBounds) {
+                velocityTracker?.computeCurrentVelocity(1000)
+                val flingVelocity = -(velocityTracker?.xVelocity ?: 0f)
+                if (abs(flingVelocity) > 50f) {
+                    if (scrollFling.isRunning) scrollFling.cancel()
+                    scrollFling.setMinValue(-maxOverscrollPx)
+                    scrollFling.setMaxValue(maxScroll + maxOverscrollPx)
+                    scrollFling.setStartVelocity(flingVelocity)
+                    scrollFling.setStartValue(scrollOffset)
+                    scrollFling.start()
+                    flung = true
+                }
+            }
+            if (!flung) {
+                velocityTracker?.computeCurrentVelocity(1000)
+                val springVelocity = if (isScrollGesture) -(velocityTracker?.xVelocity ?: 0f) else 0f
+                snapScrollToBounds(springVelocity)
             }
         }
 
@@ -2168,11 +2186,12 @@ class FelicityEqualizer @JvmOverloads constructor(
         else -> rawTarget
     }
 
-    private fun snapScrollToBounds() {
+    private fun snapScrollToBounds(velocity: Float = 0f) {
         val target = scrollOffset.coerceIn(0f, maxScroll)
         if (scrollOffset == target) return
         if (scrollSpring.isRunning) scrollSpring.cancel()
         scrollSpring.setStartValue(scrollOffset)
+        scrollSpring.setStartVelocity(velocity)
         scrollSpring.animateToFinalPosition(target)
     }
 
