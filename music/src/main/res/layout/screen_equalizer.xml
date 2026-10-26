@@ -4,7 +4,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <app.simple.felicity.decorations.seekbars.FelicityEqualizerSliders
+    <app.simple.felicity.decorations.equalizer.FelicityEqualizerSliders
         android:id="@+id/equalizer_sliders"
         android:layout_width="match_parent"
         android:paddingHorizontal="@dimen/padding_15"

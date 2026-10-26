@@ -19,7 +19,7 @@
             app:appFontStyle="bold"
             app:textColorStyle="primary" />
 
-        <app.simple.felicity.decorations.views.EqualizerWaveView
+        <app.simple.felicity.decorations.equalizer.EqualizerWaveView
             android:id="@+id/preset_wave_preview"
             android:layout_width="match_parent"
             android:layout_height="@dimen/eq_preset_preview_height"

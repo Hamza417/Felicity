@@ -12,8 +12,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentEqualizerBinding
+import app.simple.felicity.decorations.equalizer.FelicityEqualizerSliders
 import app.simple.felicity.decorations.knobs.FelicityKnobListener
-import app.simple.felicity.decorations.seekbars.FelicityEqualizerSliders
 import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithFade
 import app.simple.felicity.decorations.views.PopupMenuItem

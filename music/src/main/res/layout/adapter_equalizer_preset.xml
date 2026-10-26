@@ -71,7 +71,7 @@
 
         </LinearLayout>
 
-        <app.simple.felicity.decorations.views.EqualizerWaveView
+        <app.simple.felicity.decorations.equalizer.EqualizerWaveView
             android:id="@+id/equalizer_wave"
             android:layout_marginTop="@dimen/padding_15"
             android:layout_width="match_parent"

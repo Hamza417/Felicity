@@ -1,5 +1,8 @@
-package app.simple.felicity.decorations.seekbars
+package app.simple.felicity.decorations.equalizer
 
+import android.R
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.content.Context
 import android.content.SharedPreferences
@@ -10,6 +13,7 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Shader
+import android.graphics.drawable.Drawable
 import android.os.VibrationEffect
 import android.util.AttributeSet
 import android.view.MotionEvent
@@ -25,11 +29,11 @@ import androidx.dynamicanimation.animation.FloatPropertyCompat
 import androidx.dynamicanimation.animation.SpringAnimation
 import androidx.dynamicanimation.animation.SpringForce
 import app.simple.felicity.decorations.drawables.ThumbPillDrawable
+import app.simple.felicity.decorations.equalizer.FelicityEqualizerSliders.Companion.NO_ACTIVE_BAND
+import app.simple.felicity.decorations.equalizer.FelicityEqualizerSliders.Companion.PEQ_DELETE_BTN_RADIUS_DP
+import app.simple.felicity.decorations.equalizer.FelicityEqualizerSliders.Companion.PEQ_KNOB_DIAMETER_DP
 import app.simple.felicity.decorations.knobs.SimpleBaseKnobDrawable
 import app.simple.felicity.decorations.ripple.FelicityRippleDrawable
-import app.simple.felicity.decorations.seekbars.FelicityEqualizerSliders.Companion.NO_ACTIVE_BAND
-import app.simple.felicity.decorations.seekbars.FelicityEqualizerSliders.Companion.PEQ_DELETE_BTN_RADIUS_DP
-import app.simple.felicity.decorations.seekbars.FelicityEqualizerSliders.Companion.PEQ_KNOB_DIAMETER_DP
 import app.simple.felicity.decorations.typeface.TypeFace
 import app.simple.felicity.decorations.utils.VibrateUtils.vibrateEffect
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
@@ -45,6 +49,7 @@ import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.math.sin
+import kotlin.math.sqrt
 import app.simple.felicity.decoration.R as DecoR
 
 /**
@@ -816,9 +821,9 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
      * Tells the View that every PEQ knob drawable belongs to this view, so when a
      * drawable calls [android.graphics.drawable.Drawable.invalidateSelf] — for example
      * during a press-color animation — the invalidation actually reaches [onDraw].
-     * Without this, the base [View.invalidateDrawable] silently discards the call.
+     * Without this, the base [invalidateDrawable] silently discards the call.
      */
-    override fun verifyDrawable(who: android.graphics.drawable.Drawable): Boolean {
+    override fun verifyDrawable(who: Drawable): Boolean {
         if (peqQKnobDrawables.any { it === who }) return true
         if (peqFreqKnobDrawables.any { it === who }) return true
         if (who === addBandRipple) return true
@@ -1013,8 +1018,8 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
                 newBandAnimAlpha = (255 * t).toInt()
                 invalidate()
             }
-            addListener(object : android.animation.AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: android.animation.Animator) {
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
                     newBandAnimIndex = -1
                     newBandAnimScale = 1f
                     newBandAnimAlpha = 255
@@ -1908,7 +1913,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
                 val top = btnCy - btnH * 0.5f
                 ripple.setBounds(left.toInt(), top.toInt(), (left + btnW).toInt(), (top + btnH).toInt())
                 ripple.setHotspot(event.x, event.y)
-                ripple.state = intArrayOf(android.R.attr.state_pressed)
+                ripple.state = intArrayOf(R.attr.state_pressed)
             }
         }
 
@@ -2107,7 +2112,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
     private fun dist(x1: Float, y1: Float, x2: Float, y2: Float): Float {
         val dx = x1 - x2;
         val dy = y1 - y2
-        return kotlin.math.sqrt((dx * dx + dy * dy).toDouble()).toFloat()
+        return sqrt((dx * dx + dy * dy).toDouble()).toFloat()
     }
 
     // -------------------------------------------------------------------------

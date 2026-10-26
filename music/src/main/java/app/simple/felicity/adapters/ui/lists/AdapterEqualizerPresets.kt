@@ -18,7 +18,7 @@ import app.simple.felicity.shared.utils.ViewUtils.visible
  * [ListAdapter] that populates the equalizer preset panel with one row per preset.
  *
  * Every row displays the preset name, a small "Built-in" badge for factory presets,
- * and a [app.simple.felicity.decorations.views.EqualizerWaveView] that gives the user
+ * and a [app.simple.felicity.decorations.equalizer.EqualizerWaveView] that gives the user
  * an instant visual preview of the EQ curve shape before they commit to applying it.
  * Think of it as a "try before you apply" experience — in glanceable waveform form.
  *

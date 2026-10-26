@@ -1,4 +1,4 @@
-package app.simple.felicity.decorations.views
+package app.simple.felicity.decorations.equalizer
 
 import android.content.Context
 import android.graphics.Canvas
@@ -21,7 +21,9 @@ import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
 import app.simple.felicity.theme.models.Theme
+import kotlin.math.abs
 import kotlin.math.log10
+import kotlin.math.log2
 import kotlin.math.pow
 
 /**
@@ -244,7 +246,7 @@ class EqualizerWaveView @JvmOverloads constructor(
         }
 
         // Ensure there's some range to avoid division by zero and overly flat look when all zeros
-        val dynamicDbMax = maxOf(kotlin.math.abs(maxGain), kotlin.math.abs(minGain), MIN_DYNAMIC_RANGE_DB)
+        val dynamicDbMax = maxOf(abs(maxGain), abs(minGain), MIN_DYNAMIC_RANGE_DB)
 
         val radius = if (isInEditMode) EDIT_MODE_CORNER_RADIUS else AppearancePreferences.getCornerRadius()
         val inset = borderPaint.strokeWidth / 2f
@@ -339,7 +341,7 @@ class EqualizerWaveView @JvmOverloads constructor(
                 for ((gainDb, _, centerFrequency) in peqBands) {
                     // Find the x position for this band's center frequency
                     // centerFrequency = BASE_FREQ_HZ * 2f.pow((x - graphStartX) / slotW - 0.5f)
-                    val log2fRatio = kotlin.math.log2(centerFrequency / BASE_FREQ_HZ)
+                    val log2fRatio = log2(centerFrequency / BASE_FREQ_HZ)
                     val x = graphStartX + slotW * (log2fRatio + 0.5f)
                     if (x in graphStartX..viewWidth) {
                         val normalizedGain = gainDb / dynamicDbMax
@@ -353,7 +355,6 @@ class EqualizerWaveView @JvmOverloads constructor(
                     drawCircle(points[i][0], points[i][1], dotRadius, dotPaint)
                 }
             }
-
         }
 
         // Draw Values outside the clip (so they aren't cut off)

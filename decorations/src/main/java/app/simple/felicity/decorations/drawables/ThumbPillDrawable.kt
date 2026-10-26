@@ -12,7 +12,7 @@ import kotlin.math.min
 
 /**
  * A reusable [Drawable] that renders the fader-style pill thumb shared across
- * [app.simple.felicity.decorations.seekbars.FelicityEqualizerSliders],
+ * [app.simple.felicity.decorations.equalizer.FelicityEqualizerSliders],
  * [app.simple.felicity.decorations.fastscroll.SlideFastScroller], and
  * [app.simple.felicity.decorations.seekbars.FelicitySeekbar], unifying their thumb designs.
  *

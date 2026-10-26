@@ -13,7 +13,7 @@ import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
  * A compact bottom-sheet dialog that lets the user type a name for their current
  * EQ settings and save them as a new preset.
  *
- * A [app.simple.felicity.decorations.views.EqualizerWaveView] previews the current band
+ * A [app.simple.felicity.decorations.equalizer.EqualizerWaveView] previews the current band
  * gains in real time so the user can confirm they are saving the right curve before
  * committing — because nobody wants to save "My Preset" and discover later it is just flat.
  *
