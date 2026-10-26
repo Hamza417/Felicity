@@ -12,7 +12,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentEqualizerBinding
-import app.simple.felicity.decorations.equalizer.FelicityEqualizerSliders
+import app.simple.felicity.decorations.equalizer.FelicityEqualizer
 import app.simple.felicity.decorations.knobs.FelicityKnobListener
 import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithFade
@@ -227,9 +227,9 @@ class Equalizer : MediaFragment() {
         // Apply the saved EQ mode before touching any slider values so the layout
         // is already in the right mode when we start feeding in data.
         val sliderMode = if (state.isParametricMode) {
-            FelicityEqualizerSliders.Companion.Mode.PARAMETRIC
+            FelicityEqualizer.Companion.Mode.PARAMETRIC
         } else {
-            FelicityEqualizerSliders.Companion.Mode.GRAPHIC
+            FelicityEqualizer.Companion.Mode.GRAPHIC
         }
         binding.equalizerScreen.equalizerSliders.mode = sliderMode
 
@@ -261,13 +261,13 @@ class Equalizer : MediaFragment() {
         if (parametric) {
             EqualizerManager.setEqMode(EqualizerPreferences.EQ_MODE_PARAMETRIC)
             binding.equalizerScreen.equalizerSliders.mode =
-                FelicityEqualizerSliders.Companion.Mode.PARAMETRIC
+                FelicityEqualizer.Companion.Mode.PARAMETRIC
         } else {
             // Persist the current PEQ bands before leaving so the user can come back.
             savePeqBandsToPreferences()
             EqualizerManager.setEqMode(EqualizerPreferences.EQ_MODE_GRAPHIC)
             binding.equalizerScreen.equalizerSliders.mode =
-                FelicityEqualizerSliders.Companion.Mode.GRAPHIC
+                FelicityEqualizer.Companion.Mode.GRAPHIC
         }
     }
 
@@ -321,9 +321,9 @@ class Equalizer : MediaFragment() {
 
     /**
      * Parses the stored PEQ bands raw string back into a list of
-     * [FelicityEqualizerSliders.Companion.PeqBand] objects ready to be fed into the slider.
+     * [FelicityEqualizer.Companion.PeqBand] objects ready to be fed into the slider.
      */
-    private fun parsePeqBandsRaw(raw: String): List<FelicityEqualizerSliders.Companion.PeqBand> {
+    private fun parsePeqBandsRaw(raw: String): List<FelicityEqualizer.Companion.PeqBand> {
         return raw.split("|").mapNotNull { segment ->
             val parts = segment.split(":")
             if (parts.size < 3) null
@@ -331,7 +331,7 @@ class Equalizer : MediaFragment() {
                 val gain = parts[0].toFloatOrNull() ?: return@mapNotNull null
                 val q = parts[1].toFloatOrNull() ?: return@mapNotNull null
                 val freq = parts[2].toFloatOrNull() ?: return@mapNotNull null
-                FelicityEqualizerSliders.Companion.PeqBand(gain = gain, q = q, frequencyHz = freq)
+                FelicityEqualizer.Companion.PeqBand(gain = gain, q = q, frequencyHz = freq)
             }
         }
     }
@@ -374,7 +374,7 @@ class Equalizer : MediaFragment() {
         binding.equalizerScreen.equalizerSliders.setOnBandChangedListener { bandIndex, gain, fromUser ->
             if (fromUser) {
                 Log.d(TAG, "Band $bandIndex changed to ${gain}dB by user")
-                if (bandIndex == FelicityEqualizerSliders.PREAMP_BAND_INDEX) {
+                if (bandIndex == FelicityEqualizer.PREAMP_BAND_INDEX) {
                     EqualizerManager.setPreamp(gain)
                 } else {
                     EqualizerManager.setBandGain(bandIndex, gain)
@@ -411,9 +411,9 @@ class Equalizer : MediaFragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 EqualizerManager.eqModeFlow.collect { mode ->
                     val targetMode = if (mode == EqualizerPreferences.EQ_MODE_PARAMETRIC) {
-                        FelicityEqualizerSliders.Companion.Mode.PARAMETRIC
+                        FelicityEqualizer.Companion.Mode.PARAMETRIC
                     } else {
-                        FelicityEqualizerSliders.Companion.Mode.GRAPHIC
+                        FelicityEqualizer.Companion.Mode.GRAPHIC
                     }
                     if (binding.equalizerScreen.equalizerSliders.mode != targetMode) {
                         binding.equalizerScreen.equalizerSliders.mode = targetMode
@@ -429,7 +429,7 @@ class Equalizer : MediaFragment() {
                 EqualizerManager.peqBandsFlow.collect { bands ->
                     if (bands.isNotEmpty()) {
                         val peqBands = bands.map { band ->
-                            FelicityEqualizerSliders.Companion.PeqBand(
+                            FelicityEqualizer.Companion.PeqBand(
                                     gain = band.gain, q = band.q, frequencyHz = band.frequencyHz, color = band.color)
                         }
                         binding.equalizerScreen.equalizerSliders.setPeqBands(peqBands)

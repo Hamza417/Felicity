@@ -1,6 +1,5 @@
 package app.simple.felicity.decorations.equalizer
 
-import android.R
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
@@ -28,10 +27,11 @@ import androidx.dynamicanimation.animation.FlingAnimation
 import androidx.dynamicanimation.animation.FloatPropertyCompat
 import androidx.dynamicanimation.animation.SpringAnimation
 import androidx.dynamicanimation.animation.SpringForce
+import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.drawables.ThumbPillDrawable
-import app.simple.felicity.decorations.equalizer.FelicityEqualizerSliders.Companion.NO_ACTIVE_BAND
-import app.simple.felicity.decorations.equalizer.FelicityEqualizerSliders.Companion.PEQ_DELETE_BTN_RADIUS_DP
-import app.simple.felicity.decorations.equalizer.FelicityEqualizerSliders.Companion.PEQ_KNOB_DIAMETER_DP
+import app.simple.felicity.decorations.equalizer.FelicityEqualizer.Companion.NO_ACTIVE_BAND
+import app.simple.felicity.decorations.equalizer.FelicityEqualizer.Companion.PEQ_DELETE_BTN_RADIUS_DP
+import app.simple.felicity.decorations.equalizer.FelicityEqualizer.Companion.PEQ_KNOB_DIAMETER_DP
 import app.simple.felicity.decorations.knobs.SimpleBaseKnobDrawable
 import app.simple.felicity.decorations.ripple.FelicityRippleDrawable
 import app.simple.felicity.decorations.typeface.TypeFace
@@ -50,7 +50,6 @@ import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.math.sin
 import kotlin.math.sqrt
-import app.simple.felicity.decoration.R as DecoR
 
 /**
  * A 10-band graphic equalizer slider view plus a dedicated pre-amplifier slider,
@@ -69,7 +68,7 @@ import app.simple.felicity.decoration.R as DecoR
  *
  * @author Hamza417
  */
-class FelicityEqualizerSliders @JvmOverloads constructor(
+class FelicityEqualizer @JvmOverloads constructor(
         context: Context,
         attrs: AttributeSet? = null,
         defStyleAttr: Int = 0
@@ -146,7 +145,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
 
         private const val OVERSCROLL_DECAY_FACTOR = 400f
         private const val MAX_OVERSCROLL_DP = 128f
-        private const val TAG = "FelicityEqualizerSliders"
+        private const val TAG = "FelicityEqualizer"
 
         /** The total angular sweep of a knob in degrees (from min to max). */
         private const val KNOB_SWEEP_DEG = 270f
@@ -371,9 +370,9 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
 
     private val maxOverscrollPx get() = MAX_OVERSCROLL_DP * resources.displayMetrics.density
 
-    private val scrollOffsetProperty = object : FloatPropertyCompat<FelicityEqualizerSliders>("scrollOffset") {
-        override fun getValue(view: FelicityEqualizerSliders): Float = view.scrollOffset
-        override fun setValue(view: FelicityEqualizerSliders, value: Float) {
+    private val scrollOffsetProperty = object : FloatPropertyCompat<FelicityEqualizer>("scrollOffset") {
+        override fun getValue(view: FelicityEqualizer): Float = view.scrollOffset
+        override fun setValue(view: FelicityEqualizer, value: Float) {
             view.scrollOffset = value.coerceIn(-maxOverscrollPx, maxScroll + maxOverscrollPx)
             view.invalidate()
         }
@@ -539,9 +538,9 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
     /** Unified pill-thumb drawable shared across all columns (including the preamp). */
     private val thumbPillDrawable = ThumbPillDrawable(ThumbPillDrawable.Orientation.VERTICAL).apply {
         ringStrokePx = thumbRingStrokePx
-        gripLineStrokePx = this@FelicityEqualizerSliders.gripLineStrokePx
-        gripLineHalfLengthFraction = this@FelicityEqualizerSliders.gripLineHalfLengthFraction
-        gripLineSpacingFraction = this@FelicityEqualizerSliders.gripLineSpacingFraction
+        gripLineStrokePx = this@FelicityEqualizer.gripLineStrokePx
+        gripLineHalfLengthFraction = this@FelicityEqualizer.gripLineHalfLengthFraction
+        gripLineSpacingFraction = this@FelicityEqualizer.gripLineSpacingFraction
     }
 
     private val trackProgressPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -652,7 +651,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
      * against the translucent button background. Loaded once and reused each frame.
      */
     private val deleteIconDrawable = if (!isInEditMode) {
-        ContextCompat.getDrawable(context, DecoR.drawable.ic_delete)?.mutate()?.also {
+        ContextCompat.getDrawable(context, R.drawable.ic_delete)?.mutate()?.also {
             it.setTint(ThemeManager.theme.iconTheme.secondaryIconColor)
         }
     } else null
@@ -761,7 +760,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         addBandRipple = FelicityRippleDrawable(accentColor).apply {
             setStartColor(trackColor)
             setCornerRadius(10f * d)
-            callback = this@FelicityEqualizerSliders
+            callback = this@FelicityEqualizer
         }
     }
 
@@ -1075,7 +1074,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
         val labelGap = PEQ_KNOB_LABEL_GAP_DP * d
         val pillH = knobTypeLabelTextPaint.fontSpacing * 0.9f + 4f * d
         val singleKnobH = pillH + labelGap + 2f * arcR + labelGap + knobLabelPaint.fontSpacing
-        
+
         return if (isLandscape) {
             val qKnobCx = sliderCx + thumbHalfWidthPx + innerGap + arcR
             val freqKnobCx = qKnobCx + 2f * arcR + PEQ_KNOB_KNOB_GAP_DP * d
@@ -1092,7 +1091,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
 
             val qKnobCy = bgTop + gap + pillH + labelGap + arcR
             val freqKnobCy = bgTop + gap + singleKnobH + gap + pillH + labelGap + arcR
-            
+
             KnobCenters(knobCx, qKnobCy, knobCx, freqKnobCy)
         }
     }
@@ -1951,7 +1950,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
                 val top = btnCy - btnH * 0.5f
                 ripple.setBounds(left.toInt(), top.toInt(), (left + btnW).toInt(), (top + btnH).toInt())
                 ripple.setHotspot(event.x, event.y)
-                ripple.state = intArrayOf(R.attr.state_pressed)
+                ripple.state = intArrayOf(android.R.attr.state_pressed)
             }
         }
 
@@ -2018,7 +2017,7 @@ class FelicityEqualizerSliders @JvmOverloads constructor(
                 if (!isBandGesture && (abs(dx) > touchSlop || abs(dy) > touchSlop)) {
                     isBandGesture = true
                 }
-                
+
                 // A knob rotation gesture is never converted to a horizontal scroll — the
                 // user intentionally landed on the knob so we own all subsequent movement.
                 isScrollGesture = false
