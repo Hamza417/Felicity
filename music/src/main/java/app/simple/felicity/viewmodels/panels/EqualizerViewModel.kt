@@ -183,6 +183,35 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
     }
 
     /**
+     * Auto-saves an imported PEQ preset. It handles duplicate names by appending a number
+     * e.g., "My Preset (1)".
+     */
+    fun autoSaveImportedPeqPreset(
+            name: String,
+            bands: List<ParsedBand>,
+            preampDb: Float
+    ) {
+        var baseName = name.trim()
+        if (baseName.isBlank()) {
+            baseName = "Imported PEQ Preset"
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            var uniqueName = baseName
+            var counter = 1
+            while (db.equalizerPresetDao().getPresetByName(uniqueName) != null) {
+                uniqueName = "$baseName ($counter)"
+                counter++
+            }
+            val preset = EqualizerPreset.fromPeqBands(
+                    name = uniqueName,
+                    bands = bands,
+                    preampDb = preampDb
+            )
+            db.equalizerPresetDao().insertPreset(preset)
+        }
+    }
+
+    /**
      * Walks the [presets] list and returns the first one whose band gains and preamp level
      * are within floating-point rounding tolerance of [gains] and [preamp]. Returns null
      * if no preset matches, which means the EQ is in a "Custom" state.

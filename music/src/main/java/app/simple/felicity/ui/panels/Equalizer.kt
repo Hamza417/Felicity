@@ -294,6 +294,13 @@ class Equalizer : MediaFragment() {
         EqualizerManager.setPeqBands(preset.bands)
         EqualizerManager.setPreamp(preset.preampDb)
 
+        // Auto-save the imported preset to the database.
+        viewModel.autoSaveImportedPeqPreset(
+                name = preset.name,
+                bands = preset.bands,
+                preampDb = preset.preampDb
+        )
+
         Log.d(TAG, "Imported PEQ preset '${preset.name}' — " +
                 "${preset.bands.size} bands, preamp ${preset.preampDb} dB")
     }
