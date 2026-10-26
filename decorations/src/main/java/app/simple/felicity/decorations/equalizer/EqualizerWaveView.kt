@@ -273,22 +273,25 @@ class EqualizerWaveView @JvmOverloads constructor(
             wavePath.reset()
 
             if (isPeq) {
+                val originalBandColor = peqBandPaint.color
                 // Draw individual band curves first (faintly)
-                for ((first, second, third) in peqBands) {
+                for (band in peqBands) {
                     singleBandPath.reset()
 
                     for (i in 0 until PEQ_CURVE_RESOLUTION) {
                         val x = graphStartX + i * stepX
                         val frequency = BASE_FREQ_HZ * 2f.pow((x - graphStartX) / slotW - 0.5f)
-                        val bandGain = getSingleBandResponseAt(frequency, first, second, third)
+                        val bandGain = getSingleBandResponseAt(frequency, band.gain, band.q, band.frequencyHz)
                         val normalizedGain = bandGain / dynamicDbMax
                         val y = midY - normalizedGain * (drawH / 2f)
                         if (i == 0) singleBandPath.moveTo(x, y)
                         else singleBandPath.lineTo(x, y)
                     }
 
+                    peqBandPaint.color = if (band.color == 0) originalBandColor else band.color.toQuarterAlpha()
                     drawPath(singleBandPath, peqBandPaint)
                 }
+                peqBandPaint.color = originalBandColor
 
                 for (i in 0 until PEQ_CURVE_RESOLUTION) {
                     val x = graphStartX + i * stepX
@@ -338,18 +341,21 @@ class EqualizerWaveView @JvmOverloads constructor(
             // Draw dots
             if (isPeq) {
                 val handleOuterRadius = DOT_RADIUS * resources.displayMetrics.density
+                val originalHandleColor = handleFillPaint.color
 
-                for ((gainDb, _, centerFrequency) in peqBands) {
+                for (band in peqBands) {
                     // Find the x position for this band's center frequency
                     // centerFrequency = BASE_FREQ_HZ * 2f.pow((x - graphStartX) / slotW - 0.5f)
-                    val log2fRatio = log2(centerFrequency / BASE_FREQ_HZ)
+                    val log2fRatio = log2(band.frequencyHz / BASE_FREQ_HZ)
                     val x = graphStartX + slotW * (log2fRatio + 0.5f)
                     if (x in graphStartX..viewWidth) {
-                        val normalizedGain = gainDb / dynamicDbMax
+                        val normalizedGain = band.gain / dynamicDbMax
                         val y = midY - normalizedGain * (drawH / 2f)
+                        handleFillPaint.color = if (band.color == 0) originalHandleColor else band.color.toQuarterAlpha()
                         drawCircle(x, y, handleOuterRadius, handleFillPaint)
                     }
                 }
+                handleFillPaint.color = originalHandleColor
             } else {
                 val dotRadius = DOT_RADIUS * resources.displayMetrics.density
                 for (i in 0 until BAND_COUNT) {
