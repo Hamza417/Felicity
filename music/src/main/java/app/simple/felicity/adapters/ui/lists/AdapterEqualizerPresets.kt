@@ -138,12 +138,9 @@ class AdapterEqualizerPresets(
                 binding.presetSelectedIndicator.gone()
             }
 
-            // For graphic presets, feed the wave view the band gains so it renders the
-            // correct EQ curve shape. For parametric presets, show a flat line as a
-            // placeholder, the user can apply the preset to see its effect.
-            // TODO add PEQ preview
+            // Feed the wave view the appropriate data so it renders the correct EQ curve shape.
             if (preset.isPeq()) {
-                binding.equalizerWave.setGains(FloatArray(10))
+                binding.equalizerWave.setPeqBands(preset.getPeqBands())
             } else {
                 binding.equalizerWave.setGains(preset.getBandGains())
             }
