@@ -124,7 +124,7 @@ class AdapterEqualizerPresets(
             // Show the "PEQ" badge for parametric presets and hide it for graphic ones.
             // This gives the user a quick way to know which EQ mode the preset uses.
             if (preset.isPeq()) {
-                binding.presetTypeLabel.text = getString(R.string.peq)
+                binding.presetTypeLabel.text = getString(R.string.parametric_eq)
                 binding.presetTypeLabel.visible()
             } else {
                 binding.presetTypeLabel.gone()

@@ -11,6 +11,7 @@ import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.View
 import androidx.core.graphics.ColorUtils
+import androidx.core.graphics.withSave
 import app.simple.felicity.decorations.typeface.TypeFace
 import app.simple.felicity.decorations.typeface.TypefaceStyle
 import app.simple.felicity.preferences.AppearancePreferences
@@ -243,116 +244,117 @@ class EqualizerWaveView @JvmOverloads constructor(
         }
 
         // Ensure there's some range to avoid division by zero and overly flat look when all zeros
-        val maxAbs = maxOf(kotlin.math.abs(maxGain), kotlin.math.abs(minGain), MIN_DYNAMIC_RANGE_DB)
-        val dynamicDbMax = maxAbs
+        val dynamicDbMax = maxOf(kotlin.math.abs(maxGain), kotlin.math.abs(minGain), MIN_DYNAMIC_RANGE_DB)
 
         val radius = if (isInEditMode) EDIT_MODE_CORNER_RADIUS else AppearancePreferences.getCornerRadius()
         val inset = borderPaint.strokeWidth / 2f
         borderRect.set(graphStartX + inset, inset, viewWidth - inset, graphH - inset)
 
-        canvas.save()
-        clipPath.reset()
-        clipPath.addRoundRect(borderRect, radius, radius, Path.Direction.CW)
-        canvas.clipPath(clipPath)
+        canvas.withSave {
+            clipPath.reset()
+            clipPath.addRoundRect(borderRect, radius, radius, Path.Direction.CW)
+            clipPath(clipPath)
 
-        // Draw Grid inside clip
-        for (i in 0 until HORIZONTAL_GRID_LINES) {
-            val y = graphH * i / (HORIZONTAL_GRID_LINES - 1)
-            canvas.drawLine(graphStartX, y, viewWidth, y, gridPaint)
-        }
+            // Draw Grid inside clip
+            for (i in 0 until HORIZONTAL_GRID_LINES) {
+                val y = graphH * i / (HORIZONTAL_GRID_LINES - 1)
+                drawLine(graphStartX, y, viewWidth, y, gridPaint)
+            }
 
-        for (i in 0 until BAND_COUNT) {
-            val x = graphStartX + slotW * i + slotW / 2f
-            canvas.drawLine(x, 0f, x, graphH, gridPaint)
-        }
+            for (i in 0 until BAND_COUNT) {
+                val x = graphStartX + slotW * i + slotW / 2f
+                drawLine(x, 0f, x, graphH, gridPaint)
+            }
 
-        // Build a smooth cubic Bezier path through all band points.
-        wavePath.reset()
+            // Build a smooth cubic Bezier path through all band points.
+            wavePath.reset()
 
-        if (isPeq) {
-            // Draw individual band curves first (faintly)
-            for (band in peqBands) {
-                singleBandPath.reset()
+            if (isPeq) {
+                // Draw individual band curves first (faintly)
+                for ((first, second, third) in peqBands) {
+                    singleBandPath.reset()
+
+                    for (i in 0 until PEQ_CURVE_RESOLUTION) {
+                        val x = graphStartX + i * stepX
+                        val frequency = BASE_FREQ_HZ * 2f.pow((x - graphStartX) / slotW - 0.5f)
+                        val bandGain = getSingleBandResponseAt(frequency, first, second, third)
+                        val normalizedGain = bandGain / dynamicDbMax
+                        val y = midY - normalizedGain * (drawH / 2f)
+                        if (i == 0) singleBandPath.moveTo(x, y)
+                        else singleBandPath.lineTo(x, y)
+                    }
+
+                    drawPath(singleBandPath, peqBandPaint)
+                }
+
                 for (i in 0 until PEQ_CURVE_RESOLUTION) {
                     val x = graphStartX + i * stepX
-                    val frequency = BASE_FREQ_HZ * 2f.pow((x - graphStartX) / slotW - 0.5f)
-                    val bandGain = getSingleBandResponseAt(frequency, band.first, band.second, band.third)
-                    val normalizedGain = bandGain / dynamicDbMax
+                    val normalizedGain = peqGains[i] / dynamicDbMax
                     val y = midY - normalizedGain * (drawH / 2f)
-                    if (i == 0) singleBandPath.moveTo(x, y)
-                    else singleBandPath.lineTo(x, y)
+                    if (i == 0) wavePath.moveTo(x, y)
+                    else wavePath.lineTo(x, y)
                 }
-                canvas.drawPath(singleBandPath, peqBandPaint)
+            } else {
+                /**
+                 * Calculate the X position for each band point, spread evenly across the view width.
+                 * We add a half-slot offset so the first point isn't right at the left edge.
+                 */
+                for (i in 0 until BAND_COUNT) {
+                    points[i][0] = graphStartX + slotW * i + slotW / 2f
+                    val normalizedGain = bandGains[i] / dynamicDbMax    // -1..+1
+                    points[i][1] = midY - normalizedGain * (drawH / 2f)  // flip: positive gain = higher
+                }
+
+                wavePath.moveTo(graphStartX, points[0][1])
+                wavePath.lineTo(points[0][0], points[0][1])
+
+                for (i in 0 until points.size - 1) {
+                    val x1 = points[i][0]
+                    val y1 = points[i][1]
+                    val x2 = points[i + 1][0]
+                    val y2 = points[i + 1][1]
+
+                    // Control points sit halfway between consecutive data points, creating smooth
+                    // transitions that look like a real analog EQ response curve.
+                    val controlX = (x1 + x2) / 2f
+                    wavePath.cubicTo(controlX, y1, controlX, y2, x2, y2)
+                }
+                wavePath.lineTo(viewWidth, points.last()[1])
             }
 
-            for (i in 0 until PEQ_CURVE_RESOLUTION) {
-                val x = graphStartX + i * stepX
-                val normalizedGain = peqGains[i] / dynamicDbMax
-                val y = midY - normalizedGain * (drawH / 2f)
-                if (i == 0) wavePath.moveTo(x, y)
-                else wavePath.lineTo(x, y)
-            }
-        } else {
-            /**
-             * Calculate the X position for each band point, spread evenly across the view width.
-             * We add a half-slot offset so the first point isn't right at the left edge.
-             */
-            for (i in 0 until BAND_COUNT) {
-                points[i][0] = graphStartX + slotW * i + slotW / 2f
-                val normalizedGain = bandGains[i] / dynamicDbMax    // -1..+1
-                points[i][1] = midY - normalizedGain * (drawH / 2f)  // flip: positive gain = higher
-            }
+            fillPath.set(wavePath)
+            fillPath.lineTo(viewWidth, graphH)
+            fillPath.lineTo(graphStartX, graphH)
+            fillPath.close()
 
-            wavePath.moveTo(graphStartX, points[0][1])
-            wavePath.lineTo(points[0][0], points[0][1])
+            drawPath(fillPath, fillPaint)
 
-            for (i in 0 until points.size - 1) {
-                val x1 = points[i][0]
-                val y1 = points[i][1]
-                val x2 = points[i + 1][0]
-                val y2 = points[i + 1][1]
+            wavePaint.shader = gradient
+            drawPath(wavePath, wavePaint)
 
-                // Control points sit halfway between consecutive data points, creating smooth
-                // transitions that look like a real analog EQ response curve.
-                val controlX = (x1 + x2) / 2f
-                wavePath.cubicTo(controlX, y1, controlX, y2, x2, y2)
-            }
-            wavePath.lineTo(viewWidth, points.last()[1])
-        }
+            // Draw dots
+            if (isPeq) {
+                val handleOuterRadius = DOT_RADIUS * resources.displayMetrics.density
 
-        fillPath.set(wavePath)
-        fillPath.lineTo(viewWidth, graphH)
-        fillPath.lineTo(graphStartX, graphH)
-        fillPath.close()
-
-        canvas.drawPath(fillPath, fillPaint)
-
-        wavePaint.shader = gradient
-        canvas.drawPath(wavePath, wavePaint)
-
-        // Draw dots
-        if (isPeq) {
-            val handleOuterRadius = 1.0f * resources.displayMetrics.density
-
-            for ((gainDb, _, centerFrequency) in peqBands) {
-                // Find the x position for this band's center frequency
-                // centerFrequency = BASE_FREQ_HZ * 2f.pow((x - graphStartX) / slotW - 0.5f)
-                val log2fRatio = kotlin.math.log2(centerFrequency / BASE_FREQ_HZ)
-                val x = graphStartX + slotW * (log2fRatio + 0.5f)
-                if (x in graphStartX..viewWidth) {
-                    val normalizedGain = gainDb / dynamicDbMax
-                    val y = midY - normalizedGain * (drawH / 2f)
-                    canvas.drawCircle(x, y, handleOuterRadius, handleFillPaint)
+                for ((gainDb, _, centerFrequency) in peqBands) {
+                    // Find the x position for this band's center frequency
+                    // centerFrequency = BASE_FREQ_HZ * 2f.pow((x - graphStartX) / slotW - 0.5f)
+                    val log2fRatio = kotlin.math.log2(centerFrequency / BASE_FREQ_HZ)
+                    val x = graphStartX + slotW * (log2fRatio + 0.5f)
+                    if (x in graphStartX..viewWidth) {
+                        val normalizedGain = gainDb / dynamicDbMax
+                        val y = midY - normalizedGain * (drawH / 2f)
+                        drawCircle(x, y, handleOuterRadius, handleFillPaint)
+                    }
+                }
+            } else {
+                val dotRadius = DOT_RADIUS * resources.displayMetrics.density
+                for (i in 0 until BAND_COUNT) {
+                    drawCircle(points[i][0], points[i][1], dotRadius, dotPaint)
                 }
             }
-        } else {
-            val dotRadius = 1.5f * resources.displayMetrics.density
-            for (i in 0 until BAND_COUNT) {
-                canvas.drawCircle(points[i][0], points[i][1], dotRadius, dotPaint)
-            }
-        }
 
-        canvas.restore()
+        }
 
         // Draw Values outside the clip (so they aren't cut off)
         val gridMax = dynamicDbMax * 1.5f
@@ -444,6 +446,11 @@ class EqualizerWaveView @JvmOverloads constructor(
 
         /** Stroke width of the wave line in density-independent pixels. */
         private const val STROKE_WIDTH_DP = 2f
+
+        /**
+         * The width of the frequency dots on the wave line.
+         */
+        private const val DOT_RADIUS = 2.0f // 2dp
 
         /**
          * Fraction of the view height reserved as top and bottom padding so the wave never
