@@ -201,16 +201,13 @@ object EqualizerManager {
     }
 
     /**
-     * Resets the parametric EQ by zeroing the gain on every band while keeping each
-     * band's center frequency and Q factor exactly as the user set them.
-     *
-     * This is the correct "reset" for PEQ mode — the user spent time positioning the
-     * bands on the frequency axis, so we only silence them rather than wiping out their
-     * layout. The updated bands are persisted and pushed to the DSP engine immediately.
+     * Resets the parametric EQ by removing all extra bands and leaving a single
+     * default band at 1000 Hz with 0 dB gain. The updated state is persisted and
+     * pushed to the DSP engine immediately.
      */
     fun resetPeqGains() {
-        val zeroed = _peqBandsFlow.value.map { band -> ParsedBand(0f, band.q, band.frequencyHz, band.color) }
-        setPeqBands(zeroed)
+        val resetBand = ParsedBand(gain = 0f, q = 1.0f, frequencyHz = 1000f, color = 0)
+        setPeqBands(listOf(resetBand))
     }
 
     // -------------------------------------------------------------------------
