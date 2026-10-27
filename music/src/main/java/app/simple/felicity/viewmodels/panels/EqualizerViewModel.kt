@@ -63,7 +63,7 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
         .getAllPresetsFlow()
         .stateIn(
                 scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5_000),
+                started = SharingStarted.Eagerly,
                 initialValue = emptyList()
         )
 
@@ -80,6 +80,8 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
             EqualizerManager.eqModeFlow,
             allPresets
     ) { gains, peqBands, preamp, mode, presets ->
+        if (presets.isEmpty()) return@combine CUSTOM_PRESET_NAME
+
         if (mode == EqualizerPreferences.EQ_MODE_PARAMETRIC) {
             findMatchingPeqPreset(peqBands, preamp, presets)?.name ?: CUSTOM_PRESET_NAME
         } else {
@@ -87,12 +89,17 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
         }
     }.stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
+            started = SharingStarted.Eagerly,
             initialValue = CUSTOM_PRESET_NAME
     )
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
+            // Seed built-in presets if they aren't in the database yet.
+            if (db.equalizerPresetDao().getBuiltInPresetCount() == 0) {
+                db.equalizerPresetDao().insertPresets(EqualizerDatabase.builtInPresets())
+            }
+
             _initialState.value = EqualizerInitialState(
                     isEqEnabled = EqualizerPreferences.isEqEnabled(),
                     bandGains = EqualizerPreferences.getAllBandGains(),
@@ -231,10 +238,18 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
             presets: List<EqualizerPreset>
     ): EqualizerPreset? {
         return presets.firstOrNull { preset ->
+            if (preset.presetType != EqualizerPreset.PRESET_TYPE_GRAPHIC) {
+                return@firstOrNull false
+            }
+
             val presetGains = preset.getBandGains()
             val gainsMatch = gains.size == presetGains.size &&
-                    gains.indices.all { i -> abs(gains[i] - presetGains[i]) < GAIN_TOLERANCE }
+                    gains.indices.all { i ->
+                        abs(gains[i] - presetGains[i]) < GAIN_TOLERANCE
+                    }
+
             val preampMatch = abs(preamp - preset.preampDb) < GAIN_TOLERANCE
+
             gainsMatch && preampMatch
         }
     }
@@ -245,16 +260,20 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
             presets: List<EqualizerPreset>
     ): EqualizerPreset? {
         return presets.firstOrNull { preset ->
-            if (preset.presetType != EqualizerPreset.PRESET_TYPE_PARAMETRIC) return@firstOrNull false
+            if (preset.presetType != EqualizerPreset.PRESET_TYPE_PARAMETRIC) {
+                return@firstOrNull false
+            }
+
             val presetBands = preset.getPeqBands()
             val bandsMatch = bands.size == presetBands.size &&
                     bands.indices.all { i ->
                         abs(bands[i].gain - presetBands[i].gain) < GAIN_TOLERANCE &&
-                                abs(bands[i].q - presetBands[i].q) < 0.05f &&
-                                abs(bands[i].frequencyHz - presetBands[i].frequencyHz) < 1f &&
+                                abs(bands[i].q - presetBands[i].q) < 0.1f &&
+                                abs(bands[i].frequencyHz - presetBands[i].frequencyHz) < 1.5f &&
                                 bands[i].color == presetBands[i].color
                     }
             val preampMatch = abs(preamp - preset.preampDb) < GAIN_TOLERANCE
+
             bandsMatch && preampMatch
         }
     }
@@ -361,6 +380,6 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
          * the live gain and a preset's stored gain. Half of 0.01 covers the rounding error
          * introduced by the "%.2f" serialization round-trip used in [EqualizerPreset.gainsToRaw].
          */
-        private const val GAIN_TOLERANCE = 0.005f
+        private const val GAIN_TOLERANCE = 0.6f
     }
 }

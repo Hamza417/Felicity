@@ -473,7 +473,7 @@ class Equalizer : MediaFragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.currentPresetName.collect { name ->
-                    binding.equalizerScreen.presetName.setTextWithFade(name)
+                    binding.equalizerScreen.presetName.text = name
                 }
             }
         }
