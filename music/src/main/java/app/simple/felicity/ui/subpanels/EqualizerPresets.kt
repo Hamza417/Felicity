@@ -141,12 +141,18 @@ class EqualizerPresets : MediaFragment() {
         SharedScrollViewPopup(
                 container = requireContainerView(),
                 anchorView = anchorView,
-                menuItems = listOf(
-                        PopupMenuItem(title = R.string.apply_preset),
-                        PopupMenuItem(title = R.string.delete),
-                ),
+                menuItems = if (preset.isBuiltIn) {
+                    listOf(
+                            PopupMenuItem(title = R.string.apply_preset),
+                    )
+                } else {
+                    listOf(
+                            PopupMenuItem(title = R.string.apply_preset),
+                            PopupMenuItem(title = R.string.delete),
+                    )
+                },
                 onMenuItemClick = {
-                    val effect = when (it) {
+                    when (it) {
                         R.string.apply_preset -> applyPreset(preset)
                         R.string.delete -> confirmAndDelete(preset)
                         else -> return@SharedScrollViewPopup
