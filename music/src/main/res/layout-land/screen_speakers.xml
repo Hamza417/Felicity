@@ -204,6 +204,67 @@
 
         </LinearLayout>
 
+        <LinearLayout
+            android:layout_gravity="bottom"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:orientation="vertical">
+
+            <app.simple.felicity.decorations.knobs.FelicityKnobView
+                android:id="@+id/bass_knob"
+                android:layout_gravity="center"
+                android:layout_height="@dimen/balance_knob_dimension"
+                android:layout_width="match_parent" />
+
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:ellipsize="marquee"
+                android:gravity="center"
+                android:layout_gravity="center_vertical"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/padding_10"
+                android:layout_width="match_parent"
+                android:marqueeRepeatLimit="marquee_forever"
+                android:maxLines="1"
+                android:singleLine="true"
+                android:text="@string/bass"
+                android:textSize="@dimen/text_size_12"
+                app:appFontStyle="bold"
+                app:textColorStyle="heading" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_gravity="top"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/padding_15"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:orientation="vertical">
+
+            <app.simple.felicity.decorations.knobs.FelicityKnobView
+                android:id="@+id/treble_knob"
+                android:layout_gravity="center"
+                android:layout_height="@dimen/balance_knob_dimension"
+                android:layout_width="match_parent" />
+
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:ellipsize="marquee"
+                android:gravity="center"
+                android:layout_gravity="center_vertical"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/padding_10"
+                android:layout_width="match_parent"
+                android:marqueeRepeatLimit="marquee_forever"
+                android:maxLines="1"
+                android:singleLine="true"
+                android:text="@string/treble"
+                android:textSize="@dimen/text_size_12"
+                app:appFontStyle="bold"
+                app:textColorStyle="heading" />
+
+        </LinearLayout>
+
     </LinearLayout>
 
 </HorizontalScrollView>

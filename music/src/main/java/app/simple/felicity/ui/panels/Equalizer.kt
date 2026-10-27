@@ -387,12 +387,14 @@ class Equalizer : MediaFragment() {
         binding.equalizerScreen.equalizerSliders.setOnPeqBandChangedListener { bands ->
             val parsedBands = bands.map { ParsedBand(it.gain, it.q, it.frequencyHz, it.color, it.type) }
             EqualizerManager.setPeqBands(parsedBands)
+            binding.equalizerScreen.equalizerWave.setPeqBands(parsedBands)
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 EqualizerManager.bandGainsFlow.collect { gains ->
                     binding.equalizerScreen.equalizerSliders.setAllGains(gains, animate = true)
+                    binding.equalizerScreen.equalizerWave.setGains(gains)
                 }
             }
         }
@@ -417,6 +419,12 @@ class Equalizer : MediaFragment() {
                     }
                     if (binding.equalizerScreen.equalizerSliders.mode != targetMode) {
                         binding.equalizerScreen.equalizerSliders.mode = targetMode
+
+                        if (targetMode == FelicityEqualizer.Companion.Mode.PARAMETRIC) {
+                            binding.equalizerScreen.equalizerWave.setPeqBands(EqualizerManager.peqBandsFlow.value)
+                        } else {
+                            binding.equalizerScreen.equalizerWave.setGains(EqualizerManager.bandGainsFlow.value)
+                        }
                     }
                 }
             }
@@ -433,6 +441,7 @@ class Equalizer : MediaFragment() {
                                     gain = band.gain, q = band.q, frequencyHz = band.frequencyHz, color = band.color, type = band.type)
                         }
                         binding.equalizerScreen.equalizerSliders.setPeqBands(peqBands)
+                        binding.equalizerScreen.equalizerWave.setPeqBands(bands)
                     }
                 }
             }
@@ -447,6 +456,21 @@ class Equalizer : MediaFragment() {
     private fun setupEqualizerSliders(state: EqualizerViewModel.EqualizerInitialState) {
         binding.equalizerScreen.equalizerSliders.setAllGains(state.bandGains, animate = false)
         binding.equalizerScreen.equalizerSliders.setPreampGain(state.preampDb, animate = false)
+
+        if (state.isParametricMode && state.peqBandsRaw != null) {
+            val peqBands = parsePeqBandsRaw(state.peqBandsRaw)
+            if (peqBands.isNotEmpty()) {
+                val parsedBands = peqBands.map {
+                    ParsedBand(it.gain, it.q, it.frequencyHz, it.color, it.type)
+                }
+
+                binding.equalizerScreen.equalizerWave.setPeqBands(parsedBands)
+            } else {
+                binding.equalizerScreen.equalizerWave.setGains(state.bandGains)
+            }
+        } else {
+            binding.equalizerScreen.equalizerWave.setGains(state.bandGains)
+        }
     }
 
     private fun updateEqualizerEnabledState(isEnabled: Boolean, animate: Boolean = true) {
@@ -491,11 +515,11 @@ class Equalizer : MediaFragment() {
     private fun setupEqKnobs(state: EqualizerViewModel.EqualizerInitialState) {
         // Bass knob (low-shelf at 250 Hz).
         // Knob value 0-100 maps to gain -12 dB (full cut) ... 0 dB (center) ... +12 dB (full boost).
-        binding.equalizerScreen.bassKnob.centerSnapEnabled = true
-        binding.equalizerScreen.bassKnob.setTickTexts("-12", "+12")
-        binding.equalizerScreen.bassKnob.divisionCount = 48 * 2
-        binding.equalizerScreen.bassKnob.setKnobPosition(bassDbToKnobValue(state.bassDb), animate = false)
-        binding.equalizerScreen.bassKnob.setListener(object : FelicityKnobListener {
+        binding.speakerScreen.bassKnob.centerSnapEnabled = true
+        binding.speakerScreen.bassKnob.setTickTexts("-12", "+12")
+        binding.speakerScreen.bassKnob.divisionCount = 48 * 2
+        binding.speakerScreen.bassKnob.setKnobPosition(bassDbToKnobValue(state.bassDb), animate = false)
+        binding.speakerScreen.bassKnob.setListener(object : FelicityKnobListener {
             override fun onIncrement(value: Float) {}
 
             override fun onRotate(value: Float) {
@@ -516,11 +540,11 @@ class Equalizer : MediaFragment() {
 
         // Treble knob (high-shelf at 4000 Hz).
         // Knob value 0-100 maps to gain -12 dB (full cut) ... 0 dB (center) ... +12 dB (full boost).
-        binding.equalizerScreen.trebleKnob.centerSnapEnabled = true
-        binding.equalizerScreen.trebleKnob.setTickTexts("-12", "+12")
-        binding.equalizerScreen.trebleKnob.divisionCount = 48 * 2
-        binding.equalizerScreen.trebleKnob.setKnobPosition(trebleDbToKnobValue(state.trebleDb), animate = false)
-        binding.equalizerScreen.trebleKnob.setListener(object : FelicityKnobListener {
+        binding.speakerScreen.trebleKnob.centerSnapEnabled = true
+        binding.speakerScreen.trebleKnob.setTickTexts("-12", "+12")
+        binding.speakerScreen.trebleKnob.divisionCount = 48 * 2
+        binding.speakerScreen.trebleKnob.setKnobPosition(trebleDbToKnobValue(state.trebleDb), animate = false)
+        binding.speakerScreen.trebleKnob.setListener(object : FelicityKnobListener {
             override fun onIncrement(value: Float) {}
 
             override fun onRotate(value: Float) {
