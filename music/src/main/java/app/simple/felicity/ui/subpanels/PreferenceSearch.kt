@@ -38,8 +38,8 @@ import kotlinx.coroutines.launch
  */
 class PreferenceSearch : PreferenceFragment() {
 
-    private lateinit var binding: FragmentPreferenceSearchBinding
-    private lateinit var headerBinding: HeaderPreferenceSearchBinding
+    private lateinit var searchBinding: FragmentPreferenceSearchBinding
+    private lateinit var searchHeaderBinding: HeaderPreferenceSearchBinding
 
     private val viewModel: PreferenceSearchViewModel by viewModels()
 
@@ -54,27 +54,24 @@ class PreferenceSearch : PreferenceFragment() {
             inflater: LayoutInflater,
             container: ViewGroup?,
             savedInstanceState: Bundle?): View {
-        binding = FragmentPreferenceSearchBinding.inflate(inflater, container, false)
-        headerBinding = HeaderPreferenceSearchBinding.inflate(inflater, container, false)
-        return binding.root
+        searchBinding = FragmentPreferenceSearchBinding.inflate(inflater, container, false)
+        searchHeaderBinding = HeaderPreferenceSearchBinding.inflate(inflater, container, false)
+        return searchBinding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        binding.appHeader.setContentView(headerBinding.root)
-        binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
-        binding.recyclerView.setHasFixedSize(false)
+        searchBinding.appHeader.setContentView(searchHeaderBinding.root)
+        searchBinding.appHeader.attachTo(searchBinding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
+        searchBinding.recyclerView.setHasFixedSize(false)
 
-        headerBinding.editText.showInput()
+        searchHeaderBinding.editText.showInput()
 
         allPreferences = buildAllPreferences()
 
         setupSearchBox()
         observeSearchQuery()
     }
-
-    override val wantsMiniPlayerVisible: Boolean
-        get() = false
 
     /**
      * Builds and returns the merged list of all searchable preference items.
@@ -108,11 +105,11 @@ class PreferenceSearch : PreferenceFragment() {
     private fun setupSearchBox() {
         val currentQuery = viewModel.searchQuery.value
         if (currentQuery.isNotEmpty()) {
-            headerBinding.editText.setText(currentQuery)
-            headerBinding.editText.setSelection(currentQuery.length)
+            searchHeaderBinding.editText.setText(currentQuery)
+            searchHeaderBinding.editText.setSelection(currentQuery.length)
         }
 
-        headerBinding.editText.addTextChangedListener(object : TextWatcher {
+        searchHeaderBinding.editText.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
             override fun afterTextChanged(s: Editable?) {
@@ -148,8 +145,8 @@ class PreferenceSearch : PreferenceFragment() {
      */
     private fun applyFilter(query: String) {
         if (query.isBlank()) {
-            binding.recyclerView.adapter = null
-            headerBinding.count.text = ""
+            searchBinding.recyclerView.adapter = null
+            searchHeaderBinding.count.text = ""
             return
         }
 
@@ -164,8 +161,8 @@ class PreferenceSearch : PreferenceFragment() {
             titleString.lowercase().contains(lowerQuery) || summaryString.lowercase().contains(lowerQuery)
         }
 
-        binding.recyclerView.adapter = GenericPreferencesAdapter(filtered, keyword = lowerQuery)
-        headerBinding.count.text = getString(R.string.x_results, filtered.size)
+        searchBinding.recyclerView.adapter = GenericPreferencesAdapter(filtered, keyword = lowerQuery)
+        searchHeaderBinding.count.text = getString(R.string.x_results, filtered.size)
     }
 
     companion object {

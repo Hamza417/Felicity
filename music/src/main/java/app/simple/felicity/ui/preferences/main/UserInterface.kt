@@ -2,41 +2,22 @@ package app.simple.felicity.ui.preferences.main
 
 import android.content.SharedPreferences
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
 import app.simple.felicity.R
-import app.simple.felicity.adapters.preference.GenericPreferencesAdapter
-import app.simple.felicity.databinding.FragmentPreferenceAppearanceBinding
-import app.simple.felicity.databinding.HeaderPreferencesGenericBinding
-import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.extensions.fragments.PreferenceFragment
+import app.simple.felicity.models.Preference
 import app.simple.felicity.preferences.UserInterfacePreferences
 
 class UserInterface : PreferenceFragment() {
 
-    private lateinit var binding: FragmentPreferenceAppearanceBinding
-    private lateinit var headerBinding: HeaderPreferencesGenericBinding
+    override val titleRes: Int
+        get() = R.string.user_interface
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        binding = FragmentPreferenceAppearanceBinding.inflate(inflater, container, false)
-        headerBinding = HeaderPreferencesGenericBinding.inflate(inflater, container, false)
+    override val iconRes: Int
+        get() = R.drawable.ic_carousel
 
-        return binding.root
+    override fun getPreferencesList(): List<Preference> {
+        return createUserInterfacePanel()
     }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        headerBinding.title.text = getString(R.string.user_interface)
-        headerBinding.icon.setImageResource(R.drawable.ic_carousel)
-        binding.header.setContentView(headerBinding.root)
-        binding.recyclerView.setHasFixedSize(false)
-        binding.recyclerView.adapter = GenericPreferencesAdapter(createUserInterfacePanel())
-        binding.header.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
-    }
-
-    override val wantsMiniPlayerVisible: Boolean
-        get() = false
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)

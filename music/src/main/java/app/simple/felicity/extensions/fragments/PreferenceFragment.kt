@@ -4,14 +4,20 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.text.format.DateUtils
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.widget.TextView
 import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.BuildConfig
 import app.simple.felicity.R
+import app.simple.felicity.adapters.preference.GenericPreferencesAdapter
+import app.simple.felicity.databinding.FragmentPreferenceAppearanceBinding
+import app.simple.felicity.databinding.HeaderPreferencesGenericBinding
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
 import app.simple.felicity.decorations.toggles.FelicitySwitch
+import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.decorations.views.PopupMenuItem
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.enums.PreferenceType
@@ -46,6 +52,51 @@ import java.util.function.Supplier
 @Suppress("unused")
 abstract class PreferenceFragment : MediaFragment() {
 
+    private var _binding: FragmentPreferenceAppearanceBinding? = null
+    protected val binding: FragmentPreferenceAppearanceBinding
+        get() = _binding!!
+
+    private var _headerBinding: HeaderPreferencesGenericBinding? = null
+    protected val headerBinding: HeaderPreferencesGenericBinding
+        get() = _headerBinding!!
+
+    protected open val titleRes: Int = 0
+    protected open val iconRes: Int = 0
+
+    override val wantsMiniPlayerVisible: Boolean
+        get() = false
+
+    protected open fun getPreferencesList(): List<Preference> = emptyList()
+
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+        if (titleRes != 0) {
+            _binding = FragmentPreferenceAppearanceBinding.inflate(inflater, container, false)
+            _headerBinding = HeaderPreferencesGenericBinding.inflate(inflater, container, false)
+            return _binding!!.root
+        }
+        return super.onCreateView(inflater, container, savedInstanceState)
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        requireHiddenMiniPlayer()
+
+        if (titleRes != 0) {
+            _headerBinding?.title?.text = getString(titleRes)
+            _headerBinding?.icon?.setImageResource(iconRes)
+            _binding?.header?.setContentView(_headerBinding!!.root)
+            _binding?.recyclerView?.setHasFixedSize(false)
+            _binding?.recyclerView?.adapter = GenericPreferencesAdapter(getPreferencesList())
+            _binding?.header?.attachTo(_binding!!.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
+        }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+        _headerBinding = null
+    }
+
     /**
      * Bookmarks:
      * Appearance Preferences: [createAppearancePanel]
@@ -57,11 +108,6 @@ abstract class PreferenceFragment : MediaFragment() {
      * Accessibility Preferences: [createAccessibilityPanel]
      * About Preferences: [createAboutPanel]
      */
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        requireHiddenMiniPlayer()
-    }
 
     protected fun createAppearancePanel(): List<Preference> {
         val preferences = mutableListOf<Preference>()

@@ -225,9 +225,6 @@ class Purchase : PreferenceFragment() {
         }
     }
 
-    override val wantsMiniPlayerVisible: Boolean
-        get() = false
-
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null

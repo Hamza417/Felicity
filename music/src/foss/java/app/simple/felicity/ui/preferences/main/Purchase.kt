@@ -2,15 +2,8 @@ package app.simple.felicity.ui.preferences.main
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
 import androidx.core.net.toUri
 import app.simple.felicity.R
-import app.simple.felicity.adapters.preference.GenericPreferencesAdapter
-import app.simple.felicity.databinding.FragmentPreferenceAppearanceBinding
-import app.simple.felicity.databinding.HeaderPreferencesGenericBinding
-import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.app.GumroadLicenseKey.Companion.showGumroadLicenseKey
 import app.simple.felicity.enums.PreferenceType
 import app.simple.felicity.extensions.fragments.PreferenceFragment
@@ -19,28 +12,15 @@ import app.simple.felicity.preferences.TrialPreferences
 
 class Purchase : PreferenceFragment() {
 
-    private lateinit var binding: FragmentPreferenceAppearanceBinding
-    private lateinit var headerBinding: HeaderPreferencesGenericBinding
+    override val titleRes: Int
+        get() = R.string.purchase
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        binding = FragmentPreferenceAppearanceBinding.inflate(inflater, container, false)
-        headerBinding = HeaderPreferencesGenericBinding.inflate(inflater, container, false)
+    override val iconRes: Int
+        get() = R.drawable.ic_sell
 
-        return binding.root
+    override fun getPreferencesList(): List<Preference> {
+        return createPurchasePanel()
     }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        headerBinding.title.text = getString(R.string.purchase)
-        headerBinding.icon.setImageResource(R.drawable.ic_sell)
-        binding.header.setContentView(headerBinding.root)
-        binding.recyclerView.setHasFixedSize(false)
-        binding.recyclerView.adapter = GenericPreferencesAdapter(createPurchasePanel())
-        binding.header.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
-    }
-
-    override val wantsMiniPlayerVisible: Boolean
-        get() = false
 
     private fun createPurchasePanel(): MutableList<Preference> {
         val preferences = mutableListOf<Preference>()

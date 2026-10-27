@@ -27,11 +27,11 @@ import java.util.function.Supplier
  */
 class PanelVisibility : PreferenceFragment() {
 
-    private lateinit var binding: FragmentGenericRecyclerViewBinding
+    private lateinit var panelBinding: FragmentGenericRecyclerViewBinding
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        binding = FragmentGenericRecyclerViewBinding.inflate(inflater, container, false)
-        return binding.root
+        panelBinding = FragmentGenericRecyclerViewBinding.inflate(inflater, container, false)
+        return panelBinding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -39,8 +39,8 @@ class PanelVisibility : PreferenceFragment() {
 
         // Hand the full list (header included) straight to the recycler — no external
         // AppHeader needed here, the first item in the list is the header itself.
-        binding.recyclerView.setHasFixedSize(false)
-        binding.recyclerView.adapter = AdapterPanelVisibility(buildPanelVisibilityList())
+        panelBinding.recyclerView.setHasFixedSize(false)
+        panelBinding.recyclerView.adapter = AdapterPanelVisibility(buildPanelVisibilityList())
     }
 
     /**
@@ -101,9 +101,6 @@ class PanelVisibility : PreferenceFragment() {
                 }
         )
     }
-
-    override val wantsMiniPlayerVisible: Boolean
-        get() = false
 
     override fun getTransitionType(): TransitionType {
         return TransitionType.DRIFT
