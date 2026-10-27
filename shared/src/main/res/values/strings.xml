@@ -327,6 +327,7 @@
     <string name="depth">Depth</string>
     <string name="drift">Drift</string>
     <string name="presets">Presets</string>
+    <string name="presets_desc">Saved and built-in presets</string>
     <string name="visualizer">Visualizer</string>
     <string name="metadata">Metadata</string>
     <string name="show_album_artists">Show Album Artists</string>
@@ -433,6 +434,7 @@
     <string name="built_in">Built-in</string>
     <string name="switch_to_peq">Switch to PEQ</string>
     <string name="switch_to_graphic_eq">Switch to Graphic EQ</string>
+    <string name="import_peq_file">Import PEQ File</string>
 
     <!-- LRC Editor -->
     <string name="lrc_lyric_hint">Lyric line…</string>

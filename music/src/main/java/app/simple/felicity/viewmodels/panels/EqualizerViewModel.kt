@@ -7,6 +7,7 @@ import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.preferences.EqualizerPreferences
 import app.simple.felicity.repository.database.instances.EqualizerDatabase
 import app.simple.felicity.repository.models.EqualizerPreset
+import app.simple.felicity.shared.models.ParsedBand
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -62,7 +63,7 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
         .getAllPresetsFlow()
         .stateIn(
                 scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5_000),
+                started = SharingStarted.Eagerly,
                 initialValue = emptyList()
         )
 
@@ -74,18 +75,31 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
      */
     val currentPresetName: StateFlow<String> = combine(
             EqualizerManager.bandGainsFlow,
+            EqualizerManager.peqBandsFlow,
             EqualizerManager.preampFlow,
+            EqualizerManager.eqModeFlow,
             allPresets
-    ) { gains, preamp, presets ->
-        findMatchingPreset(gains, preamp, presets)?.name ?: CUSTOM_PRESET_NAME
+    ) { gains, peqBands, preamp, mode, presets ->
+        if (presets.isEmpty()) return@combine CUSTOM_PRESET_NAME
+
+        if (mode == EqualizerPreferences.EQ_MODE_PARAMETRIC) {
+            findMatchingPeqPreset(peqBands, preamp, presets)?.name ?: CUSTOM_PRESET_NAME
+        } else {
+            findMatchingPreset(gains, preamp, presets)?.name ?: CUSTOM_PRESET_NAME
+        }
     }.stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
+            started = SharingStarted.Eagerly,
             initialValue = CUSTOM_PRESET_NAME
     )
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
+            // Seed built-in presets if they aren't in the database yet.
+            if (db.equalizerPresetDao().getBuiltInPresetCount() == 0) {
+                db.equalizerPresetDao().insertPresets(EqualizerDatabase.builtInPresets())
+            }
+
             _initialState.value = EqualizerInitialState(
                     isEqEnabled = EqualizerPreferences.isEqEnabled(),
                     bandGains = EqualizerPreferences.getAllBandGains(),
@@ -159,7 +173,7 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
      */
     fun savePeqPreset(
             name: String,
-            bands: List<Triple<Float, Float, Float>>,
+            bands: List<ParsedBand>,
             preampDb: Float,
             onDuplicate: () -> Unit,
             onSuccess: () -> Unit
@@ -182,6 +196,35 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
     }
 
     /**
+     * Auto-saves an imported PEQ preset. It handles duplicate names by appending a number
+     * e.g., "My Preset (1)".
+     */
+    fun autoSaveImportedPeqPreset(
+            name: String,
+            bands: List<ParsedBand>,
+            preampDb: Float
+    ) {
+        var baseName = name.trim()
+        if (baseName.isBlank()) {
+            baseName = "Imported PEQ Preset"
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            var uniqueName = baseName
+            var counter = 1
+            while (db.equalizerPresetDao().getPresetByName(uniqueName) != null) {
+                uniqueName = "$baseName ($counter)"
+                counter++
+            }
+            val preset = EqualizerPreset.fromPeqBands(
+                    name = uniqueName,
+                    bands = bands,
+                    preampDb = preampDb
+            )
+            db.equalizerPresetDao().insertPreset(preset)
+        }
+    }
+
+    /**
      * Walks the [presets] list and returns the first one whose band gains and preamp level
      * are within floating-point rounding tolerance of [gains] and [preamp]. Returns null
      * if no preset matches, which means the EQ is in a "Custom" state.
@@ -195,11 +238,44 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
             presets: List<EqualizerPreset>
     ): EqualizerPreset? {
         return presets.firstOrNull { preset ->
+            if (preset.presetType != EqualizerPreset.PRESET_TYPE_GRAPHIC) {
+                return@firstOrNull false
+            }
+
             val presetGains = preset.getBandGains()
             val gainsMatch = gains.size == presetGains.size &&
-                    gains.indices.all { i -> abs(gains[i] - presetGains[i]) < GAIN_TOLERANCE }
+                    gains.indices.all { i ->
+                        abs(gains[i] - presetGains[i]) < GAIN_TOLERANCE
+                    }
+
             val preampMatch = abs(preamp - preset.preampDb) < GAIN_TOLERANCE
+
             gainsMatch && preampMatch
+        }
+    }
+
+    private fun findMatchingPeqPreset(
+            bands: List<ParsedBand>,
+            preamp: Float,
+            presets: List<EqualizerPreset>
+    ): EqualizerPreset? {
+        return presets.firstOrNull { preset ->
+            if (preset.presetType != EqualizerPreset.PRESET_TYPE_PARAMETRIC) {
+                return@firstOrNull false
+            }
+
+            val presetBands = preset.getPeqBands()
+            val bandsMatch = bands.size == presetBands.size &&
+                    bands.indices.all { i ->
+                        abs(bands[i].gain - presetBands[i].gain) < GAIN_TOLERANCE &&
+                                abs(bands[i].q - presetBands[i].q) < 0.1f &&
+                                abs(bands[i].frequencyHz - presetBands[i].frequencyHz) < 1.5f &&
+                                bands[i].color == presetBands[i].color &&
+                                bands[i].type == presetBands[i].type
+                    }
+            val preampMatch = abs(preamp - preset.preampDb) < GAIN_TOLERANCE
+
+            bandsMatch && preampMatch
         }
     }
 
@@ -305,6 +381,6 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
          * the live gain and a preset's stored gain. Half of 0.01 covers the rounding error
          * introduced by the "%.2f" serialization round-trip used in [EqualizerPreset.gainsToRaw].
          */
-        private const val GAIN_TOLERANCE = 0.005f
+        private const val GAIN_TOLERANCE = 0.6f
     }
 }

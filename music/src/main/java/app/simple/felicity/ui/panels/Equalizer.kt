@@ -5,14 +5,15 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentEqualizerBinding
+import app.simple.felicity.decorations.equalizer.FelicityEqualizer
 import app.simple.felicity.decorations.knobs.FelicityKnobListener
-import app.simple.felicity.decorations.seekbars.FelicityEqualizerSliders
 import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithFade
 import app.simple.felicity.decorations.views.PopupMenuItem
@@ -21,11 +22,16 @@ import app.simple.felicity.dialogs.player.SaveEqualizerPreset.Companion.showSave
 import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.EqualizerPreferences
+import app.simple.felicity.repository.models.EqualizerPreset
+import app.simple.felicity.shared.models.ParsedBand
+import app.simple.felicity.shared.utils.PEQFileParser
 import app.simple.felicity.ui.subpanels.EqualizerPresets
 import app.simple.felicity.viewmodels.panels.EqualizerViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.ln
 import kotlin.math.log2
 import kotlin.math.pow
@@ -56,6 +62,38 @@ class Equalizer : MediaFragment() {
     private lateinit var binding: FragmentEqualizerBinding
     private val viewModel: EqualizerViewModel by viewModels()
 
+    /**
+     * Document picker launched when the user chooses "Import PEQ File" from the menu.
+     * Accepts any file type so the user can pick .txt, .peq, or whatever extension their
+     * EQ tool happened to produce. The actual format validation happens in [PEQFileParser].
+     */
+    private val peqFilePicker = registerForActivityResult(
+            ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) throw NullPointerException("URI is null")
+        val fileName = uri.lastPathSegment?.substringAfterLast("/") ?: "Imported Preset"
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val text = requireContext().contentResolver
+                    .openInputStream(uri)
+                    ?.bufferedReader()
+                    ?.use { it.readText() }
+                    ?: throw IllegalArgumentException("Failed to read PEQ file")
+
+                val preset = PEQFileParser.parse(text, fileName)
+                    ?: throw IllegalArgumentException("File contains no valid enabled filter lines")
+
+                withContext(Dispatchers.Main) {
+                    applyParsedPreset(preset)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to read or parse PEQ file", e)
+            } catch (e: NullPointerException) {
+                Log.e(TAG, "Failed to read PEQ file: URI is null", e)
+            }
+        }
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentEqualizerBinding.inflate(inflater, container, false)
         return binding.root
@@ -82,6 +120,7 @@ class Equalizer : MediaFragment() {
                                 PopupMenuItem(title = R.string.enable_equalizer)
                             },
                             PopupMenuItem(title = R.string.save_preset),
+                            PopupMenuItem(title = R.string.import_peq_file),
                             PopupMenuItem(title = R.string.reset),
                             if (isParametric) {
                                 PopupMenuItem(title = R.string.switch_to_graphic_eq)
@@ -105,7 +144,9 @@ class Equalizer : MediaFragment() {
                                     childFragmentManager.showSaveEqualizerPreset { name ->
                                         val bands = binding.equalizerScreen.equalizerSliders
                                             .getPeqBands()
-                                            .map { band -> Triple(band.gain, band.q, band.frequencyHz) }
+                                            .map { band ->
+                                                ParsedBand(band.gain, band.q, band.frequencyHz, band.color, band.type)
+                                            }
                                         viewModel.savePeqPreset(
                                                 name = name,
                                                 bands = bands,
@@ -126,6 +167,11 @@ class Equalizer : MediaFragment() {
                                         )
                                     }
                                 }
+                            }
+                            R.string.import_peq_file -> {
+                                // Open the system document picker and let the user pick any file.
+                                // The actual parsing happens when the picker returns a URI.
+                                peqFilePicker.launch(arrayOf("*/*"))
                             }
                             R.string.reset -> withSureDialog { sure ->
                                 if (sure) {
@@ -181,9 +227,9 @@ class Equalizer : MediaFragment() {
         // Apply the saved EQ mode before touching any slider values so the layout
         // is already in the right mode when we start feeding in data.
         val sliderMode = if (state.isParametricMode) {
-            FelicityEqualizerSliders.Companion.Mode.PARAMETRIC
+            FelicityEqualizer.Companion.Mode.PARAMETRIC
         } else {
-            FelicityEqualizerSliders.Companion.Mode.GRAPHIC
+            FelicityEqualizer.Companion.Mode.GRAPHIC
         }
         binding.equalizerScreen.equalizerSliders.mode = sliderMode
 
@@ -215,14 +261,48 @@ class Equalizer : MediaFragment() {
         if (parametric) {
             EqualizerManager.setEqMode(EqualizerPreferences.EQ_MODE_PARAMETRIC)
             binding.equalizerScreen.equalizerSliders.mode =
-                FelicityEqualizerSliders.Companion.Mode.PARAMETRIC
+                FelicityEqualizer.Companion.Mode.PARAMETRIC
         } else {
             // Persist the current PEQ bands before leaving so the user can come back.
             savePeqBandsToPreferences()
             EqualizerManager.setEqMode(EqualizerPreferences.EQ_MODE_GRAPHIC)
             binding.equalizerScreen.equalizerSliders.mode =
-                FelicityEqualizerSliders.Companion.Mode.GRAPHIC
+                FelicityEqualizer.Companion.Mode.GRAPHIC
         }
+    }
+
+    /**
+     * Takes a successfully parsed PEQ preset and applies it to the EQ engine and slider view.
+     *
+     * The EQ is automatically switched to parametric mode so the user can immediately see
+     * and interact with the imported bands. The preamp from the file is applied as-is, and
+     * all parsed bands are pushed to the DSP engine so the sound changes straight away
+     * without the user having to do anything extra.
+     *
+     * @param preset The fully parsed preset returned by [PEQFileParser.parse].
+     */
+    private fun applyParsedPreset(preset: PEQFileParser.ParsedPreset) {
+        // Switch to PEQ mode so the imported bands show up on the slider.
+        EqualizerManager.setEqMode(EqualizerPreferences.EQ_MODE_PARAMETRIC)
+
+        // Persist the bands and preamp so they survive app restarts.
+        val raw = EqualizerPreset.peqBandsToRaw(preset.bands)
+        EqualizerPreferences.setPeqBandsRaw(raw)
+        EqualizerPreferences.setPreampDb(preset.preampDb)
+
+        // Push everything to the live audio engine.
+        EqualizerManager.setPeqBands(preset.bands)
+        EqualizerManager.setPreamp(preset.preampDb)
+
+        // Auto-save the imported preset to the database.
+        viewModel.autoSaveImportedPeqPreset(
+                name = preset.name,
+                bands = preset.bands,
+                preampDb = preset.preampDb
+        )
+
+        Log.d(TAG, "Imported PEQ preset '${preset.name}' — " +
+                "${preset.bands.size} bands, preamp ${preset.preampDb} dB")
     }
 
     /**
@@ -231,16 +311,19 @@ class Equalizer : MediaFragment() {
      */
     private fun savePeqBandsToPreferences() {
         val bands = binding.equalizerScreen.equalizerSliders.getPeqBands()
-            .map { Triple(it.gain, it.q, it.frequencyHz) }
-        val raw = app.simple.felicity.repository.models.EqualizerPreset.peqBandsToRaw(bands)
+            .map {
+                ParsedBand(it.gain, it.q, it.frequencyHz, it.color, it.type)
+            }
+
+        val raw = EqualizerPreset.peqBandsToRaw(bands)
         EqualizerPreferences.setPeqBandsRaw(raw)
     }
 
     /**
      * Parses the stored PEQ bands raw string back into a list of
-     * [FelicityEqualizerSliders.Companion.PeqBand] objects ready to be fed into the slider.
+     * [FelicityEqualizer.Companion.PeqBand] objects ready to be fed into the slider.
      */
-    private fun parsePeqBandsRaw(raw: String): List<FelicityEqualizerSliders.Companion.PeqBand> {
+    private fun parsePeqBandsRaw(raw: String): List<FelicityEqualizer.Companion.PeqBand> {
         return raw.split("|").mapNotNull { segment ->
             val parts = segment.split(":")
             if (parts.size < 3) null
@@ -248,7 +331,7 @@ class Equalizer : MediaFragment() {
                 val gain = parts[0].toFloatOrNull() ?: return@mapNotNull null
                 val q = parts[1].toFloatOrNull() ?: return@mapNotNull null
                 val freq = parts[2].toFloatOrNull() ?: return@mapNotNull null
-                FelicityEqualizerSliders.Companion.PeqBand(gain = gain, q = q, frequencyHz = freq)
+                FelicityEqualizer.Companion.PeqBand(gain = gain, q = q, frequencyHz = freq, type = parts.getOrNull(4)?.toIntOrNull() ?: 0)
             }
         }
     }
@@ -291,7 +374,7 @@ class Equalizer : MediaFragment() {
         binding.equalizerScreen.equalizerSliders.setOnBandChangedListener { bandIndex, gain, fromUser ->
             if (fromUser) {
                 Log.d(TAG, "Band $bandIndex changed to ${gain}dB by user")
-                if (bandIndex == FelicityEqualizerSliders.PREAMP_BAND_INDEX) {
+                if (bandIndex == FelicityEqualizer.PREAMP_BAND_INDEX) {
                     EqualizerManager.setPreamp(gain)
                 } else {
                     EqualizerManager.setBandGain(bandIndex, gain)
@@ -302,14 +385,16 @@ class Equalizer : MediaFragment() {
         // When any PEQ band property changes (gain, Q, or frequency), push the full
         // band list to the DSP immediately so the sound updates in real-time.
         binding.equalizerScreen.equalizerSliders.setOnPeqBandChangedListener { bands ->
-            val triples = bands.map { Triple(it.gain, it.q, it.frequencyHz) }
-            EqualizerManager.setPeqBands(triples)
+            val parsedBands = bands.map { ParsedBand(it.gain, it.q, it.frequencyHz, it.color, it.type) }
+            EqualizerManager.setPeqBands(parsedBands)
+            binding.equalizerScreen.equalizerWave.setPeqBands(parsedBands)
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 EqualizerManager.bandGainsFlow.collect { gains ->
                     binding.equalizerScreen.equalizerSliders.setAllGains(gains, animate = true)
+                    binding.equalizerScreen.equalizerWave.setGains(gains)
                 }
             }
         }
@@ -328,12 +413,18 @@ class Equalizer : MediaFragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 EqualizerManager.eqModeFlow.collect { mode ->
                     val targetMode = if (mode == EqualizerPreferences.EQ_MODE_PARAMETRIC) {
-                        FelicityEqualizerSliders.Companion.Mode.PARAMETRIC
+                        FelicityEqualizer.Companion.Mode.PARAMETRIC
                     } else {
-                        FelicityEqualizerSliders.Companion.Mode.GRAPHIC
+                        FelicityEqualizer.Companion.Mode.GRAPHIC
                     }
                     if (binding.equalizerScreen.equalizerSliders.mode != targetMode) {
                         binding.equalizerScreen.equalizerSliders.mode = targetMode
+
+                        if (targetMode == FelicityEqualizer.Companion.Mode.PARAMETRIC) {
+                            binding.equalizerScreen.equalizerWave.setPeqBands(EqualizerManager.peqBandsFlow.value)
+                        } else {
+                            binding.equalizerScreen.equalizerWave.setGains(EqualizerManager.bandGainsFlow.value)
+                        }
                     }
                 }
             }
@@ -345,11 +436,12 @@ class Equalizer : MediaFragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 EqualizerManager.peqBandsFlow.collect { bands ->
                     if (bands.isNotEmpty()) {
-                        val peqBands = bands.map { (gain, q, freq) ->
-                            FelicityEqualizerSliders.Companion.PeqBand(
-                                    gain = gain, q = q, frequencyHz = freq)
+                        val peqBands = bands.map { band ->
+                            FelicityEqualizer.Companion.PeqBand(
+                                    gain = band.gain, q = band.q, frequencyHz = band.frequencyHz, color = band.color, type = band.type)
                         }
                         binding.equalizerScreen.equalizerSliders.setPeqBands(peqBands)
+                        binding.equalizerScreen.equalizerWave.setPeqBands(bands)
                     }
                 }
             }
@@ -364,6 +456,21 @@ class Equalizer : MediaFragment() {
     private fun setupEqualizerSliders(state: EqualizerViewModel.EqualizerInitialState) {
         binding.equalizerScreen.equalizerSliders.setAllGains(state.bandGains, animate = false)
         binding.equalizerScreen.equalizerSliders.setPreampGain(state.preampDb, animate = false)
+
+        if (state.isParametricMode && state.peqBandsRaw != null) {
+            val peqBands = parsePeqBandsRaw(state.peqBandsRaw)
+            if (peqBands.isNotEmpty()) {
+                val parsedBands = peqBands.map {
+                    ParsedBand(it.gain, it.q, it.frequencyHz, it.color, it.type)
+                }
+
+                binding.equalizerScreen.equalizerWave.setPeqBands(parsedBands)
+            } else {
+                binding.equalizerScreen.equalizerWave.setGains(state.bandGains)
+            }
+        } else {
+            binding.equalizerScreen.equalizerWave.setGains(state.bandGains)
+        }
     }
 
     private fun updateEqualizerEnabledState(isEnabled: Boolean, animate: Boolean = true) {
@@ -390,7 +497,7 @@ class Equalizer : MediaFragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.currentPresetName.collect { name ->
-                    binding.equalizerScreen.presetName.setTextWithFade(name)
+                    binding.equalizerScreen.presetName.text = name
                 }
             }
         }
@@ -408,11 +515,11 @@ class Equalizer : MediaFragment() {
     private fun setupEqKnobs(state: EqualizerViewModel.EqualizerInitialState) {
         // Bass knob (low-shelf at 250 Hz).
         // Knob value 0-100 maps to gain -12 dB (full cut) ... 0 dB (center) ... +12 dB (full boost).
-        binding.equalizerScreen.bassKnob.centerSnapEnabled = true
-        binding.equalizerScreen.bassKnob.setTickTexts("-12", "+12")
-        binding.equalizerScreen.bassKnob.divisionCount = 48 * 2
-        binding.equalizerScreen.bassKnob.setKnobPosition(bassDbToKnobValue(state.bassDb), animate = false)
-        binding.equalizerScreen.bassKnob.setListener(object : FelicityKnobListener {
+        binding.speakerScreen.bassKnob.centerSnapEnabled = true
+        binding.speakerScreen.bassKnob.setTickTexts("-12", "+12")
+        binding.speakerScreen.bassKnob.divisionCount = 48 * 2
+        binding.speakerScreen.bassKnob.setKnobPosition(bassDbToKnobValue(state.bassDb), animate = false)
+        binding.speakerScreen.bassKnob.setListener(object : FelicityKnobListener {
             override fun onIncrement(value: Float) {}
 
             override fun onRotate(value: Float) {
@@ -433,11 +540,11 @@ class Equalizer : MediaFragment() {
 
         // Treble knob (high-shelf at 4000 Hz).
         // Knob value 0-100 maps to gain -12 dB (full cut) ... 0 dB (center) ... +12 dB (full boost).
-        binding.equalizerScreen.trebleKnob.centerSnapEnabled = true
-        binding.equalizerScreen.trebleKnob.setTickTexts("-12", "+12")
-        binding.equalizerScreen.trebleKnob.divisionCount = 48 * 2
-        binding.equalizerScreen.trebleKnob.setKnobPosition(trebleDbToKnobValue(state.trebleDb), animate = false)
-        binding.equalizerScreen.trebleKnob.setListener(object : FelicityKnobListener {
+        binding.speakerScreen.trebleKnob.centerSnapEnabled = true
+        binding.speakerScreen.trebleKnob.setTickTexts("-12", "+12")
+        binding.speakerScreen.trebleKnob.divisionCount = 48 * 2
+        binding.speakerScreen.trebleKnob.setKnobPosition(trebleDbToKnobValue(state.trebleDb), animate = false)
+        binding.speakerScreen.trebleKnob.setListener(object : FelicityKnobListener {
             override fun onIncrement(value: Float) {}
 
             override fun onRotate(value: Float) {

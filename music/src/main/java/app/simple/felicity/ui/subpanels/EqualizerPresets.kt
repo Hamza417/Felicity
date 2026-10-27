@@ -12,8 +12,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.AdapterEqualizerPresets
 import app.simple.felicity.databinding.FragmentEqualizerPresetsBinding
-import app.simple.felicity.databinding.HeaderEqualizerPresetsBinding
-import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.decorations.views.PopupMenuItem
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.engine.managers.EqualizerManager
@@ -40,7 +38,6 @@ import kotlinx.coroutines.launch
 class EqualizerPresets : MediaFragment() {
 
     private lateinit var binding: FragmentEqualizerPresetsBinding
-    private lateinit var headerBinding: HeaderEqualizerPresetsBinding
 
     private val viewModel: EqualizerPresetsViewModel by viewModels()
     private var adapter: AdapterEqualizerPresets? = null
@@ -51,7 +48,6 @@ class EqualizerPresets : MediaFragment() {
             savedInstanceState: Bundle?
     ): View {
         binding = FragmentEqualizerPresetsBinding.inflate(inflater, container, false)
-        headerBinding = HeaderEqualizerPresetsBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -59,10 +55,6 @@ class EqualizerPresets : MediaFragment() {
         super.onViewCreated(view, savedInstanceState)
         requireHiddenMiniPlayer()
 
-        // Plug the header into the AppHeader so it behaves like every other panel header —
-        // it scrolls away as the user scrolls down the preset list.
-        binding.appHeader.setContentView(headerBinding.root)
-        binding.appHeader.attachTo(binding.recyclerView, AppHeader.ScrollMode.HIDE_ON_SCROLL)
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
 
         setupAdapter()
@@ -149,12 +141,18 @@ class EqualizerPresets : MediaFragment() {
         SharedScrollViewPopup(
                 container = requireContainerView(),
                 anchorView = anchorView,
-                menuItems = listOf(
-                        PopupMenuItem(title = R.string.apply_preset),
-                        PopupMenuItem(title = R.string.delete),
-                ),
+                menuItems = if (preset.isBuiltIn) {
+                    listOf(
+                            PopupMenuItem(title = R.string.apply_preset),
+                    )
+                } else {
+                    listOf(
+                            PopupMenuItem(title = R.string.apply_preset),
+                            PopupMenuItem(title = R.string.delete),
+                    )
+                },
                 onMenuItemClick = {
-                    val effect = when (it) {
+                    when (it) {
                         R.string.apply_preset -> applyPreset(preset)
                         R.string.delete -> confirmAndDelete(preset)
                         else -> return@SharedScrollViewPopup

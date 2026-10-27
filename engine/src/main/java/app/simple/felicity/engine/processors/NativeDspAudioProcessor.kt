@@ -168,6 +168,12 @@ class NativeDspAudioProcessor(
     private var peqQValues: FloatArray = FloatArray(0)
 
     /**
+     * Stores the most recent PEQ filter types array.
+     * Empty when the app is in graphic EQ mode.
+     */
+    private var peqTypes: IntArray = IntArray(0)
+
+    /**
      * Hardware audio output latency in milliseconds last reported by the service layer.
      *
      * Stored here so that [pushAllParameters] can re-apply the correct delay when a new
@@ -585,11 +591,12 @@ class NativeDspAudioProcessor(
      * @param freqs    Per-band center frequency in Hz.
      * @param qValues  Per-band Q factor.
      */
-    fun setPeqBands(gains: FloatArray, freqs: FloatArray, qValues: FloatArray) {
+    fun setPeqBands(gains: FloatArray, freqs: FloatArray, qValues: FloatArray, types: IntArray) {
         peqGains = gains.copyOf()
         peqFreqs = freqs.copyOf()
         peqQValues = qValues.copyOf()
-        dspProcessor?.setPeqBands(peqGains, peqFreqs, peqQValues)
+        peqTypes = types.copyOf()
+        dspProcessor?.setPeqBands(peqGains, peqFreqs, peqQValues, peqTypes)
     }
 
     /** Sets the treble high-shelf gain. Internally passes the full band state so the
@@ -675,7 +682,7 @@ class NativeDspAudioProcessor(
         // Re-apply the appropriate EQ state: if PEQ bands are loaded, push them; otherwise
         // push the standard 10-band graphic EQ so the two modes don't step on each other.
         if (peqGains.isNotEmpty()) {
-            dsp.setPeqBands(peqGains, peqFreqs, peqQValues)
+            dsp.setPeqBands(peqGains, peqFreqs, peqQValues, peqTypes)
         } else {
             dsp.setEqBands(bandGains, bassDb, trebleDb)
         }

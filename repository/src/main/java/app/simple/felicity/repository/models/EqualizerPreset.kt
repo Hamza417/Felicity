@@ -3,8 +3,8 @@ package app.simple.felicity.repository.models
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import app.simple.felicity.repository.models.EqualizerPreset.Companion.PRESET_TYPE_GRAPHIC
-import app.simple.felicity.repository.models.EqualizerPreset.Companion.PRESET_TYPE_PARAMETRIC
+import app.simple.felicity.shared.models.ParsedBand
+import java.util.Locale
 
 /**
  * Represents a saved equalizer preset — a snapshot of either a 10-band graphic EQ curve
@@ -97,7 +97,7 @@ data class EqualizerPreset(
      *
      * @return List of [Triple]<gainDb, qFactor, frequencyHz> for each PEQ band.
      */
-    fun getPeqBands(): List<Triple<Float, Float, Float>> {
+    fun getPeqBands(): List<ParsedBand> {
         val raw = peqBandsRaw ?: return emptyList()
         return raw.split("|").mapNotNull { segment ->
             val parts = segment.split(":")
@@ -106,7 +106,9 @@ data class EqualizerPreset(
                 val gain = parts[0].toFloatOrNull() ?: return@mapNotNull null
                 val q = parts[1].toFloatOrNull() ?: return@mapNotNull null
                 val freq = parts[2].toFloatOrNull() ?: return@mapNotNull null
-                Triple(gain, q, freq)
+                val color = parts.getOrNull(3)?.toIntOrNull() ?: 0
+                val type = parts.getOrNull(4)?.toIntOrNull() ?: 0
+                ParsedBand(gain, q, freq, color, type)
             }
         }
     }
@@ -124,7 +126,9 @@ data class EqualizerPreset(
          * @return A compact comma-separated string like "3.0,-1.5,0.0,...".
          */
         fun gainsToRaw(gains: FloatArray): String {
-            return gains.joinToString(",") { "%.2f".format(it) }
+            return gains.joinToString(",") {
+                "%.2f".format(Locale.US, it)
+            }
         }
 
         /**
@@ -134,9 +138,9 @@ data class EqualizerPreset(
          * @param bands List of triples — each is (gainDb, qFactor, frequencyHz).
          * @return A compact pipe-separated string ready to store in the database.
          */
-        fun peqBandsToRaw(bands: List<Triple<Float, Float, Float>>): String {
-            return bands.joinToString("|") { (gain, q, freq) ->
-                "%.2f:%.2f:%.2f".format(gain, q, freq)
+        fun peqBandsToRaw(bands: List<ParsedBand>): String {
+            return bands.joinToString("|") { band ->
+                "%.2f:%.2f:%.2f:%d:%d".format(java.util.Locale.US, band.gain, band.q, band.frequencyHz, band.color, band.type)
             }
         }
 
@@ -177,7 +181,7 @@ data class EqualizerPreset(
          */
         fun fromPeqBands(
                 name: String,
-                bands: List<Triple<Float, Float, Float>>,
+                bands: List<ParsedBand>,
                 preampDb: Float = 0f
         ): EqualizerPreset {
             return EqualizerPreset(
