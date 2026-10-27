@@ -161,7 +161,7 @@ class FelicityViewFlipper @JvmOverloads constructor(
             val childTop = when (gravity and Gravity.VERTICAL_GRAVITY_MASK) {
                 Gravity.CENTER_VERTICAL -> (pageHeight - childHeight) / 2
                 Gravity.BOTTOM -> pageHeight - childHeight
-                else -> Gravity.TOP // Default to top if unspecified
+                else -> 0 // Set top offset to 0 pixels
             }
 
             // Layout the child with the calculated vertical offset
