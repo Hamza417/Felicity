@@ -125,10 +125,58 @@ static BiquadCoeffs computePeakingEq(float f0, float gainDb, int sampleHz) {
  * @param sampleHz Sample rate in Hz.
  * @return Normalized BiquadCoeffs for the requested band.
  */
-static BiquadCoeffs computePeakingEqWithQ(float f0, float gainDb, float q, int sampleHz) {
+static BiquadCoeffs
+computePeakingEqWithQ(float f0, float gainDb, float q, int sampleHz, int filterType) {
     if (fabsf(gainDb) < kDspFlatThresholdDb) {
         return identityBiquad();
     }
+
+    // Prevent instability/NaN near or above Nyquist frequency.
+    const float maxFreq = static_cast<float>(sampleHz) * 0.49f;
+    f0 = (f0 > maxFreq) ? maxFreq : ((f0 < 1.0f) ? 1.0f : f0);
+
+    if (filterType == 1) { // Low Shelf
+        // RBJ Low Shelf (using Q to adjust slope S, S=1 is Q=1/sqrt(2))
+        // AutoEQ maps Q to S differently, but reusing computeLowShelf with S=1 is a good fallback,
+        // or we can compute it properly. Let's compute it with Q here.
+        const float A = powf(10.f, gainDb / 40.f);
+        const float omega = 2.f * static_cast<float>(M_PI) * f0 / static_cast<float>(sampleHz);
+        const float cosOmega = cosf(omega);
+        const float sinOmega = sinf(omega);
+        const float safeQ = (q < 0.01f) ? 0.01f : q;
+        const float alpha = sinOmega / (2.f * safeQ);
+
+        const float twoSqrtAAlpha = 2.f * sqrtf(A) * alpha;
+        const float a0_inv = 1.f / ((A + 1.f) + (A - 1.f) * cosOmega + twoSqrtAAlpha);
+
+        BiquadCoeffs c;
+        c.b0 = A * ((A + 1.f) - (A - 1.f) * cosOmega + twoSqrtAAlpha) * a0_inv;
+        c.b1 = 2.f * A * ((A - 1.f) - (A + 1.f) * cosOmega) * a0_inv;
+        c.b2 = A * ((A + 1.f) - (A - 1.f) * cosOmega - twoSqrtAAlpha) * a0_inv;
+        c.a1 = -2.f * ((A - 1.f) + (A + 1.f) * cosOmega) * a0_inv;
+        c.a2 = ((A + 1.f) + (A - 1.f) * cosOmega - twoSqrtAAlpha) * a0_inv;
+        return c;
+    } else if (filterType == 2) { // High Shelf
+        const float A = powf(10.f, gainDb / 40.f);
+        const float omega = 2.f * static_cast<float>(M_PI) * f0 / static_cast<float>(sampleHz);
+        const float cosOmega = cosf(omega);
+        const float sinOmega = sinf(omega);
+        const float safeQ = (q < 0.01f) ? 0.01f : q;
+        const float alpha = sinOmega / (2.f * safeQ);
+
+        const float twoSqrtAAlpha = 2.f * sqrtf(A) * alpha;
+        const float a0_inv = 1.f / ((A + 1.f) - (A - 1.f) * cosOmega + twoSqrtAAlpha);
+
+        BiquadCoeffs c;
+        c.b0 = A * ((A + 1.f) + (A - 1.f) * cosOmega + twoSqrtAAlpha) * a0_inv;
+        c.b1 = -2.f * A * ((A - 1.f) + (A + 1.f) * cosOmega) * a0_inv;
+        c.b2 = A * ((A + 1.f) + (A - 1.f) * cosOmega - twoSqrtAAlpha) * a0_inv;
+        c.a1 = 2.f * ((A - 1.f) - (A + 1.f) * cosOmega) * a0_inv;
+        c.a2 = ((A + 1.f) - (A - 1.f) * cosOmega - twoSqrtAAlpha) * a0_inv;
+        return c;
+    }
+
+    // Default: Peaking (filterType == 0)
     const float safeQ = (q < 0.01f) ? 0.01f : q;
     const float A = powf(10.f, gainDb / 40.f);
     const float omega = 2.f * static_cast<float>(M_PI) * f0 / static_cast<float>(sampleHz);
@@ -1153,7 +1201,8 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspSetBassAndTrebl
 JNIEXPORT void JNICALL
 Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspSetPeqBands(
         JNIEnv *env, jobject /*thiz*/,
-        jlong handle, jfloatArray gains, jfloatArray freqs, jfloatArray qValues, jint count) {
+        jlong handle, jfloatArray gains, jfloatArray freqs, jfloatArray qValues, jintArray types,
+        jint count) {
 
     auto *ctx = reinterpret_cast<DspContext *>(handle);
     if (!ctx) return;
@@ -1163,13 +1212,15 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspSetPeqBands(
     jfloat *gPtr = env->GetFloatArrayElements(gains, nullptr);
     jfloat *fPtr = env->GetFloatArrayElements(freqs, nullptr);
     jfloat *qPtr = env->GetFloatArrayElements(qValues, nullptr);
+    jint *tPtr = env->GetIntArrayElements(types, nullptr);
 
     bool anyActive = false;
     for (int b = 0; b < bandCount; ++b) {
         const float db = gPtr[b];
         const float freq = fPtr[b];
         const float q = qPtr[b];
-        ctx->eqTargetCoeffs[b] = computePeakingEqWithQ(freq, db, q, ctx->sampleRate);
+        const int type = tPtr[b];
+        ctx->eqTargetCoeffs[b] = computePeakingEqWithQ(freq, db, q, ctx->sampleRate, type);
         if (fabsf(db) >= kDspFlatThresholdDb) anyActive = true;
     }
     /* Silence any bands beyond the supplied count so stale graphic-EQ coefficients
@@ -1182,6 +1233,7 @@ Java_app_simple_felicity_engine_processors_DspProcessor_nativeDspSetPeqBands(
     env->ReleaseFloatArrayElements(gains, gPtr, JNI_ABORT);
     env->ReleaseFloatArrayElements(freqs, fPtr, JNI_ABORT);
     env->ReleaseFloatArrayElements(qValues, qPtr, JNI_ABORT);
+    env->ReleaseIntArrayElements(types, tPtr, JNI_ABORT);
 }
 
 /**

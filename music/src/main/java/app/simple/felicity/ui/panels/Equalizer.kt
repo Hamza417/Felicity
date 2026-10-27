@@ -145,7 +145,7 @@ class Equalizer : MediaFragment() {
                                         val bands = binding.equalizerScreen.equalizerSliders
                                             .getPeqBands()
                                             .map { band ->
-                                                ParsedBand(band.gain, band.q, band.frequencyHz, band.color)
+                                                ParsedBand(band.gain, band.q, band.frequencyHz, band.color, band.type)
                                             }
                                         viewModel.savePeqPreset(
                                                 name = name,
@@ -312,7 +312,7 @@ class Equalizer : MediaFragment() {
     private fun savePeqBandsToPreferences() {
         val bands = binding.equalizerScreen.equalizerSliders.getPeqBands()
             .map {
-                ParsedBand(it.gain, it.q, it.frequencyHz, it.color)
+                ParsedBand(it.gain, it.q, it.frequencyHz, it.color, it.type)
             }
 
         val raw = EqualizerPreset.peqBandsToRaw(bands)
@@ -331,7 +331,7 @@ class Equalizer : MediaFragment() {
                 val gain = parts[0].toFloatOrNull() ?: return@mapNotNull null
                 val q = parts[1].toFloatOrNull() ?: return@mapNotNull null
                 val freq = parts[2].toFloatOrNull() ?: return@mapNotNull null
-                FelicityEqualizer.Companion.PeqBand(gain = gain, q = q, frequencyHz = freq)
+                FelicityEqualizer.Companion.PeqBand(gain = gain, q = q, frequencyHz = freq, type = parts.getOrNull(4)?.toIntOrNull() ?: 0)
             }
         }
     }
@@ -385,7 +385,7 @@ class Equalizer : MediaFragment() {
         // When any PEQ band property changes (gain, Q, or frequency), push the full
         // band list to the DSP immediately so the sound updates in real-time.
         binding.equalizerScreen.equalizerSliders.setOnPeqBandChangedListener { bands ->
-            val parsedBands = bands.map { ParsedBand(it.gain, it.q, it.frequencyHz, it.color) }
+            val parsedBands = bands.map { ParsedBand(it.gain, it.q, it.frequencyHz, it.color, it.type) }
             EqualizerManager.setPeqBands(parsedBands)
         }
 
@@ -430,7 +430,7 @@ class Equalizer : MediaFragment() {
                     if (bands.isNotEmpty()) {
                         val peqBands = bands.map { band ->
                             FelicityEqualizer.Companion.PeqBand(
-                                    gain = band.gain, q = band.q, frequencyHz = band.frequencyHz, color = band.color)
+                                    gain = band.gain, q = band.q, frequencyHz = band.frequencyHz, color = band.color, type = band.type)
                         }
                         binding.equalizerScreen.equalizerSliders.setPeqBands(peqBands)
                     }

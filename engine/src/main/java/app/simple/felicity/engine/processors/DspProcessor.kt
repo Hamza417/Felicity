@@ -278,9 +278,9 @@ class DspProcessor(
      * @param freqs    Center frequency for each band in Hz (e.g. 80f, 1000f).
      * @param qValues  Resonance width for each band; higher Q = narrower peak.
      */
-    fun setPeqBands(gains: FloatArray, freqs: FloatArray, qValues: FloatArray) {
+    fun setPeqBands(gains: FloatArray, freqs: FloatArray, qValues: FloatArray, types: IntArray) {
         if (nativeHandle == 0L) return
-        nativeDspSetPeqBands(nativeHandle, gains, freqs, qValues, gains.size)
+        nativeDspSetPeqBands(nativeHandle, gains, freqs, qValues, types, gains.size)
     }
 
     /**
@@ -439,6 +439,7 @@ class DspProcessor(
             gains: FloatArray,
             freqs: FloatArray,
             qValues: FloatArray,
+            types: IntArray,
             count: Int
     )
 

@@ -209,7 +209,8 @@ class FelicityEqualizer @JvmOverloads constructor(
                 var gain: Float = 0f,
                 var q: Float = 1.0f,
                 var frequencyHz: Float = 1000f,
-                @ColorInt var color: Int = 0
+                @ColorInt var color: Int = 0,
+                var type: Int = 0
         )
 
         /** The available display modes for this equalizer widget. */

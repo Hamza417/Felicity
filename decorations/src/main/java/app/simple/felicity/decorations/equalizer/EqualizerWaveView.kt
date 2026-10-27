@@ -23,7 +23,6 @@ import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
 import app.simple.felicity.theme.models.Theme
 import kotlin.math.abs
-import kotlin.math.log10
 import kotlin.math.log2
 import kotlin.math.pow
 
@@ -494,21 +493,68 @@ class EqualizerWaveView @JvmOverloads constructor(
          * Calculates the approximate magnitude response in dB of a single parametric EQ band at a given frequency.
          * Uses the analog prototype response of peaking filters.
          */
-        private fun getSingleBandResponseAt(frequency: Float, gainDb: Float, qFactor: Float, centerFrequency: Float): Float {
+        private fun getSingleBandResponseAt(frequency: Float, gainDb: Float, qFactor: Float, centerFrequency: Float, type: Int = 0): Float {
             if (gainDb == 0f || centerFrequency <= 0f) return 0f
-            val amplitude = 10f.pow(gainDb / 40f)
-            val fRatio = frequency / centerFrequency
-            val fRatioSq = fRatio * fRatio
-            val oneMinusFRatioSq = 1f - fRatioSq
-            val oneMinusFRatioSqSq = oneMinusFRatioSq * oneMinusFRatioSq
 
-            val term1 = amplitude * fRatio / qFactor
-            val term2 = (fRatio / qFactor) / amplitude
+            // Use a standard sample rate for visualization
+            val sampleRate = 48000f
+            var f0 = centerFrequency
+            val maxFreq = sampleRate * 0.49f
+            if (f0 > maxFreq) f0 = maxFreq
+            if (f0 < 1f) f0 = 1f
 
-            val num = oneMinusFRatioSqSq + term1 * term1
-            val den = oneMinusFRatioSqSq + term2 * term2
+            val safeQ = if (qFactor < 0.01f) 0.01f else qFactor
+            val A = 10f.pow(gainDb / 40f)
+            val omega = 2f * Math.PI.toFloat() * f0 / sampleRate
+            val cosOmega = kotlin.math.cos(omega)
+            val sinOmega = kotlin.math.sin(omega)
+            val alpha = sinOmega / (2f * safeQ)
 
-            return 10f * log10(num / den)
+            val b0: Float;
+            val b1: Float;
+            val b2: Float
+            val a0_inv: Float;
+            val a1: Float;
+            val a2: Float
+
+            if (type == 1) { // Low Shelf
+                val twoSqrtAAlpha = 2f * kotlin.math.sqrt(A) * alpha
+                a0_inv = 1f / ((A + 1f) + (A - 1f) * cosOmega + twoSqrtAAlpha)
+                b0 = A * ((A + 1f) - (A - 1f) * cosOmega + twoSqrtAAlpha) * a0_inv
+                b1 = 2f * A * ((A - 1f) - (A + 1f) * cosOmega) * a0_inv
+                b2 = A * ((A + 1f) - (A - 1f) * cosOmega - twoSqrtAAlpha) * a0_inv
+                a1 = -2f * ((A - 1f) + (A + 1f) * cosOmega) * a0_inv
+                a2 = ((A + 1f) + (A - 1f) * cosOmega - twoSqrtAAlpha) * a0_inv
+            } else if (type == 2) { // High Shelf
+                val twoSqrtAAlpha = 2f * kotlin.math.sqrt(A) * alpha
+                a0_inv = 1f / ((A + 1f) - (A - 1f) * cosOmega + twoSqrtAAlpha)
+                b0 = A * ((A + 1f) + (A - 1f) * cosOmega + twoSqrtAAlpha) * a0_inv
+                b1 = -2f * A * ((A - 1f) + (A + 1f) * cosOmega) * a0_inv
+                b2 = A * ((A + 1f) + (A - 1f) * cosOmega - twoSqrtAAlpha) * a0_inv
+                a1 = 2f * ((A - 1f) - (A + 1f) * cosOmega) * a0_inv
+                a2 = ((A + 1f) - (A - 1f) * cosOmega - twoSqrtAAlpha) * a0_inv
+            } else { // Peaking
+                a0_inv = 1f / (1f + alpha / A)
+                b0 = (1f + alpha * A) * a0_inv
+                b1 = (-2f * cosOmega) * a0_inv
+                b2 = (1f - alpha * A) * a0_inv
+                a1 = (-2f * cosOmega) * a0_inv
+                a2 = (1f - alpha / A) * a0_inv
+            }
+
+            val w = 2f * Math.PI.toFloat() * frequency / sampleRate
+            val cosW = kotlin.math.cos(w)
+            val sinW = kotlin.math.sin(w)
+            val cos2W = kotlin.math.cos(2f * w)
+            val sin2W = kotlin.math.sin(2f * w)
+
+            val numReal = b0 + b1 * cosW + b2 * cos2W
+            val numImag = b1 * sinW + b2 * sin2W
+            val denReal = 1f + a1 * cosW + a2 * cos2W
+            val denImag = a1 * sinW + a2 * sin2W
+
+            val magSq = (numReal * numReal + numImag * numImag) / (denReal * denReal + denImag * denImag)
+            return 10f * kotlin.math.log10(magSq)
         }
 
         /**
@@ -520,7 +566,8 @@ class EqualizerWaveView @JvmOverloads constructor(
                 val gainDb = band.gain
                 val qFactor = band.q
                 val centerFrequency = band.frequencyHz
-                totalGainDb += getSingleBandResponseAt(frequency, gainDb, qFactor, centerFrequency)
+                val type = band.type
+                totalGainDb += getSingleBandResponseAt(frequency, gainDb, qFactor, centerFrequency, type)
             }
             return totalGainDb
         }

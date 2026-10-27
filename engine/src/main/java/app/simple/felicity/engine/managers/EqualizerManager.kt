@@ -6,6 +6,7 @@ import app.simple.felicity.shared.models.ParsedBand
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.util.Locale
 
 /**
  * Singleton manager for the Felicity 10-band graphic equalizer.
@@ -298,8 +299,10 @@ object EqualizerManager {
         }
         val gains = FloatArray(bands.size) { bands[it].gain }
         val qValues = FloatArray(bands.size) { bands[it].q }
-        val freqs = FloatArray(bands.size) { bands[it].frequencyHz }
-        processor?.setPeqBands(gains, freqs, qValues)
+        val frequencies = FloatArray(bands.size) { bands[it].frequencyHz }
+        val types = IntArray(bands.size) { bands[it].type }
+
+        processor?.setPeqBands(gains, frequencies, qValues, types)
         _peqBandsFlow.value = bands
     }
 
@@ -326,7 +329,7 @@ object EqualizerManager {
     fun serializePeqBands(bands: List<ParsedBand>): String? {
         if (bands.isEmpty()) return null
         return bands.joinToString("|") { band ->
-            "%.2f:%.2f:%.2f:%d".format(band.gain, band.q, band.frequencyHz, band.color)
+            "%.2f:%.2f:%.2f:%d:%d".format(Locale.US, band.gain, band.q, band.frequencyHz, band.color, band.type)
         }
     }
 
@@ -343,7 +346,8 @@ object EqualizerManager {
             val q = parts[1].toFloatOrNull() ?: return@mapNotNull null
             val freq = parts[2].toFloatOrNull() ?: return@mapNotNull null
             val color = parts.getOrNull(3)?.toIntOrNull() ?: 0
-            ParsedBand(gain, q, freq, color)
+            val type = parts.getOrNull(4)?.toIntOrNull() ?: 0
+            ParsedBand(gain, q, freq, color, type)
         }
     }
 }

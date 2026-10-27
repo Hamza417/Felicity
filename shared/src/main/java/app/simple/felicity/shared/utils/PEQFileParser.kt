@@ -175,7 +175,15 @@ object PEQFileParser {
             // "color" field is expected to be an integer (e.g. -11184896)
             val color = band.optInt("color", 0)
 
-            bands.add(ParsedBand(gain, q, freq, color))
+            // filter type: 0 = peaking, 1 = low shelf, 2 = high shelf
+            val typeStr = firstNonEmptyString(band, "type", "filterType")?.uppercase() ?: "PK"
+            val type = when {
+                typeStr.startsWith("LS") -> 1
+                typeStr.startsWith("HS") -> 2
+                else -> 0
+            }
+
+            bands.add(ParsedBand(gain, q, freq, color, type))
         }
 
         if (bands.isEmpty()) return null
@@ -328,6 +336,12 @@ object PEQFileParser {
                 type.startsWith("LS") || type.startsWith("HS")
         if (!isSupportedType) return null
 
+        val filterType = when {
+            type.startsWith("LS") -> 1
+            type.startsWith("HS") -> 2
+            else -> 0
+        }
+
         var freq: Float? = null
         var gain: Float? = null
         var q: Float? = null
@@ -358,7 +372,7 @@ object PEQFileParser {
         // Q is optional in some tool outputs; fall back to a neutral value of 1.0.
         val qVal = q ?: 1.0f
 
-        return ParsedBand(g, qVal, f)
+        return ParsedBand(g, qVal, f, type = filterType)
     }
 
     // -------------------------------------------------------------------------

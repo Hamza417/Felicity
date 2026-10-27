@@ -270,7 +270,8 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
                         abs(bands[i].gain - presetBands[i].gain) < GAIN_TOLERANCE &&
                                 abs(bands[i].q - presetBands[i].q) < 0.1f &&
                                 abs(bands[i].frequencyHz - presetBands[i].frequencyHz) < 1.5f &&
-                                bands[i].color == presetBands[i].color
+                                bands[i].color == presetBands[i].color &&
+                                bands[i].type == presetBands[i].type
                     }
             val preampMatch = abs(preamp - preset.preampDb) < GAIN_TOLERANCE
 

@@ -266,7 +266,8 @@ class AudioProcessorManager {
         val gains = FloatArray(bands.size) { bands[it].gain }
         val qValues = FloatArray(bands.size) { bands[it].q }
         val freqs = FloatArray(bands.size) { bands[it].frequencyHz }
-        nativeDspProcessor.setPeqBands(gains, freqs, qValues)
+        val types = IntArray(bands.size) { bands[it].type }
+        nativeDspProcessor.setPeqBands(gains, freqs, qValues, types)
     }
 
     /**
@@ -287,7 +288,8 @@ class AudioProcessorManager {
             val q = parts[1].toFloatOrNull() ?: return@mapNotNull null
             val freq = parts[2].toFloatOrNull() ?: return@mapNotNull null
             val color = parts.getOrNull(3)?.toIntOrNull() ?: 0
-            ParsedBand(gain, q, freq, color)
+            val type = parts.getOrNull(4)?.toIntOrNull() ?: 0
+            ParsedBand(gain, q, freq, color, type)
         }
     }
 }
