@@ -538,4 +538,6 @@
     <string name="animations">Animations</string>
     <string name="miniplayer_width">Mini Player Width</string>
     <string name="miniplayer_width_summary">Adjust horizontal width of the Mini Player in landscape mode.</string>
+    <string name="fft_resolution">FFT Resolution</string>
+    <string name="fft_resolution_summary">Higher resolution improves frequency accuracy but consumes more CPU and may affect rendering framerate.</string>
 </resources>

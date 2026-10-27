@@ -1280,6 +1280,11 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 Log.d(TAG, "Audio decoder preference changed, switching decoder...")
                 switchDecoder()
             }
+            AudioPreferences.FFT_RESOLUTION -> {
+                val newFftSize = AudioPreferences.getFftResolution()
+                Log.d(TAG, "FFT resolution changed to: $newFftSize")
+                audioProcessorManager.visualizerProcessor.updateFftResolution(newFftSize)
+            }
             AudioPreferences.HIRES_OUTPUT -> {
                 val hiresEnabled = AudioPreferences.isHiresOutputEnabled()
                 Log.d(TAG, "Hi-Res output preference changed to: $hiresEnabled")

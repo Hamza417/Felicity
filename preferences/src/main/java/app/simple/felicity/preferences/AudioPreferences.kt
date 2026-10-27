@@ -2,9 +2,6 @@ package app.simple.felicity.preferences
 
 import androidx.core.content.edit
 import app.simple.felicity.manager.SharedPreferences
-import app.simple.felicity.preferences.AudioPreferences.SINK_AAUDIO
-import app.simple.felicity.preferences.AudioPreferences.SINK_AUDIO_TRACK
-import app.simple.felicity.preferences.AudioPreferences.SINK_OBOE
 
 object AudioPreferences {
 
@@ -23,6 +20,10 @@ object AudioPreferences {
 
     private const val FALLBACK_TO_SW_DECODER = "fallback_to_sw_decoder"
 
+    const val FFT_RESOLUTION = "fft_resolution"
+
+    // --------------------------------------------------------------------------------------------- //
+
     const val LOCAL_DECODER = 0
     const val FFMPEG = 1
 
@@ -40,6 +41,12 @@ object AudioPreferences {
      * AAudio on supported devices and falls back to OpenSL ES on older ones.
      */
     const val SINK_OBOE = 2
+
+    const val FFT_RESOLUTION_VERY_LOW = 256
+    const val FFT_RESOLUTION_LOW = 512
+    const val FFT_RESOLUTION_NORMAL = 1024
+    const val FFT_RESOLUTION_HIGH = 2048
+    const val FFT_RESOLUTION_ULTRA = 4096
 
     // --------------------------------------------------------------------------------------------- //
 
@@ -123,6 +130,16 @@ object AudioPreferences {
 
     /** Convenience check — true when the user chose the Oboe output path. */
     fun isOboeEnabled(): Boolean = getOutputSink() == SINK_OBOE
+
+    // --------------------------------------------------------------------------------------------- //
+
+    fun setFftResolution(resolution: Int) {
+        SharedPreferences.getSharedPreferences().edit { putInt(FFT_RESOLUTION, resolution) }
+    }
+
+    fun getFftResolution(): Int {
+        return SharedPreferences.getSharedPreferences().getInt(FFT_RESOLUTION, FFT_RESOLUTION_NORMAL)
+    }
 
     fun shouldShowProcessors(): Boolean {
         return isHiresOutputEnabled().not()

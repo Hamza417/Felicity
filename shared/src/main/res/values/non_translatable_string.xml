@@ -67,4 +67,10 @@
     <string name="artflow" translatable="false">ArtFlow</string>
     <string name="amoled" translatable="false">AMOLED</string>
     <string name="replay_gain" translatable="false">Replay Gain</string>
+
+    <string name="fft_resolution_very_low" translatable="false">Very Low (256)</string>
+    <string name="fft_resolution_low" translatable="false">Low (512)</string>
+    <string name="fft_resolution_normal" translatable="false">Normal (1024)</string>
+    <string name="fft_resolution_high" translatable="false">High (2048)</string>
+    <string name="fft_resolution_ultra" translatable="false">Ultra (4096)</string>
 </resources>

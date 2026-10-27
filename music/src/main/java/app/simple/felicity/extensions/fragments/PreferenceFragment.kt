@@ -872,6 +872,62 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val visualizerHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.visualizer)
+
+        val fftResolutionPopup = Preference(
+                title = R.string.fft_resolution,
+                summary = R.string.fft_resolution_summary,
+                icon = R.drawable.ic_graphic_eq,
+                type = PreferenceType.POPUP,
+                valueProvider = {
+                    when (AudioPreferences.getFftResolution()) {
+                        AudioPreferences.FFT_RESOLUTION_VERY_LOW -> getString(R.string.fft_resolution_very_low)
+                        AudioPreferences.FFT_RESOLUTION_LOW -> getString(R.string.fft_resolution_low)
+                        AudioPreferences.FFT_RESOLUTION_HIGH -> getString(R.string.fft_resolution_high)
+                        AudioPreferences.FFT_RESOLUTION_ULTRA -> getString(R.string.fft_resolution_ultra)
+                        else -> getString(R.string.fft_resolution_normal)
+                    }
+                },
+                onPreferenceAction = { view, _ ->
+                    SharedScrollViewPopup(
+                            container = requireContainerView(),
+                            anchorView = view,
+                            menuItems = listOf(
+                                    PopupMenuItem(title = R.string.fft_resolution_very_low),
+                                    PopupMenuItem(title = R.string.fft_resolution_low),
+                                    PopupMenuItem(title = R.string.fft_resolution_normal),
+                                    PopupMenuItem(title = R.string.fft_resolution_high),
+                                    PopupMenuItem(title = R.string.fft_resolution_ultra)
+                            ),
+                            onMenuItemClick = {
+                                when (it) {
+                                    R.string.fft_resolution_very_low -> {
+                                        AudioPreferences.setFftResolution(AudioPreferences.FFT_RESOLUTION_VERY_LOW)
+                                        (view as TextView).text = getString(R.string.fft_resolution_very_low)
+                                    }
+                                    R.string.fft_resolution_low -> {
+                                        AudioPreferences.setFftResolution(AudioPreferences.FFT_RESOLUTION_LOW)
+                                        (view as TextView).text = getString(R.string.fft_resolution_low)
+                                    }
+                                    R.string.fft_resolution_high -> {
+                                        AudioPreferences.setFftResolution(AudioPreferences.FFT_RESOLUTION_HIGH)
+                                        (view as TextView).text = getString(R.string.fft_resolution_high)
+                                    }
+                                    R.string.fft_resolution_ultra -> {
+                                        AudioPreferences.setFftResolution(AudioPreferences.FFT_RESOLUTION_ULTRA)
+                                        (view as TextView).text = getString(R.string.fft_resolution_ultra)
+                                    }
+                                    else -> {
+                                        AudioPreferences.setFftResolution(AudioPreferences.FFT_RESOLUTION_NORMAL)
+                                        (view as TextView).text = getString(R.string.fft_resolution_normal)
+                                    }
+                                }
+                            },
+                            onDismiss = {}
+                    ).show()
+                }
+        )
+
         val playbackHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.playback)
 
         val stereoDownmixing = Preference(
@@ -985,6 +1041,8 @@ abstract class PreferenceFragment : MediaFragment() {
             preferences.add(usbDacControl)
         }
         preferences.add(hiresToggle)
+        preferences.add(visualizerHeader)
+        preferences.add(fftResolutionPopup)
         preferences.add(playbackHeader)
         preferences.add(stereoDownmixing)
         preferences.add(gaplessToggle)

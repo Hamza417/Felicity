@@ -6,8 +6,7 @@ import androidx.media3.common.C
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.BaseAudioProcessor
 import androidx.media3.common.util.UnstableApi
-import app.simple.felicity.engine.processors.VisualizerProcessor.Companion.BAND_COUNT
-import app.simple.felicity.engine.processors.VisualizerProcessor.Companion.FFT_SIZE
+import app.simple.felicity.preferences.AudioPreferences
 import java.lang.ref.WeakReference
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicBoolean
@@ -17,7 +16,7 @@ import kotlin.math.pow
  * An [AudioProcessor] that uses a PFFFT-backed native FFT to compute 40 logarithmically-spaced
  * frequency band magnitudes and delivers them via a lock-free twin-buffer mechanism.
  *
- * On each full [FFT_SIZE]-sample window the processor calls [nativeProcessInto], which
+ * On each full [fftSize]-sample window the processor calls [nativeProcessInto], which
  * applies a Hann window, executes the PFFFT real-forward transform, and writes per-band
  * magnitudes directly into the current back buffer. The [AtomicBoolean] inside
  * [DirectOutput] is then toggled to promote the back buffer to front, and
@@ -57,10 +56,12 @@ class VisualizerProcessor : BaseAudioProcessor() {
     // Band & FFT configuration
 
     val bandCount: Int = BAND_COUNT
-    private val fftSize = FFT_SIZE
+
+    @Volatile
+    private var fftSize = AudioPreferences.getFftResolution()
 
     /** Circular buffer that accumulates mono PCM samples before each FFT window. */
-    private val sampleBuffer = FloatArray(fftSize)
+    private var sampleBuffer = FloatArray(fftSize)
     private var bufferIndex = 0
 
     /** Logarithmically-spaced bin boundaries: `bandEdges[k]..bandEdges[k+1]` is the range for band k. */
@@ -191,9 +192,47 @@ class VisualizerProcessor : BaseAudioProcessor() {
 
     init {
         computeBandEdges(DEFAULT_SAMPLE_RATE)
-        nativeHandle = nativeCreate(FFT_SIZE)
+        nativeHandle = nativeCreate(fftSize)
         if (nativeHandle != 0L) {
             nativeSetBandEdges(nativeHandle, bandEdges, BAND_COUNT)
+        }
+    }
+
+    @Volatile
+    private var pendingFftSize = -1
+
+    /**
+     * Dynamically updates the FFT resolution and re-allocates internal buffers.
+     * Requests an update which will be processed safely on the audio thread.
+     */
+    fun updateFftResolution(newFftSize: Int) {
+        if (fftSize == newFftSize) return
+        pendingFftSize = newFftSize
+    }
+
+    private fun checkPendingFftSize() {
+        val newSize = pendingFftSize
+        if (newSize != -1) {
+            pendingFftSize = -1
+
+            val oldHandle = nativeHandle
+            nativeHandle = 0L
+
+            fftSize = newSize
+            sampleBuffer = FloatArray(fftSize)
+            bufferIndex = 0
+
+            computeBandEdges(currentSampleRate)
+
+            if (oldHandle != 0L) {
+                nativeDestroy(oldHandle)
+            }
+
+            val newHandle = nativeCreate(fftSize)
+            if (newHandle != 0L) {
+                nativeSetBandEdges(newHandle, bandEdges, BAND_COUNT)
+            }
+            nativeHandle = newHandle
         }
     }
 
@@ -300,7 +339,7 @@ class VisualizerProcessor : BaseAudioProcessor() {
             outputLatencySamples = computeDelaySamples(outputLatencyMs, inputAudioFormat.sampleRate)
 
             if (nativeHandle == 0L) {
-                nativeHandle = nativeCreate(FFT_SIZE)
+                nativeHandle = nativeCreate(fftSize)
             }
             if (nativeHandle != 0L) {
                 nativeSetBandEdges(nativeHandle, bandEdges, BAND_COUNT)
@@ -312,6 +351,7 @@ class VisualizerProcessor : BaseAudioProcessor() {
     }
 
     override fun queueInput(inputBuffer: ByteBuffer) {
+        checkPendingFftSize()
         val remaining = inputBuffer.remaining()
         if (remaining == 0) return
 
@@ -404,6 +444,8 @@ class VisualizerProcessor : BaseAudioProcessor() {
      * @param channelCount Number of audio channels per frame (1 = mono, 2 = stereo, etc.).
      */
     fun feedFloat(samples: FloatArray, sampleCount: Int, channelCount: Int) {
+        checkPendingFftSize()
+
         if (nativeHandle == 0L || sampleCount == 0 || channelCount == 0) return
         val frameCount = sampleCount / channelCount
 
