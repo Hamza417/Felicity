@@ -9,7 +9,7 @@
 
     <app.simple.felicity.decorations.theme.ThemeIcon
         android:id="@+id/icon"
-        android:src="@drawable/ic_folder"
+        android:src="@drawable/ic_artist"
         android:layout_width="@dimen/icon_size_30"
         android:layout_height="@dimen/icon_size_30"
         app:layout_constraintBottom_toBottomOf="parent"
