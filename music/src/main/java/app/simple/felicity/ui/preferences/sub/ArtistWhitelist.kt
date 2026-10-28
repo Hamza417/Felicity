@@ -4,16 +4,22 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.widget.doAfterTextChanged
+import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.adapters.ui.lists.AdapterArtistWhitelist
 import app.simple.felicity.databinding.DialogAddWhitelistedArtistBinding
 import app.simple.felicity.databinding.FragmentGenericRecyclerViewBinding
 import app.simple.felicity.decorations.popups.SimpleDialog
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.LibraryPreferences
+import app.simple.felicity.repository.repositories.ArtistRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class ArtistWhitelist : MediaFragment() {
 
     private lateinit var binding: FragmentGenericRecyclerViewBinding
+    private val allArtists = mutableListOf<String>()
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentGenericRecyclerViewBinding.inflate(inflater, container, false)
@@ -22,12 +28,21 @@ class ArtistWhitelist : MediaFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        postponeEnterTransition()
         requireHiddenMiniPlayer()
+
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            val artists = ArtistRepository(requireContext())
+                .fetchArtists()
+                .mapNotNull {
+                    it.name
+                }.distinct()
+
+            allArtists.clear()
+            allArtists.addAll(artists)
+        }
 
         val adapter = buildAdapter()
         binding.recyclerView.adapter = adapter
-        view.startTransitionOnPreDraw()
     }
 
     private fun buildAdapter(): AdapterArtistWhitelist {
@@ -40,6 +55,7 @@ class ArtistWhitelist : MediaFragment() {
                     refreshList()
                 }
         )
+
         adapter.submitList(LibraryPreferences.getArtistWhitelist().toList().sorted())
         return adapter
     }
@@ -52,6 +68,27 @@ class ArtistWhitelist : MediaFragment() {
                 /* no-op */
             }.onDialogInflated { dialogBinding, dismiss, _ ->
                 dialogBinding.editText.showInput()
+
+                dialogBinding.editText.doAfterTextChanged { s ->
+                    val input = s?.toString() ?: ""
+
+                    if (input.isBlank()) {
+                        dialogBinding.editText.clearHint()
+                        return@doAfterTextChanged
+                    }
+
+                    val match = allArtists.firstOrNull {
+                        it.startsWith(input, ignoreCase = true)
+                    }
+
+                    if (match != null) {
+                        val remaining = match.substring(input.length)
+                        dialogBinding.editText.finalVerificationHint = match
+                        dialogBinding.editText.drawHint(input, remaining)
+                    } else {
+                        dialogBinding.editText.clearHint()
+                    }
+                }
 
                 dialogBinding.save.setOnClickListener {
                     val label = dialogBinding.editText.text.toString().trim()

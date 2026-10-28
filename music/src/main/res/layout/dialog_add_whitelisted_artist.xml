@@ -11,7 +11,7 @@
         android:padding="@dimen/padding_15"
         android:orientation="vertical">
 
-        <app.simple.felicity.decorations.corners.DynamicCornerEditText
+        <app.simple.felicity.decorations.views.HintsEditText
             android:id="@+id/edit_text"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
