@@ -167,6 +167,23 @@ class AudioRepository @Inject constructor(
         } ?: throw IllegalStateException("AudioDao is null")
     }
 
+    private fun getWhitelist(): Set<String> {
+        val fileWhitelist: Set<String> = AudioRepository::class.java.getResourceAsStream(ARTIST_WHITELIST)
+            ?.bufferedReader()?.use { it.readLines().map { name -> name.trim() }.toSet() } ?: emptySet()
+        val userWhitelist: Set<String> = LibraryPreferences.getArtistWhitelist()
+        return fileWhitelist + userWhitelist
+    }
+
+    private fun splitArtistsSafely(artistField: String, whitelist: Set<String>): List<String> {
+        if (whitelist.any { it.equals(artistField, ignoreCase = true) }) {
+            return listOf(artistField)
+        }
+        val splitRegex = Regex(ARTIST_SEPARATOR_REGEX, RegexOption.IGNORE_CASE)
+        return artistField.split(splitRegex)
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+    }
+
     /**
      * Get all artists with aggregated data including album counts, track counts, and song paths.
      * This method groups audio files by artist and creates proper Artist objects.
@@ -174,9 +191,8 @@ class AudioRepository @Inject constructor(
      * @return Flow of artists with complete metadata
      */
     fun getAllArtistsWithAggregation(): Flow<List<Artist>> {
+        val whitelist = getWhitelist()
         return audioDatabase.audioDao()?.getFilteredAudio(minDurationMs(), minSizeBytes())?.map { audioList ->
-            val splitRegex = Regex(ARTIST_SEPARATOR_REGEX, RegexOption.IGNORE_CASE)
-
             // We build two maps in a single pass over the song list so this stays fast
             // no matter how large the library is. Each song contributes to every individual
             // artist credited in its artist field (e.g. "AKON feat. WYCLEF" adds to both).
@@ -185,9 +201,7 @@ class AudioRepository @Inject constructor(
 
             audioList.forEach { audio ->
                 val field = audio.artist ?: return@forEach
-                field.split(splitRegex)
-                    .map { it.trim() }
-                    .filter { it.isNotEmpty() }
+                splitArtistsSafely(field, whitelist)
                     .forEach { name ->
                         artistSongPaths.getOrPut(name) { mutableListOf() }.add(audio.uri)
                         audio.album?.let { artistAlbums.getOrPut(name) { mutableSetOf() }.add(it) }
@@ -351,13 +365,11 @@ class AudioRepository @Inject constructor(
      * so that track counts are consistent with what the artist page shows.
      */
     private fun buildArtistSongMap(audioList: List<Audio>): Map<String, List<Audio>> {
-        val splitRegex = Regex(ARTIST_SEPARATOR_REGEX, RegexOption.IGNORE_CASE)
+        val whitelist = getWhitelist()
         val map = mutableMapOf<String, MutableList<Audio>>()
         audioList.forEach { audio ->
             val field = audio.artist ?: return@forEach
-            field.split(splitRegex)
-                .map { it.trim() }
-                .filter { it.isNotEmpty() }
+            splitArtistsSafely(field, whitelist)
                 .forEach { name -> map.getOrPut(name) { mutableListOf() }.add(audio) }
         }
         return map
@@ -566,9 +578,7 @@ class AudioRepository @Inject constructor(
      * @return Flow of CollectionPageData with audios, artists, and genres
      */
     fun getAlbumPageData(album: Album): Flow<PageData> {
-        // Load whitelist once when called (or better yet, cache it globally in the repository)
-        val artistWhitelist: Set<String> = AudioRepository::class.java.getResourceAsStream(ARTIST_WHITELIST)
-            ?.bufferedReader()?.use { it.readLines().map { name -> name.trim() }.toSet() } ?: emptySet()
+        val artistWhitelist = getWhitelist()
 
         val dao = audioDatabase.audioDao() ?: throw IllegalStateException("AudioDao is null")
 
@@ -579,14 +589,8 @@ class AudioRepository @Inject constructor(
                 val uniqueArtistNames = mutableSetOf<String>()
                 albumAudios.forEach { audio ->
                     val artistName = audio.albumArtist ?: return@forEach
-                    if (artistWhitelist.any { it.equals(artistName, ignoreCase = true) }) {
-                        uniqueArtistNames.add(artistName)
-                    } else {
-                        artistName.split(Regex(ARTIST_SEPARATOR_REGEX))
-                            .map { it.trim() }
-                            .filter { it.isNotEmpty() }
+                    splitArtistsSafely(artistName, artistWhitelist)
                             .forEach { uniqueArtistNames.add(it) }
-                    }
                 }
 
                 // Build Artist objects using optimized targeted queries
@@ -688,6 +692,7 @@ class AudioRepository @Inject constructor(
     fun getArtistPageData(artist: Artist): Flow<PageData> {
         val dao = audioDatabase.audioDao() ?: throw IllegalStateException("AudioDao is null")
         val artistName = artist.name ?: return emptyFlow() // Fallback if name is somehow null
+        val whitelist = getWhitelist()
 
         // Fetch a tiny candidate list from the DB, not the whole library
         return dao.getCandidateTracksForArtist(artistName, minDurationMs(), minSizeBytes())
@@ -695,7 +700,7 @@ class AudioRepository @Inject constructor(
 
                 // Apply your custom Kotlin matching logic to the small list of candidates
                 val artistAudios = candidateAudios.filter { audio ->
-                    artistFieldMatchesName(audio.artist, artistName)
+                    artistFieldMatchesName(audio.artist, artistName, whitelist)
                 }
 
                 // Extract unique albums
@@ -1320,9 +1325,12 @@ class AudioRepository @Inject constructor(
          * everywhere else and require one of the resulting pieces to be an exact (case-insensitive)
          * match. This way "LISA" only hits a field where LISA is a standalone credit.
          */
-        fun artistFieldMatchesName(artistField: String?, name: String): Boolean {
+        fun artistFieldMatchesName(artistField: String?, name: String, whitelist: Set<String>): Boolean {
             if (artistField == null || name.isEmpty()) return false
             return if (!name.contains(' ')) {
+                if (whitelist.any { it.equals(artistField, ignoreCase = true) }) {
+                    return artistField.equals(name, ignoreCase = true)
+                }
                 val splitRegex = Regex(ARTIST_SEPARATOR_REGEX, RegexOption.IGNORE_CASE)
                 artistField.split(splitRegex)
                     .any { it.trim().equals(name, ignoreCase = true) }

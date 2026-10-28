@@ -37,6 +37,7 @@ import app.simple.felicity.repository.repositories.SongStatRepository
 import app.simple.felicity.repository.services.AudioDatabaseService
 import app.simple.felicity.theme.accents.AlbumArt
 import app.simple.felicity.ui.preferences.sub.AccentColors
+import app.simple.felicity.ui.preferences.sub.ArtistWhitelist
 import app.simple.felicity.ui.preferences.sub.Language
 import app.simple.felicity.ui.preferences.sub.MusicFolders
 import app.simple.felicity.ui.preferences.sub.PanelVisibility
@@ -1219,6 +1220,16 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val artistWhitelist = Preference(
+                title = R.string.artist_whitelist,
+                summary = R.string.artist_whitelist_desc,
+                icon = R.drawable.ic_artist,
+                type = PreferenceType.PANEL,
+                onPreferenceAction = { view, callback ->
+                    openFragment(ArtistWhitelist.newInstance(), ArtistWhitelist.TAG)
+                }
+        )
+
         val musicBrainz = Preference(
                 title = R.string.musicbrainz_enabled,
                 summary = R.string.musicbrainz_enabled_summary,
@@ -1357,6 +1368,7 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(confirmQueueReplacementToggle)
         preferences.add(metadataHeader)
         preferences.add(albumArtistsInsteadOfArtists)
+        preferences.add(artistWhitelist)
         preferences.add(musicBrainz)
         preferences.add(albumArtHeader)
         preferences.add(mediaStoreArt)

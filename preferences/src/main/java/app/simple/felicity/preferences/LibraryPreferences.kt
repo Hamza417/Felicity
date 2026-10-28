@@ -29,6 +29,32 @@ object LibraryPreferences {
      */
     const val CONFIRM_QUEUE_REPLACEMENT = "confirm_queue_replacement"
 
+    private const val ARTIST_WHITELIST = "artist_whitelist"
+
+    // ----------------------------------------------------------------------------------------------------- //
+
+    fun getArtistWhitelist(): Set<String> {
+        return SharedPreferences.getSharedPreferences()
+            .getStringSet(ARTIST_WHITELIST, emptySet()) ?: emptySet()
+    }
+
+    fun addWhitelistedArtist(artist: String) {
+        val current = getArtistWhitelist().toMutableSet()
+        current.add(artist)
+        SharedPreferences.getSharedPreferences().edit {
+            putStringSet(ARTIST_WHITELIST, current)
+        }
+    }
+
+    fun removeWhitelistedArtist(artist: String) {
+        val current = getArtistWhitelist().toMutableSet()
+        current.remove(artist)
+
+        SharedPreferences.getSharedPreferences().edit {
+            putStringSet(ARTIST_WHITELIST, current)
+        }
+    }
+
     // ----------------------------------------------------------------------------------------------------- //
 
     fun getMinimumAudioLength(): Int {

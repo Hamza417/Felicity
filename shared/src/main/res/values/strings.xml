@@ -334,6 +334,9 @@
     <string name="musicbrainz_enabled">Extra Info from MusicBrainz</string>
     <string name="musicbrainz_enabled_summary">Fetch info from the MusicBrainz open database. Requires an internet connection. Disabling stops all MusicBrainz network requests.</string>
     <string name="show_album_artists_summary">Show album artists instead of artists in the artists field of the lists in the app.</string>
+    <string name="artist_whitelist" translatable="false">Artist whitelist</string>
+    <string name="artist_whitelist_desc" translatable="false">Manage artists that should not be split</string>
+    <string name="enter_artist_name" translatable="false">Enter artist name</string>
     <string name="copy">Copy</string>
     <string name="edit_metadata">Edit Metadata</string>
     <string name="metadata_saved">Metadata saved successfully.</string>
