@@ -31,7 +31,7 @@ import kotlin.math.pow
 /**
  * A compact view that draws a smooth thin wave line representing the shape of a 10-band
  * equalizer curve. Think of it as a tiny frequency-response graph — each of the 10 bands
- * pushes the line up (boost) or pulls it down (cut), and the points are connected with
+ * pushes the line-up (boost) or pulls it down (cut), and the points are connected with
  * cubic Bezier curves so the result looks like a real EQ curve rather than a bar chart.
  *
  * This view is designed to live inside each row of the preset list dialog, giving the
@@ -73,13 +73,6 @@ class EqualizerWaveView @JvmOverloads constructor(
      * Because garbage collection during drawing is not our friend.
      */
     private val wavePath = Path()
-
-    /**
-     * Pre-allocated point array used during drawing. Each element is a two-float pair
-     * [x, y] so we avoid creating new arrays inside [onDraw] on every frame.
-     * The lint tool appreciates this very much.
-     */
-    private val points = Array(BAND_COUNT) { FloatArray(2) }
 
     private var gradient: LinearGradient? = null
 
@@ -145,9 +138,6 @@ class EqualizerWaveView @JvmOverloads constructor(
     private val fillPath = Path()
     private val borderRect = RectF()
     private val clipPath = Path()
-
-    // Pre-allocated arrays to avoid onDraw allocations
-    private val peqGains: FloatArray by lazy { FloatArray(PEQ_CURVE_RESOLUTION) }
 
     init {
         if (!isInEditMode) {
@@ -256,10 +246,10 @@ class EqualizerWaveView @JvmOverloads constructor(
                 val frequency = BASE_FREQ_HZ * 2f.pow(xFrac * BAND_COUNT - 0.5f)
                 currentCurve[j] = getPeqResponseAt(frequency, peqBands)
             }
-            for (band in peqBands) {
-                val log2fRatio = kotlin.math.log2(band.frequencyHz / BASE_FREQ_HZ)
+            for ((gain, _, frequencyHz, color) in peqBands) {
+                val log2fRatio = kotlin.math.log2(frequencyHz / BASE_FREQ_HZ)
                 val xFrac = (log2fRatio + 0.5f) / BAND_COUNT
-                currentDots.add(Dot(xFrac, band.gain, band.color))
+                currentDots.add(Dot(xFrac, gain, color))
             }
         } else {
             for (j in 0 until PEQ_CURVE_RESOLUTION) {
@@ -446,11 +436,12 @@ class EqualizerWaveView @JvmOverloads constructor(
             // Draw previous dots fading out
             if (animationProgress < 1f && prevDots.isNotEmpty()) {
                 val scale = 1f - animationProgress
-                for (dot in prevDots) {
-                    val x = graphStartX + dot.xFrac * graphW
+
+                for ((xFrac, gainDb, color) in prevDots) {
+                    val x = graphStartX + xFrac * graphW
                     // Only draw if within graph bounds
                     if (x in graphStartX..viewWidth) {
-                        val normalizedGain = dot.gainDb / dynamicDbMax
+                        val normalizedGain = gainDb / dynamicDbMax
                         val y = midY - normalizedGain * (drawH / 2f)
 
                         val paint = if (prevIsPeq) {
@@ -460,7 +451,7 @@ class EqualizerWaveView @JvmOverloads constructor(
                         }
 
                         val baseColor = if (prevIsPeq) {
-                            if (dot.color == 0) originalHandleColor else dot.color.toQuarterAlpha()
+                            if (color == 0) originalHandleColor else color.toQuarterAlpha()
                         } else {
                             originalDotColor
                         }
@@ -475,11 +466,11 @@ class EqualizerWaveView @JvmOverloads constructor(
 
             // Draw current dots scaling in
             val currentScale = if (animationProgress < 1f) animationProgress else 1f
-            for (dot in currentDots) {
-                val x = graphStartX + dot.xFrac * graphW
+            for ((xFrac, gainDb, color) in currentDots) {
+                val x = graphStartX + xFrac * graphW
 
                 if (x in graphStartX..viewWidth) {
-                    val normalizedGain = dot.gainDb / dynamicDbMax
+                    val normalizedGain = gainDb / dynamicDbMax
                     val y = midY - normalizedGain * (drawH / 2f)
 
                     val paint = if (isPeq) {
@@ -489,7 +480,7 @@ class EqualizerWaveView @JvmOverloads constructor(
                     }
 
                     val baseColor = if (isPeq) {
-                        if (dot.color == 0) originalHandleColor else dot.color.toQuarterAlpha()
+                        if (color == 0) originalHandleColor else color.toQuarterAlpha()
                     } else {
                         originalDotColor
                     }
@@ -625,10 +616,9 @@ class EqualizerWaveView @JvmOverloads constructor(
 
         val textPadding = 8f * resources.displayMetrics.density
         val textWidth = textPaint.measureText("+00.0") + textPadding
-        val graphStartX = textWidth
 
         gradient = LinearGradient(
-                graphStartX, 0f, w.toFloat(), 0f,
+                textWidth, 0f, w.toFloat(), 0f,
                 intArrayOf(primary, secondary),
                 floatArrayOf(0f, 1f),
                 Shader.TileMode.CLAMP
@@ -639,7 +629,7 @@ class EqualizerWaveView @JvmOverloads constructor(
         val secondaryFaint = ColorUtils.setAlphaComponent(secondary, 0x1A) // 10%
 
         fillPaint.shader = LinearGradient(
-                graphStartX, 0f, w.toFloat(), 0f,
+                textWidth, 0f, w.toFloat(), 0f,
                 intArrayOf(primaryFaint, secondaryFaint),
                 floatArrayOf(0f, 1f),
                 Shader.TileMode.CLAMP
@@ -686,16 +676,11 @@ class EqualizerWaveView @JvmOverloads constructor(
         /** Hardcoded labels for the frequency x-axis text. */
         private val FREQUENCY_LABELS = arrayOf("31", "62", "125", "250", "500", "1k", "2k", "4k", "8k", "16k")
 
-        /** Opacity (0-255) for the faint wave gradient fill. */
-        private const val WAVE_FILL_ALPHA = 0x1A
-
-        /** Opacity (0-255) for the faint individual band responses in PEQ mode. */
-        private const val PEQ_BAND_STROKE_ALPHA = 0x4D
-
         /**
          * Calculates the approximate magnitude response in dB of a single parametric EQ band at a given frequency.
          * Uses the analog prototype response of peaking filters.
          */
+        @Suppress("LocalVariableName")
         private fun getSingleBandResponseAt(frequency: Float, gainDb: Float, qFactor: Float, centerFrequency: Float, type: Int = 0): Float {
             if (gainDb == 0f || centerFrequency <= 0f) return 0f
 
@@ -713,36 +698,40 @@ class EqualizerWaveView @JvmOverloads constructor(
             val sinOmega = kotlin.math.sin(omega)
             val alpha = sinOmega / (2f * safeQ)
 
-            val b0: Float;
-            val b1: Float;
+            val b0: Float
+            val b1: Float
             val b2: Float
-            val a0_inv: Float;
-            val a1: Float;
+            val a0_inv: Float
+            val a1: Float
             val a2: Float
 
-            if (type == 1) { // Low Shelf
-                val twoSqrtAAlpha = 2f * kotlin.math.sqrt(A) * alpha
-                a0_inv = 1f / ((A + 1f) + (A - 1f) * cosOmega + twoSqrtAAlpha)
-                b0 = A * ((A + 1f) - (A - 1f) * cosOmega + twoSqrtAAlpha) * a0_inv
-                b1 = 2f * A * ((A - 1f) - (A + 1f) * cosOmega) * a0_inv
-                b2 = A * ((A + 1f) - (A - 1f) * cosOmega - twoSqrtAAlpha) * a0_inv
-                a1 = -2f * ((A - 1f) + (A + 1f) * cosOmega) * a0_inv
-                a2 = ((A + 1f) + (A - 1f) * cosOmega - twoSqrtAAlpha) * a0_inv
-            } else if (type == 2) { // High Shelf
-                val twoSqrtAAlpha = 2f * kotlin.math.sqrt(A) * alpha
-                a0_inv = 1f / ((A + 1f) - (A - 1f) * cosOmega + twoSqrtAAlpha)
-                b0 = A * ((A + 1f) + (A - 1f) * cosOmega + twoSqrtAAlpha) * a0_inv
-                b1 = -2f * A * ((A - 1f) + (A + 1f) * cosOmega) * a0_inv
-                b2 = A * ((A + 1f) + (A - 1f) * cosOmega - twoSqrtAAlpha) * a0_inv
-                a1 = 2f * ((A - 1f) - (A + 1f) * cosOmega) * a0_inv
-                a2 = ((A + 1f) - (A - 1f) * cosOmega - twoSqrtAAlpha) * a0_inv
-            } else { // Peaking
-                a0_inv = 1f / (1f + alpha / A)
-                b0 = (1f + alpha * A) * a0_inv
-                b1 = (-2f * cosOmega) * a0_inv
-                b2 = (1f - alpha * A) * a0_inv
-                a1 = (-2f * cosOmega) * a0_inv
-                a2 = (1f - alpha / A) * a0_inv
+            when (type) {
+                1 -> { // Low Shelf
+                    val twoSqrtAAlpha = 2f * kotlin.math.sqrt(A) * alpha
+                    a0_inv = 1f / ((A + 1f) + (A - 1f) * cosOmega + twoSqrtAAlpha)
+                    b0 = A * ((A + 1f) - (A - 1f) * cosOmega + twoSqrtAAlpha) * a0_inv
+                    b1 = 2f * A * ((A - 1f) - (A + 1f) * cosOmega) * a0_inv
+                    b2 = A * ((A + 1f) - (A - 1f) * cosOmega - twoSqrtAAlpha) * a0_inv
+                    a1 = -2f * ((A - 1f) + (A + 1f) * cosOmega) * a0_inv
+                    a2 = ((A + 1f) + (A - 1f) * cosOmega - twoSqrtAAlpha) * a0_inv
+                }
+                2 -> { // High Shelf
+                    val twoSqrtAAlpha = 2f * kotlin.math.sqrt(A) * alpha
+                    a0_inv = 1f / ((A + 1f) - (A - 1f) * cosOmega + twoSqrtAAlpha)
+                    b0 = A * ((A + 1f) + (A - 1f) * cosOmega + twoSqrtAAlpha) * a0_inv
+                    b1 = -2f * A * ((A - 1f) + (A + 1f) * cosOmega) * a0_inv
+                    b2 = A * ((A + 1f) + (A - 1f) * cosOmega - twoSqrtAAlpha) * a0_inv
+                    a1 = 2f * ((A - 1f) - (A + 1f) * cosOmega) * a0_inv
+                    a2 = ((A + 1f) - (A - 1f) * cosOmega - twoSqrtAAlpha) * a0_inv
+                }
+                else -> { // Peaking
+                    a0_inv = 1f / (1f + alpha / A)
+                    b0 = (1f + alpha * A) * a0_inv
+                    b1 = (-2f * cosOmega) * a0_inv
+                    b2 = (1f - alpha * A) * a0_inv
+                    a1 = (-2f * cosOmega) * a0_inv
+                    a2 = (1f - alpha / A) * a0_inv
+                }
             }
 
             val w = 2f * Math.PI.toFloat() * frequency / sampleRate
@@ -765,13 +754,11 @@ class EqualizerWaveView @JvmOverloads constructor(
          */
         private fun getPeqResponseAt(frequency: Float, bands: List<ParsedBand>): Float {
             var totalGainDb = 0f
-            for (band in bands) {
-                val gainDb = band.gain
-                val qFactor = band.q
-                val centerFrequency = band.frequencyHz
-                val type = band.type
+
+            for ((gainDb, qFactor, centerFrequency, _, type) in bands) {
                 totalGainDb += getSingleBandResponseAt(frequency, gainDb, qFactor, centerFrequency, type)
             }
+
             return totalGainDb
         }
     }
