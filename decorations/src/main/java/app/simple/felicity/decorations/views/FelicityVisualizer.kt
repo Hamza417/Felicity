@@ -13,6 +13,7 @@ import android.util.AttributeSet
 import android.view.View
 import androidx.core.content.withStyledAttributes
 import app.simple.felicity.decoration.R
+import app.simple.felicity.decorations.views.FelicityVisualizer.Companion.PEAK_HOLD_FRAMES
 import app.simple.felicity.manager.SharedPreferences.registerListener
 import app.simple.felicity.manager.SharedPreferences.unregisterListener
 import app.simple.felicity.preferences.AppearancePreferences
@@ -24,12 +25,14 @@ import app.simple.felicity.theme.models.Accent
 import app.simple.felicity.theme.models.Theme
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.sqrt
 
 /**
- * A custom audio spectrum visualizer with two rendering modes, vertical frequency bars
- * ([VisualizerMode.BARS]) and a fluid water-wave fill ([VisualizerMode.WAVE]), combined
- * with four growth directions ([VisualizerDirection]).
+ * A custom audio spectrum visualizer with three rendering modes: vertical frequency bars
+ * ([VisualizerMode.BARS]), a fluid water-wave fill ([VisualizerMode.WAVE]), and a retro
+ * stack of square blocks ([VisualizerMode.BLOCKS]), combined with four growth directions
+ * ([VisualizerDirection]).
  *
  * Audio data arrives through a lock-free twin-buffer pair. [bufferA] and [bufferB] are
  * pre-allocated on this class, and [isBufferAFront] is an [AtomicBoolean] that tracks which
@@ -61,13 +64,16 @@ class FelicityVisualizer @JvmOverloads constructor(
         defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr), ThemeChangedListener {
 
-    /** Selects whether bars or a fluid wave is rendered. */
+    /** Selects whether bars, a fluid wave, or a retro block stack is rendered. */
     enum class VisualizerMode {
         /** Vertical frequency bar spectrum with peak-hold caps. */
         BARS,
 
         /** Filled smooth-wave shape derived from the frequency spectrum, resembling water waves. */
-        WAVE
+        WAVE,
+
+        /** Columns of discrete stacked square blocks, like the spectrum displays of old low-resolution devices. */
+        BLOCKS
     }
 
     /**
@@ -257,8 +263,11 @@ class FelicityVisualizer @JvmOverloads constructor(
         if (!isInEditMode && attrs != null) {
             context.withStyledAttributes(attrs, R.styleable.FelicityVisualizer, defStyleAttr, 0) {
                 maxRenderHeightFraction = getFloat(R.styleable.FelicityVisualizer_vizMaxRenderHeight, 1f)
-                val modeOrdinal = getInt(R.styleable.FelicityVisualizer_vizMode, 0)
-                mode = if (modeOrdinal == 1) VisualizerMode.WAVE else VisualizerMode.BARS
+                mode = when (getInt(R.styleable.FelicityVisualizer_vizMode, 0)) {
+                    1 -> VisualizerMode.WAVE
+                    2 -> VisualizerMode.BLOCKS
+                    else -> VisualizerMode.BARS
+                }
                 direction = when (getInt(R.styleable.FelicityVisualizer_vizDirection, 0)) {
                     1 -> VisualizerDirection.TOP_TO_BOTTOM
                     2 -> VisualizerDirection.LEFT_TO_RIGHT
@@ -424,6 +433,7 @@ class FelicityVisualizer @JvmOverloads constructor(
         stillMoving = when (mode) {
             VisualizerMode.BARS -> drawBars(canvas, stillMoving)
             VisualizerMode.WAVE -> drawWave(canvas, stillMoving)
+            VisualizerMode.BLOCKS -> drawBlocks(canvas, stillMoving)
         }
 
         if (stillMoving) {
@@ -513,19 +523,7 @@ class FelicityVisualizer @JvmOverloads constructor(
             if (barsEnabled) canvas.drawPath(barPath, barPaint)
 
             // The peak cap is pushed out by the bar tip, then retreats under gravity.
-            if (next >= peakBands[i]) {
-                peakBands[i] = next
-                peakVelocities[i] = 0f
-                peakHoldCounters[i] = PEAK_HOLD_FRAMES
-            } else {
-                if (peakHoldCounters[i] > 0) {
-                    peakHoldCounters[i]--
-                } else {
-                    peakVelocities[i] = (peakVelocities[i] + GRAVITY).coerceAtMost(MAX_PEAK_VELOCITY)
-                    peakBands[i] = (peakBands[i] - peakVelocities[i]).coerceAtLeast(0f)
-                }
-                if (peakBands[i] > IDLE_THRESHOLD) stillMoving = true
-            }
+            if (updatePeak(i, next)) stillMoving = true
 
             // Draw the peak cap pill at the peak position along the growth axis.
             if (peakBands[i] > 0.02f) {
@@ -551,6 +549,92 @@ class FelicityVisualizer @JvmOverloads constructor(
                     )
                 }
                 canvas.drawRoundRect(drawRect, cornerRadius, cornerRadius, capPaint)
+            }
+        }
+
+        return stillMoving
+    }
+
+    /**
+     * Advances the peak-hold state of a single band for one frame. The peak is pushed out
+     * by the band magnitude, held for [PEAK_HOLD_FRAMES], then retreats under gravity.
+     *
+     * @param band Index of the band to update.
+     * @param magnitude Current smoothed magnitude of the band in the range [0..1].
+     * @return `true` if the peak is still retreating and more frames are needed.
+     */
+    private fun updatePeak(band: Int, magnitude: Float): Boolean {
+        if (magnitude >= peakBands[band]) {
+            peakBands[band] = magnitude
+            peakVelocities[band] = 0f
+            peakHoldCounters[band] = PEAK_HOLD_FRAMES
+            return false
+        }
+
+        if (peakHoldCounters[band] > 0) {
+            peakHoldCounters[band]--
+        } else {
+            peakVelocities[band] = (peakVelocities[band] + GRAVITY).coerceAtMost(MAX_PEAK_VELOCITY)
+            peakBands[band] = (peakBands[band] - peakVelocities[band]).coerceAtLeast(0f)
+        }
+        return peakBands[band] > IDLE_THRESHOLD
+    }
+
+    /**
+     * Renders the retro block-stack visualization, where each band is a column of
+     * discrete square blocks stacked from the anchor edge, like the spectrum displays
+     * of old low-resolution devices. The number of lit blocks follows the band magnitude
+     * and a single floating block marks the peak. All geometry adapts to the active [direction].
+     *
+     * @param canvas        Canvas to draw into.
+     * @param initialMoving Whether any band was already considered animating before this call.
+     * @return `true` if any element is still animating.
+     */
+    private fun drawBlocks(canvas: Canvas, initialMoving: Boolean): Boolean {
+        val isHorizontal = direction == VisualizerDirection.LEFT_TO_RIGHT ||
+                direction == VisualizerDirection.RIGHT_TO_LEFT
+
+        val slotDim = (if (isHorizontal) height else width).toFloat() / BAND_COUNT
+        val maxLength = (if (isHorizontal) width else height) * maxRenderHeightFraction.coerceIn(0f, 1f)
+
+        // Blocks are square: the stacking pitch equals the band slot size.
+        val gap = slotDim * BLOCK_GAP_FRACTION
+        val blockSize = slotDim - gap
+        val rowCount = (maxLength / slotDim).toInt()
+        if (rowCount < 1 || blockSize <= 0f) return initialMoving
+
+        val cornerRadius = (cornerRadiusFraction * blockSize).coerceIn(0f, blockSize / 2f)
+        val viewBottom = height.toFloat()
+        val viewRight = width.toFloat()
+        var stillMoving = initialMoving
+
+        for (i in 0 until BAND_COUNT) {
+            val next = currentBands[i]
+            val crossStart = i * slotDim + gap / 2f
+            val litCount = ceil(next * rowCount).toInt().coerceIn(1, rowCount)
+
+            if (updatePeak(i, next)) stillMoving = true
+            val peakRow = ceil(peakBands[i] * rowCount).toInt().coerceIn(0, rowCount)
+
+            for (row in 0 until rowCount) {
+                val isLit = row < litCount
+                val isPeak = row == peakRow - 1 && peakRow > litCount
+                if (!isLit && !isPeak) continue
+                if (isLit && !barsEnabled) continue
+
+                val start = row * slotDim
+                val end = start + blockSize
+                when (direction) {
+                    VisualizerDirection.BOTTOM_TO_TOP ->
+                        drawRect.set(crossStart, viewBottom - end, crossStart + blockSize, viewBottom - start)
+                    VisualizerDirection.TOP_TO_BOTTOM ->
+                        drawRect.set(crossStart, start, crossStart + blockSize, end)
+                    VisualizerDirection.LEFT_TO_RIGHT ->
+                        drawRect.set(start, crossStart, end, crossStart + blockSize)
+                    VisualizerDirection.RIGHT_TO_LEFT ->
+                        drawRect.set(viewRight - end, crossStart, viewRight - start, crossStart + blockSize)
+                }
+                canvas.drawRoundRect(drawRect, cornerRadius, cornerRadius, if (isLit) barPaint else capPaint)
             }
         }
 
@@ -728,10 +812,10 @@ class FelicityVisualizer @JvmOverloads constructor(
 
     /** Applies the persisted visualizer type from [VisualizerPreferences] to [mode]. */
     private fun applyModePreferences() {
-        mode = if (VisualizerPreferences.getVisualizerType() == VisualizerPreferences.TYPE_WAVE) {
-            VisualizerMode.WAVE
-        } else {
-            VisualizerMode.BARS
+        mode = when (VisualizerPreferences.getVisualizerType()) {
+            VisualizerPreferences.TYPE_WAVE -> VisualizerMode.WAVE
+            VisualizerPreferences.TYPE_BLOCKS -> VisualizerMode.BLOCKS
+            else -> VisualizerMode.BARS
         }
     }
 
@@ -763,6 +847,9 @@ class FelicityVisualizer @JvmOverloads constructor(
 
         /** Fraction of each band slot occupied by the gap between adjacent bars. */
         private const val BAR_GAP_FRACTION = 0.22f
+
+        /** Fraction of each band slot left empty between adjacent blocks in [VisualizerMode.BLOCKS]. */
+        private const val BLOCK_GAP_FRACTION = 0.25f
 
         /** Lerp factor per frame when a bar is rising toward a louder target. */
         private const val RISE_SPEED = 0.25f

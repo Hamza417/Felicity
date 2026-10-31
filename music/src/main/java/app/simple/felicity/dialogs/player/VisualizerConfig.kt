@@ -80,18 +80,21 @@ class VisualizerConfig : MediaBottomDialogFragment() {
                 listOf(
                         Button(iconResId = R.drawable.ic_equalizer_16dp),
                         Button(iconResId = R.drawable.ic_waves),
+                        Button(iconResId = R.drawable.ic_blocks_16dp),
                 )
         )
 
         when (VisualizerPreferences.getVisualizerType()) {
             VisualizerPreferences.TYPE_BARS -> binding.styleToggle.setSelectedIndex(0)
             VisualizerPreferences.TYPE_WAVE -> binding.styleToggle.setSelectedIndex(1)
+            VisualizerPreferences.TYPE_BLOCKS -> binding.styleToggle.setSelectedIndex(2)
         }
 
         binding.styleToggle.setOnButtonSelectedListener { index ->
             when (index) {
                 0 -> VisualizerPreferences.setVisualizerType(VisualizerPreferences.TYPE_BARS)
                 1 -> VisualizerPreferences.setVisualizerType(VisualizerPreferences.TYPE_WAVE)
+                2 -> VisualizerPreferences.setVisualizerType(VisualizerPreferences.TYPE_BLOCKS)
             }
         }
 

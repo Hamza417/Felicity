@@ -21,6 +21,7 @@ object VisualizerPreferences {
 
     const val TYPE_BARS = 0
     const val TYPE_WAVE = 1
+    const val TYPE_BLOCKS = 2
 
     /** Bars / wave emerge from the bottom and grow upward (default). */
     const val DIRECTION_BOTTOM_TO_TOP = 0
