@@ -55,7 +55,7 @@
     <app.simple.felicity.decorations.equalizer.EqualizerWaveView
         android:id="@+id/equalizer_wave"
         android:layout_width="match_parent"
-        android:layout_height="@dimen/eq_preset_preview_height"
+        android:layout_height="@dimen/eq_preview_land_height"
         android:layout_marginHorizontal="@dimen/padding_10"
         android:layout_marginBottom="@dimen/padding_15" />
 

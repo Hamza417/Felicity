@@ -331,7 +331,15 @@ class Equalizer : MediaFragment() {
                 val gain = parts[0].toFloatOrNull() ?: return@mapNotNull null
                 val q = parts[1].toFloatOrNull() ?: return@mapNotNull null
                 val freq = parts[2].toFloatOrNull() ?: return@mapNotNull null
-                FelicityEqualizer.Companion.PeqBand(gain = gain, q = q, frequencyHz = freq, type = parts.getOrNull(4)?.toIntOrNull() ?: 0)
+                val color = parts.getOrNull(3)?.toIntOrNull() ?: 0
+                val type = parts.getOrNull(4)?.toIntOrNull() ?: 0
+                FelicityEqualizer.Companion.PeqBand(
+                        gain = gain,
+                        q = q,
+                        frequencyHz = freq,
+                        color = color,
+                        type = type
+                )
             }
         }
     }

@@ -17,6 +17,7 @@
     <dimen name="balance_knob_dimension">160dp</dimen>
     <dimen name="optimal_knob_dimension">150dp</dimen>
     <dimen name="eq_preset_preview_height">120dp</dimen>
+    <dimen name="eq_preview_land_height">160dp</dimen>
 
     <dimen name="min_touch_target_size">48dp</dimen>
     <dimen name="popup_min_size">88dp</dimen>
