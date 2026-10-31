@@ -174,9 +174,11 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             }
 
             Log.d(TAG, "Reconciling database with current SAF grants...")
+            notification.setPhase(notificationGeneration, LoaderNotification.Phase.CLEANING)
             reconcileDatabase(treeUriStrings)
 
             Log.d(TAG, "Indexing existing audio files in the database...")
+            notification.setPhase(notificationGeneration, LoaderNotification.Phase.CHECKING)
 
             val pathToStoredId = HashMap<String, Long>()
             dao?.getAllAudioListAll()?.forEach { audio ->
@@ -187,19 +189,27 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             Log.d(TAG, "Indexing complete. Found ${indexedMap.size} existing entries in the database.")
 
             // Phase 1 — collect every audio file from all SAF tree URIs.
+            notification.setPhase(notificationGeneration, LoaderNotification.Phase.DISCOVERING)
             val allSAFFiles = mutableListOf<SAFFile>()
             val scanner = AudioScanner()
+            var foundCount = 0
             for (uriStr in treeUriStrings) {
                 myScope.coroutineContext.ensureActive()
                 val treeUri = uriStr.toUri()
                 val collectStart = System.currentTimeMillis()
-                val files = scanner.getAudioFiles(context, treeUri)
+                val files = scanner.getAudioFiles(context, treeUri) {
+                    notification.updateFound(notificationGeneration, ++foundCount)
+                }
                 Log.d(TAG, "Found ${files.size} audio files in $uriStr (collected in ${System.currentTimeMillis() - collectStart}ms)")
                 allSAFFiles.addAll(files)
             }
 
-            notification.setTotal(notificationGeneration, allSAFFiles.size)
-            Log.d(TAG, "Total audio files to evaluate: ${allSAFFiles.size}")
+            val filesToProcess = allSAFFiles.filter { shouldProcess(it) }
+            notification.setTotal(notificationGeneration, filesToProcess.size)
+            if (filesToProcess.isNotEmpty()) {
+                notification.setPhase(notificationGeneration, LoaderNotification.Phase.READING)
+            }
+            Log.d(TAG, "Total audio files found: ${allSAFFiles.size}, to process: ${filesToProcess.size}")
 
             val processedCount = AtomicInteger(0)
 
@@ -253,11 +263,12 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             // Phase 2 — process each SAFFile in parallel coroutines.
             val pendingJobs = mutableListOf<Job>()
 
-            allSAFFiles.forEach { safFile ->
+            filesToProcess.forEach { safFile ->
                 myScope.coroutineContext.ensureActive()
 
                 val uriKey = safFile.uri.toString()
-                if (shouldProcess(safFile)) {
+
+                run {
                     val producerJob = myScope.launch {
                         semaphore.acquire()
                         try {
@@ -288,11 +299,6 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                             }
 
                             dbChannel.send(write)
-
-                            val done = processedCount.incrementAndGet()
-                            if (done % LoaderNotification.NOTIFICATION_UPDATE_INTERVAL == 0) {
-                                notification.updateProgress(notificationGeneration, done)
-                            }
                         } catch (e: CancellationException) {
                             Log.d(TAG, "Processing canceled for: ${safFile.name}")
                             throw e
@@ -300,6 +306,7 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                             Log.e(TAG, "Error processing $uriKey", e)
                         } finally {
                             semaphore.release()
+                            notification.updateProgress(notificationGeneration, processedCount.incrementAndGet())
                         }
                     }
 
@@ -308,21 +315,19 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             }
 
             pendingJobs.joinAll()
+
+            if (pendingJobs.isNotEmpty()) {
+                notification.updateProgress(notificationGeneration, filesToProcess.size, force = true)
+                notification.setPhase(notificationGeneration, LoaderNotification.Phase.SAVING)
+            }
             dbChannel.close()
             consumerJob.join()
-
-            // Only push the "100% done" update when we actually processed some files.
-            // If everything was already up to date and pendingJobs was empty, posting
-            // a final progress update would cause a split-second notification flash
-            // (indeterminate → 100% → dismissed) that looks broken to the user.
-            if (pendingJobs.isNotEmpty()) {
-                notification.updateProgress(notificationGeneration, allSAFFiles.size, force = true)
-            }
 
             // Post-processing: fill in real filesystem paths for any audio rows that are missing one.
             // We query each content URI directly for the DATA column — same way MediaStoreCover
             // fetches album IDs — and batch-update the rows in one final write.
             Log.d(TAG, "Resolving filesystem paths from MediaStore...")
+            notification.setPhase(notificationGeneration, LoaderNotification.Phase.FINISHING)
             resolveAndUpdatePaths(dao)
 
             Log.d(TAG, "Audio file processing complete in ${(System.currentTimeMillis() - startTime) / 1000} seconds.")

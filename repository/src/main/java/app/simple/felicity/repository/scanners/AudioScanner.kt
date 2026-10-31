@@ -86,16 +86,17 @@ class AudioScanner {
      *
      * @param context Needed to talk to the ContentResolver.
      * @param treeUri The tree URI returned by the SAF folder picker.
+     * @param onFileFound Optional callback invoked once for every audio file as it is discovered.
      * @return A flat list of [SAFFile] entries for every matching audio file.
      */
-    fun getAudioFiles(context: Context, treeUri: Uri): List<SAFFile> {
+    fun getAudioFiles(context: Context, treeUri: Uri, onFileFound: (() -> Unit)? = null): List<SAFFile> {
         val rootDocId = DocumentsContract.getTreeDocumentId(treeUri)
         Log.d(TAG, "SAF audio scan starting from tree: $treeUri (rootDocId=$rootDocId)")
 
         val skipHiddenFiles = LibraryPreferences.isSkipHiddenFiles()
         val skipHiddenFolders = LibraryPreferences.isSkipHiddenFolders()
 
-        return collectAudioSAF(context, treeUri, rootDocId, skipHiddenFiles, skipHiddenFolders)
+        return collectAudioSAF(context, treeUri, rootDocId, skipHiddenFiles, skipHiddenFolders, onFileFound)
     }
 
     /**
@@ -215,7 +216,8 @@ class AudioScanner {
             treeUri: Uri,
             dirDocumentId: String,
             skipHiddenFiles: Boolean,
-            skipHiddenFolders: Boolean
+            skipHiddenFolders: Boolean,
+            onFileFound: (() -> Unit)? = null
     ): List<SAFFile> {
         val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, dirDocumentId)
 
@@ -256,7 +258,16 @@ class AudioScanner {
                     Log.d(TAG, "SAF: Skipping hidden folder: ${row.name}")
                     continue
                 }
-                result.addAll(collectAudioSAF(context, treeUri, row.docId, skipHiddenFiles, skipHiddenFolders))
+                result.addAll(
+                        collectAudioSAF(
+                                context = context,
+                                treeUri = treeUri,
+                                dirDocumentId = row.docId,
+                                skipHiddenFiles = skipHiddenFiles,
+                                skipHiddenFolders = skipHiddenFolders,
+                                onFileFound = onFileFound
+                        )
+                )
             } else {
                 if (row.size <= 0) continue
                 if (!row.name.isAudioFile()) continue
@@ -266,6 +277,7 @@ class AudioScanner {
                 }
                 val docUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, row.docId)
                 result.add(SAFFile(docUri, row.name, row.size, row.lastModified))
+                onFileFound?.invoke()
             }
         }
 

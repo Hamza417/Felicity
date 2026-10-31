@@ -485,6 +485,14 @@
     <string name="scan_library">Scan Library</string>
     <string name="scanning_library">Scanning Library</string>
     <string name="getting_music_ready">Getting your music ready…</string>
+    <string name="scan_state_cleaning">Removing songs that are no longer available…</string>
+    <string name="scan_state_checking">Checking your existing library…</string>
+    <string name="scan_state_discovering">Looking for music in your folders…</string>
+    <string name="scan_state_discovering_count">Looking for music… %1$d found</string>
+    <string name="scan_state_reading_indeterminate">Reading song details…</string>
+    <string name="scan_state_reading">Reading song details… %1$d of %2$d</string>
+    <string name="scan_state_saving">Saving to your library…</string>
+    <string name="scan_state_finishing">Finishing up…</string>
     <string name="scan_library_summary">Check your music folders for new or changed files and add them to the library. Existing entries are kept intact.</string>
     <string name="refresh_library">Refresh Library</string>
     <string name="refresh_library_summary">Wipe the entire library and rebuild it from scratch. Your favorites, always skipped and all playback stats are preserved and restored after the scan.</string>
