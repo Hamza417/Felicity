@@ -26,6 +26,7 @@ import app.simple.felicity.theme.models.Theme
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.abs
 import kotlin.math.ceil
+import kotlin.math.min
 import kotlin.math.sqrt
 
 /**
@@ -582,9 +583,11 @@ class FelicityVisualizer @JvmOverloads constructor(
 
     /**
      * Renders the retro block-stack visualization, where each band is a column of
-     * discrete square blocks stacked from the anchor edge, like the spectrum displays
-     * of old low-resolution devices. The number of lit blocks follows the band magnitude
-     * and a single floating block marks the peak. All geometry adapts to the active [direction].
+     * discrete rectangular blocks stacked from the anchor edge, like the spectrum displays
+     * of old low-resolution devices. Each block spans the band slot across the stack axis and
+     * is shorter along it, so the segments read as wide, flat bricks. The number of lit blocks
+     * follows the band magnitude and a single floating block marks the peak. All geometry
+     * adapts to the active [direction].
      *
      * @param canvas        Canvas to draw into.
      * @param initialMoving Whether any band was already considered animating before this call.
@@ -597,13 +600,17 @@ class FelicityVisualizer @JvmOverloads constructor(
         val slotDim = (if (isHorizontal) height else width).toFloat() / BAND_COUNT
         val maxLength = (if (isHorizontal) width else height) * maxRenderHeightFraction.coerceIn(0f, 1f)
 
-        // Blocks are square: the stacking pitch equals the band slot size.
+        // The gap is shared by both axes. Across the stack the block fills the slot, along it
+        // the block is shorter because the row pitch is only a fraction of the slot size.
         val gap = slotDim * BLOCK_GAP_FRACTION
-        val blockSize = slotDim - gap
-        val rowCount = (maxLength / slotDim).toInt()
-        if (rowCount < 1 || blockSize <= 0f) return initialMoving
+        val blockWidth = slotDim - gap
+        val pitch = slotDim * BLOCK_PITCH_FRACTION
+        val blockLength = pitch - gap
+        val rowCount = (maxLength / pitch).toInt()
+        if (rowCount < 1 || blockWidth <= 0f || blockLength <= 0f) return initialMoving
 
-        val cornerRadius = (cornerRadiusFraction * blockSize).coerceIn(0f, blockSize / 2f)
+        val shortSide = min(blockWidth, blockLength)
+        val cornerRadius = (cornerRadiusFraction * shortSide).coerceIn(0f, shortSide / 2f)
         val viewBottom = height.toFloat()
         val viewRight = width.toFloat()
         var stillMoving = initialMoving
@@ -622,17 +629,17 @@ class FelicityVisualizer @JvmOverloads constructor(
                 if (!isLit && !isPeak) continue
                 if (isLit && !barsEnabled) continue
 
-                val start = row * slotDim
-                val end = start + blockSize
+                val start = row * pitch
+                val end = start + blockLength
                 when (direction) {
                     VisualizerDirection.BOTTOM_TO_TOP ->
-                        drawRect.set(crossStart, viewBottom - end, crossStart + blockSize, viewBottom - start)
+                        drawRect.set(crossStart, viewBottom - end, crossStart + blockWidth, viewBottom - start)
                     VisualizerDirection.TOP_TO_BOTTOM ->
-                        drawRect.set(crossStart, start, crossStart + blockSize, end)
+                        drawRect.set(crossStart, start, crossStart + blockWidth, end)
                     VisualizerDirection.LEFT_TO_RIGHT ->
-                        drawRect.set(start, crossStart, end, crossStart + blockSize)
+                        drawRect.set(start, crossStart, end, crossStart + blockWidth)
                     VisualizerDirection.RIGHT_TO_LEFT ->
-                        drawRect.set(viewRight - end, crossStart, viewRight - start, crossStart + blockSize)
+                        drawRect.set(viewRight - end, crossStart, viewRight - start, crossStart + blockWidth)
                 }
                 canvas.drawRoundRect(drawRect, cornerRadius, cornerRadius, if (isLit) barPaint else capPaint)
             }
@@ -849,7 +856,13 @@ class FelicityVisualizer @JvmOverloads constructor(
         private const val BAR_GAP_FRACTION = 0.22f
 
         /** Fraction of each band slot left empty between adjacent blocks in [VisualizerMode.BLOCKS]. */
-        private const val BLOCK_GAP_FRACTION = 0.25f
+        private const val BLOCK_GAP_FRACTION = 0.2f
+
+        /**
+         * Distance between the start of consecutive blocks along the stack axis, as a fraction of
+         * the band slot size. Values below 1 make blocks shorter than they are wide.
+         */
+        private const val BLOCK_PITCH_FRACTION = 0.6f
 
         /** Lerp factor per frame when a bar is rising toward a louder target. */
         private const val RISE_SPEED = 0.25f
