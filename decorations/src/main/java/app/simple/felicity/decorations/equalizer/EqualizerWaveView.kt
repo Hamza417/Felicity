@@ -566,7 +566,7 @@ class EqualizerWaveView @JvmOverloads constructor(
             val delay = delays.getOrElse(i) { 0f }
 
             val bandSweep = if (sweepProgress >= 1f) 1f else {
-                ((sweepProgress - delay) / 0.5f).coerceIn(0f, 1f)
+                ((sweepProgress - delay) / (1f - delay)).coerceIn(0f, 1f)
             }
 
             if (bandSweep <= 0f) continue
@@ -588,7 +588,7 @@ class EqualizerWaveView @JvmOverloads constructor(
 
             val baseColor = if (band.color == 0) originalColor else band.color.toQuarterAlpha()
             peqBandPaint.color = ColorUtils.setAlphaComponent(
-                    baseColor, (Color.alpha(baseColor) * alphaMult).toInt())
+                    baseColor, (Color.alpha(baseColor) * alphaMult * bandSweep).toInt())
 
             if (bandSweep < 1f) {
                 canvas.withSave {
