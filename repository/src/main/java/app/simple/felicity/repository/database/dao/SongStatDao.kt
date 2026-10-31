@@ -49,6 +49,17 @@ interface SongStatDao {
     fun getMostPlayedAudio(): Flow<List<Audio>>
 
     /**
+     * Returns every available song that has never been played, either because it has no
+     * stat row yet or because its play count is still zero.
+     */
+    @Query("""
+        SELECT a.* FROM audio a
+        LEFT JOIN song_stats ss ON a.hash = ss.audioHash
+        WHERE a.is_available = 1 AND (ss.audioHash IS NULL OR ss.playCount = 0)
+    """)
+    fun getNeverPlayedAudio(): Flow<List<Audio>>
+
+    /**
      * Returns available songs with their stat data ordered by last-played
      * timestamp descending. All stat columns — including {@code skipCount} and
      * {@code replayCount} — are pulled in from the join so callers get the full picture.

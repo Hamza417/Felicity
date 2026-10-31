@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<app.simple.felicity.decorations.ripple.DynamicRippleLinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/container"
+    android:layout_width="175dp"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <!-- Three layered covers, each narrower and peeking out higher than the one in front, so the card reads as a stack (a collection). -->
+    <FrameLayout
+        android:layout_width="175dp"
+        android:layout_height="175dp">
+
+        <app.simple.felicity.decorations.views.SquareImageView
+            android:id="@+id/art_back_far"
+            android:layout_width="125dp"
+            android:layout_height="125dp"
+            android:layout_gravity="top|center_horizontal"
+            android:alpha="0.35"
+            android:scaleType="centerCrop" />
+
+        <app.simple.felicity.decorations.views.SquareImageView
+            android:id="@+id/art_back_near"
+            android:layout_width="143dp"
+            android:layout_height="143dp"
+            android:layout_marginTop="7dp"
+            android:layout_gravity="top|center_horizontal"
+            android:alpha="0.65"
+            android:scaleType="centerCrop" />
+
+        <app.simple.felicity.decorations.views.SquareImageView
+            android:id="@+id/art"
+            android:layout_width="161dp"
+            android:layout_height="161dp"
+            android:layout_gravity="bottom|center_horizontal"
+            android:scaleType="centerCrop" />
+
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingVertical="@dimen/padding_5"
+        android:layout_gravity="bottom">
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:textSize="@dimen/text_size_14"
+            android:maxLines="1"
+            android:ellipsize="end"
+            app:appFontStyle="bold"
+            app:textColorStyle="primary" />
+
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/artist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="@dimen/text_size_12"
+            android:maxLines="1"
+            android:gravity="center"
+            android:ellipsize="end"
+            app:appFontStyle="regular"
+            app:textColorStyle="tertiary" />
+
+    </LinearLayout>
+
+</app.simple.felicity.decorations.ripple.DynamicRippleLinearLayout>

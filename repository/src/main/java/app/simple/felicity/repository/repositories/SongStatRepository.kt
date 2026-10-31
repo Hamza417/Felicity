@@ -166,6 +166,15 @@ class SongStatRepository @Inject constructor(
     }
 
     /**
+     * Returns a reactive [Flow] of available songs that have never been played.
+     *
+     * @return Flow emitting every unplayed [Audio], re-emitted whenever stats or the library change.
+     */
+    fun getNeverPlayed(): Flow<List<Audio>> {
+        return database.songStatDao().getNeverPlayedAudio()
+    }
+
+    /**
      * Returns a reactive [Flow] of available songs with stat data ordered by total play count,
      * highest first.
      *
