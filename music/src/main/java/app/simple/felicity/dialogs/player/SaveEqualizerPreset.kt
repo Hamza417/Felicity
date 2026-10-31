@@ -8,6 +8,7 @@ import androidx.fragment.app.FragmentManager
 import app.simple.felicity.databinding.DialogSaveEqualizerPresetBinding
 import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
+import app.simple.felicity.preferences.EqualizerPreferences
 
 /**
  * A compact bottom-sheet dialog that lets the user type a name for their current
@@ -45,7 +46,11 @@ class SaveEqualizerPreset : ScopedBottomSheetFragment() {
 
         // Show the current EQ curve in the little wave preview so the user knows exactly
         // what they're about to save. If this is flat, maybe they should tweak a bit first!
-        binding?.presetWavePreview?.setGains(EqualizerManager.getAllGains())
+        if (EqualizerPreferences.isParametricEqMode()) {
+            binding?.presetWavePreview?.setPeqBands(EqualizerManager.getPeqBands())
+        } else {
+            binding?.presetWavePreview?.setGains(EqualizerManager.getAllGains())
+        }
 
         // Focus the text field immediately so the keyboard pops up right away —
         // no need to tap the input field first.
@@ -63,13 +68,17 @@ class SaveEqualizerPreset : ScopedBottomSheetFragment() {
             } else {
                 // Gently shake the input field to hint that a name is required.
                 binding?.presetNameInput?.animate()
-                    ?.translationX(10f)?.setDuration(50)
+                    ?.translationX(10f)
+                    ?.setDuration(50)
                     ?.withEndAction {
                         binding?.presetNameInput?.animate()
-                            ?.translationX(-10f)?.setDuration(50)
+                            ?.translationX(-10f)
+                            ?.setDuration(50)
                             ?.withEndAction {
                                 binding?.presetNameInput?.animate()
-                                    ?.translationX(0f)?.setDuration(50)?.start()
+                                    ?.translationX(0f)
+                                    ?.setDuration(50)
+                                    ?.start()
                             }?.start()
                     }?.start()
             }
