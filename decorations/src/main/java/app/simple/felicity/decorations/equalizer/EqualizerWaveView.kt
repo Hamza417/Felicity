@@ -1,7 +1,9 @@
 package app.simple.felicity.decorations.equalizer
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
@@ -10,6 +12,7 @@ import android.graphics.Shader
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.View
+import android.view.animation.DecelerateInterpolator
 import androidx.core.graphics.ColorUtils
 import androidx.core.graphics.withSave
 import app.simple.felicity.decorations.typeface.TypeFace
@@ -23,7 +26,6 @@ import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
 import app.simple.felicity.theme.models.Theme
 import kotlin.math.abs
-import kotlin.math.log2
 import kotlin.math.pow
 
 /**
@@ -105,6 +107,22 @@ class EqualizerWaveView @JvmOverloads constructor(
 
     private var isPeq = false
     private var peqBands = emptyList<ParsedBand>()
+    private var bandDelays = FloatArray(0)
+
+    private var prevIsPeq = false
+    private var prevPeqBands = emptyList<ParsedBand>()
+    private var prevBandDelays = FloatArray(0)
+
+    private var animationProgress = 1f
+    private var waveAnimator: ValueAnimator? = null
+
+    private val currentCurve = FloatArray(PEQ_CURVE_RESOLUTION)
+    private val previousCurve = FloatArray(PEQ_CURVE_RESOLUTION)
+
+    private data class Dot(val xFrac: Float, val gainDb: Float, val color: Int)
+
+    private val currentDots = mutableListOf<Dot>()
+    private val prevDots = mutableListOf<Dot>()
 
     private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
@@ -171,27 +189,114 @@ class EqualizerWaveView @JvmOverloads constructor(
      * @param gains Array of up to 10 gain values in dB. Extra values are ignored;
      *              missing values default to 0 dB (flat).
      */
-    fun setGains(gains: FloatArray) {
+    fun setGains(gains: FloatArray, animateReveal: Boolean = false) {
+        if (animateReveal) {
+            savePreviousState()
+        }
+
         isPeq = false
         val len = minOf(gains.size, BAND_COUNT)
+
         for (i in 0 until len) {
             bandGains[i] = gains[i].coerceIn(DB_MIN, DB_MAX)
         }
+
         for (i in len until BAND_COUNT) {
             bandGains[i] = 0f
         }
-        invalidate()
+
+        updateInternalState()
+
+        if (animateReveal) {
+            startMorphAnimation()
+        } else {
+            animationProgress = 1f
+            invalidate()
+        }
     }
 
     /**
      * Updates the wave shape to reflect a parametric EQ response.
      *
-     * @param bands A list of PEQ bands, where each is a Triple of (gainDb, qFactor, frequencyHz).
+     * @param bands A list of PEQ bands.
      */
-    fun setPeqBands(bands: List<ParsedBand>) {
+    fun setPeqBands(bands: List<ParsedBand>, animateReveal: Boolean = false) {
+        if (animateReveal) {
+            savePreviousState()
+        }
+
         isPeq = true
         peqBands = bands
-        invalidate()
+        bandDelays = FloatArray(bands.size) { (Math.random() * 0.5).toFloat() }
+
+        updateInternalState()
+
+        if (animateReveal) {
+            startMorphAnimation()
+        } else {
+            animationProgress = 1f
+            invalidate()
+        }
+    }
+
+    private fun savePreviousState() {
+        System.arraycopy(currentCurve, 0, previousCurve, 0, PEQ_CURVE_RESOLUTION)
+        prevIsPeq = isPeq
+        prevPeqBands = peqBands.toList()
+        prevBandDelays = bandDelays.copyOf()
+        prevDots.clear()
+        prevDots.addAll(currentDots)
+    }
+
+    private fun updateInternalState() {
+        currentDots.clear()
+        if (isPeq) {
+            for (j in 0 until PEQ_CURVE_RESOLUTION) {
+                val xFrac = j.toFloat() / (PEQ_CURVE_RESOLUTION - 1)
+                val frequency = BASE_FREQ_HZ * 2f.pow(xFrac * BAND_COUNT - 0.5f)
+                currentCurve[j] = getPeqResponseAt(frequency, peqBands)
+            }
+            for (band in peqBands) {
+                val log2fRatio = kotlin.math.log2(band.frequencyHz / BASE_FREQ_HZ)
+                val xFrac = (log2fRatio + 0.5f) / BAND_COUNT
+                currentDots.add(Dot(xFrac, band.gain, band.color))
+            }
+        } else {
+            for (j in 0 until PEQ_CURVE_RESOLUTION) {
+                val xFrac = j.toFloat() / (PEQ_CURVE_RESOLUTION - 1)
+                val bandPos = xFrac * BAND_COUNT - 0.5f
+                if (bandPos <= 0f) {
+                    currentCurve[j] = bandGains[0]
+                } else if (bandPos >= BAND_COUNT - 1f) {
+                    currentCurve[j] = bandGains[BAND_COUNT - 1]
+                } else {
+                    val i = bandPos.toInt()
+                    val t = bandPos - i
+                    val y1 = bandGains[i]
+                    val y2 = bandGains[i + 1]
+                    val yt = y1 * (1 - t) * (1 - t) * (1 + 2 * t) + y2 * t * t * (3 - 2 * t)
+                    currentCurve[j] = yt
+                }
+            }
+            for (i in 0 until BAND_COUNT) {
+                val xFrac = (i + 0.5f) / BAND_COUNT
+                currentDots.add(Dot(xFrac, bandGains[i], 0))
+            }
+        }
+    }
+
+    private fun startMorphAnimation() {
+        waveAnimator?.cancel()
+        animationProgress = 0f
+        waveAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 600
+            interpolator = DecelerateInterpolator(1.5f)
+            addUpdateListener {
+                animationProgress = it.animatedValue as Float
+                invalidate()
+            }
+            start()
+        }
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -220,33 +325,27 @@ class EqualizerWaveView @JvmOverloads constructor(
         val drawH = graphH - 2f * pad
         val midY = graphH / 2f
 
-        var maxGain = 0f
-        var minGain = 0f
-
         val stepX = graphW / (PEQ_CURVE_RESOLUTION - 1)
         val slotW = graphW / BAND_COUNT
 
-        if (isPeq) {
-            for (i in 0 until PEQ_CURVE_RESOLUTION) {
-                val x = graphStartX + i * stepX
-                val frequency = BASE_FREQ_HZ * 2f.pow((x - graphStartX) / slotW - 0.5f)
-                peqGains[i] = getPeqResponseAt(frequency, peqBands)
+        var maxAbsGain = 0f
+
+        for (i in 0 until PEQ_CURVE_RESOLUTION) {
+            val gain = if (animationProgress < 1f) {
+                previousCurve[i] + (currentCurve[i] - previousCurve[i]) * animationProgress
+            } else {
+                currentCurve[i]
             }
 
-            for (i in 0 until PEQ_CURVE_RESOLUTION) {
-                val gain = peqGains[i]
-                if (gain > maxGain) maxGain = gain
-                if (gain < minGain) minGain = gain
-            }
-        } else {
-            for (gain in bandGains) {
-                if (gain > maxGain) maxGain = gain
-                if (gain < minGain) minGain = gain
+            val absGain = abs(gain)
+
+            if (absGain > maxAbsGain) {
+                maxAbsGain = absGain
             }
         }
 
         // Ensure there's some range to avoid division by zero and overly flat look when all zeros
-        val dynamicDbMax = maxOf(abs(maxGain), abs(minGain), MIN_DYNAMIC_RANGE_DB)
+        val dynamicDbMax = maxOf(maxAbsGain, MIN_DYNAMIC_RANGE_DB)
 
         val radius = if (isInEditMode) EDIT_MODE_CORNER_RADIUS else AppearancePreferences.getCornerRadius()
         val inset = borderPaint.strokeWidth / 2f
@@ -268,63 +367,65 @@ class EqualizerWaveView @JvmOverloads constructor(
                 drawLine(x, 0f, x, graphH, gridPaint)
             }
 
-            // Build a smooth cubic Bezier path through all band points.
-            wavePath.reset()
+            // Draw previous PEQ individual lines fading out
+            if (animationProgress < 1f && prevIsPeq) {
+                val alphaMult = 1f - animationProgress
 
+                drawIndividualPeqBands(
+                        canvas = canvas,
+                        bands = prevPeqBands,
+                        alphaMult = alphaMult,
+                        sweepProgress = 1f,
+                        delays = prevBandDelays,
+                        dynamicDbMax = dynamicDbMax,
+                        graphStartX = graphStartX,
+                        stepX = stepX,
+                        midY = midY,
+                        drawH = drawH,
+                        viewHeight = viewHeight,
+                        graphW = graphW
+                )
+            }
+
+            // Draw current PEQ individual lines drawing in
             if (isPeq) {
-                val originalBandColor = peqBandPaint.color
-                // Draw individual band curves first (faintly)
-                for (band in peqBands) {
-                    singleBandPath.reset()
+                val alphaMult = if (animationProgress < 1f) animationProgress else 1f
+                val sweep = animationProgress
 
-                    for (i in 0 until PEQ_CURVE_RESOLUTION) {
-                        val x = graphStartX + i * stepX
-                        val frequency = BASE_FREQ_HZ * 2f.pow((x - graphStartX) / slotW - 0.5f)
-                        val bandGain = getSingleBandResponseAt(frequency, band.gain, band.q, band.frequencyHz)
-                        val normalizedGain = bandGain / dynamicDbMax
-                        val y = midY - normalizedGain * (drawH / 2f)
-                        if (i == 0) singleBandPath.moveTo(x, y)
-                        else singleBandPath.lineTo(x, y)
-                    }
+                drawIndividualPeqBands(
+                        canvas = canvas,
+                        bands = peqBands,
+                        alphaMult = alphaMult,
+                        sweepProgress = sweep,
+                        delays = bandDelays,
+                        dynamicDbMax = dynamicDbMax,
+                        graphStartX = graphStartX,
+                        stepX = stepX,
+                        midY = midY,
+                        drawH = drawH,
+                        viewHeight = viewHeight,
+                        graphW = graphW
+                )
+            }
 
-                    peqBandPaint.color = if (band.color == 0) originalBandColor else band.color.toQuarterAlpha()
-                    drawPath(singleBandPath, peqBandPaint)
-                }
-                peqBandPaint.color = originalBandColor
-
-                for (i in 0 until PEQ_CURVE_RESOLUTION) {
-                    val x = graphStartX + i * stepX
-                    val normalizedGain = peqGains[i] / dynamicDbMax
-                    val y = midY - normalizedGain * (drawH / 2f)
-                    if (i == 0) wavePath.moveTo(x, y)
-                    else wavePath.lineTo(x, y)
-                }
-            } else {
-                /**
-                 * Calculate the X position for each band point, spread evenly across the view width.
-                 * We add a half-slot offset so the first point isn't right at the left edge.
-                 */
-                for (i in 0 until BAND_COUNT) {
-                    points[i][0] = graphStartX + slotW * i + slotW / 2f
-                    val normalizedGain = bandGains[i] / dynamicDbMax    // -1..+1
-                    points[i][1] = midY - normalizedGain * (drawH / 2f)  // flip: positive gain = higher
+            // Draw the morphed main curve
+            wavePath.reset()
+            for (i in 0 until PEQ_CURVE_RESOLUTION) {
+                val x = graphStartX + i * stepX
+                val gain = if (animationProgress < 1f) {
+                    previousCurve[i] + (currentCurve[i] - previousCurve[i]) * animationProgress
+                } else {
+                    currentCurve[i]
                 }
 
-                wavePath.moveTo(graphStartX, points[0][1])
-                wavePath.lineTo(points[0][0], points[0][1])
+                val normalizedGain = gain / dynamicDbMax
+                val y = midY - normalizedGain * (drawH / 2f)
 
-                for (i in 0 until points.size - 1) {
-                    val x1 = points[i][0]
-                    val y1 = points[i][1]
-                    val x2 = points[i + 1][0]
-                    val y2 = points[i + 1][1]
-
-                    // Control points sit halfway between consecutive data points, creating smooth
-                    // transitions that look like a real analog EQ response curve.
-                    val controlX = (x1 + x2) / 2f
-                    wavePath.cubicTo(controlX, y1, controlX, y2, x2, y2)
+                if (i == 0) {
+                    wavePath.moveTo(x, y)
+                } else {
+                    wavePath.lineTo(x, y)
                 }
-                wavePath.lineTo(viewWidth, points.last()[1])
             }
 
             fillPath.set(wavePath)
@@ -338,29 +439,74 @@ class EqualizerWaveView @JvmOverloads constructor(
             drawPath(wavePath, wavePaint)
 
             // Draw dots
-            if (isPeq) {
-                val handleOuterRadius = DOT_RADIUS * resources.displayMetrics.density
-                val originalHandleColor = handleFillPaint.color
+            val handleOuterRadius = DOT_RADIUS * resources.displayMetrics.density
+            val originalHandleColor = handleFillPaint.color
+            val originalDotColor = dotPaint.color
 
-                for (band in peqBands) {
-                    // Find the x position for this band's center frequency
-                    // centerFrequency = BASE_FREQ_HZ * 2f.pow((x - graphStartX) / slotW - 0.5f)
-                    val log2fRatio = log2(band.frequencyHz / BASE_FREQ_HZ)
-                    val x = graphStartX + slotW * (log2fRatio + 0.5f)
+            // Draw previous dots fading out
+            if (animationProgress < 1f && prevDots.isNotEmpty()) {
+                val scale = 1f - animationProgress
+                for (dot in prevDots) {
+                    val x = graphStartX + dot.xFrac * graphW
+                    // Only draw if within graph bounds
                     if (x in graphStartX..viewWidth) {
-                        val normalizedGain = band.gain / dynamicDbMax
+                        val normalizedGain = dot.gainDb / dynamicDbMax
                         val y = midY - normalizedGain * (drawH / 2f)
-                        handleFillPaint.color = if (band.color == 0) originalHandleColor else band.color.toQuarterAlpha()
-                        drawCircle(x, y, handleOuterRadius, handleFillPaint)
+
+                        val paint = if (prevIsPeq) {
+                            handleFillPaint
+                        } else {
+                            dotPaint
+                        }
+
+                        val baseColor = if (prevIsPeq) {
+                            if (dot.color == 0) originalHandleColor else dot.color.toQuarterAlpha()
+                        } else {
+                            originalDotColor
+                        }
+
+                        paint.color = ColorUtils.setAlphaComponent(
+                                baseColor, (Color.alpha(baseColor) * scale).toInt())
+
+                        drawCircle(x, y, handleOuterRadius * scale, paint)
                     }
                 }
-                handleFillPaint.color = originalHandleColor
-            } else {
-                val dotRadius = DOT_RADIUS * resources.displayMetrics.density
-                for (i in 0 until BAND_COUNT) {
-                    drawCircle(points[i][0], points[i][1], dotRadius, dotPaint)
+            }
+
+            // Draw current dots scaling in
+            val currentScale = if (animationProgress < 1f) animationProgress else 1f
+            for (dot in currentDots) {
+                val x = graphStartX + dot.xFrac * graphW
+
+                if (x in graphStartX..viewWidth) {
+                    val normalizedGain = dot.gainDb / dynamicDbMax
+                    val y = midY - normalizedGain * (drawH / 2f)
+
+                    val paint = if (isPeq) {
+                        handleFillPaint
+                    } else {
+                        dotPaint
+                    }
+
+                    val baseColor = if (isPeq) {
+                        if (dot.color == 0) originalHandleColor else dot.color.toQuarterAlpha()
+                    } else {
+                        originalDotColor
+                    }
+
+                    if (animationProgress < 1f) {
+                        paint.color = ColorUtils.setAlphaComponent(
+                                baseColor, (Color.alpha(baseColor) * currentScale).toInt())
+                    } else {
+                        paint.color = baseColor
+                    }
+
+                    drawCircle(x, y, handleOuterRadius * currentScale, paint)
                 }
             }
+
+            handleFillPaint.color = originalHandleColor
+            dotPaint.color = originalDotColor
         }
 
         // Draw Values outside the clip (so they aren't cut off)
@@ -407,6 +553,63 @@ class EqualizerWaveView @JvmOverloads constructor(
     override fun onThemeChanged(theme: Theme, animate: Boolean) {
         updateColors()
         invalidate()
+    }
+
+    private fun drawIndividualPeqBands(
+            canvas: Canvas,
+            bands: List<ParsedBand>,
+            alphaMult: Float,
+            sweepProgress: Float,
+            delays: FloatArray,
+            dynamicDbMax: Float,
+            graphStartX: Float,
+            stepX: Float,
+            midY: Float,
+            drawH: Float,
+            viewHeight: Float,
+            graphW: Float
+    ) {
+        val originalColor = peqBandPaint.color
+        for (i in bands.indices) {
+            val band = bands[i]
+            val delay = delays.getOrElse(i) { 0f }
+
+            val bandSweep = if (sweepProgress >= 1f) 1f else {
+                ((sweepProgress - delay) / 0.5f).coerceIn(0f, 1f)
+            }
+
+            if (bandSweep <= 0f) continue
+
+            singleBandPath.reset()
+            for (j in 0 until PEQ_CURVE_RESOLUTION) {
+                val x = graphStartX + j * stepX
+                val frequency = BASE_FREQ_HZ * 2f.pow((j.toFloat() / (PEQ_CURVE_RESOLUTION - 1)) * BAND_COUNT - 0.5f)
+                val bandGain = getSingleBandResponseAt(frequency, band.gain, band.q, band.frequencyHz, band.type)
+                val normalizedGain = bandGain / dynamicDbMax
+                val y = midY - normalizedGain * (drawH / 2f)
+
+                if (j == 0) {
+                    singleBandPath.moveTo(x, y)
+                } else {
+                    singleBandPath.lineTo(x, y)
+                }
+            }
+
+            val baseColor = if (band.color == 0) originalColor else band.color.toQuarterAlpha()
+            peqBandPaint.color = ColorUtils.setAlphaComponent(
+                    baseColor, (Color.alpha(baseColor) * alphaMult).toInt())
+
+            if (bandSweep < 1f) {
+                canvas.withSave {
+                    val clipRight = graphStartX + graphW * bandSweep
+                    canvas.clipRect(0f, 0f, clipRight, viewHeight)
+                    drawPath(singleBandPath, peqBandPaint)
+                }
+            } else {
+                canvas.drawPath(singleBandPath, peqBandPaint)
+            }
+        }
+        peqBandPaint.color = originalColor
     }
 
     private fun rebuildGradient(w: Int) {

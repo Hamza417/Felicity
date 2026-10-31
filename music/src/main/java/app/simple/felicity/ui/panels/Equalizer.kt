@@ -429,9 +429,11 @@ class Equalizer : MediaFragment() {
                         binding.equalizerScreen.equalizerSliders.mode = targetMode
 
                         if (targetMode == FelicityEqualizer.Companion.Mode.PARAMETRIC) {
-                            binding.equalizerScreen.equalizerWave.setPeqBands(EqualizerManager.peqBandsFlow.value)
+                            binding.equalizerScreen.equalizerWave.setPeqBands(
+                                    EqualizerManager.peqBandsFlow.value, animateReveal = true)
                         } else {
-                            binding.equalizerScreen.equalizerWave.setGains(EqualizerManager.bandGainsFlow.value)
+                            binding.equalizerScreen.equalizerWave.setGains(
+                                    EqualizerManager.bandGainsFlow.value, animateReveal = true)
                         }
                     }
                 }
@@ -446,7 +448,12 @@ class Equalizer : MediaFragment() {
                     if (bands.isNotEmpty()) {
                         val peqBands = bands.map { band ->
                             FelicityEqualizer.Companion.PeqBand(
-                                    gain = band.gain, q = band.q, frequencyHz = band.frequencyHz, color = band.color, type = band.type)
+                                    gain = band.gain,
+                                    q = band.q,
+                                    frequencyHz = band.frequencyHz,
+                                    color = band.color,
+                                    type = band.type
+                            )
                         }
                         binding.equalizerScreen.equalizerSliders.setPeqBands(peqBands)
                         binding.equalizerScreen.equalizerWave.setPeqBands(bands)
