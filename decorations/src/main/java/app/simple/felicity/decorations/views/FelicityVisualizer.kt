@@ -27,31 +27,30 @@ import kotlin.math.abs
 import kotlin.math.sqrt
 
 /**
- * A custom audio spectrum visualizer that supports two rendering modes —
- * vertical frequency bars ([VisualizerMode.BARS]) and a fluid water-wave fill
- * ([VisualizerMode.WAVE]) — combined with four growth directions
- * ([VisualizerDirection]).
+ * A custom audio spectrum visualizer with two rendering modes, vertical frequency bars
+ * ([VisualizerMode.BARS]) and a fluid water-wave fill ([VisualizerMode.WAVE]), combined
+ * with four growth directions ([VisualizerDirection]).
  *
- * Audio data arrives via the lock-free twin-buffer system: [bufferA] and [bufferB] are
- * pre-allocated globally on this class, and [isBufferAFront] is an [AtomicBoolean] that
- * tracks which buffer the UI is currently reading. The audio thread writes FFT-derived
- * band magnitudes into the back buffer via JNI, atomically promotes it to front, and
- * calls [postInvalidate] — no coroutines, no SharedFlow, and no intermediate queues.
+ * Audio data arrives through a lock-free twin-buffer pair. [bufferA] and [bufferB] are
+ * pre-allocated on this class, and [isBufferAFront] is an [AtomicBoolean] that tracks which
+ * buffer the UI thread is currently reading. The audio thread writes FFT-derived band
+ * magnitudes into the back buffer via JNI, atomically promotes it to front, and calls
+ * [postInvalidate]. No coroutines, flows, or intermediate queues are involved.
  *
- * In [onDraw], the front buffer is read once and the AGC (fast-attack / slow-release) is
- * applied inline to derive per-band targets. Those targets are then smoothed into
- * [currentBands] with configurable rise/fall speeds before being rendered.
+ * In [onDraw], the front buffer is read once and a fast-attack, slow-release AGC is applied
+ * inline to derive per-band targets. Those targets are then smoothed into [currentBands]
+ * with separate rise and fall speeds before being rendered.
  *
- * In bars mode, [BAND_COUNT] bars are animated in real time with peak-hold caps. The bars grow from the anchor edge toward the opposite
- * edge according to [direction]. In wave mode, the same spectrum data drives a smooth
- * filled-wave curve anchored at the anchor edge.
+ * In bars mode, [BAND_COUNT] bars are animated in real time with peak-hold caps. The bars
+ * grow from the anchor edge toward the opposite edge according to [direction]. In wave mode,
+ * the same spectrum data drives a smooth filled-wave curve anchored at the anchor edge.
  *
- * [maxRenderHeightFraction] (0.0–1.0) controls how much of the primary growth dimension
+ * [maxRenderHeightFraction] (0.0 to 1.0) controls how much of the primary growth dimension
  * (height for vertical directions, width for horizontal) is available for bar or wave growth.
  *
  * Colors default to the current theme accent and update automatically on accent changes.
  * The active rendering mode, direction, and enabled state are read from
- * [PlayerPreferences] / [VisualizerPreferences] and react to live preference changes
+ * [PlayerPreferences] and [VisualizerPreferences], and react to live preference changes
  * while the view is attached.
  *
  * @author Hamza417
@@ -61,8 +60,6 @@ class FelicityVisualizer @JvmOverloads constructor(
         attrs: AttributeSet? = null,
         defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr), ThemeChangedListener {
-
-    // == Rendering mode ========================================================
 
     /** Selects whether bars or a fluid wave is rendered. */
     enum class VisualizerMode {
@@ -118,8 +115,6 @@ class FelicityVisualizer @JvmOverloads constructor(
             invalidate()
         }
 
-    // == Twin-buffer state (written by audio thread, read by UI thread) ========
-
     /**
      * Buffer A of the lock-free twin-buffer pair.
      *
@@ -140,36 +135,30 @@ class FelicityVisualizer @JvmOverloads constructor(
     /**
      * Tracks which buffer the UI is currently reading.
      * When true, [bufferA] is the front (readable) buffer and [bufferB] is the back
-     * (writable) buffer — and vice versa when false. Toggled atomically by the audio
+     * (writable) buffer, and vice versa when false. Toggled atomically by the audio
      * thread after each successful write.
      */
     val isBufferAFront = AtomicBoolean(true)
 
-    // == Band state ============================================================
-
-    /** Current smoothed magnitude for each band (the value actually rendered). */
+    /** Current smoothed magnitude for each band, which is the value actually rendered. */
     private val currentBands = FloatArray(BAND_COUNT)
 
-    /** Highest magnitude reached; the peak cap tracks this value. */
+    /** Highest magnitude reached by each band; the peak cap tracks this value. */
     private val peakBands = FloatArray(BAND_COUNT)
 
-    /** Downward velocity of each peak cap in normalized units per frame (gravity accumulates here). */
+    /** Downward velocity of each peak cap in normalized units per frame; gravity accumulates here. */
     private val peakVelocities = FloatArray(BAND_COUNT)
 
-    /** Remaining hold frames before gravity starts pulling the cap down. */
+    /** Remaining hold frames before gravity starts pulling each peak cap down. */
     private val peakHoldCounters = IntArray(BAND_COUNT)
-
-    // == AGC =======
 
     /**
      * Smoothed peak across all bands used as the AGC reference.
-     * Fast attack, slow release — updated once per [onDraw] call from the front buffer.
+     * Fast attack, slow release; updated once per [onDraw] call from the front buffer.
      */
     private var smoothedMax = MIN_SMOOTHED_MAX
 
-    // == Drawing ===============================================================
-
-    /** Paint for the frequency bars and the primary wave fill; shader is rebuilt when size or colors change. */
+    /** Paint for the frequency bars and the primary wave fill. Its shader is rebuilt when size or colors change. */
     private val barPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
 
     /**
@@ -189,10 +178,13 @@ class FelicityVisualizer @JvmOverloads constructor(
         alpha = 220
     }
 
-    /** Reusable rect — avoids per-frame allocation in [onDraw]. */
+    /** Reusable rect that avoids per-frame allocation in [onDraw]. */
     private val drawRect = RectF()
 
+    /** Gradient shader shared by [barPaint] and [secondaryWavePaint], or null when it must be rebuilt. */
     private var gradient: LinearGradient? = null
+
+    /** View width the current [gradient] was built for. */
     private var cachedWidth = 0
 
     /**
@@ -210,8 +202,8 @@ class FelicityVisualizer @JvmOverloads constructor(
 
     /**
      * Listens for live SharedPreferences changes.
-     * Handles the app corner-radius slider, the visualizer mode switch, the direction
-     * setting, and the visualizer enabled toggle so the view self-manages its rendering state.
+     * Handles the app corner-radius slider, the visualizer mode switch, and the visualizer
+     * enabled toggle so the view manages its own rendering state.
      */
     private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         when (key) {
@@ -228,8 +220,6 @@ class FelicityVisualizer @JvmOverloads constructor(
         }
     }
 
-    // == Bar path (growing-end rounded corners) ================================
-
     /** Reusable [Path] for rendering bars with rounded growing-end corners and a flat anchor base. */
     private val barPath = Path()
 
@@ -237,7 +227,7 @@ class FelicityVisualizer @JvmOverloads constructor(
      * Eight-element radii array for [Path.addRoundRect].
      * The four indices corresponding to the growing end (top for [VisualizerDirection.BOTTOM_TO_TOP],
      * bottom for [VisualizerDirection.TOP_TO_BOTTOM], right for [VisualizerDirection.LEFT_TO_RIGHT],
-     * left for [VisualizerDirection.RIGHT_TO_LEFT]) carry the active corner radius; the anchor-end
+     * left for [VisualizerDirection.RIGHT_TO_LEFT]) carry the active corner radius. The anchor-end
      * indices are always 0 so bar bases stay flat.
      */
     private val barCornerRadii = FloatArray(8)
@@ -245,13 +235,11 @@ class FelicityVisualizer @JvmOverloads constructor(
     /** Reusable [Path] for rendering both the primary and secondary wave shapes. */
     private val wavePathBuffer = Path()
 
-    // == Render height fraction ================================================
-
     /**
      * Maximum bar or wave render length expressed as a fraction of the view's primary
-     * growth dimension (height for [VisualizerDirection.BOTTOM_TO_TOP] /
-     * [VisualizerDirection.TOP_TO_BOTTOM], width for [VisualizerDirection.LEFT_TO_RIGHT] /
-     * [VisualizerDirection.RIGHT_TO_LEFT]), in the range [0.0..1.0].
+     * growth dimension, in the range [0.0..1.0]. The primary dimension is the height for
+     * [VisualizerDirection.BOTTOM_TO_TOP] and [VisualizerDirection.TOP_TO_BOTTOM], and the
+     * width for [VisualizerDirection.LEFT_TO_RIGHT] and [VisualizerDirection.RIGHT_TO_LEFT].
      *
      * Can also be configured via the `vizMaxRenderHeight` XML attribute.
      */
@@ -281,18 +269,16 @@ class FelicityVisualizer @JvmOverloads constructor(
         }
     }
 
-    // == Public API ============================================================
-
     /**
-     * Delivers a new spectrum snapshot via the legacy (non-direct) path.
+     * Delivers a new spectrum snapshot through the legacy (non-direct) path.
      *
-     * Writes [bands] directly into the current back buffer, atomically promotes it
-     * to front, and calls [postInvalidate]. The AGC and normalization are applied
-     * lazily in [onDraw] on the next frame, keeping this call allocation-free.
+     * Writes [bands] into the current back buffer, atomically promotes it to front,
+     * and calls [postInvalidate]. The AGC and normalization are applied lazily in
+     * [onDraw] on the next frame, keeping this call allocation-free.
      *
      * Prefer the direct twin-buffer path ([bufferA], [bufferB], [isBufferAFront])
-     * for zero-overhead audio-thread writes. This method is retained for any caller
-     * that cannot participate in the JNI direct path.
+     * for audio-thread writes. This method is retained for callers that cannot
+     * participate in the JNI direct path.
      *
      * @param bands Raw FFT-derived band magnitudes in any positive float scale.
      *              Length should equal [BAND_COUNT]; extra elements are silently ignored.
@@ -330,8 +316,8 @@ class FelicityVisualizer @JvmOverloads constructor(
 
     /**
      * Whether the frequency bars themselves should be drawn.
-     * When set to false the bars disappear but the peak caps are still drawn —
-     * useful for a "caps-only" look.
+     * When set to false the bars disappear but the peak caps are still drawn,
+     * which gives a "caps-only" look.
      */
     var barsEnabled: Boolean = true
         set(value) {
@@ -339,7 +325,7 @@ class FelicityVisualizer @JvmOverloads constructor(
             invalidate()
         }
 
-    /** Animates all bars and peaks down to zero by zeroing the back buffer and swapping. */
+    /** Animates all bars and peaks down to zero by zeroing the back buffer and swapping it to front. */
     fun clear() {
         val back = if (isBufferAFront.get()) bufferB else bufferA
         back.fill(0f)
@@ -347,8 +333,10 @@ class FelicityVisualizer @JvmOverloads constructor(
         postInvalidate()
     }
 
-    // == Internal helpers ======================================================
-
+    /**
+     * Builds the default gradient colors from the current theme accent, or fixed
+     * placeholder colors when shown in the layout editor.
+     */
     private fun buildAccentColors(): IntArray {
         return if (isInEditMode) {
             intArrayOf(0xFFFF6200.toInt(), 0xFF00B0FF.toInt())
@@ -360,8 +348,7 @@ class FelicityVisualizer @JvmOverloads constructor(
         }
     }
 
-    // == Size / gradient =======================================================
-
+    /** Rebuilds the gradient shader whenever the view size changes. */
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         rebuildGradient(w, h)
@@ -396,18 +383,20 @@ class FelicityVisualizer @JvmOverloads constructor(
         secondaryWavePaint.shader = newGradient
     }
 
-    // == Drawing ===============================================================
-
+    /**
+     * Reads the front buffer, applies the AGC, smooths each band toward its target,
+     * and delegates rendering to [drawBars] or [drawWave] based on [mode].
+     * Keeps requesting frames while any band or peak cap is still moving.
+     */
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         if (width == 0 || height == 0) return
         if (cachedWidth != width || gradient == null) rebuildGradient(width, height)
 
-        // Read the current front buffer once to keep the snapshot consistent across the
-        // whole frame even if the audio thread swaps buffers mid-draw.
+        // Read the front buffer once so the snapshot stays consistent even if the audio thread swaps mid-draw.
         val frontBuffer = if (isBufferAFront.get()) bufferA else bufferB
 
-        // Fast-attack / slow-release AGC derived from the front buffer.
+        // Fast-attack, slow-release AGC derived from the front buffer.
         var frameMax = MIN_SMOOTHED_MAX
         for (i in 0 until BAND_COUNT) {
             if (frontBuffer[i] > frameMax) frameMax = frontBuffer[i]
@@ -444,12 +433,11 @@ class FelicityVisualizer @JvmOverloads constructor(
 
     /**
      * Renders the bar-spectrum visualization including peak-hold caps. All geometry,
-     * corner-rounding, and cap positions adapt to the active [direction].
+     * corner rounding, and cap positions adapt to the active [direction].
      *
-     * Returns whether any element is still animating.
-     *
-     * @param canvas       Canvas to draw into.
+     * @param canvas        Canvas to draw into.
      * @param initialMoving Whether any band was already considered animating before this call.
+     * @return `true` if any element is still animating.
      */
     private fun drawBars(canvas: Canvas, initialMoving: Boolean): Boolean {
         val isHorizontal = direction == VisualizerDirection.LEFT_TO_RIGHT ||
@@ -472,32 +460,32 @@ class FelicityVisualizer @JvmOverloads constructor(
         val viewBottom = height.toFloat()
         val viewRight = width.toFloat()
 
-        // Populate corner radii so only the growing end of each bar is rounded.
-        // Indices: 0,1 = top-left; 2,3 = top-right; 4,5 = bottom-right; 6,7 = bottom-left.
+        // Only the growing end of each bar is rounded. Radii are ordered top-left, top-right,
+        // bottom-right, bottom-left, with two entries (x, y) per corner.
         when (direction) {
             VisualizerDirection.BOTTOM_TO_TOP -> {
-                barCornerRadii[0] = cornerRadius; barCornerRadii[1] = cornerRadius  // top-left
-                barCornerRadii[2] = cornerRadius; barCornerRadii[3] = cornerRadius  // top-right
-                barCornerRadii[4] = 0f; barCornerRadii[5] = 0f            // bottom-right
-                barCornerRadii[6] = 0f; barCornerRadii[7] = 0f            // bottom-left
+                barCornerRadii[0] = cornerRadius; barCornerRadii[1] = cornerRadius
+                barCornerRadii[2] = cornerRadius; barCornerRadii[3] = cornerRadius
+                barCornerRadii[4] = 0f; barCornerRadii[5] = 0f
+                barCornerRadii[6] = 0f; barCornerRadii[7] = 0f
             }
             VisualizerDirection.TOP_TO_BOTTOM -> {
-                barCornerRadii[0] = 0f; barCornerRadii[1] = 0f            // top-left
-                barCornerRadii[2] = 0f; barCornerRadii[3] = 0f            // top-right
-                barCornerRadii[4] = cornerRadius; barCornerRadii[5] = cornerRadius  // bottom-right
-                barCornerRadii[6] = cornerRadius; barCornerRadii[7] = cornerRadius  // bottom-left
+                barCornerRadii[0] = 0f; barCornerRadii[1] = 0f
+                barCornerRadii[2] = 0f; barCornerRadii[3] = 0f
+                barCornerRadii[4] = cornerRadius; barCornerRadii[5] = cornerRadius
+                barCornerRadii[6] = cornerRadius; barCornerRadii[7] = cornerRadius
             }
             VisualizerDirection.LEFT_TO_RIGHT -> {
-                barCornerRadii[0] = 0f; barCornerRadii[1] = 0f            // top-left
-                barCornerRadii[2] = cornerRadius; barCornerRadii[3] = cornerRadius  // top-right
-                barCornerRadii[4] = cornerRadius; barCornerRadii[5] = cornerRadius  // bottom-right
-                barCornerRadii[6] = 0f; barCornerRadii[7] = 0f            // bottom-left
+                barCornerRadii[0] = 0f; barCornerRadii[1] = 0f
+                barCornerRadii[2] = cornerRadius; barCornerRadii[3] = cornerRadius
+                barCornerRadii[4] = cornerRadius; barCornerRadii[5] = cornerRadius
+                barCornerRadii[6] = 0f; barCornerRadii[7] = 0f
             }
             VisualizerDirection.RIGHT_TO_LEFT -> {
-                barCornerRadii[0] = cornerRadius; barCornerRadii[1] = cornerRadius  // top-left
-                barCornerRadii[2] = 0f; barCornerRadii[3] = 0f            // top-right
-                barCornerRadii[4] = 0f; barCornerRadii[5] = 0f            // bottom-right
-                barCornerRadii[6] = cornerRadius; barCornerRadii[7] = cornerRadius  // bottom-left
+                barCornerRadii[0] = cornerRadius; barCornerRadii[1] = cornerRadius
+                barCornerRadii[2] = 0f; barCornerRadii[3] = 0f
+                barCornerRadii[4] = 0f; barCornerRadii[5] = 0f
+                barCornerRadii[6] = cornerRadius; barCornerRadii[7] = cornerRadius
             }
         }
 
@@ -524,7 +512,7 @@ class FelicityVisualizer @JvmOverloads constructor(
             barPath.addRoundRect(drawRect, barCornerRadii, Path.Direction.CW)
             if (barsEnabled) canvas.drawPath(barPath, barPaint)
 
-            // Peak cap — pushed out by the bar tip, then retreats under gravity.
+            // The peak cap is pushed out by the bar tip, then retreats under gravity.
             if (next >= peakBands[i]) {
                 peakBands[i] = next
                 peakVelocities[i] = 0f
@@ -574,12 +562,11 @@ class FelicityVisualizer @JvmOverloads constructor(
      *
      * A primary wave is drawn at full opacity and a secondary wave at
      * [WAVE_SECONDARY_SCALE] amplitude with reduced opacity, creating a layered
-     * water-depth effect. Both waves are adapted to the active [direction].
+     * water-depth effect. Both waves adapt to the active [direction].
      *
-     * Returns whether any band is still animating.
-     *
-     * @param canvas       Canvas to draw into.
+     * @param canvas        Canvas to draw into.
      * @param initialMoving Whether any band was already considered animating before this call.
+     * @return `true` if any band is still animating.
      */
     private fun drawWave(canvas: Canvas, initialMoving: Boolean): Boolean {
         val viewBottom = height.toFloat()
@@ -601,7 +588,7 @@ class FelicityVisualizer @JvmOverloads constructor(
                 val maxH = height * maxRenderHeightFraction.coerceIn(0f, 1f)
                 val slotW = viewRight / BAND_COUNT
                 val bx = FloatArray(BAND_COUNT) { i -> (i + 0.5f) * slotW }
-                // Wave grows downward from the top; anchorY = 0f.
+                // The wave grows downward from the top, so the anchor stays at y = 0.
                 val by = FloatArray(BAND_COUNT) { i -> currentBands[i] * maxH }
                 val byS = FloatArray(BAND_COUNT) { i -> currentBands[i] * maxH * WAVE_SECONDARY_SCALE }
                 buildWavePath(wavePathBuffer, bx, by, 0f)
@@ -645,7 +632,7 @@ class FelicityVisualizer @JvmOverloads constructor(
 
     /**
      * Populates [path] with a filled wave shape for vertical growth directions
-     * ([VisualizerDirection.BOTTOM_TO_TOP] / [VisualizerDirection.TOP_TO_BOTTOM]).
+     * ([VisualizerDirection.BOTTOM_TO_TOP] and [VisualizerDirection.TOP_TO_BOTTOM]).
      *
      * The top edge of the wave passes smoothly through the provided [by] y-coordinates
      * using midpoint quadratic Bézier interpolation.
@@ -660,20 +647,19 @@ class FelicityVisualizer @JvmOverloads constructor(
     private fun buildWavePath(path: Path, bx: FloatArray, by: FloatArray, anchorY: Float) {
         path.reset()
 
-        // Start at the anchor-edge left corner and move along the left edge to the first band.
+        // Anchor the path at the left edge, then rise to the first band.
         path.moveTo(0f, anchorY)
         path.lineTo(0f, by[0])
 
-        // Smooth curve: each quadTo uses the current band center as a control point
-        // and the midpoint between this and the next band center as the end point.
-        // This guarantees C1 continuity (matching tangents) at every junction.
+        // Each quadTo uses the band center as the control point and the midpoint to the next
+        // band as the end point, which keeps tangents continuous at every junction.
         for (i in 0 until BAND_COUNT - 1) {
             val midX = (bx[i] + bx[i + 1]) / 2f
             val midY = (by[i] + by[i + 1]) / 2f
             path.quadTo(bx[i], by[i], midX, midY)
         }
 
-        // Connect the last band center to the right edge, then close the fill area.
+        // Extend the last band to the right edge, then close the fill area.
         path.lineTo(bx[BAND_COUNT - 1], by[BAND_COUNT - 1])
         path.lineTo(width.toFloat(), by[BAND_COUNT - 1])
         path.lineTo(width.toFloat(), anchorY)
@@ -682,7 +668,7 @@ class FelicityVisualizer @JvmOverloads constructor(
 
     /**
      * Populates [path] with a filled wave shape for horizontal growth directions
-     * ([VisualizerDirection.LEFT_TO_RIGHT] / [VisualizerDirection.RIGHT_TO_LEFT]).
+     * ([VisualizerDirection.LEFT_TO_RIGHT] and [VisualizerDirection.RIGHT_TO_LEFT]).
      *
      * The leading edge of the wave passes smoothly through the provided [bx] x-coordinates
      * using midpoint quadratic Bézier interpolation, with bands distributed vertically.
@@ -703,7 +689,7 @@ class FelicityVisualizer @JvmOverloads constructor(
     ) {
         path.reset()
 
-        // Start at the anchor-edge top corner and move along the top edge to the first band.
+        // Anchor the path at the top corner, then run along the top edge to the first band.
         path.moveTo(anchorX, 0f)
         path.lineTo(bx[0], 0f)
 
@@ -713,15 +699,14 @@ class FelicityVisualizer @JvmOverloads constructor(
             path.quadTo(bx[i], by[i], midX, midY)
         }
 
-        // Connect the last band to the bottom edge, then close along the anchor edge.
+        // Extend the last band to the bottom edge, then close along the anchor edge.
         path.lineTo(bx[BAND_COUNT - 1], by[BAND_COUNT - 1])
         path.lineTo(bx[BAND_COUNT - 1], viewBottom)
         path.lineTo(anchorX, viewBottom)
         path.close()
     }
 
-    // == Lifecycle =============================================================
-
+    /** Registers theme and preference listeners and syncs the view with the persisted state. */
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         if (!isInEditMode) {
@@ -734,12 +719,14 @@ class FelicityVisualizer @JvmOverloads constructor(
         }
     }
 
+    /** Unregisters the theme and preference listeners registered in [onAttachedToWindow]. */
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         ThemeManager.removeListener(this)
         unregisterListener(prefsListener)
     }
 
+    /** Applies the persisted visualizer type from [VisualizerPreferences] to [mode]. */
     private fun applyModePreferences() {
         mode = if (VisualizerPreferences.getVisualizerType() == VisualizerPreferences.TYPE_WAVE) {
             VisualizerMode.WAVE
@@ -748,8 +735,7 @@ class FelicityVisualizer @JvmOverloads constructor(
         }
     }
 
-    // == ThemeChangedListener ==================================================
-
+    /** Rebuilds the gradient and recolors the peak caps when the theme accent changes. */
     override fun onAccentChanged(accent: Accent) {
         super.onAccentChanged(accent)
         barColors = buildAccentColors()
@@ -758,14 +744,13 @@ class FelicityVisualizer @JvmOverloads constructor(
         invalidate()
     }
 
+    /** No-op, since the bars use accent colors and not theme background colors. */
     override fun onThemeChanged(theme: Theme, animate: Boolean) {
-        // Bars use accent colors, not theme background colors — no action needed.
     }
 
-    // == Private helpers =======================================================
-
     /**
-     * Computes the corner radius as a fraction of bar cross-section width from the current app preference.
+     * Computes the corner radius as a fraction of the bar cross-section width
+     * from the current app corner radius preference.
      */
     private fun computeCornerFraction(): Float {
         if (isInEditMode) return 0.35f
@@ -773,7 +758,7 @@ class FelicityVisualizer @JvmOverloads constructor(
     }
 
     companion object {
-        /** Number of frequency bands rendered — must match the engine's VisualizerAudioProcessor band count. */
+        /** Number of frequency bands rendered. Must match the engine's VisualizerAudioProcessor band count. */
         const val BAND_COUNT = 40
 
         /** Fraction of each band slot occupied by the gap between adjacent bars. */
@@ -787,7 +772,7 @@ class FelicityVisualizer @JvmOverloads constructor(
 
         /**
          * Gravity added to a cap's velocity each frame while it is retreating.
-         * Normalized units (0..1 per frame²).
+         * Normalized units (0..1 per frame squared).
          */
         private const val GRAVITY = 0.0018f
 
