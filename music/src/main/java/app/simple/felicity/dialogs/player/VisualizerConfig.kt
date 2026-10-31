@@ -37,6 +37,11 @@ class VisualizerConfig : MediaBottomDialogFragment() {
         }
 
         setupLatencySeekbar()
+
+        binding.spectrumColorsToggle.isChecked = VisualizerPreferences.isSpectrumColorsEnabled()
+        binding.spectrumColorsToggle.setOnCheckedChangeListener { _, isChecked ->
+            VisualizerPreferences.setSpectrumColorsEnabled(isChecked)
+        }
     }
 
     private fun setupLatencySeekbar() {

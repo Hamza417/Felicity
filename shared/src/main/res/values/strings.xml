@@ -530,6 +530,7 @@
     <string name="bars">Bars</string>
     <string name="wave">Wave</string>
     <string name="blocks">Blocks</string>
+    <string name="spectrum_colors">Spectrum Colors</string>
     <string name="current_queue">Queue %1$d</string>
     <string name="rename">Rename</string>
     <string name="clear_queue">Clear</string>

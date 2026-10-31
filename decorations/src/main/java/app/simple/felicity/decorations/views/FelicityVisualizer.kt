@@ -12,8 +12,11 @@ import android.graphics.Shader
 import android.util.AttributeSet
 import android.view.View
 import androidx.core.content.withStyledAttributes
+import androidx.core.graphics.ColorUtils
 import app.simple.felicity.decoration.R
+import app.simple.felicity.decorations.views.FelicityVisualizer.Companion.HIT_DECAY
 import app.simple.felicity.decorations.views.FelicityVisualizer.Companion.PEAK_HOLD_FRAMES
+import app.simple.felicity.decorations.views.FelicityVisualizer.Companion.ZONE_COLORS
 import app.simple.felicity.manager.SharedPreferences.registerListener
 import app.simple.felicity.manager.SharedPreferences.unregisterListener
 import app.simple.felicity.preferences.AppearancePreferences
@@ -26,13 +29,14 @@ import app.simple.felicity.theme.models.Theme
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.abs
 import kotlin.math.ceil
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sqrt
 
 /**
  * A custom audio spectrum visualizer with three rendering modes: vertical frequency bars
  * ([VisualizerMode.BARS]), a fluid water-wave fill ([VisualizerMode.WAVE]), and a retro
- * stack of square blocks ([VisualizerMode.BLOCKS]), combined with four growth directions
+ * stack of rectangular blocks ([VisualizerMode.BLOCKS]), combined with four growth directions
  * ([VisualizerDirection]).
  *
  * Audio data arrives through a lock-free twin-buffer pair. [bufferA] and [bufferB] are
@@ -53,6 +57,9 @@ import kotlin.math.sqrt
  * (height for vertical directions, width for horizontal) is available for bar or wave growth.
  *
  * Colors default to the current theme accent and update automatically on accent changes.
+ * When [spectrumColorsEnabled] is on, every frequency zone owns a color: purple for bass, then
+ * yellow, red for the mids, green, and blue for treble. Each band sits on its accent color,
+ * flashes into its zone color when it jumps, and relaxes back as the hit fades.
  * The active rendering mode, direction, and enabled state are read from
  * [PlayerPreferences] and [VisualizerPreferences], and react to live preference changes
  * while the view is attached.
@@ -188,6 +195,33 @@ class FelicityVisualizer @JvmOverloads constructor(
     /** Reusable rect that avoids per-frame allocation in [onDraw]. */
     private val drawRect = RectF()
 
+    /**
+     * Paint used instead of [barPaint] when [spectrumColorsEnabled] is on. Bars and blocks set
+     * its flat color per band, while the wave attaches a per-band gradient shader to it.
+     */
+    private val spectrumPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+
+    /** Depth-layer counterpart of [spectrumPaint] for the secondary wave. */
+    private val spectrumSecondaryPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        alpha = 120
+    }
+
+    /** Accent gradient color sampled at each band position, used as the low-intensity color. */
+    private val baseBandColors = IntArray(BAND_COUNT)
+
+    /** Zone color of each band, sampled from [ZONE_COLORS] across the frequency range. */
+    private val zoneBandColors = IntArray(BAND_COUNT) { i -> sampleZoneColor((i + 0.5f) / BAND_COUNT) }
+
+    /** Per-band color flash strength from 0 to 1. It jumps when the band jumps and then decays. */
+    private val hitEnergies = FloatArray(BAND_COUNT)
+
+    /** Per-band hit energy for peak caps. It follows [hitEnergies] but decays more slowly. */
+    private val capHitEnergies = FloatArray(BAND_COUNT)
+
+    /** Final color of each band for the current frame while [spectrumColorsEnabled] is on. */
+    private val spectrumBandColors = IntArray(BAND_COUNT)
+
     /** Gradient shader shared by [barPaint] and [secondaryWavePaint], or null when it must be rebuilt. */
     private var gradient: LinearGradient? = null
 
@@ -220,6 +254,9 @@ class FelicityVisualizer @JvmOverloads constructor(
             }
             VisualizerPreferences.VISUALIZER_TYPE -> {
                 applyModePreferences()
+            }
+            VisualizerPreferences.SPECTRUM_COLORS_ENABLED -> {
+                spectrumColorsEnabled = VisualizerPreferences.isSpectrumColorsEnabled()
             }
             PlayerPreferences.VISUALIZER_ENABLED -> {
                 visibility = if (PlayerPreferences.isVisualizerEnabled()) VISIBLE else GONE
@@ -335,6 +372,18 @@ class FelicityVisualizer @JvmOverloads constructor(
             invalidate()
         }
 
+    /**
+     * Whether bands are colored by frequency zone and hits. While off, every band uses the
+     * accent gradient. While on, each band sits on its accent color and flashes into the color
+     * of its zone (see [ZONE_COLORS]) when it jumps, then relaxes back. Kept in sync with
+     * [VisualizerPreferences.isSpectrumColorsEnabled] while the view is attached.
+     */
+    var spectrumColorsEnabled: Boolean = false
+        set(value) {
+            field = value
+            invalidate()
+        }
+
     /** Animates all bars and peaks down to zero by zeroing the back buffer and swapping it to front. */
     fun clear() {
         val back = if (isBufferAFront.get()) bufferB else bufferA
@@ -381,6 +430,10 @@ class FelicityVisualizer @JvmOverloads constructor(
 
         val colors = barColors
         val positions = FloatArray(colors.size) { i -> i.toFloat() / (colors.size - 1) }
+
+        for (i in 0 until BAND_COUNT) {
+            baseBandColors[i] = sampleColors(colors, (i + 0.5f) / BAND_COUNT)
+        }
 
         val newGradient = when (direction) {
             VisualizerDirection.LEFT_TO_RIGHT, VisualizerDirection.RIGHT_TO_LEFT ->
@@ -429,7 +482,18 @@ class FelicityVisualizer @JvmOverloads constructor(
             val next = (current + (target - current) * speed).coerceIn(0f, 1f)
             currentBands[i] = next
             if (abs(next - current) > IDLE_THRESHOLD) stillMoving = true
+
+            if (spectrumColorsEnabled) {
+                val kick = ((target - current - HIT_MIN_JUMP) / (HIT_FULL_JUMP - HIT_MIN_JUMP)).coerceIn(0f, 1f)
+                val held = hitEnergies[i] * HIT_DECAY
+                val attack = HIT_ATTACK + (1f - HIT_ATTACK) * kick * kick
+                hitEnergies[i] = if (kick > held) held + (kick - held) * attack else held
+                capHitEnergies[i] = max(capHitEnergies[i] * CAP_HIT_DECAY, hitEnergies[i])
+                if (capHitEnergies[i] > HIT_IDLE) stillMoving = true
+            }
         }
+
+        if (spectrumColorsEnabled) updateSpectrumColors()
 
         stillMoving = when (mode) {
             VisualizerMode.BARS -> drawBars(canvas, stillMoving)
@@ -439,6 +503,39 @@ class FelicityVisualizer @JvmOverloads constructor(
 
         if (stillMoving) {
             postInvalidateOnAnimation()
+        }
+    }
+
+    /**
+     * Computes the color of every band for the current frame. A band sits on its accent
+     * gradient color and flashes to its zone color when it jumps, then relaxes back as its
+     * hit energy decays.
+     */
+    private fun updateSpectrumColors() {
+        for (i in 0 until BAND_COUNT) {
+            spectrumBandColors[i] = ColorUtils.blendARGB(baseBandColors[i], zoneBandColors[i], punchyWeight(hitEnergies[i]))
+        }
+    }
+
+    /**
+     * Maps a hit energy to a blend weight that avoids washed-out in-between tones. Weak hits stay
+     * on the accent color, and anything past the midpoint snaps close to the pure zone color.
+     */
+    private fun punchyWeight(energy: Float): Float {
+        val t = ((sqrt(energy) - PUNCH_START) / (PUNCH_END - PUNCH_START)).coerceIn(0f, 1f)
+        return t * t * (3f - 2f * t)
+    }
+
+    /**
+     * Builds a gradient shader that carries [spectrumBandColors] along the band-distribution
+     * axis, so the wave takes the color of the band beneath each point.
+     */
+    private fun buildSpectrumShader(): LinearGradient {
+        return when (direction) {
+            VisualizerDirection.LEFT_TO_RIGHT, VisualizerDirection.RIGHT_TO_LEFT ->
+                LinearGradient(0f, 0f, 0f, height.toFloat(), spectrumBandColors, SPECTRUM_POSITIONS, Shader.TileMode.CLAMP)
+            else ->
+                LinearGradient(0f, 0f, width.toFloat(), 0f, spectrumBandColors, SPECTRUM_POSITIONS, Shader.TileMode.CLAMP)
         }
     }
 
@@ -501,6 +598,7 @@ class FelicityVisualizer @JvmOverloads constructor(
         }
 
         var stillMoving = initialMoving
+        if (spectrumColorsEnabled) spectrumPaint.shader = null
 
         for (i in 0 until BAND_COUNT) {
             val next = currentBands[i]
@@ -521,7 +619,7 @@ class FelicityVisualizer @JvmOverloads constructor(
 
             barPath.reset()
             barPath.addRoundRect(drawRect, barCornerRadii, Path.Direction.CW)
-            if (barsEnabled) canvas.drawPath(barPath, barPaint)
+            if (barsEnabled) canvas.drawPath(barPath, bandPaint(i))
 
             // The peak cap is pushed out by the bar tip, then retreats under gravity.
             if (updatePeak(i, next)) stillMoving = true
@@ -549,7 +647,7 @@ class FelicityVisualizer @JvmOverloads constructor(
                             (peakPos + capPillDim / 2f).coerceAtMost(viewBottom)
                     )
                 }
-                canvas.drawRoundRect(drawRect, cornerRadius, cornerRadius, capPaint)
+                canvas.drawRoundRect(drawRect, cornerRadius, cornerRadius, peakPaint(i))
             }
         }
 
@@ -614,6 +712,7 @@ class FelicityVisualizer @JvmOverloads constructor(
         val viewBottom = height.toFloat()
         val viewRight = width.toFloat()
         var stillMoving = initialMoving
+        if (spectrumColorsEnabled) spectrumPaint.shader = null
 
         for (i in 0 until BAND_COUNT) {
             val next = currentBands[i]
@@ -641,11 +740,44 @@ class FelicityVisualizer @JvmOverloads constructor(
                     VisualizerDirection.RIGHT_TO_LEFT ->
                         drawRect.set(viewRight - end, crossStart, viewRight - start, crossStart + blockWidth)
                 }
-                canvas.drawRoundRect(drawRect, cornerRadius, cornerRadius, if (isLit) barPaint else capPaint)
+                canvas.drawRoundRect(drawRect, cornerRadius, cornerRadius, if (isLit) bandPaint(i) else peakPaint(i))
             }
         }
 
         return stillMoving
+    }
+
+    /**
+     * Returns the paint used to fill the bar or block of [band]. With [spectrumColorsEnabled]
+     * this is [spectrumPaint] set to the band's current color, otherwise the shared [barPaint].
+     */
+    private fun bandPaint(band: Int): Paint {
+        if (!spectrumColorsEnabled) return barPaint
+        spectrumPaint.color = spectrumBandColors[band]
+        return spectrumPaint
+    }
+
+    /**
+     * Returns the paint used to fill the peak cap of [band]. With [spectrumColorsEnabled] the
+     * cap blends from the cap color toward the band's zone color according to its peak height,
+     * otherwise the shared [capPaint] is used.
+     */
+    private fun peakPaint(band: Int): Paint {
+        if (!spectrumColorsEnabled) return capPaint
+        spectrumPaint.color = ColorUtils.blendARGB(capPaint.color, zoneBandColors[band], punchyWeight(capHitEnergies[band]))
+        return spectrumPaint
+    }
+
+    /**
+     * Attaches a gradient shader built from the current band colors to the spectrum wave paints.
+     * Does nothing unless [spectrumColorsEnabled] is on.
+     */
+    private fun applyWavePaints() {
+        if (spectrumColorsEnabled) {
+            val shader = buildSpectrumShader()
+            spectrumPaint.shader = shader
+            spectrumSecondaryPaint.shader = shader
+        }
     }
 
     /**
@@ -663,6 +795,10 @@ class FelicityVisualizer @JvmOverloads constructor(
         val viewBottom = height.toFloat()
         val viewRight = width.toFloat()
 
+        applyWavePaints()
+        val primaryPaint = if (spectrumColorsEnabled) spectrumPaint else barPaint
+        val secondaryPaint = if (spectrumColorsEnabled) spectrumSecondaryPaint else secondaryWavePaint
+
         when (direction) {
             VisualizerDirection.BOTTOM_TO_TOP -> {
                 val maxH = height * maxRenderHeightFraction.coerceIn(0f, 1f)
@@ -671,9 +807,9 @@ class FelicityVisualizer @JvmOverloads constructor(
                 val by = FloatArray(BAND_COUNT) { i -> viewBottom - currentBands[i] * maxH }
                 val byS = FloatArray(BAND_COUNT) { i -> viewBottom - currentBands[i] * maxH * WAVE_SECONDARY_SCALE }
                 buildWavePath(wavePathBuffer, bx, by, viewBottom)
-                canvas.drawPath(wavePathBuffer, barPaint)
+                canvas.drawPath(wavePathBuffer, primaryPaint)
                 buildWavePath(wavePathBuffer, bx, byS, viewBottom)
-                canvas.drawPath(wavePathBuffer, secondaryWavePaint)
+                canvas.drawPath(wavePathBuffer, secondaryPaint)
             }
             VisualizerDirection.TOP_TO_BOTTOM -> {
                 val maxH = height * maxRenderHeightFraction.coerceIn(0f, 1f)
@@ -683,9 +819,9 @@ class FelicityVisualizer @JvmOverloads constructor(
                 val by = FloatArray(BAND_COUNT) { i -> currentBands[i] * maxH }
                 val byS = FloatArray(BAND_COUNT) { i -> currentBands[i] * maxH * WAVE_SECONDARY_SCALE }
                 buildWavePath(wavePathBuffer, bx, by, 0f)
-                canvas.drawPath(wavePathBuffer, barPaint)
+                canvas.drawPath(wavePathBuffer, primaryPaint)
                 buildWavePath(wavePathBuffer, bx, byS, 0f)
-                canvas.drawPath(wavePathBuffer, secondaryWavePaint)
+                canvas.drawPath(wavePathBuffer, secondaryPaint)
             }
             VisualizerDirection.LEFT_TO_RIGHT -> {
                 val maxW = width * maxRenderHeightFraction.coerceIn(0f, 1f)
@@ -694,9 +830,9 @@ class FelicityVisualizer @JvmOverloads constructor(
                 val bx = FloatArray(BAND_COUNT) { i -> currentBands[i] * maxW }
                 val bxS = FloatArray(BAND_COUNT) { i -> currentBands[i] * maxW * WAVE_SECONDARY_SCALE }
                 buildWavePathHorizontal(wavePathBuffer, bx, by, 0f, viewBottom)
-                canvas.drawPath(wavePathBuffer, barPaint)
+                canvas.drawPath(wavePathBuffer, primaryPaint)
                 buildWavePathHorizontal(wavePathBuffer, bxS, by, 0f, viewBottom)
-                canvas.drawPath(wavePathBuffer, secondaryWavePaint)
+                canvas.drawPath(wavePathBuffer, secondaryPaint)
             }
             VisualizerDirection.RIGHT_TO_LEFT -> {
                 val maxW = width * maxRenderHeightFraction.coerceIn(0f, 1f)
@@ -705,9 +841,9 @@ class FelicityVisualizer @JvmOverloads constructor(
                 val bx = FloatArray(BAND_COUNT) { i -> viewRight - currentBands[i] * maxW }
                 val bxS = FloatArray(BAND_COUNT) { i -> viewRight - currentBands[i] * maxW * WAVE_SECONDARY_SCALE }
                 buildWavePathHorizontal(wavePathBuffer, bx, by, viewRight, viewBottom)
-                canvas.drawPath(wavePathBuffer, barPaint)
+                canvas.drawPath(wavePathBuffer, primaryPaint)
                 buildWavePathHorizontal(wavePathBuffer, bxS, by, viewRight, viewBottom)
-                canvas.drawPath(wavePathBuffer, secondaryWavePaint)
+                canvas.drawPath(wavePathBuffer, secondaryPaint)
             }
         }
 
@@ -807,6 +943,7 @@ class FelicityVisualizer @JvmOverloads constructor(
             applyModePreferences()
             visibility = if (PlayerPreferences.isVisualizerEnabled()) VISIBLE else GONE
             capPaint.color = ThemeManager.accent.primaryAccentColor
+            spectrumColorsEnabled = VisualizerPreferences.isSpectrumColorsEnabled()
         }
     }
 
@@ -848,9 +985,87 @@ class FelicityVisualizer @JvmOverloads constructor(
         return (AppearancePreferences.getCornerRadius() / AppearancePreferences.MAX_CORNER_RADIUS) * CORNER_RADIUS_FACTOR
     }
 
+    /**
+     * Samples a multi-stop gradient at [fraction] without building a shader.
+     *
+     * @param colors ARGB stops spread evenly from 0 to 1 (at least two).
+     * @param fraction Position along the gradient in the range [0..1].
+     */
+    private fun sampleColors(colors: IntArray, fraction: Float): Int {
+        val scaled = fraction.coerceIn(0f, 1f) * (colors.size - 1)
+        val index = scaled.toInt().coerceAtMost(colors.size - 2)
+        return ColorUtils.blendARGB(colors[index], colors[index + 1], scaled - index)
+    }
+
+    /**
+     * Samples [ZONE_COLORS] so that each zone holds its pure color across most of its width
+     * and only blends with its neighbor in a narrow band around the boundary.
+     */
+    private fun sampleZoneColor(fraction: Float): Int {
+        val scaled = fraction.coerceIn(0f, 1f) * (ZONE_COLORS.size - 1)
+        val index = scaled.toInt().coerceAtMost(ZONE_COLORS.size - 2)
+        val edge = ((scaled - index - ZONE_BLEND_START) / (1f - 2f * ZONE_BLEND_START)).coerceIn(0f, 1f)
+        return ColorUtils.blendARGB(ZONE_COLORS[index], ZONE_COLORS[index + 1], edge * edge * (3f - 2f * edge))
+    }
+
     companion object {
         /** Number of frequency bands rendered. Must match the engine's VisualizerAudioProcessor band count. */
         const val BAND_COUNT = 40
+
+        /** Gradient stop positions for the wave shader, one per band center. */
+        private val SPECTRUM_POSITIONS = FloatArray(BAND_COUNT) { i -> (i + 0.5f) / BAND_COUNT }
+
+        /**
+         * Colors of the frequency zones, spread evenly from the lowest band to the highest:
+         * purple for bass, yellow, red for the mids, green, and blue for treble. Bands between
+         * two zone centers take an interpolated color, but only near the boundary, so each zone
+         * stays solid. The shades are bold, fully saturated arcade tones that do not wash out
+         * on light or dark themes.
+         */
+        private val ZONE_COLORS = intArrayOf(
+                0xFFA100FF.toInt(),
+                0xFFFFE600.toInt(),
+                0xFFFF0A2A.toInt(),
+                0xFF00FF4C.toInt(),
+                0xFF0A4DFF.toInt()
+        )
+
+        /** Square-rooted hit energy at which a band starts to leave the accent color. */
+        private const val PUNCH_START = 0.2f
+
+        /** Square-rooted hit energy at which a band shows the pure zone color. */
+        private const val PUNCH_END = 0.6f
+
+        /** Fraction of the span between two zone centers over which a zone holds its pure color before blending. */
+        private const val ZONE_BLEND_START = 0.35f
+
+        /**
+         * Smallest per-frame jump of a band that starts to tint it. Smaller changes are treated
+         * as ordinary movement and keep the accent color.
+         */
+        private const val HIT_MIN_JUMP = 0.06f
+
+        /** Per-frame jump of a band that tints it fully with its zone color. */
+        private const val HIT_FULL_JUMP = 0.3f
+
+        /**
+         * Per-frame multiplier that relaxes a band's hit energy back toward the accent color.
+         * Closer to 1 makes the color linger longer.
+         */
+        private const val HIT_DECAY = 0.95f
+
+        /**
+         * Fraction of the gap to the target hit energy closed each frame for a mild hit, so colors
+         * ease in instead of snapping. The fraction rises with the hit strength and reaches 1 for
+         * the strongest hits, which therefore show the full zone color immediately.
+         */
+        private const val HIT_ATTACK = 0.3f
+
+        /** Per-frame multiplier for a peak cap's hit energy, slower than [HIT_DECAY] so caps linger. */
+        private const val CAP_HIT_DECAY = 0.975f
+
+        /** Hit energy below which color animation is considered finished. */
+        private const val HIT_IDLE = 0.01f
 
         /** Fraction of each band slot occupied by the gap between adjacent bars. */
         private const val BAR_GAP_FRACTION = 0.22f

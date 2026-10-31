@@ -13,6 +13,9 @@ object VisualizerPreferences {
     /** SharedPreferences key for the user-defined visualizer sync offset in milliseconds. */
     const val LATENCY_OFFSET_MS = "visualizer_latency_offset_ms"
 
+    /** SharedPreferences key for the intensity-driven spectrum coloring toggle. */
+    const val SPECTRUM_COLORS_ENABLED = "visualizer_spectrum_colors_enabled"
+
     /** Smallest allowed sync offset; negative values make the visualizer react earlier. */
     const val LATENCY_OFFSET_MIN_MS = -300
 
@@ -82,5 +85,18 @@ object VisualizerPreferences {
         return SharedPreferences.getSharedPreferences()
             .getInt(LATENCY_OFFSET_MS, 0)
             .coerceIn(LATENCY_OFFSET_MIN_MS, LATENCY_OFFSET_MAX_MS)
+    }
+
+    /** Persists whether bars take on spectrum colors as their band intensity rises. */
+    fun setSpectrumColorsEnabled(value: Boolean) {
+        SharedPreferences.getSharedPreferences().edit {
+            putBoolean(SPECTRUM_COLORS_ENABLED, value)
+        }
+    }
+
+    /** Returns whether intensity-driven spectrum coloring is enabled; off by default. */
+    fun isSpectrumColorsEnabled(): Boolean {
+        return SharedPreferences.getSharedPreferences()
+            .getBoolean(SPECTRUM_COLORS_ENABLED, false)
     }
 }
