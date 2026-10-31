@@ -394,21 +394,18 @@ class VisualizerProcessor : BaseAudioProcessor() {
              */
             val mono = (leftSample + rightSample) / 2f
             val delaySamples = outputLatencySamples
-            val delayedMono: Float
 
-            if (delaySamples > 0) {
-                /**
-                 * Write the current mono sample at the write cursor, then read from the
-                 * position that is [delaySamples] frames behind the write cursor.
-                 * The bitmask replaces modulo to keep the loop branch-light.
-                 */
-                vizDelayBuf[vizDelayWritePos] = mono
-                val readPos = (vizDelayWritePos - delaySamples + kDelayBufSize) and kDelayBufMask
-                delayedMono = vizDelayBuf[readPos]
-                vizDelayWritePos = (vizDelayWritePos + 1) and kDelayBufMask
+            /**
+             * The ring is written unconditionally so the history is always valid when the
+             * user raises the latency offset from zero while a track is playing.
+             */
+            vizDelayBuf[vizDelayWritePos] = mono
+            val delayedMono = if (delaySamples > 0) {
+                vizDelayBuf[(vizDelayWritePos - delaySamples + kDelayBufSize) and kDelayBufMask]
             } else {
-                delayedMono = mono
+                mono
             }
+            vizDelayWritePos = (vizDelayWritePos + 1) and kDelayBufMask
 
             // Downmix stereo to mono for accurate frequency analysis.
             sampleBuffer[bufferIndex] = delayedMono
@@ -461,16 +458,14 @@ class VisualizerProcessor : BaseAudioProcessor() {
             }
 
             val delaySamples = outputLatencySamples
-            val delayedMono: Float
 
-            if (delaySamples > 0) {
-                vizDelayBuf[vizDelayWritePos] = mono
-                val readPos = (vizDelayWritePos - delaySamples + kDelayBufSize) and kDelayBufMask
-                delayedMono = vizDelayBuf[readPos]
-                vizDelayWritePos = (vizDelayWritePos + 1) and kDelayBufMask
+            vizDelayBuf[vizDelayWritePos] = mono
+            val delayedMono = if (delaySamples > 0) {
+                vizDelayBuf[(vizDelayWritePos - delaySamples + kDelayBufSize) and kDelayBufMask]
             } else {
-                delayedMono = mono
+                mono
             }
+            vizDelayWritePos = (vizDelayWritePos + 1) and kDelayBufMask
 
             sampleBuffer[bufferIndex] = delayedMono
             bufferIndex++

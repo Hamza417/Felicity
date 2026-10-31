@@ -2,10 +2,6 @@ package app.simple.felicity.preferences
 
 import androidx.core.content.edit
 import app.simple.felicity.manager.SharedPreferences
-import app.simple.felicity.preferences.VisualizerPreferences.DIRECTION_BOTTOM_TO_TOP
-import app.simple.felicity.preferences.VisualizerPreferences.DIRECTION_LEFT_TO_RIGHT
-import app.simple.felicity.preferences.VisualizerPreferences.DIRECTION_RIGHT_TO_LEFT
-import app.simple.felicity.preferences.VisualizerPreferences.DIRECTION_TOP_TO_BOTTOM
 
 object VisualizerPreferences {
 
@@ -15,6 +11,15 @@ object VisualizerPreferences {
 
     /** SharedPreferences key for the active FelicityVisualizer bar-growth direction. */
     const val VISUALIZER_DIRECTION = "visualizer_direction"
+
+    /** SharedPreferences key for the user-defined visualizer sync offset in milliseconds. */
+    const val LATENCY_OFFSET_MS = "visualizer_latency_offset_ms"
+
+    /** Smallest allowed sync offset; negative values make the visualizer react earlier. */
+    const val LATENCY_OFFSET_MIN_MS = -300
+
+    /** Largest allowed sync offset; positive values push the visualizer later. */
+    const val LATENCY_OFFSET_MAX_MS = 500
 
     const val TYPE_BARS = 0
     const val TYPE_WAVE = 1
@@ -83,5 +88,22 @@ object VisualizerPreferences {
     fun getVisualizerDirection(): Int {
         return SharedPreferences.getSharedPreferences()
             .getInt(VISUALIZER_DIRECTION, DIRECTION_BOTTOM_TO_TOP)
+    }
+
+    /**
+     * Persists the manual visualizer sync offset, added on top of the automatically
+     * estimated output latency. Clamped to [LATENCY_OFFSET_MIN_MS]..[LATENCY_OFFSET_MAX_MS].
+     */
+    fun setLatencyOffsetMs(value: Int) {
+        SharedPreferences.getSharedPreferences().edit {
+            putInt(LATENCY_OFFSET_MS, value.coerceIn(LATENCY_OFFSET_MIN_MS, LATENCY_OFFSET_MAX_MS))
+        }
+    }
+
+    /** Returns the manual visualizer sync offset in milliseconds; 0 by default. */
+    fun getLatencyOffsetMs(): Int {
+        return SharedPreferences.getSharedPreferences()
+            .getInt(LATENCY_OFFSET_MS, 0)
+            .coerceIn(LATENCY_OFFSET_MIN_MS, LATENCY_OFFSET_MAX_MS)
     }
 }

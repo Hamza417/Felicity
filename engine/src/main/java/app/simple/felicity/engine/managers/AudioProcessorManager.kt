@@ -9,6 +9,7 @@ import app.simple.felicity.engine.processors.NightModeProcessor
 import app.simple.felicity.engine.processors.SilenceTrimmingProcessor
 import app.simple.felicity.engine.processors.VisualizerProcessor
 import app.simple.felicity.preferences.EqualizerPreferences
+import app.simple.felicity.preferences.VisualizerPreferences
 import app.simple.felicity.shared.models.ParsedBand
 
 /**
@@ -33,6 +34,10 @@ import app.simple.felicity.shared.models.ParsedBand
  */
 @OptIn(UnstableApi::class)
 class AudioProcessorManager {
+
+    /** Last hardware output latency estimate supplied by the service, before the user offset. */
+    @Volatile
+    private var estimatedLatencyMs: Int = 0
 
     /**
      * Passthrough processor that trims leading and trailing digital silence.
@@ -205,11 +210,28 @@ class AudioProcessorManager {
      * Call this whenever the pipeline latency changes: on playback start, on audio format
      * changes, and on audio output device changes (especially Bluetooth connect/disconnect).
      *
-     * @param latencyMs Total audio output latency in milliseconds (>= 0). 0 = no pre-delay.
+     * The user's manual sync offset from [VisualizerPreferences.getLatencyOffsetMs] is added
+     * to [latencyMs] before it is applied, and the result is clamped to >= 0.
+     *
+     * @param latencyMs Estimated audio output latency in milliseconds (>= 0).
      */
     fun applyOutputLatency(latencyMs: Int) {
-        nativeDspProcessor.setOutputLatency(latencyMs)
-        visualizerProcessor.setOutputLatency(latencyMs)
+        estimatedLatencyMs = latencyMs.coerceAtLeast(0)
+        applyEffectiveLatency()
+    }
+
+    /**
+     * Re-applies the last estimated output latency with the current manual sync offset.
+     * Call this when the user changes the offset so it takes effect on the live pipeline.
+     */
+    fun applyVisualizerLatencyOffset() {
+        applyEffectiveLatency()
+    }
+
+    private fun applyEffectiveLatency() {
+        val effectiveMs = (estimatedLatencyMs + VisualizerPreferences.getLatencyOffsetMs()).coerceAtLeast(0)
+        nativeDspProcessor.setOutputLatency(effectiveMs)
+        visualizerProcessor.setOutputLatency(effectiveMs)
     }
 
     /**

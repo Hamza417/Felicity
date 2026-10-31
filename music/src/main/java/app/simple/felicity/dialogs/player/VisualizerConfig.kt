@@ -7,11 +7,14 @@ import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
 import app.simple.felicity.R
 import app.simple.felicity.databinding.DialogVisualizerTuningBinding
+import app.simple.felicity.decorations.seekbars.FelicitySeekbar
 import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
 import app.simple.felicity.extensions.dialogs.MediaBottomDialogFragment
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.preferences.VisualizerPreferences
+import java.util.Locale
+import kotlin.math.roundToInt
 
 class VisualizerConfig : MediaBottomDialogFragment() {
 
@@ -42,6 +45,44 @@ class VisualizerConfig : MediaBottomDialogFragment() {
         binding.capsToggle.setOnCheckedChangeListener { _, isChecked ->
             VisualizerPreferences.setCapsEnabled(isChecked)
         }
+
+        setupLatencySeekbar()
+    }
+
+    private fun setupLatencySeekbar() {
+        val seekbar = binding.latencySeekbar
+        seekbar.setRange(
+                VisualizerPreferences.LATENCY_OFFSET_MIN_MS.toFloat(),
+                VisualizerPreferences.LATENCY_OFFSET_MAX_MS.toFloat()
+        )
+        seekbar.setDefaultProgress(0f)
+        seekbar.setProgress(VisualizerPreferences.getLatencyOffsetMs().toFloat())
+        seekbar.setRightLabelProvider { progress, _, _ ->
+            String.format(Locale.getDefault(), "%+d ms", snapLatency(progress))
+        }
+
+        seekbar.setOnSeekChangeListener(object : FelicitySeekbar.OnSeekChangeListener {
+            private var isTracking = false
+
+            override fun onProgressChanged(seekbar: FelicitySeekbar, progress: Float, fromUser: Boolean) {
+                if (fromUser && !isTracking) {
+                    VisualizerPreferences.setLatencyOffsetMs(snapLatency(progress))
+                }
+            }
+
+            override fun onStartTrackingTouch(seekbar: FelicitySeekbar) {
+                isTracking = true
+            }
+
+            override fun onStopTrackingTouch(seekbar: FelicitySeekbar) {
+                isTracking = false
+                VisualizerPreferences.setLatencyOffsetMs(snapLatency(seekbar.getProgress()))
+            }
+        })
+    }
+
+    private fun snapLatency(progress: Float): Int {
+        return (progress / LATENCY_STEP_MS).roundToInt() * LATENCY_STEP_MS
     }
 
     fun updateVizStyleState() {
@@ -89,6 +130,7 @@ class VisualizerConfig : MediaBottomDialogFragment() {
         }
 
         private const val TAG = "VisualizerConfig"
+        private const val LATENCY_STEP_MS = 5
     }
 }
 

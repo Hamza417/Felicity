@@ -64,6 +64,7 @@ import app.simple.felicity.preferences.EqualizerPreferences
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
+import app.simple.felicity.preferences.VisualizerPreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.models.Audio
@@ -1284,6 +1285,10 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 val newFftSize = AudioPreferences.getFftResolution()
                 Log.d(TAG, "FFT resolution changed to: $newFftSize")
                 audioProcessorManager.visualizerProcessor.updateFftResolution(newFftSize)
+            }
+            VisualizerPreferences.LATENCY_OFFSET_MS -> {
+                Log.d(TAG, "Visualizer latency offset changed to: ${VisualizerPreferences.getLatencyOffsetMs()} ms")
+                audioProcessorManager.applyVisualizerLatencyOffset()
             }
             AudioPreferences.HIRES_OUTPUT -> {
                 val hiresEnabled = AudioPreferences.isHiresOutputEnabled()
