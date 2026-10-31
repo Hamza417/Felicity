@@ -16,6 +16,7 @@ import androidx.core.graphics.ColorUtils
 import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.views.FelicityVisualizer.Companion.HIT_DECAY
 import app.simple.felicity.decorations.views.FelicityVisualizer.Companion.PEAK_HOLD_FRAMES
+import app.simple.felicity.decorations.views.FelicityVisualizer.Companion.WAVE_ZONE_COLORS
 import app.simple.felicity.decorations.views.FelicityVisualizer.Companion.ZONE_COLORS
 import app.simple.felicity.manager.SharedPreferences.registerListener
 import app.simple.felicity.manager.SharedPreferences.unregisterListener
@@ -31,6 +32,7 @@ import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.pow
 import kotlin.math.sqrt
 
 /**
@@ -211,7 +213,13 @@ class FelicityVisualizer @JvmOverloads constructor(
     private val baseBandColors = IntArray(BAND_COUNT)
 
     /** Zone color of each band, sampled from [ZONE_COLORS] across the frequency range. */
-    private val zoneBandColors = IntArray(BAND_COUNT) { i -> sampleZoneColor((i + 0.5f) / BAND_COUNT) }
+    private val zoneBandColors = IntArray(BAND_COUNT) { i -> sampleZoneColor(ZONE_COLORS, (i + 0.5f) / BAND_COUNT) }
+
+    /** Pastel zone color of each band, sampled from [WAVE_ZONE_COLORS] and used by [VisualizerMode.WAVE]. */
+    private val waveZoneBandColors = IntArray(BAND_COUNT) { i -> sampleZoneColor(WAVE_ZONE_COLORS, (i + 0.5f) / BAND_COUNT) }
+
+    /** Strength multiplier of a hit by band distance, used to spread hit colors across the wave. */
+    private val waveSpreadFalloff = FloatArray(WAVE_SPREAD_RADIUS + 1) { d -> WAVE_SPREAD_FALLOFF.pow(d) }
 
     /** Per-band color flash strength from 0 to 1. It jumps when the band jumps and then decays. */
     private val hitEnergies = FloatArray(BAND_COUNT)
@@ -509,9 +517,22 @@ class FelicityVisualizer @JvmOverloads constructor(
     /**
      * Computes the color of every band for the current frame. A band sits on its accent
      * gradient color and flashes to its zone color when it jumps, then relaxes back as its
-     * hit energy decays.
+     * hit energy decays. In [VisualizerMode.WAVE] each hit also spreads to nearby bands with a
+     * geometric falloff and uses the pastel [WAVE_ZONE_COLORS], so the curve shows broad soft
+     * washes of color instead of narrow spikes.
      */
     private fun updateSpectrumColors() {
+        if (mode == VisualizerMode.WAVE) {
+            for (i in 0 until BAND_COUNT) {
+                var spread = 0f
+                for (j in maxOf(0, i - WAVE_SPREAD_RADIUS)..minOf(BAND_COUNT - 1, i + WAVE_SPREAD_RADIUS)) {
+                    val reach = punchyWeight(hitEnergies[j]) * waveSpreadFalloff[abs(i - j)]
+                    if (reach > spread) spread = reach
+                }
+                spectrumBandColors[i] = ColorUtils.blendARGB(baseBandColors[i], waveZoneBandColors[i], spread)
+            }
+            return
+        }
         for (i in 0 until BAND_COUNT) {
             spectrumBandColors[i] = ColorUtils.blendARGB(baseBandColors[i], zoneBandColors[i], punchyWeight(hitEnergies[i]))
         }
@@ -998,14 +1019,14 @@ class FelicityVisualizer @JvmOverloads constructor(
     }
 
     /**
-     * Samples [ZONE_COLORS] so that each zone holds its pure color across most of its width
+     * Samples [palette] so that each zone holds its pure color across most of its width
      * and only blends with its neighbor in a narrow band around the boundary.
      */
-    private fun sampleZoneColor(fraction: Float): Int {
-        val scaled = fraction.coerceIn(0f, 1f) * (ZONE_COLORS.size - 1)
-        val index = scaled.toInt().coerceAtMost(ZONE_COLORS.size - 2)
+    private fun sampleZoneColor(palette: IntArray, fraction: Float): Int {
+        val scaled = fraction.coerceIn(0f, 1f) * (palette.size - 1)
+        val index = scaled.toInt().coerceAtMost(palette.size - 2)
         val edge = ((scaled - index - ZONE_BLEND_START) / (1f - 2f * ZONE_BLEND_START)).coerceIn(0f, 1f)
-        return ColorUtils.blendARGB(ZONE_COLORS[index], ZONE_COLORS[index + 1], edge * edge * (3f - 2f * edge))
+        return ColorUtils.blendARGB(palette[index], palette[index + 1], edge * edge * (3f - 2f * edge))
     }
 
     companion object {
@@ -1035,6 +1056,24 @@ class FelicityVisualizer @JvmOverloads constructor(
 
         /** Square-rooted hit energy at which a band shows the pure zone color. */
         private const val PUNCH_END = 0.6f
+
+        /**
+         * Zone colors used in [VisualizerMode.WAVE], in the same order as [ZONE_COLORS]. They are
+         * bold pastel tones: saturated enough to read clearly, soft enough to suit a filled curve.
+         */
+        private val WAVE_ZONE_COLORS = intArrayOf(
+                0xFFC77DFF.toInt(),
+                0xFFFFE066.toInt(),
+                0xFFFF6B81.toInt(),
+                0xFF5CF2A0.toInt(),
+                0xFF5AA9FF.toInt()
+        )
+
+        /** Number of neighboring bands on each side that a hit color spreads to in the wave. */
+        private const val WAVE_SPREAD_RADIUS = 6
+
+        /** Strength kept by the hit color for each band of distance from the band that was hit. */
+        private const val WAVE_SPREAD_FALLOFF = 0.78f
 
         /** Fraction of the span between two zone centers over which a zone holds its pure color before blending. */
         private const val ZONE_BLEND_START = 0.35f
