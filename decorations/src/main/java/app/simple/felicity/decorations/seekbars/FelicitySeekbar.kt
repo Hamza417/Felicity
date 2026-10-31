@@ -17,7 +17,6 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.view.animation.DecelerateInterpolator
 import androidx.annotation.ColorInt
-import androidx.core.graphics.withScale
 import androidx.dynamicanimation.animation.FloatPropertyCompat
 import androidx.dynamicanimation.animation.SpringAnimation
 import androidx.dynamicanimation.animation.SpringForce
@@ -214,9 +213,6 @@ class FelicitySeekbar @JvmOverloads constructor(
     private var leftLabelAlpha = 0f
     private var rightLabelAlpha = 0f
 
-    // Shared scale — both labels scale together during tracking
-    private var labelScale = 1f
-
     // Optional solid background pill drawn behind each label
     private var labelBackgroundEnabled = false
 
@@ -235,7 +231,6 @@ class FelicitySeekbar @JvmOverloads constructor(
     private var rightLabelWidthAnimator: ValueAnimator? = null
     private var leftLabelAlphaAnimator: ValueAnimator? = null
     private var rightLabelAlphaAnimator: ValueAnimator? = null
-    private var labelScaleAnimator: ValueAnimator? = null
 
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
@@ -1008,10 +1003,17 @@ class FelicitySeekbar @JvmOverloads constructor(
     private fun refreshCachedLabels() {
         cachedLeftLabel = leftLabelProvider?.getLabel(progressInternal, minProgress, maxProgress)
         cachedRightLabel = rightLabelProvider?.getLabel(progressInternal, minProgress, maxProgress)
+        // Keep the reserved label zone in sync with the text so it never overflows and clips
+        if (leftLabelEnabled && leftLabelAnimatedWidth > 0f) remeasureSideLabel(left = true)
+        if (rightLabelEnabled && rightLabelAnimatedWidth > 0f) remeasureSideLabel(left = false)
     }
 
-    private fun measureTextWidth(text: String?): Float =
-        if (text.isNullOrEmpty()) 0f else labelPaint.measureText(text)
+    /** Width of the label zone: text width plus the background pill padding when it is shown. */
+    private fun measureTextWidth(text: String?): Float {
+        if (text.isNullOrEmpty()) return 0f
+        val padding = if (labelBackgroundEnabled) labelBackgroundPaddingH * 2f else 0f
+        return labelPaint.measureText(text) + padding
+    }
 
     private fun animateSideLabel(left: Boolean, show: Boolean) {
         val currentText = if (left) cachedLeftLabel else cachedRightLabel
@@ -1094,6 +1096,8 @@ class FelicitySeekbar @JvmOverloads constructor(
     fun setLabelBackgroundEnabled(enabled: Boolean) {
         if (labelBackgroundEnabled == enabled) return
         labelBackgroundEnabled = enabled
+        if (leftLabelEnabled && leftLabelAnimatedWidth > 0f) remeasureSideLabel(left = true)
+        if (rightLabelEnabled && rightLabelAnimatedWidth > 0f) remeasureSideLabel(left = false)
         invalidate()
     }
 
@@ -1126,21 +1130,6 @@ class FelicitySeekbar @JvmOverloads constructor(
     }
 
     fun getLabelGap(): Float = labelGapPx
-
-    private fun animateLabelScale(focused: Boolean) {
-        val target = if (focused) 1.12f else 1f
-        if (labelScale == target) return
-        labelScaleAnimator?.cancel()
-        labelScaleAnimator = ValueAnimator.ofFloat(labelScale, target).apply {
-            duration = if (focused) 200L else 280L
-            interpolator = DecelerateInterpolator()
-            addUpdateListener { anim ->
-                labelScale = anim.animatedValue as Float
-                invalidate()
-            }
-            start()
-        }
-    }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val baseHeight = max(trackHeightPx, thumbRadiusPx * 2f) + (pressRingTotalOutset() * 2f)
@@ -1300,21 +1289,19 @@ class FelicitySeekbar @JvmOverloads constructor(
             if (!text.isNullOrEmpty()) {
                 val alpha = (leftLabelAlpha * 255f).toInt().coerceIn(0, 255)
                 val leftLabelCx = paddingLeft.toFloat() + hOut + leftLabelAnimatedWidth / 2f
-                canvas.withScale(labelScale, labelScale, leftLabelCx, centerY) {
-                    if (labelBackgroundEnabled) {
-                        val textHalfW = labelPaint.measureText(text) / 2f
-                        labelBgPaint.color = (labelBackgroundColor and 0x00FFFFFF) or (alpha shl 24)
-                        labelBgRect.set(
-                                leftLabelCx - textHalfW - labelBackgroundPaddingH,
-                                centerY - fontHalfHeight - labelBackgroundPaddingV,
-                                leftLabelCx + textHalfW + labelBackgroundPaddingH,
-                                centerY + fontHalfHeight + labelBackgroundPaddingV
-                        )
-                        drawRoundRect(labelBgRect, labelBackgroundCornerRadius, labelBackgroundCornerRadius, labelBgPaint)
-                    }
-                    labelPaint.alpha = alpha
-                    drawText(text, leftLabelCx, textY, labelPaint)
+                if (labelBackgroundEnabled) {
+                    val textHalfW = labelPaint.measureText(text) / 2f
+                    labelBgPaint.color = (labelBackgroundColor and 0x00FFFFFF) or (alpha shl 24)
+                    labelBgRect.set(
+                            leftLabelCx - textHalfW - labelBackgroundPaddingH,
+                            centerY - fontHalfHeight - labelBackgroundPaddingV,
+                            leftLabelCx + textHalfW + labelBackgroundPaddingH,
+                            centerY + fontHalfHeight + labelBackgroundPaddingV
+                    )
+                    canvas.drawRoundRect(labelBgRect, labelBackgroundCornerRadius, labelBackgroundCornerRadius, labelBgPaint)
                 }
+                labelPaint.alpha = alpha
+                canvas.drawText(text, leftLabelCx, textY, labelPaint)
             }
         }
 
@@ -1323,21 +1310,19 @@ class FelicitySeekbar @JvmOverloads constructor(
             if (!text.isNullOrEmpty()) {
                 val alpha = (rightLabelAlpha * 255f).toInt().coerceIn(0, 255)
                 val rightLabelCx = (width - paddingRight).toFloat() - hOut - rightLabelAnimatedWidth / 2f
-                canvas.withScale(labelScale, labelScale, rightLabelCx, centerY) {
-                    if (labelBackgroundEnabled) {
-                        val textHalfW = labelPaint.measureText(text) / 2f
-                        labelBgPaint.color = (labelBackgroundColor and 0x00FFFFFF) or (alpha shl 24)
-                        labelBgRect.set(
-                                rightLabelCx - textHalfW - labelBackgroundPaddingH,
-                                centerY - fontHalfHeight - labelBackgroundPaddingV,
-                                rightLabelCx + textHalfW + labelBackgroundPaddingH,
-                                centerY + fontHalfHeight + labelBackgroundPaddingV
-                        )
-                        drawRoundRect(labelBgRect, labelBackgroundCornerRadius, labelBackgroundCornerRadius, labelBgPaint)
-                    }
-                    labelPaint.alpha = alpha
-                    drawText(text, rightLabelCx, textY, labelPaint)
+                if (labelBackgroundEnabled) {
+                    val textHalfW = labelPaint.measureText(text) / 2f
+                    labelBgPaint.color = (labelBackgroundColor and 0x00FFFFFF) or (alpha shl 24)
+                    labelBgRect.set(
+                            rightLabelCx - textHalfW - labelBackgroundPaddingH,
+                            centerY - fontHalfHeight - labelBackgroundPaddingV,
+                            rightLabelCx + textHalfW + labelBackgroundPaddingH,
+                            centerY + fontHalfHeight + labelBackgroundPaddingV
+                    )
+                    canvas.drawRoundRect(labelBgRect, labelBackgroundCornerRadius, labelBackgroundCornerRadius, labelBgPaint)
                 }
+                labelPaint.alpha = alpha
+                canvas.drawText(text, rightLabelCx, textY, labelPaint)
             }
         }
     }
@@ -1461,7 +1446,6 @@ class FelicitySeekbar @JvmOverloads constructor(
                 }
                 listener?.onStartTrackingTouch(this)
                 stepListener?.onStartTrackingTouch(this)
-                if (leftLabelEnabled || rightLabelEnabled) animateLabelScale(true)
                 performClick()
                 return true
             }
@@ -1480,7 +1464,6 @@ class FelicitySeekbar @JvmOverloads constructor(
                         stepListener?.onStopTrackingTouch(this)
                     }
                     listener?.onStopTrackingTouch(this)
-                    if (leftLabelEnabled || rightLabelEnabled) animateLabelScale(false)
                 }
                 if (downOnThumb) startPressRing(false)
                 downOnThumb = false
@@ -1606,7 +1589,6 @@ class FelicitySeekbar @JvmOverloads constructor(
         rightLabelWidthAnimator?.cancel()
         leftLabelAlphaAnimator?.cancel()
         rightLabelAlphaAnimator?.cancel()
-        labelScaleAnimator?.cancel()
         if (springAnimation.isRunning) springAnimation.cancel()
         ThemeManager.removeListener(this)
     }
