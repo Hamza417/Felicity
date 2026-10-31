@@ -20,7 +20,6 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.children
 import androidx.core.view.setPadding
-import androidx.core.widget.NestedScrollView
 import androidx.dynamicanimation.animation.FloatPropertyCompat
 import androidx.dynamicanimation.animation.SpringAnimation
 import androidx.dynamicanimation.animation.SpringForce
@@ -45,7 +44,7 @@ import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sign
 
-abstract class SharedScrollViewPopupNonContainer @JvmOverloads constructor(
+class SharedScrollViewPopupNonContainer @JvmOverloads constructor(
         private val container: ViewGroup,
         private val anchorView: View,
         private val menuItems: List<PopupMenuItem>,
@@ -70,7 +69,7 @@ abstract class SharedScrollViewPopupNonContainer @JvmOverloads constructor(
         private const val MAX_WIGGLE_THRESHOLD = 72F
         private const val MAX_FINGER_DISTANCE = 0.05f
         private val INTERPOLATOR = DecelerateInterpolator(1.5F)
-        private const val PARENT_DIALOG_CONTAINER_VISIBLE_ALPHA = 0.9f
+        private const val PARENT_DIALOG_CONTAINER_VISIBLE_ALPHA = 0.6f
         private const val PARENT_DIALOG_CONTAINER_RESET_ALPHA = 1f
     }
 
@@ -288,9 +287,6 @@ abstract class SharedScrollViewPopupNonContainer @JvmOverloads constructor(
             }
         }
 
-        // Callback after popup creation for any additional setup
-        onPopupCreated(popupScrollView, linearLayout)
-
         setupBackPressListener()
     }
 
@@ -426,7 +422,4 @@ abstract class SharedScrollViewPopupNonContainer @JvmOverloads constructor(
     fun easeOutDecay(normalized: Float): Float {
         return 1f - (1f - normalized).pow(5)
     }
-
-    // Optional hook
-    abstract fun onPopupCreated(scrollView: NestedScrollView, contentLayout: LinearLayout)
 }

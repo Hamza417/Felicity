@@ -6,13 +6,13 @@
     android:layout_gravity="bottom"
     android:clipChildren="false"
     android:clipToPadding="false"
-    android:padding="@dimen/padding_15"
     android:layout_height="wrap_content">
 
     <app.simple.felicity.decorations.corners.DynamicCornerLinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
+        android:layout_margin="@dimen/padding_15"
         android:padding="@dimen/padding_15"
         android:clipChildren="false"
         android:clipToPadding="false"
@@ -65,11 +65,21 @@
                 app:appFontStyle="bold"
                 app:textColorStyle="primary" />
 
-            <app.simple.felicity.decorations.toggles.FelicityButtonGroup
-                android:id="@+id/style_toggle"
+            <app.simple.felicity.decorations.highlight.HighlightTextView
+                android:id="@+id/style_popup"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical" />
+                android:layout_gravity="center_vertical"
+                android:drawableEnd="@drawable/ic_unfold_16dp"
+                android:drawablePadding="10dp"
+                android:gravity="center_vertical"
+                android:paddingStart="@dimen/padding_15"
+                android:paddingEnd="@dimen/padding_5"
+                android:paddingVertical="@dimen/padding_10"
+                android:textSize="@dimen/text_size_14"
+                app:appFontStyle="medium"
+                app:drawableTintStyle="accent"
+                app:textColorStyle="primary" />
 
         </LinearLayout>
 

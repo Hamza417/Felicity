@@ -528,6 +528,8 @@
     <string name="carousel">Carousel</string>
     <string name="carousel_ui_desc">Simple player style with carousel type album arts.</string>
     <string name="bars">Bars</string>
+    <string name="wave">Wave</string>
+    <string name="blocks">Blocks</string>
     <string name="current_queue">Queue %1$d</string>
     <string name="rename">Rename</string>
     <string name="clear_queue">Clear</string>

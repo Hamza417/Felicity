@@ -8,7 +8,8 @@ import androidx.fragment.app.FragmentManager
 import app.simple.felicity.R
 import app.simple.felicity.databinding.DialogVisualizerTuningBinding
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
-import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
+import app.simple.felicity.decorations.views.PopupMenuItem
+import app.simple.felicity.decorations.views.SharedScrollViewPopupNonContainer
 import app.simple.felicity.extensions.dialogs.MediaBottomDialogFragment
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.PlayerPreferences
@@ -75,27 +76,28 @@ class VisualizerConfig : MediaBottomDialogFragment() {
     }
 
     fun updateVizStyleState() {
-        binding.styleToggle.iconSize = 14F
-        binding.styleToggle.setButtons(
-                listOf(
-                        Button(iconResId = R.drawable.ic_equalizer_16dp),
-                        Button(iconResId = R.drawable.ic_waves),
-                        Button(iconResId = R.drawable.ic_blocks_16dp),
-                )
-        )
+        binding.stylePopup.setText(styleTitle(VisualizerPreferences.getVisualizerType()))
 
-        when (VisualizerPreferences.getVisualizerType()) {
-            VisualizerPreferences.TYPE_BARS -> binding.styleToggle.setSelectedIndex(0)
-            VisualizerPreferences.TYPE_WAVE -> binding.styleToggle.setSelectedIndex(1)
-            VisualizerPreferences.TYPE_BLOCKS -> binding.styleToggle.setSelectedIndex(2)
-        }
+        binding.stylePopup.setOnClickListener { anchor ->
+            SharedScrollViewPopupNonContainer(
+                    container = binding.root,
+                    anchorView = anchor,
+                    menuItems = listOf(
+                            PopupMenuItem(title = R.string.bars, icon = R.drawable.ic_equalizer_16dp),
+                            PopupMenuItem(title = R.string.wave, icon = R.drawable.ic_waves),
+                            PopupMenuItem(title = R.string.blocks, icon = R.drawable.ic_blocks_16dp)
+                    ),
+                    onMenuItemClick = {
+                        val type = when (it) {
+                            R.string.wave -> VisualizerPreferences.TYPE_WAVE
+                            R.string.blocks -> VisualizerPreferences.TYPE_BLOCKS
+                            else -> VisualizerPreferences.TYPE_BARS
+                        }
 
-        binding.styleToggle.setOnButtonSelectedListener { index ->
-            when (index) {
-                0 -> VisualizerPreferences.setVisualizerType(VisualizerPreferences.TYPE_BARS)
-                1 -> VisualizerPreferences.setVisualizerType(VisualizerPreferences.TYPE_WAVE)
-                2 -> VisualizerPreferences.setVisualizerType(VisualizerPreferences.TYPE_BLOCKS)
-            }
+                        VisualizerPreferences.setVisualizerType(type)
+                        binding.stylePopup.setText(styleTitle(type))
+                    }
+            ).show()
         }
 
         binding.openMilkdropVisualizer.setOnClickListener {
@@ -104,6 +106,14 @@ class VisualizerConfig : MediaBottomDialogFragment() {
                 // so we dismiss the dialog immediately after opening the settings.
                 dismiss()
             }
+        }
+    }
+
+    private fun styleTitle(type: Int): Int {
+        return when (type) {
+            VisualizerPreferences.TYPE_WAVE -> R.string.wave
+            VisualizerPreferences.TYPE_BLOCKS -> R.string.blocks
+            else -> R.string.bars
         }
     }
 
