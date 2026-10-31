@@ -16,6 +16,7 @@ import java.util.Objects;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import app.simple.felicity.decorations.corners.LayoutBackground;
+import app.simple.felicity.preferences.AccessibilityPreferences;
 import app.simple.felicity.preferences.AppearancePreferences;
 import app.simple.felicity.shared.utils.ViewUtils;
 import app.simple.felicity.theme.interfaces.ThemeChangedListener;
@@ -40,6 +41,10 @@ public class DynamicRippleLinearLayout extends LinearLayout implements SharedPre
             return;
         }
         setBackgroundColor(Color.TRANSPARENT);
+        if (AccessibilityPreferences.INSTANCE.isHighlightStroke()) {
+            LayoutBackground.setOutlinedRippleBackground(this, radius);
+            return;
+        }
         setBackground(null);
         setBackground(RippleUtils.getRippleDrawable());
     }
@@ -180,6 +185,8 @@ public class DynamicRippleLinearLayout extends LinearLayout implements SharedPre
                 setBackgroundTintList(ColorStateList.valueOf(transparentColor));
                 setBackgroundTintList(ColorStateList.valueOf(accentColor));
                 LayoutBackground.setBackground(getContext(), this, null, radius);
+            } else if (AccessibilityPreferences.INSTANCE.isHighlightStroke()) {
+                LayoutBackground.setOutlinedRippleBackground(this, radius);
             } else {
                 setBackground(null);
                 setBackground(RippleUtils.getRippleDrawable());

@@ -10,6 +10,8 @@ import android.widget.FrameLayout;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import app.simple.felicity.decorations.corners.LayoutBackground;
+import app.simple.felicity.preferences.AccessibilityPreferences;
 import app.simple.felicity.preferences.AppearancePreferences;
 import app.simple.felicity.shared.utils.ViewUtils;
 import app.simple.felicity.theme.interfaces.ThemeChangedListener;
@@ -42,6 +44,10 @@ public class DynamicRippleFrameLayout extends FrameLayout implements SharedPrefe
     
     private void init() {
         setBackgroundColor(Color.TRANSPARENT);
+        if (AccessibilityPreferences.INSTANCE.isHighlightStroke()) {
+            LayoutBackground.setOutlinedRippleBackground(this, radius);
+            return;
+        }
         setBackground(null);
         setBackground(RippleUtils.getRippleDrawable());
     }

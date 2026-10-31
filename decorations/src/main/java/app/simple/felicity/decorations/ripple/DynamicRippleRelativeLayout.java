@@ -47,6 +47,8 @@ public class DynamicRippleRelativeLayout extends RelativeLayout implements Share
         if (AccessibilityPreferences.INSTANCE.isHighlightMode()) {
             LayoutBackground.setBackground(getContext(), this, null, AppearancePreferences.INSTANCE.getCornerRadius());
             setBackgroundTintList(ColorStateList.valueOf(ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getHighlightColor()));
+        } else if (AccessibilityPreferences.INSTANCE.isHighlightStroke()) {
+            LayoutBackground.setOutlinedRippleBackground(this, AppearancePreferences.INSTANCE.getCornerRadius());
         } else {
             setBackground(null);
             setBackground(RippleUtils.getRippleDrawable());

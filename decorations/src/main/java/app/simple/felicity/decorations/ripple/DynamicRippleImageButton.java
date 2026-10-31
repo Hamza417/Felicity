@@ -15,6 +15,7 @@ import app.simple.felicity.decoration.R;
 import app.simple.felicity.decorations.corners.LayoutBackground;
 import app.simple.felicity.decorations.theme.ThemeImageButton;
 import app.simple.felicity.preferences.AccessibilityPreferences;
+import app.simple.felicity.preferences.AppearancePreferences;
 import app.simple.felicity.shared.helpers.ImageHelper;
 import app.simple.felicity.shared.utils.ViewUtils;
 import app.simple.felicity.theme.managers.ThemeManager;
@@ -133,6 +134,8 @@ public class DynamicRippleImageButton extends ThemeImageButton {
         if (AccessibilityPreferences.INSTANCE.isHighlightMode()) {
             LayoutBackground.setBackground(getContext(), this, null);
             setBackgroundTintList(ColorStateList.valueOf(ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getHighlightColor()));
+        } else if (AccessibilityPreferences.INSTANCE.isHighlightStroke()) {
+            LayoutBackground.setOutlinedRippleBackground(this, AppearancePreferences.INSTANCE.getCornerRadius());
         } else {
             setBackground(null);
             setBackground(RippleUtils.getRippleDrawable());

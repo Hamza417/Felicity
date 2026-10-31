@@ -16,6 +16,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import app.simple.felicity.decorations.corners.LayoutBackground;
+import app.simple.felicity.preferences.AccessibilityPreferences;
 import app.simple.felicity.preferences.AppearancePreferences;
 import app.simple.felicity.shared.utils.ViewUtils;
 import app.simple.felicity.theme.interfaces.ThemeChangedListener;
@@ -93,6 +94,8 @@ public class DynamicRippleConstraintLayout extends ConstraintLayout implements S
                 setBackgroundTintList(ColorStateList.valueOf(transparentColor));
                 setBackgroundTintList(ColorStateList.valueOf(backgroundColor));
                 LayoutBackground.setBackground(getContext(), this, null, radius);
+            } else if (AccessibilityPreferences.INSTANCE.isHighlightStroke()) {
+                LayoutBackground.setOutlinedRippleBackground(this, radius);
             } else {
                 setBackground(null);
                 setBackground(RippleUtils.getRippleDrawable());

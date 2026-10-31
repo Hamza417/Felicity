@@ -11,6 +11,7 @@ import com.google.android.material.shape.MaterialShapeDrawable;
 import com.google.android.material.shape.ShapeAppearanceModel;
 
 import app.simple.felicity.decoration.R;
+import app.simple.felicity.decorations.ripple.RippleUtils;
 import app.simple.felicity.preferences.AccessibilityPreferences;
 import app.simple.felicity.preferences.AppearancePreferences;
 import app.simple.felicity.theme.managers.ThemeManager;
@@ -131,6 +132,20 @@ public class LayoutBackground {
         
         view.setBackground(materialShapeDrawable);
         theme.recycle();
+    }
+    
+    /**
+     * Outline-only background (no fill) with the standard ripple on top. Used when the outline
+     * preference is enabled without the highlight preference.
+     */
+    public static void setOutlinedRippleBackground(View view, float radius) {
+        MaterialShapeDrawable outline = new MaterialShapeDrawable(
+                new ShapeAppearanceModel().toBuilder().setAllCorners(CornerFamily.ROUNDED, radius).build());
+        outline.setFillColor(android.content.res.ColorStateList.valueOf(android.graphics.Color.TRANSPARENT));
+        outline.setStroke(strokeWidth, ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor());
+        view.setBackgroundTintList(null);
+        view.setBackground(new android.graphics.drawable.LayerDrawable(
+                new android.graphics.drawable.Drawable[] {outline, RippleUtils.getRippleDrawable()}));
     }
     
     public static void setBackground(View view) {
