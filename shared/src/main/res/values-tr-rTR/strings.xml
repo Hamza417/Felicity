@@ -288,7 +288,6 @@
     <string name="files">Dosyalar</string>
     <string name="style">Stil</string>
     <string name="latency">Gecikme</string>
-    <string name="particles">Parçacıklar</string>
     <string name="slide">Kaydır</string>
     <string name="typewriting">Daktilo</string>
     <string name="no_effect">Efekt Yok</string>
@@ -472,7 +471,6 @@
     <string name="show_lyrics_summary">Oynatıcı ekranında tek satır sözleri göster.</string>
     <string name="carousel">Karosel</string>
     <string name="carousel_ui_desc">Carousel tipi albüm sanatları ile basit oyuncu tarzı.</string>
-    <string name="caps">Caps</string>
     <string name="current_queue">Kuyruk %1$d</string>
     <string name="rename">Yeniden Adlandır</string>
     <string name="volume_controls">Ses Kontrolleri</string>

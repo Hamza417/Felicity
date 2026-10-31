@@ -288,7 +288,6 @@
     <string name="files">Archivos</string>
     <string name="style">Estilo</string>
     <string name="latency">Latencia</string>
-    <string name="particles">Partículas</string>
     <string name="slide">Deslizar</string>
     <string name="typewriting">Escritura a máquina</string>
     <string name="no_effect">Sin efecto</string>
@@ -472,7 +471,6 @@
     <string name="show_lyrics_summary">Mostrar letras de una sola línea en la pantalla del reproductor.</string>
     <string name="carousel">Carrusel</string>
     <string name="carousel_ui_desc">Estilo de reproductor simple con carátulas de álbum tipo carrusel.</string>
-    <string name="caps">Mayúsculas</string>
     <string name="current_queue">Cola %1$d</string>
     <string name="rename">Renombrar</string>
     <string name="volume_controls">Controles de volumen</string>

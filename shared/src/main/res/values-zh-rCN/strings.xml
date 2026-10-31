@@ -288,7 +288,6 @@
     <string name="files">文件</string>
     <string name="style">样式</string>
     <string name="latency">延迟</string>
-    <string name="particles">粒子</string>
     <string name="slide">滑动</string>
     <string name="typewriting">打字机</string>
     <string name="no_effect">无效果</string>
@@ -472,7 +471,6 @@
     <string name="show_lyrics_summary">在播放器屏幕上显示单行歌词。</string>
     <string name="carousel">旋转木马</string>
     <string name="carousel_ui_desc">简单的播放器风格和旋转相册艺术。</string>
-    <string name="caps">线头圆度</string>
     <string name="bars">状态栏</string>
     <string name="current_queue">队列 %1$d</string>
     <string name="rename">重命名</string>

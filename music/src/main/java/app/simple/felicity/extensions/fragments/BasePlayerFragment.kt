@@ -39,7 +39,6 @@ import app.simple.felicity.preferences.AlbumArtPreferences
 import app.simple.felicity.preferences.AudioPreferences
 import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
-import app.simple.felicity.preferences.VisualizerPreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.utils.AudioUtils.getProperAlbum
@@ -165,7 +164,6 @@ abstract class BasePlayerFragment : MediaFragment() {
         requireHiddenMiniPlayer()
         updateState()
         setVisualizerState()
-        setVisualizerCapsState()
         setLyricsState()
         updateMediaControlOverlap()
 
@@ -441,10 +439,6 @@ abstract class BasePlayerFragment : MediaFragment() {
         visualizer.visibility = if (PlayerPreferences.isVisualizerEnabled()) View.VISIBLE else View.GONE
     }
 
-    private fun setVisualizerCapsState() {
-        visualizer.capsEnabled = VisualizerPreferences.areCapsEnabled()
-    }
-
     private fun setLyricsState() {
         lrc.visibility = if (PlayerPreferences.isShowLyrics()) View.VISIBLE else View.GONE
     }
@@ -683,9 +677,6 @@ abstract class BasePlayerFragment : MediaFragment() {
         when (key) {
             PlayerPreferences.VISUALIZER_ENABLED -> {
                 setVisualizerState()
-            }
-            VisualizerPreferences.CAPS_ENABLED -> {
-                setVisualizerCapsState()
             }
             PlayerPreferences.WAVEFORM_MODE -> {
                 seekbar.waveformMode = PlayerPreferences.getWaveformMode()

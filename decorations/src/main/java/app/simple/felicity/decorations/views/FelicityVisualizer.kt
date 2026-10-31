@@ -13,9 +13,6 @@ import android.util.AttributeSet
 import android.view.View
 import androidx.core.content.withStyledAttributes
 import app.simple.felicity.decoration.R
-import app.simple.felicity.decorations.views.FelicityVisualizer.Companion.BAND_COUNT
-import app.simple.felicity.decorations.views.FelicityVisualizer.Companion.CORNER_RADIUS_FACTOR
-import app.simple.felicity.decorations.views.FelicityVisualizer.Companion.WAVE_SECONDARY_SCALE
 import app.simple.felicity.manager.SharedPreferences.registerListener
 import app.simple.felicity.manager.SharedPreferences.unregisterListener
 import app.simple.felicity.preferences.AppearancePreferences
@@ -28,7 +25,6 @@ import app.simple.felicity.theme.models.Theme
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.abs
 import kotlin.math.sqrt
-import kotlin.random.Random
 
 /**
  * A custom audio spectrum visualizer that supports two rendering modes —
@@ -46,8 +42,7 @@ import kotlin.random.Random
  * applied inline to derive per-band targets. Those targets are then smoothed into
  * [currentBands] with configurable rise/fall speeds before being rendered.
  *
- * In bars mode, [BAND_COUNT] bars are animated in real time with peak-hold caps and an
- * optional ash-particle emitter. The bars grow from the anchor edge toward the opposite
+ * In bars mode, [BAND_COUNT] bars are animated in real time with peak-hold caps. The bars grow from the anchor edge toward the opposite
  * edge according to [direction]. In wave mode, the same spectrum data drives a smooth
  * filled-wave curve anchored at the anchor edge.
  *
@@ -71,7 +66,7 @@ class FelicityVisualizer @JvmOverloads constructor(
 
     /** Selects whether bars or a fluid wave is rendered. */
     enum class VisualizerMode {
-        /** Vertical frequency bar spectrum with peak-hold caps and optional particles. */
+        /** Vertical frequency bar spectrum with peak-hold caps. */
         BARS,
 
         /** Filled smooth-wave shape derived from the frequency spectrum, resembling water waves. */
@@ -230,52 +225,7 @@ class FelicityVisualizer @JvmOverloads constructor(
             PlayerPreferences.VISUALIZER_ENABLED -> {
                 visibility = if (PlayerPreferences.isVisualizerEnabled()) VISIBLE else GONE
             }
-            VisualizerPreferences.PARTICLES_ENABLED -> {
-                particlesEnabled = VisualizerPreferences.areParticlesEnabled()
-            }
-            VisualizerPreferences.CAPS_ENABLED -> {
-                capsEnabled = VisualizerPreferences.areCapsEnabled()
-            }
         }
-    }
-
-    // == Particle system =======================================================
-
-    /**
-     * Controls whether the ash-particle emitter is active.
-     * All live particles are cleared immediately when set to `false`.
-     */
-    var particlesEnabled: Boolean = false
-        set(value) {
-            field = value
-            if (!value) particles.clear()
-        }
-
-    /** Live list of active particles, updated and rendered inside each [onDraw] call. */
-    private val particles = ArrayList<Particle>(MAX_PARTICLES)
-
-    /** Per-band countdown preventing rapid-fire particle floods from a single band. */
-    private val particleCooldowns = IntArray(BAND_COUNT)
-
-    /** Paint shared by all particles. [Paint.alpha] is overwritten per particle in [onDraw]. */
-    private val particlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-        color = Color.WHITE
-    }
-
-    /**
-     * A single floating particle belonging to the ash/snow emitter.
-     * All fields are mutable so the particle can be updated in-place each frame
-     * without additional heap allocation.
-     */
-    private class Particle {
-        var x: Float = 0f
-        var y: Float = 0f
-        var vx: Float = 0f
-        var vy: Float = 0f
-        var alpha: Float = 1f
-        var radius: Float = 2f
-        var turbulence: Float = 0.2f
     }
 
     // == Bar path (growing-end rounded corners) ================================
@@ -319,7 +269,6 @@ class FelicityVisualizer @JvmOverloads constructor(
         if (!isInEditMode && attrs != null) {
             context.withStyledAttributes(attrs, R.styleable.FelicityVisualizer, defStyleAttr, 0) {
                 maxRenderHeightFraction = getFloat(R.styleable.FelicityVisualizer_vizMaxRenderHeight, 1f)
-                particlesEnabled = getBoolean(R.styleable.FelicityVisualizer_vizParticlesEnabled, false)
                 val modeOrdinal = getInt(R.styleable.FelicityVisualizer_vizMode, 0)
                 mode = if (modeOrdinal == 1) VisualizerMode.WAVE else VisualizerMode.BARS
                 direction = when (getInt(R.styleable.FelicityVisualizer_vizDirection, 0)) {
@@ -380,20 +329,9 @@ class FelicityVisualizer @JvmOverloads constructor(
     }
 
     /**
-     * Whether the peak-hold cap pills above each bar should be drawn.
-     * Unlike toggling the paint alpha, this flag survives accent color changes
-     * because the draw call is skipped entirely when false.
-     */
-    var capsEnabled: Boolean = true
-        set(value) {
-            field = value
-            invalidate()
-        }
-
-    /**
      * Whether the frequency bars themselves should be drawn.
-     * When set to false the bars disappear but caps and particles still
-     * follow their own toggle — useful for a "caps-only" look.
+     * When set to false the bars disappear but the peak caps are still drawn —
+     * useful for a "caps-only" look.
      */
     var barsEnabled: Boolean = true
         set(value) {
@@ -505,9 +443,8 @@ class FelicityVisualizer @JvmOverloads constructor(
     }
 
     /**
-     * Renders the bar-spectrum visualization including peak-hold caps and the optional
-     * ash-particle emitter. All geometry, corner-rounding, cap positions, particle
-     * emission points, and particle physics adapt to the active [direction].
+     * Renders the bar-spectrum visualization including peak-hold caps. All geometry,
+     * corner-rounding, and cap positions adapt to the active [direction].
      *
      * Returns whether any element is still animating.
      *
@@ -570,7 +507,6 @@ class FelicityVisualizer @JvmOverloads constructor(
             val next = currentBands[i]
             val barLengthPx = (next * maxBarLength).coerceIn(MIN_BAR_PX, maxBarLength)
             val slotOffset = i * slotDim + gapDim / 2f
-            val barCenter = slotOffset + barThickness / 2f
 
             // Set bar rect coordinates based on the growth direction.
             when (direction) {
@@ -588,25 +524,11 @@ class FelicityVisualizer @JvmOverloads constructor(
             barPath.addRoundRect(drawRect, barCornerRadii, Path.Direction.CW)
             if (barsEnabled) canvas.drawPath(barPath, barPaint)
 
-            if (particlesEnabled && particleCooldowns[i] > 0) particleCooldowns[i]--
-
-            // Tip coordinate (the bar's growing end in the primary growth axis).
-            val tipCoord = when (direction) {
-                VisualizerDirection.BOTTOM_TO_TOP -> viewBottom - next * maxBarLength
-                VisualizerDirection.TOP_TO_BOTTOM -> next * maxBarLength
-                VisualizerDirection.LEFT_TO_RIGHT -> next * maxBarLength
-                VisualizerDirection.RIGHT_TO_LEFT -> viewRight - next * maxBarLength
-            }
-
             // Peak cap — pushed out by the bar tip, then retreats under gravity.
             if (next >= peakBands[i]) {
                 peakBands[i] = next
                 peakVelocities[i] = 0f
                 peakHoldCounters[i] = PEAK_HOLD_FRAMES
-                if (particlesEnabled && particleCooldowns[i] <= 0 && next > PARTICLE_MIN_HEIGHT) {
-                    emitParticle(barCenter, tipCoord, isHorizontal)
-                    particleCooldowns[i] = PARTICLE_COOLDOWN_FRAMES
-                }
             } else {
                 if (peakHoldCounters[i] > 0) {
                     peakHoldCounters[i]--
@@ -615,13 +537,6 @@ class FelicityVisualizer @JvmOverloads constructor(
                     peakBands[i] = (peakBands[i] - peakVelocities[i]).coerceAtLeast(0f)
                 }
                 if (peakBands[i] > IDLE_THRESHOLD) stillMoving = true
-                val twoThirdsPeak = peakBands[i] * (2f / 3f)
-                if (particlesEnabled && particleCooldowns[i] <= 0 &&
-                        next >= twoThirdsPeak && next > PARTICLE_MIN_HEIGHT
-                ) {
-                    emitParticle(barCenter, tipCoord, isHorizontal)
-                    particleCooldowns[i] = PARTICLE_COOLDOWN_FRAMES
-                }
             }
 
             // Draw the peak cap pill at the peak position along the growth axis.
@@ -647,43 +562,7 @@ class FelicityVisualizer @JvmOverloads constructor(
                             (peakPos + capPillDim / 2f).coerceAtMost(viewBottom)
                     )
                 }
-                if (capsEnabled) canvas.drawRoundRect(drawRect, cornerRadius, cornerRadius, capPaint)
-            }
-        }
-
-        // Update physics and render all live ash particles.
-        if (particlesEnabled && particles.isNotEmpty()) {
-            val iter = particles.iterator()
-            while (iter.hasNext()) {
-                val p = iter.next()
-                // For horizontal directions the primary drift is in vx; vy carries turbulence.
-                // For vertical directions the primary drift is in vy; vx carries turbulence.
-                if (isHorizontal) {
-                    p.vy += (Random.nextFloat() - 0.5f) * p.turbulence
-                    p.vy *= PARTICLE_DRAG
-                    p.vx *= PARTICLE_VERTICAL_DECAY
-                } else {
-                    p.vx += (Random.nextFloat() - 0.5f) * p.turbulence
-                    p.vx *= PARTICLE_DRAG
-                    p.vy *= PARTICLE_VERTICAL_DECAY
-                }
-                p.x += p.vx
-                p.y += p.vy
-                p.alpha *= PARTICLE_FADE_RATE
-
-                val expired = p.alpha < 0.01f || when (direction) {
-                    VisualizerDirection.BOTTOM_TO_TOP -> p.y < -p.radius
-                    VisualizerDirection.TOP_TO_BOTTOM -> p.y > viewBottom + p.radius
-                    VisualizerDirection.LEFT_TO_RIGHT -> p.x > width + p.radius
-                    VisualizerDirection.RIGHT_TO_LEFT -> p.x < -p.radius
-                }
-                if (expired) {
-                    iter.remove()
-                    continue
-                }
-                particlePaint.alpha = (p.alpha * 255f).toInt()
-                canvas.drawCircle(p.x, p.y, p.radius, particlePaint)
-                stillMoving = true
+                canvas.drawRoundRect(drawRect, cornerRadius, cornerRadius, capPaint)
             }
         }
 
@@ -841,60 +720,6 @@ class FelicityVisualizer @JvmOverloads constructor(
         path.close()
     }
 
-    /**
-     * Spawns a new [Particle] at the bar tip.
-     *
-     * The particle's initial velocity is oriented in the growth direction of the active
-     * [direction]: upward for [VisualizerDirection.BOTTOM_TO_TOP], downward for
-     * [VisualizerDirection.TOP_TO_BOTTOM], rightward for [VisualizerDirection.LEFT_TO_RIGHT],
-     * and leftward for [VisualizerDirection.RIGHT_TO_LEFT]. Turbulent drift is applied
-     * perpendicular to the primary velocity each frame in [drawBars].
-     *
-     * @param crossCoord Position along the band-distribution axis (bar center).
-     *                   This is an x-coordinate for vertical directions and a y-coordinate
-     *                   for horizontal directions.
-     * @param tipCoord   Position of the bar tip along the primary growth axis.
-     *                   This is a y-coordinate for vertical directions and an x-coordinate
-     *                   for horizontal directions.
-     * @param isHorizontal `true` when the active direction is left-to-right or right-to-left.
-     */
-    private fun emitParticle(crossCoord: Float, tipCoord: Float, isHorizontal: Boolean) {
-        if (particles.size >= MAX_PARTICLES) particles.removeAt(0)
-        val p = Particle()
-        val speed = Random.nextFloat() * PARTICLE_SPEED_RANGE + PARTICLE_SPEED_MIN
-        p.alpha = Random.nextFloat() * 0.4f + 0.6f
-        p.radius = Random.nextFloat() * 2.0f + 1.5f
-        p.turbulence = Random.nextFloat() * 0.25f + 0.1f
-
-        when (direction) {
-            VisualizerDirection.BOTTOM_TO_TOP -> {
-                p.x = crossCoord + (Random.nextFloat() - 0.5f) * 6f
-                p.y = tipCoord
-                p.vx = (Random.nextFloat() - 0.5f) * 0.8f
-                p.vy = -speed
-            }
-            VisualizerDirection.TOP_TO_BOTTOM -> {
-                p.x = crossCoord + (Random.nextFloat() - 0.5f) * 6f
-                p.y = tipCoord
-                p.vx = (Random.nextFloat() - 0.5f) * 0.8f
-                p.vy = speed
-            }
-            VisualizerDirection.LEFT_TO_RIGHT -> {
-                p.x = tipCoord
-                p.y = crossCoord + (Random.nextFloat() - 0.5f) * 6f
-                p.vx = speed
-                p.vy = (Random.nextFloat() - 0.5f) * 0.8f
-            }
-            VisualizerDirection.RIGHT_TO_LEFT -> {
-                p.x = tipCoord
-                p.y = crossCoord + (Random.nextFloat() - 0.5f) * 6f
-                p.vx = -speed
-                p.vy = (Random.nextFloat() - 0.5f) * 0.8f
-            }
-        }
-        particles.add(p)
-    }
-
     // == Lifecycle =============================================================
 
     override fun onAttachedToWindow() {
@@ -905,8 +730,6 @@ class FelicityVisualizer @JvmOverloads constructor(
             cornerRadiusFraction = computeCornerFraction()
             applyModePreferences()
             visibility = if (PlayerPreferences.isVisualizerEnabled()) VISIBLE else GONE
-            particlesEnabled = VisualizerPreferences.areParticlesEnabled()
-            capsEnabled = VisualizerPreferences.areCapsEnabled()
             capPaint.color = ThemeManager.accent.primaryAccentColor
         }
     }
@@ -915,7 +738,6 @@ class FelicityVisualizer @JvmOverloads constructor(
         super.onDetachedFromWindow()
         ThemeManager.removeListener(this)
         unregisterListener(prefsListener)
-        particles.clear()
     }
 
     private fun applyModePreferences() {
@@ -1002,34 +824,6 @@ class FelicityVisualizer @JvmOverloads constructor(
          * Values above 1.0 produce pill-shaped bars at maximum app corner radius.
          */
         const val CORNER_RADIUS_FACTOR = 1.5f
-
-        /** Minimum bar length (target) for emitting a particle. */
-        private const val PARTICLE_MIN_HEIGHT = 0.15f
-
-        /** Particle emission cooldown in frames to prevent flooding. */
-        private const val PARTICLE_COOLDOWN_FRAMES = 72
-
-        /** Maximum number of simultaneous live particles to cap memory usage. */
-        const val MAX_PARTICLES = 120
-
-        /** Range of possible initial primary-axis speeds in normalized units per frame. */
-        private const val PARTICLE_SPEED_MIN = 0.15f
-        private const val PARTICLE_SPEED_RANGE = 0.85f
-
-        /**
-         * Alpha multiplier applied each frame.
-         * At 60 fps a particle reaches near-zero opacity after ~130 frames (~2.2 s).
-         */
-        const val PARTICLE_FADE_RATE = 0.975f
-
-        /** Per-frame cross-axis velocity multiplier — simulates air resistance. */
-        private const val PARTICLE_DRAG = 0.93f
-
-        /**
-         * Per-frame primary-axis speed multiplier.
-         * Very close to 1.0 keeps the ascent almost constant, like warm ash buoyed by heat.
-         */
-        private const val PARTICLE_VERTICAL_DECAY = 0.9985f
 
         /**
          * Amplitude scale factor for the secondary (depth) wave layer in [VisualizerMode.WAVE].

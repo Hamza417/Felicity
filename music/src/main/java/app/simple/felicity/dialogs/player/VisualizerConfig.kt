@@ -35,17 +35,6 @@ class VisualizerConfig : MediaBottomDialogFragment() {
             PlayerPreferences.setVisualizerEnabled(isChecked)
         }
 
-
-        binding.particlesToggle.isChecked = VisualizerPreferences.areParticlesEnabled()
-        binding.particlesToggle.setOnCheckedChangeListener { _, isChecked ->
-            VisualizerPreferences.setParticlesEnabled(isChecked)
-        }
-
-        binding.capsToggle.isChecked = VisualizerPreferences.areCapsEnabled()
-        binding.capsToggle.setOnCheckedChangeListener { _, isChecked ->
-            VisualizerPreferences.setCapsEnabled(isChecked)
-        }
-
         setupLatencySeekbar()
     }
 

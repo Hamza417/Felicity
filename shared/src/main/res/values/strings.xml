@@ -316,7 +316,6 @@
     <string name="files">Files</string>
     <string name="style">Style</string>
     <string name="latency">Latency</string>
-    <string name="particles">Particles</string>
     <string name="slide">Slide</string>
     <string name="typewriting">Typewriting</string>
     <string name="no_effect">No Effect</string>
@@ -528,7 +527,6 @@
     <string name="show_lyrics_summary">Show single line lyrics on player screen.</string>
     <string name="carousel">Carousel</string>
     <string name="carousel_ui_desc">Simple player style with carousel type album arts.</string>
-    <string name="caps">Caps</string>
     <string name="bars">Bars</string>
     <string name="current_queue">Queue %1$d</string>
     <string name="rename">Rename</string>

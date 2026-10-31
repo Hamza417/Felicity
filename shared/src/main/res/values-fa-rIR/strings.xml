@@ -295,7 +295,6 @@
     <string name="files">فایل‌ها</string>
     <string name="style">سبک</string>
     <string name="latency">تأخیر (Latency)</string>
-    <string name="particles">ذرات</string>
     <string name="slide">اسلاید</string>
     <string name="typewriting">ماشین‌تحریر</string>
     <string name="no_effect">بدون افکت</string>
@@ -479,7 +478,6 @@
     <string name="show_lyrics_summary">نمایش متن آهنگ تک خطی در صفحه پخش‌کننده.</string>
     <string name="carousel">گردونه (Carousel)</string>
     <string name="carousel_ui_desc">سبک پخش‌کننده ساده با کاور آلبوم‌های چرخ‌ونلکی (گردونه‌ای).</string>
-    <string name="caps">کلاهک‌ها (Caps)</string>
     <string name="bars">میله‌ها (Bars)</string>
     <string name="current_queue">صف %1$d</string>
     <string name="rename">تغییر نام</string>

@@ -304,7 +304,6 @@
     <string name="files">Pliki</string>
     <string name="style">Styl</string>
     <string name="latency">Opóźnienie</string>
-    <string name="particles">Cząstki</string>
     <string name="slide">Przesunięcie</string>
     <string name="typewriting">Maszyna do pisania</string>
     <string name="no_effect">Bez efektu</string>
@@ -490,7 +489,6 @@
     <string name="show_lyrics_summary">Pokaż jedną linię tekstu piosenki na ekranie odtwarzacza.</string>
     <string name="carousel">Karuzela</string>
     <string name="carousel_ui_desc">Prosty styl odtwarzacza z okładkami w stylu karuzeli.</string>
-    <string name="caps">Wielkie litery</string>
     <string name="bars">Paski</string>
     <string name="current_queue">Kolejka %1$d</string>
     <string name="rename">Zmień nazwę</string>

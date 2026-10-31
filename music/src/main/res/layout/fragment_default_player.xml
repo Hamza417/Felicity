@@ -24,8 +24,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:alpha="0.55"
-            app:vizMaxRenderHeight="0.30"
-            app:vizParticlesEnabled="true" />
+            app:vizMaxRenderHeight="0.30" />
 
         <app.simple.felicity.decorations.lrc.view.LrcLineView
             android:id="@+id/lrc"

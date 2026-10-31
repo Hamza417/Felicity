@@ -288,7 +288,6 @@
     <string name="files">Файли</string>
     <string name="style">Стиль</string>
     <string name="latency">Затримка</string>
-    <string name="particles">Частинки</string>
     <string name="slide">Слайд</string>
     <string name="typewriting">Друкарська машинка</string>
     <string name="no_effect">Без ефекту</string>
@@ -472,7 +471,6 @@
     <string name="show_lyrics_summary">Показувати текст пісні в один рядок на екрані плеєра.</string>
     <string name="carousel">Карусель</string>
     <string name="carousel_ui_desc">Простий стиль плеєра з обкладинками альбомів у вигляді каруселі.</string>
-    <string name="caps">Піки</string>
     <string name="bars">Смуги</string>
     <string name="current_queue">Черга %1$d</string>
     <string name="rename">Перейменувати</string>

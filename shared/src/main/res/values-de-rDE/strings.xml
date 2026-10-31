@@ -288,7 +288,6 @@
     <string name="files">Dateien</string>
     <string name="style">Stil</string>
     <string name="latency">Latenz</string>
-    <string name="particles">Partikel</string>
     <string name="slide">Schieben</string>
     <string name="typewriting">Tippen</string>
     <string name="no_effect">Kein Effekt</string>
@@ -472,7 +471,6 @@
     <string name="show_lyrics_summary">Zeige Songtexte auf dem Player-Bildschirm.</string>
     <string name="carousel">Carousel</string>
     <string name="carousel_ui_desc">Einfache Player-Stil mit Karussell-Art Albumkunst.</string>
-    <string name="caps">Caps</string>
     <string name="current_queue">Warteschlange %1$d</string>
     <string name="rename">Umbenennen</string>
     <string name="volume_controls">Lautstärkeregler</string>

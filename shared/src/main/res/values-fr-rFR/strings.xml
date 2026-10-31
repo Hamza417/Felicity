@@ -304,7 +304,6 @@
     <string name="files">Fichiers</string>
     <string name="style">Style</string>
     <string name="latency">Latence</string>
-    <string name="particles">Particules</string>
     <string name="slide">Glissement</string>
     <string name="typewriting">Dactylographie</string>
     <string name="no_effect">Aucun effet</string>
@@ -488,7 +487,6 @@
     <string name="show_lyrics_summary">Afficher les paroles sur une seule ligne sur l\'écran du lecteur.</string>
     <string name="carousel">Carrousel</string>
     <string name="carousel_ui_desc">Style de lecteur simple avec des pochettes d\'album de type carrousel.</string>
-    <string name="caps">Majuscules</string>
     <string name="bars">Barres</string>
     <string name="current_queue">File %1$d</string>
     <string name="rename">Renommer</string>

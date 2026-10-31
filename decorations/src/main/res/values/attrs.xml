@@ -485,8 +485,6 @@
             1.0 = full dimension (default). 0.5 = half the available length.
         -->
         <attr name="vizMaxRenderHeight" format="float" />
-        <!-- Whether the ash/snow particle emitter is enabled. Default: false. -->
-        <attr name="vizParticlesEnabled" format="boolean" />
         <!-- Selects the initial rendering mode. Default: bars. -->
         <attr name="vizMode" format="enum">
             <enum name="bars" value="0" />

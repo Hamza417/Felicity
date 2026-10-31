@@ -13,8 +13,7 @@
         android:layout_height="250dp"
         android:layout_gravity="bottom"
         android:alpha="0.25"
-        app:vizMaxRenderHeight="0.45"
-        app:vizParticlesEnabled="true" />
+        app:vizMaxRenderHeight="0.45" />
 
     <app.simple.felicity.decorations.padding.NonThemePaddingAwareLinearLayout
         android:layout_width="match_parent"

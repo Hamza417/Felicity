@@ -288,7 +288,6 @@
     <string name="files">File</string>
     <string name="style">Stile</string>
     <string name="latency">Latenza</string>
-    <string name="particles">Particelle</string>
     <string name="slide">Scorri</string>
     <string name="typewriting">Macchina da scrivere</string>
     <string name="no_effect">Nessun effetto</string>
@@ -472,7 +471,6 @@
     <string name="show_lyrics_summary">Mostra i testi a riga singola sullo schermo del giocatore.</string>
     <string name="carousel">Carosello</string>
     <string name="carousel_ui_desc">Semplice stile player con album di tipo carosello.</string>
-    <string name="caps">Caps</string>
     <string name="current_queue">Coda %1$d</string>
     <string name="rename">Rinomina</string>
     <string name="volume_controls">Controlli del volume</string>

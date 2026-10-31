@@ -107,8 +107,7 @@
         app:layout_constraintStart_toStartOf="@+id/pager"
         app:layout_constraintTop_toTopOf="parent"
         app:vizDirection="left_to_right"
-        app:vizMaxRenderHeight="0.45"
-        app:vizParticlesEnabled="true" />
+        app:vizMaxRenderHeight="0.45" />
 
     <!--
         Right-side content container spanning from the 40% guideline to the right edge
