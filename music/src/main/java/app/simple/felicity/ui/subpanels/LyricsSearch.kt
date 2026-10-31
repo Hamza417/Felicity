@@ -18,7 +18,6 @@ import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.repository.constants.BundleConstants
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.ui.subpanels.LyricsSearch.Companion.REQUEST_KEY_LYRICS_FOR_EDITOR
 import app.simple.felicity.utils.ParcelUtils.parcelable
 import app.simple.felicity.viewmodels.panels.LyricsSearchViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -138,9 +137,9 @@ class LyricsSearch : MediaFragment() {
             if (isLoading) {
                 headerBinding.count.text = getString(R.string.loading)
             } else {
-                // If loading just finished and there are no results, show "No lyrics found".
+                // If loading just finished and there are no results, show why (error code or "No lyrics found").
                 if (viewModel.searchResults.value.isNullOrEmpty()) {
-                    headerBinding.count.text = getString(R.string.no_lyrics_found)
+                    headerBinding.count.text = emptyResultsText()
                 }
             }
         }
@@ -157,7 +156,7 @@ class LyricsSearch : MediaFragment() {
                 if (isLoading) {
                     getString(R.string.loading)
                 } else {
-                    getString(R.string.no_lyrics_found)
+                    emptyResultsText()
                 }
             }
         }
@@ -176,6 +175,10 @@ class LyricsSearch : MediaFragment() {
                 viewModel.warning.postValue(null)
             }
         }
+    }
+
+    private fun emptyResultsText(): String {
+        return viewModel.errorCode.value ?: getString(R.string.no_lyrics_found)
     }
 
     private fun ensureAdapterCreated() {

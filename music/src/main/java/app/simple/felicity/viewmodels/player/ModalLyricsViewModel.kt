@@ -18,6 +18,7 @@ import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.managers.LyricsLoadingStatus
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.repositories.LrcRepository
+import app.simple.felicity.repository.utils.toLyricsErrorCode
 import app.simple.felicity.viewmodels.player.ModalLyricsViewModel.Companion.SYNC_SAVE_DEBOUNCE_MS
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -227,8 +228,11 @@ class ModalLyricsViewModel @AssistedInject constructor(
             lrcData.postValue(LrcData())
         }
 
-        // Whatever happened, we're no longer actively loading — back to idle.
-        withContext(Dispatchers.Main) { _loadingStatus.value = LyricsLoadingStatus.Idle }
+        // Keep the error code visible on failure; otherwise we're back to idle.
+        val finalStatus = searchResult.exceptionOrNull()
+            ?.let { LyricsLoadingStatus.Failed(it.toLyricsErrorCode()) }
+            ?: LyricsLoadingStatus.Idle
+        withContext(Dispatchers.Main) { _loadingStatus.value = finalStatus }
     }
 
     fun reloadLrcData() {

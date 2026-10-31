@@ -8,6 +8,7 @@ import androidx.core.net.toUri
 import app.simple.felicity.repository.factories.TaggedSocketFactory
 import app.simple.felicity.repository.metadata.LyricsMetaHelper
 import app.simple.felicity.repository.models.LrcLibResponse
+import app.simple.felicity.repository.utils.LrcLibHttpException
 import app.simple.felicity.shared.constants.AppConstants
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -224,7 +225,7 @@ class LrcRepository @Inject constructor(
                 client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) {
                         return@withContext Result.failure(
-                                IOException("Failed to search: ${response.code}")
+                                LrcLibHttpException(response.code, "Failed to search: ${response.code}")
                         )
                     }
                     val listType = object : TypeToken<List<LrcLibResponse>>() {}.type
@@ -264,7 +265,7 @@ class LrcRepository @Inject constructor(
                 client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) {
                         return@withContext Result.failure(
-                                IOException("Failed to search lyrics: ${response.code}")
+                                LrcLibHttpException(response.code, "Failed to search lyrics: ${response.code}")
                         )
                     }
 
@@ -308,7 +309,7 @@ class LrcRepository @Inject constructor(
                 client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) {
                         return@withContext Result.failure(
-                                IOException("Failed to fetch lyrics: ${response.code}")
+                                LrcLibHttpException(response.code, "Failed to fetch lyrics: ${response.code}")
                         )
                     }
 

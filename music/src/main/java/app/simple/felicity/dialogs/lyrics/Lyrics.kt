@@ -77,6 +77,7 @@ class Lyrics : MediaBottomDialogFragment(), AddLyrics.Companion.OnLyricsCreatedL
             val message = when (status) {
                 is LyricsLoadingStatus.Searching -> getString(R.string.searching_lyrics)
                 is LyricsLoadingStatus.Downloading -> getString(R.string.downloading_lyrics)
+                is LyricsLoadingStatus.Failed -> status.errorCode
                 is LyricsLoadingStatus.Idle -> getString(R.string.no_lyrics_found)
             }
             binding.lrcView.setEmptyText(message)

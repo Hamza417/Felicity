@@ -13,6 +13,7 @@ import app.simple.felicity.managers.LyricsManager
 import app.simple.felicity.repository.models.LrcLibResponse
 import app.simple.felicity.repository.repositories.LrcRepository
 import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
+import app.simple.felicity.repository.utils.toLyricsErrorCode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -40,23 +41,24 @@ class LyricsSearchViewModel @Inject constructor(
         private val lyricsManager: LyricsManager
 ) : WrappedViewModel(application) {
 
-    private val _searchResults = MutableLiveData<List<LrcLibResponse>>(emptyList())
-
     /** The current list of [LrcLibResponse] items returned by the latest search. */
-    val searchResults: LiveData<List<LrcLibResponse>> get() = _searchResults
-
-    private val _isLoading = MutableLiveData(false)
+    val searchResults: LiveData<List<LrcLibResponse>>
+        field = MutableLiveData<List<LrcLibResponse>>(emptyList())
 
     /** True while a network search or file-save operation is in progress. */
-    val isLoading: LiveData<Boolean> get() = _isLoading
+    val isLoading: LiveData<Boolean>
+        field = MutableLiveData(false)
 
-    private val _lrcSaved = MutableLiveData<Boolean>()
+    /** Short error code (e.g. `HTTP 503`, `NO_INTERNET`) of the latest failed search, or `null`. */
+    val errorCode: LiveData<String?>
+        field = MutableLiveData<String?>(null)
 
     /**
      * Emits `true` once an LRC entry has been successfully saved to disk.
      * The UI should observe this and navigate back on a `true` emission.
      */
-    val lrcSaved: LiveData<Boolean> get() = _lrcSaved
+    val lrcSaved: LiveData<Boolean>
+        field = MutableLiveData<Boolean>()
 
     /**
      * The current search keyword.
@@ -132,30 +134,33 @@ class LyricsSearchViewModel @Inject constructor(
      * Posts an appropriate warning message to [warning] when no results are found or on error.
      *
      * @param trackName  the song title to search for.
-     * @param artistName the artist name to search for (may be empty).
+     * @param artistName the artist name to search for (maybe empty).
      */
     private fun performSearch(trackName: String, artistName: String) {
         if (trackName.isBlank()) return
 
         viewModelScope.launch(Dispatchers.IO) {
-            _isLoading.postValue(true)
+            isLoading.postValue(true)
+            errorCode.postValue(null)
             Log.d(TAG, "Searching for lyrics: trackName='$trackName', artistName='$artistName'")
 
             val result = lrcRepository.searchLyrics(trackName, artistName)
 
             result.onSuccess { results ->
-                _searchResults.postValue(results)
+                searchResults.postValue(results)
                 if (results.isEmpty()) {
                     warning.postValue(getString(R.string.no_lyrics_found))
                 }
                 Log.d(TAG, "Search returned ${results.size} result(s)")
             }.onFailure { exception ->
                 Log.e(TAG, "Search failed", exception)
-                warning.postValue(exception.message ?: getString(R.string.no_lyrics_found))
-                _searchResults.postValue(emptyList())
+                val code = exception.toLyricsErrorCode()
+                errorCode.postValue(code)
+                warning.postValue(code)
+                searchResults.postValue(emptyList())
             }
 
-            _isLoading.postValue(false)
+            isLoading.postValue(false)
         }
     }
 
@@ -187,7 +192,7 @@ class LyricsSearchViewModel @Inject constructor(
         }
 
         viewModelScope.launch(Dispatchers.IO) {
-            _isLoading.postValue(true)
+            isLoading.postValue(true)
             Log.d(TAG, "Saving LRC for: ${audio.title} -> ${audio.uri}")
 
             // Wipe out whatever was there before so the fresh download is the only
@@ -201,13 +206,13 @@ class LyricsSearchViewModel @Inject constructor(
                 // Tell the manager to drop its cache and reload so every
                 // screen — player, lyrics panel, etc. — gets the new lyrics right away.
                 lyricsManager.reloadLrcData()
-                _lrcSaved.postValue(true)
+                lrcSaved.postValue(true)
             }.onFailure { exception ->
                 Log.e(TAG, "Failed to save LRC", exception)
-                warning.postValue(getString(R.string.no_lyrics_found))
+                warning.postValue(exception.toLyricsErrorCode())
             }
 
-            _isLoading.postValue(false)
+            isLoading.postValue(false)
         }
     }
 

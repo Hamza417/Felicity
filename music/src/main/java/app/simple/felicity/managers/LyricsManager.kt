@@ -15,6 +15,7 @@ import app.simple.felicity.managers.LyricsManager.Companion.SYNC_SAVE_DEBOUNCE_M
 import app.simple.felicity.preferences.LyricsPreferences
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.repositories.LrcRepository
+import app.simple.felicity.repository.utils.toLyricsErrorCode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -174,6 +175,9 @@ class LyricsManager @Inject constructor(
         bakedLrcData = null
         syncSaveHandler.removeCallbacks(syncSaveRunnable)
 
+        // Drop any error left over from the previous song's online lookup.
+        _loadingStatus.value = LyricsLoadingStatus.Idle
+
         // No song is playing at all — mark empty and stop here.
         if (currentSong == null) {
             _lrcData.value = LrcData()
@@ -331,6 +335,8 @@ class LyricsManager @Inject constructor(
             return
         }
 
+        var failure: Throwable? = null
+
         result.onSuccess { results ->
             val syncedLyrics = results.firstOrNull()?.syncedLyrics
             if (!syncedLyrics.isNullOrBlank()) {
@@ -350,10 +356,12 @@ class LyricsManager @Inject constructor(
             }
         }.onFailure { exception ->
             exception.printStackTrace()
+            failure = exception
             emitIfStillRelevant(songPath, LrcData())
         }
 
-        _loadingStatus.value = LyricsLoadingStatus.Idle
+        _loadingStatus.value = failure?.let { LyricsLoadingStatus.Failed(it.toLyricsErrorCode()) }
+            ?: LyricsLoadingStatus.Idle
     }
 
     /**
@@ -459,4 +467,10 @@ sealed class LyricsLoadingStatus {
      * @param trackName the song whose lyrics are being saved.
      */
     data class Downloading(val trackName: String) : LyricsLoadingStatus()
+
+    /**
+     * The online lookup failed (no internet, server error, bad response…).
+     * @param errorCode short code such as `HTTP 503` or `NO_INTERNET` that can be shown to the user.
+     */
+    data class Failed(val errorCode: String) : LyricsLoadingStatus()
 }
