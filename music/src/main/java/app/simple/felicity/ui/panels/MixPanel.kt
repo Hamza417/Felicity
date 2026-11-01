@@ -24,7 +24,7 @@ import app.simple.felicity.viewmodels.panels.MixesViewModel.MixType
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
- * Panel showing the songs of one auto-generated mix, either Discover or Random Picks
+ * Panel showing the songs of one auto-generated mix,  Discover, Random Picks or Queue Mix
  * depending on the [MixType] it was opened with. The list is shared with the dashboard
  * "Mixed" row through [MixesViewModel] and only changes when the user asks for a new mix.
  *
@@ -89,6 +89,7 @@ class MixPanel : BasePanelFragment() {
         return when (mixType) {
             MixType.DISCOVER -> R.string.discover
             MixType.RANDOM_PICKS -> R.string.random_picks
+            MixType.QUEUE -> R.string.queue_mix
         }
     }
 

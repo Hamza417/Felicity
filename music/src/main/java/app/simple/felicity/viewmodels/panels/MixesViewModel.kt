@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Holds the auto-generated mixes (Discover and Random Picks). It is requested with an
+ * Holds the auto-generated mixes (Discover, Random Picks and Queue Mix). It is requested with an
  * activity scope so the dashboard cards and the mix panels always show the same songs.
  *
  * Mixes are generated once the library has songs and stay stable until [refresh] is called,
@@ -35,7 +35,7 @@ class MixesViewModel @Inject constructor(
 ) : WrappedViewModel(application) {
 
     /** The kinds of auto-generated mixes. */
-    enum class MixType { DISCOVER, RANDOM_PICKS }
+    enum class MixType { DISCOVER, RANDOM_PICKS, QUEUE }
 
     /**
      * An auto-generated playlist.
@@ -67,9 +67,10 @@ class MixesViewModel @Inject constructor(
             combine(
                     songStatRepository.getNeverPlayed(),
                     songStatRepository.getRecentlyPlayed(),
+                    songStatRepository.getMostPlayed(),
                     audioRepository.getAllAudio(),
                     refreshTrigger
-            ) { neverPlayed, recentlyPlayed, allAudio, trigger ->
+            ) { neverPlayed, recentlyPlayed, mostPlayed, allAudio, trigger ->
                 if (_mixes.value.isNotEmpty() && trigger == appliedTrigger) return@combine null
 
                 // Discover prefers never played songs; once everything has been played it
@@ -81,7 +82,8 @@ class MixesViewModel @Inject constructor(
 
                 trigger to listOf(
                         Mix(MixType.DISCOVER, R.string.discover, discoverPool.shuffled().take(MIX_SIZE)),
-                        Mix(MixType.RANDOM_PICKS, R.string.random_picks, allAudio.shuffled().take(MIX_SIZE))
+                        Mix(MixType.RANDOM_PICKS, R.string.random_picks, allAudio.shuffled().take(MIX_SIZE)),
+                        Mix(MixType.QUEUE, R.string.queue_mix, buildQueueMix(mostPlayed, allAudio))
                 ).filter { it.songs.isNotEmpty() }
             }
                 .catch { e -> Log.e(TAG, "Error loading mixes", e) }
@@ -94,6 +96,30 @@ class MixesViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Builds a ready-to-play queue from the user's play activity. The most played songs are
+     * ranked, the artists behind them are weighted by that rank, and the queue is filled with
+     * songs from the top artists in the library. Returns an empty list when there is no play
+     * history yet.
+     */
+    private fun buildQueueMix(mostPlayed: List<Audio>, allAudio: List<Audio>): List<Audio> {
+        val artistWeights = HashMap<String, Int>()
+        mostPlayed.forEachIndexed { index, audio ->
+            val artist = audio.artist?.takeIf { it.isNotBlank() } ?: return@forEachIndexed
+            artistWeights[artist] = (artistWeights[artist] ?: 0) + (mostPlayed.size - index)
+        }
+
+        val topArtists = artistWeights.entries
+            .sortedByDescending { it.value }
+            .take(QUEUE_ARTISTS)
+            .map { it.key }
+            .toHashSet()
+
+        if (topArtists.isEmpty()) return emptyList()
+
+        return allAudio.filter { it.artist in topArtists }.shuffled().take(MIX_SIZE)
+    }
+
     /** Generates a fresh shuffle of every mix. */
     fun refresh() {
         refreshTrigger.value++
@@ -104,5 +130,8 @@ class MixesViewModel @Inject constructor(
 
         /** Number of songs in each mix. */
         private const val MIX_SIZE = 25
+
+        /** Number of top artists the queue mix draws from. */
+        private const val QUEUE_ARTISTS = 5
     }
 }

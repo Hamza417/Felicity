@@ -7,12 +7,13 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.databinding.AdapterMixCardBinding
 import app.simple.felicity.decorations.overscroll.HorizontalListViewHolder
-import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCoverWithPayload
+import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
+import app.simple.felicity.preferences.AlbumArtPreferences
 import app.simple.felicity.viewmodels.panels.MixesViewModel.Mix
 
 /**
- * Horizontal carousel adapter for the auto-generated [Mix] playlists (Discover and
- * Random Picks) shown in the dashboard "Mixed" row. Each card draws a stack of covers
+ * Horizontal carousel adapter for the auto-generated [Mix] playlists (Discover, Random Picks
+ * and Queue Mix) shown in the dashboard "Mixed" row. Each card draws its cover as a stack
  * so it reads as a collection of songs.
  *
  * @param mixes The initial list of mixes to show.
@@ -36,9 +37,11 @@ class AdapterDashboardMixes(
         val context = holder.itemView.context
         val songs = mix.songs
 
-        holder.binding.art.loadArtCoverWithPayload(songs[0])
-        holder.binding.artBackNear.loadArtCoverWithPayload(songs.getOrElse(1) { songs[0] })
-        holder.binding.artBackFar.loadArtCoverWithPayload(songs.getOrElse(2) { songs[0] })
+        holder.binding.art.loadArtCover(
+                songs[0],
+                roundedCorners = AlbumArtPreferences.isRoundedCornersEnabled(),
+                greyscale = AlbumArtPreferences.isGreyscaleEnabled(),
+                stack = true)
         holder.binding.title.text = context.getString(mix.titleRes)
         holder.binding.artist.text = context.getString(R.string.x_songs, songs.size)
 

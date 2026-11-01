@@ -65,6 +65,7 @@
     <string name="mixed">Mixed</string>
     <string name="discover">Discover</string>
     <string name="random_picks">Random Picks</string>
+    <string name="queue_mix">Queue Mix</string>
     <string name="new_mix">New Mix</string>
     <string name="title">Title</string>
     <string name="album">Album</string>
