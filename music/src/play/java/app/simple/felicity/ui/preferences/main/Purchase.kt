@@ -31,8 +31,8 @@ import dagger.hilt.android.AndroidEntryPoint
 class Purchase : PreferenceFragment() {
 
     private var _binding: FragmentPurchaseBinding? = null
-    private val binding get() = _binding!!
-    private lateinit var headerBinding: HeaderPreferencesGenericBinding
+    private val purchaseBinding get() = _binding!!
+    private lateinit var purchaseHeaderBinding: HeaderPreferencesGenericBinding
 
     /**
      * The ViewModel handles all the heavy billing work so this fragment can stay
@@ -42,16 +42,16 @@ class Purchase : PreferenceFragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentPurchaseBinding.inflate(inflater, container, false)
-        headerBinding = HeaderPreferencesGenericBinding.inflate(inflater, container, false)
-        return binding.root
+        purchaseHeaderBinding = HeaderPreferencesGenericBinding.inflate(inflater, container, false)
+        return purchaseBinding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        headerBinding.title.text = getString(R.string.purchase)
-        headerBinding.icon.setImageResource(R.drawable.ic_sell)
-        binding.header.setContentView(headerBinding.root)
+        purchaseHeaderBinding.title.text = getString(R.string.purchase)
+        purchaseHeaderBinding.icon.setImageResource(R.drawable.ic_sell)
+        purchaseBinding.header.setContentView(purchaseHeaderBinding.root)
 
         refreshTrialStatus()
         observeBillingState()
@@ -64,7 +64,7 @@ class Purchase : PreferenceFragment() {
      * If the user already purchased, we swap it out for a celebratory message instead.
      */
     private fun refreshTrialStatus() {
-        binding.trialStatus.text = when {
+        purchaseBinding.trialStatus.text = when {
             TrialPreferences.isFullVersion() -> getString(R.string.already_purchased)
             TrialPreferences.isWithinTrialPeriod() -> getString(R.string.trial_period_summary, TrialPreferences.getDaysLeft())
             else -> getString(R.string.trial_expired_short)
@@ -80,9 +80,9 @@ class Purchase : PreferenceFragment() {
         purchaseViewModel.billingState.observe(viewLifecycleOwner) { state ->
             when (state) {
                 is PurchaseViewModel.BillingState.Connecting -> {
-                    binding.buyButton.text = getString(R.string.billing_connecting)
-                    binding.buyButton.isEnabled = false
-                    binding.buyButton.alpha = 0.6f
+                    purchaseBinding.buyButton.text = getString(R.string.billing_connecting)
+                    purchaseBinding.buyButton.isEnabled = false
+                    purchaseBinding.buyButton.alpha = 0.6f
                     hidePriceRow()
                 }
 
@@ -93,37 +93,37 @@ class Purchase : PreferenceFragment() {
                         showPriceRow(basePrice = state.basePrice, offerPrice = state.offerPrice)
                         // The button itself shows the offer price so there is no confusion
                         // about what the user will actually be charged.
-                        binding.buyButton.text = state.offerPrice
+                        purchaseBinding.buyButton.text = state.offerPrice
                     } else {
                         // No offer today — just show the normal price on the button.
                         hidePriceRow()
-                        binding.buyButton.text = state.basePrice.ifEmpty { getString(R.string.purchase_now) }
+                        purchaseBinding.buyButton.text = state.basePrice.ifEmpty { getString(R.string.purchase_now) }
                     }
-                    binding.buyButton.isEnabled = true
-                    binding.buyButton.alpha = 1f
+                    purchaseBinding.buyButton.isEnabled = true
+                    purchaseBinding.buyButton.alpha = 1f
                 }
 
                 is PurchaseViewModel.BillingState.AlreadyPurchased -> {
-                    binding.buyButton.text = getString(R.string.already_purchased)
-                    binding.buyButton.isEnabled = false
-                    binding.buyButton.alpha = 0.6f
-                    binding.restoreButton.isEnabled = false
-                    binding.restoreButton.gone()
+                    purchaseBinding.buyButton.text = getString(R.string.already_purchased)
+                    purchaseBinding.buyButton.isEnabled = false
+                    purchaseBinding.buyButton.alpha = 0.6f
+                    purchaseBinding.restoreButton.isEnabled = false
+                    purchaseBinding.restoreButton.gone()
                     hidePriceRow()
                     refreshTrialStatus()
                 }
 
                 is PurchaseViewModel.BillingState.Error -> {
-                    binding.buyButton.text = getString(R.string.billing_error, state.message)
-                    binding.buyButton.isEnabled = true
-                    binding.buyButton.alpha = 0.8f
+                    purchaseBinding.buyButton.text = getString(R.string.billing_error, state.message)
+                    purchaseBinding.buyButton.isEnabled = true
+                    purchaseBinding.buyButton.alpha = 0.8f
                     hidePriceRow()
                 }
 
                 is PurchaseViewModel.BillingState.Unavailable -> {
-                    binding.buyButton.text = getString(R.string.billing_unavailable)
-                    binding.buyButton.isEnabled = false
-                    binding.buyButton.alpha = 0.5f
+                    purchaseBinding.buyButton.text = getString(R.string.billing_unavailable)
+                    purchaseBinding.buyButton.isEnabled = false
+                    purchaseBinding.buyButton.alpha = 0.5f
                     hidePriceRow()
                 }
             }
@@ -155,12 +155,12 @@ class Purchase : PreferenceFragment() {
      * @param offerPrice The discounted price shown in the accent-colored badge.
      */
     private fun showPriceRow(basePrice: String, offerPrice: String) {
-        binding.originalPrice.text = basePrice
+        purchaseBinding.originalPrice.text = basePrice
         // Apply a strikethrough so it looks properly "crossed out" — classic sale style.
-        binding.originalPrice.paintFlags =
-            binding.originalPrice.paintFlags or Paint.STRIKE_THRU_TEXT_FLAG
-        binding.offerPriceBadge.text = offerPrice
-        binding.priceRow.visibility = View.VISIBLE
+        purchaseBinding.originalPrice.paintFlags =
+            purchaseBinding.originalPrice.paintFlags or Paint.STRIKE_THRU_TEXT_FLAG
+        purchaseBinding.offerPriceBadge.text = offerPrice
+        purchaseBinding.priceRow.visibility = View.VISIBLE
     }
 
     /**
@@ -168,7 +168,7 @@ class Purchase : PreferenceFragment() {
      * we just want to show a plain price on the button without any extra fuss.
      */
     private fun hidePriceRow() {
-        binding.priceRow.visibility = View.GONE
+        purchaseBinding.priceRow.visibility = View.GONE
     }
 
     /**
@@ -176,7 +176,7 @@ class Purchase : PreferenceFragment() {
      * Google Play purchase sheet — the ViewModel takes it from there.
      */
     private fun setupBuyButton() {
-        binding.buyButton.setOnClickListener {
+        purchaseBinding.buyButton.setOnClickListener {
             activity?.let { act ->
                 purchaseViewModel.launchPurchaseFlow(act)
             }
@@ -192,9 +192,9 @@ class Purchase : PreferenceFragment() {
      * knows something is happening and doesn't tap it seventeen times.
      */
     private fun setupRestoreButton() {
-        binding.restoreButton.setOnClickListener {
-            binding.restoreButton.isEnabled = false
-            binding.restoreButton.text = getString(R.string.restore_purchase_restoring)
+        purchaseBinding.restoreButton.setOnClickListener {
+            purchaseBinding.restoreButton.isEnabled = false
+            purchaseBinding.restoreButton.text = getString(R.string.restore_purchase_restoring)
             purchaseViewModel.restorePurchase()
         }
 
@@ -202,8 +202,8 @@ class Purchase : PreferenceFragment() {
         // can try again if needed — no stuck buttons allowed.
         purchaseViewModel.billingState.observe(viewLifecycleOwner) {
             if (it !is PurchaseViewModel.BillingState.AlreadyPurchased) {
-                binding.restoreButton.isEnabled = true
-                binding.restoreButton.text = getString(R.string.restore_purchase)
+                purchaseBinding.restoreButton.isEnabled = true
+                purchaseBinding.restoreButton.text = getString(R.string.restore_purchase)
             }
         }
     }
