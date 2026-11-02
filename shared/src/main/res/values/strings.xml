@@ -62,7 +62,7 @@
     <string name="tiled">Tiled</string>
     <string name="tiled_desc">Dynamic, mosaic-style grid blending album art and library panels.</string>
     <string name="recommended">Recommended</string>
-    <string name="mixed">Mixed</string>
+    <string name="mixes">Mixes</string>
     <string name="discover">Discover</string>
     <string name="random_picks">Random Picks</string>
     <string name="queue_mix">Queue Mix</string>

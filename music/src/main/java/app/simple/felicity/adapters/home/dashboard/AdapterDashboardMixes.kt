@@ -38,10 +38,11 @@ class AdapterDashboardMixes(
         val songs = mix.songs
 
         holder.binding.art.loadArtCover(
-                songs[0],
+                item = mix,
                 roundedCorners = AlbumArtPreferences.isRoundedCornersEnabled(),
-                greyscale = AlbumArtPreferences.isGreyscaleEnabled(),
-                stack = true)
+                greyscale = AlbumArtPreferences.isGreyscaleEnabled()
+        )
+
         holder.binding.title.text = context.getString(mix.titleRes)
         holder.binding.artist.text = context.getString(R.string.x_songs, songs.size)
 

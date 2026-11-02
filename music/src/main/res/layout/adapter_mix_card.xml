@@ -1,35 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
-<app.simple.felicity.decorations.ripple.DynamicRippleLinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<app.simple.felicity.decorations.ripple.DynamicRippleFrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/container"
-    android:layout_width="175dp"
-    android:layout_height="wrap_content"
+    android:layout_width="300dp"
+    android:layout_height="180dp"
     android:orientation="vertical">
 
-    <!-- One image view; the stacked look is drawn into the bitmap by StackTransformation. -->
-    <app.simple.felicity.decorations.views.SquareImageView
+    <ImageView
         android:id="@+id/art"
-        android:layout_width="175dp"
-        android:layout_height="175dp"
-        android:scaleType="fitCenter" />
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:contentDescription="@null" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingVertical="@dimen/padding_5"
+        android:layout_margin="@dimen/padding_10"
         android:layout_gravity="bottom">
 
         <app.simple.felicity.decorations.typeface.TypeFaceTextView
             android:id="@+id/title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center"
-            android:textSize="@dimen/text_size_14"
+            android:textSize="@dimen/text_size_22"
             android:maxLines="1"
             android:ellipsize="end"
-            app:appFontStyle="bold"
-            app:textColorStyle="primary" />
+            app:appFontStyle="light"
+            app:textColorStyle="white" />
 
         <app.simple.felicity.decorations.typeface.TypeFaceTextView
             android:id="@+id/artist"
@@ -37,11 +36,10 @@
             android:layout_height="wrap_content"
             android:textSize="@dimen/text_size_12"
             android:maxLines="1"
-            android:gravity="center"
             android:ellipsize="end"
             app:appFontStyle="regular"
-            app:textColorStyle="tertiary" />
+            app:textColorStyle="white" />
 
     </LinearLayout>
 
-</app.simple.felicity.decorations.ripple.DynamicRippleLinearLayout>
+</app.simple.felicity.decorations.ripple.DynamicRippleFrameLayout>

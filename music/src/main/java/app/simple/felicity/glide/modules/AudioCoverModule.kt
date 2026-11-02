@@ -10,6 +10,7 @@ import app.simple.felicity.glide.filedescriptorcover.DescriptorCoverLoader
 import app.simple.felicity.glide.filedescriptorcover.DescriptorCoverModel
 import app.simple.felicity.glide.foldercover.FolderCoverLoader
 import app.simple.felicity.glide.genres.GenreCoverLoader
+import app.simple.felicity.glide.mixcover.MixCoverLoader
 import app.simple.felicity.glide.transformation.BlurShadow
 import app.simple.felicity.glide.transformation.Padding
 import app.simple.felicity.glide.yearcover.YearCoverLoader
@@ -19,6 +20,7 @@ import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.Folder
 import app.simple.felicity.repository.models.Genre
 import app.simple.felicity.repository.models.YearGroup
+import app.simple.felicity.viewmodels.panels.MixesViewModel.Mix
 import com.bumptech.glide.Glide
 import com.bumptech.glide.GlideBuilder
 import com.bumptech.glide.Registry
@@ -62,5 +64,6 @@ class AudioCoverModule : AppGlideModule() {
         registry.append(Genre::class.java, Bitmap::class.java, GenreCoverLoader.Factory(context))
         registry.append(Folder::class.java, Bitmap::class.java, FolderCoverLoader.Factory(context))
         registry.append(YearGroup::class.java, Bitmap::class.java, YearCoverLoader.Factory(context))
+        registry.append(Mix::class.java, Bitmap::class.java, MixCoverLoader.Factory(context))
     }
 }
