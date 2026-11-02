@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.widget.ImageView
 import app.simple.felicity.R
+import app.simple.felicity.glide.transformation.BezierGradientTransformation
 import app.simple.felicity.glide.transformation.Blur
 import app.simple.felicity.glide.transformation.BlurShadow
 import app.simple.felicity.glide.transformation.Darken
@@ -30,11 +31,13 @@ object AudioCoverUtils {
             greyscale: Boolean = false,
             darken: Boolean = false,
             crop: Boolean = true,
-            vignette: Boolean = false
+            vignette: Boolean = false,
+            bezierGradient: Boolean = false
     ) {
         val transformations = mutableListOf<Transformation<Bitmap>>()
 
         if (crop) transformations.add(CenterCrop())
+        if (bezierGradient) transformations.add(BezierGradientTransformation())
         if (roundedCorners) transformations.add(RoundedCorners(AppearancePreferences.getCornerRadius().toInt()))
         if (shadow) {
             transformations.add(Padding(BlurShadow.DEFAULT_SHADOW_SIZE.toInt()))

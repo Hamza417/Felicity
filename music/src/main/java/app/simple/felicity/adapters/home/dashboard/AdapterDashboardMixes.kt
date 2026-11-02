@@ -40,7 +40,8 @@ class AdapterDashboardMixes(
         holder.binding.art.loadArtCover(
                 item = mix,
                 roundedCorners = AlbumArtPreferences.isRoundedCornersEnabled(),
-                greyscale = AlbumArtPreferences.isGreyscaleEnabled()
+                greyscale = AlbumArtPreferences.isGreyscaleEnabled(),
+                bezierGradient = true
         )
 
         holder.binding.title.text = context.getString(mix.titleRes)
