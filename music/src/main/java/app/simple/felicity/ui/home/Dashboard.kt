@@ -21,12 +21,10 @@ import app.simple.felicity.adapters.home.dashboard.AdapterDashboardPanels
 import app.simple.felicity.adapters.home.dashboard.AdapterDashboardPanels.Companion.AdapterDashboardPanelsCallbacks
 import app.simple.felicity.adapters.home.dashboard.AdapterDashboardSongs
 import app.simple.felicity.adapters.home.dashboard.AdapterDashboardSongs.Companion.AdapterDashboardSongsCallbacks
-import app.simple.felicity.adapters.home.dashboard.AdapterRecommended
-import app.simple.felicity.adapters.home.dashboard.AdapterRecommended.Companion.AdapterRecommendedCallbacks
+
 import app.simple.felicity.databinding.FragmentHomeDashboardBinding
 import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDecoration
-import app.simple.felicity.decorations.layoutmanager.spanned.SpanSize
-import app.simple.felicity.decorations.layoutmanager.spanned.SpannedGridLayoutManager
+
 import app.simple.felicity.dialogs.app.AppLabel.Companion.showAppLabel
 import app.simple.felicity.extensions.fragments.BaseHomeFragment
 import app.simple.felicity.preferences.MainPreferences
@@ -45,7 +43,7 @@ import app.simple.felicity.ui.panels.MixPanel
 import app.simple.felicity.ui.panels.PlayingQueue
 import app.simple.felicity.viewmodels.panels.DashboardViewModel
 import app.simple.felicity.viewmodels.panels.DashboardViewModel.LibraryStats
-import app.simple.felicity.viewmodels.panels.DashboardViewModel.RecommendedSpanConfig
+
 import app.simple.felicity.viewmodels.panels.MixesViewModel
 import app.simple.felicity.viewmodels.panels.MixesViewModel.Mix
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Panel
@@ -124,9 +122,7 @@ class Dashboard : BaseHomeFragment() {
             openPreferencesPanel()
         }
 
-        binding.refreshRecommended.setOnClickListener {
-            dashboardViewModel.refreshRecommended()
-        }
+
 
         binding.refreshMixes.setOnClickListener {
             mixesViewModel.refresh()
@@ -194,132 +190,11 @@ class Dashboard : BaseHomeFragment() {
         binding.mixedList.addItemDecoration(LinearHorizontalSpacingDecoration(spacing))
     }
 
-    /**
-     * Configures the recommended spanned art grid using a [RecommendedSpanConfig] from
-     * the ViewModel. Portrait uses 3 columns with two large 2x2 cells; landscape uses
-     * 5 flat columns so the grid doesn't take up the entire screen height.
-     *
-     * The grid is fully replaced on every call so each ViewModel-driven cycle shows a fresh
-     * selection with a new random layout pattern.
-     *
-     * @param data The fresh list of [Audio] items emitted by [DashboardViewModel.recommended].
-     */
-    private fun setupRecommendedGrid(data: List<Audio>) {
-        val spanConfig = dashboardViewModel.getSpanConfigForOrientation(resources.configuration.orientation)
-
-        val layoutManager = SpannedGridLayoutManager(SpannedGridLayoutManager.Orientation.VERTICAL, spanConfig.spanCount)
-        layoutManager.spanSizeLookup = SpannedGridLayoutManager.SpanSizeLookup { position ->
-            if (position in spanConfig.bigCellPositions) SpanSize(2, 2) else SpanSize(1, 1)
-        }
-
-        // Set initial/cached height
-        binding.recommendedGrid.layoutParams.height = dashboardViewModel.recommendedHeight.takeIf { it != -1 } ?: 0
-
-        // Extract height measurement into a reusable lambda
-        val calculateAndSetHeight = {
-            binding.recommendedGrid.post {
-                try {
-                    val totalHeight = layoutManager.getTotalHeight() +
-                            binding.recommendedGrid.paddingTop +
-                            binding.recommendedGrid.paddingBottom
-
-                    if (dashboardViewModel.recommendedHeight != totalHeight) {
-                        binding.recommendedGrid.layoutParams.height = totalHeight
-                        binding.recommendedGrid.requestLayout()
-
-                        // Cache totalHeight directly to avoid `measuredHeight` race condition
-                        dashboardViewModel.recommendedHeight = totalHeight
-                    }
-                } catch (_: UninitializedPropertyAccessException) {
-                    // View was destroyed before the post ran — no worries, nothing to update.
-                }
-            }
-        }
-
-        val applyUpdate = {
-            applyRecommendedAdapter(data, layoutManager)
-            calculateAndSetHeight()
-        }
-
-        // We only animate if there's an existing adapter AND the argument is true
-        val shouldAnimate = binding.recommendedGrid.adapter != null &&
-                requireArguments().getBoolean(SHOULD_ANIMATE, true)
-
-        if (shouldAnimate) {
-            binding.recommendedGrid.animate()
-                .alpha(0f)
-                .scaleX(0.9f)
-                .scaleY(0.9f)
-                .setDuration(300)
-                .withEndAction {
-                    applyUpdate() // Called after fade out
-
-                    binding.recommendedGrid.animate()
-                        .alpha(1f)
-                        .scaleX(1f)
-                        .scaleY(1f)
-                        .setDuration(300)
-                        .start()
-                }.start()
-        } else {
-            applyUpdate() // Called immediately for first load or if animations are disabled
-        }
-
-        // Note: Double check if this is meant to be unconditionally false.
-        // Hiding a view completely (GONE) can sometimes force its measured height to 0
-        // depending on the parent ViewGroup.
-        binding.recommendedSection.visible(false)
-    }
-
-    /**
-     * Swaps in a fresh [AdapterRecommended] and attaches callbacks.
-     * Extracted to avoid duplicating the adapter setup code for both the
-     * first-time and animation-end code paths.
-     *
-     * @param data          The recommended [Audio] items to show.
-     * @param layoutManager The freshly-built [SpannedGridLayoutManager] to attach.
-     */
-    private fun applyRecommendedAdapter(data: List<Audio>, layoutManager: SpannedGridLayoutManager) {
-        // Create and configure the adapter
-        val recommendedAdapter = AdapterRecommended(data).apply {
-            setCallbacks(object : AdapterRecommendedCallbacks {
-                override fun onItemClicked(items: List<Audio>, position: Int) =
-                    setMediaItems(items, position)
-
-                override fun onItemLongClicked(items: List<Audio>, position: Int, imageView: ImageView) =
-                    openSongsMenu(items, position, imageView)
-            })
-        }
-
-        binding.recommendedGrid.apply {
-            adapter = null
-            this.layoutManager = layoutManager
-            setHasFixedSize(false)
-
-            if (requireArguments().getBoolean(SHOULD_ANIMATE, true)) {
-                if (binding.recommendedGrid.layoutAnimation != null) {
-                    scheduleLayoutAnimation()
-                }
-                requireArguments().putBoolean(SHOULD_ANIMATE, false)
-            } else {
-                layoutAnimation = null
-            }
-
-            // Assign the adapter once at the end
-            adapter = recommendedAdapter
-        }
-    }
-
     private fun observeData() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch {
-                    dashboardViewModel.recommended.collect { data ->
-                        if (data != null) setupRecommendedGrid(data)
-                        else binding.recommendedSection.gone()
-                    }
-                }
-                launch {
+
+            launch {
                     mixesViewModel.mixes.collect { mixes ->
                         updateMixes(mixes)
                     }
@@ -594,7 +469,5 @@ class Dashboard : BaseHomeFragment() {
 
         /** Back-stack tag used when navigating to this fragment. */
         const val TAG = "Dashboard"
-
-        private const val SHOULD_ANIMATE = "should_animate"
     }
 }

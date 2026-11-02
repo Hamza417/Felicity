@@ -173,51 +173,6 @@
                 android:nestedScrollingEnabled="false"
                 android:overScrollMode="never" />
 
-            <LinearLayout
-                android:id="@+id/recommended_section"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:visibility="gone">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:paddingTop="@dimen/padding_20"
-                    android:paddingBottom="@dimen/padding_8"
-                    android:paddingHorizontal="@dimen/padding_20">
-
-                    <app.simple.felicity.decorations.typeface.TypeFaceTextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_gravity="center_vertical"
-                        android:text="@string/recommended"
-                        android:textSize="@dimen/text_size_22"
-                        app:appFontStyle="bold"
-                        app:textColorStyle="primary" />
-
-                    <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
-                        android:id="@+id/refresh_recommended"
-                        android:layout_width="@dimen/button_size"
-                        android:layout_height="@dimen/button_size"
-                        android:layout_gravity="center_vertical"
-                        android:src="@drawable/ic_refresh" />
-
-                </LinearLayout>
-
-                <app.simple.felicity.decorations.views.CornerRadiusRectRecyclerView
-                    android:id="@+id/recommended_grid"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layoutAnimation="@anim/spanned_animation_controller"
-                    android:nestedScrollingEnabled="false"
-                    android:overScrollMode="never"
-                    android:layout_marginHorizontal="@dimen/padding_20"
-                    android:clipToPadding="false" />
-
-            </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/mixed_section"

@@ -1,7 +1,6 @@
 package app.simple.felicity.viewmodels.panels
 
 import android.app.Application
-import android.content.res.Configuration
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.R
@@ -12,13 +11,9 @@ import app.simple.felicity.repository.models.Artist
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.repositories.AudioRepository
 import app.simple.felicity.repository.repositories.SongStatRepository
-import app.simple.felicity.viewmodels.panels.DashboardViewModel.Companion.RECOMMENDED_MAX_COUNT
-import app.simple.felicity.viewmodels.panels.DashboardViewModel.Companion.RECOMMENDED_MOST_PLAYED_COUNT
-import app.simple.felicity.viewmodels.panels.DashboardViewModel.Companion.RECOMMENDED_RECENTLY_PLAYED_COUNT
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Panel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -55,18 +50,6 @@ class DashboardViewModel @Inject constructor(
      */
     data class LibraryStats(val trackCount: Int, val totalHours: Long)
 
-    /**
-     * Holds the layout configuration for the recommended spanned art grid.
-     * Different configs are used in portrait vs landscape so the grid doesn't look
-     * like it's trying to take over your entire screen in landscape mode.
-     *
-     * @param spanCount Number of columns in the grid.
-     * @param bigCellPositions Positions in the grid that should be rendered as 2x2 big cells.
-     *                         Empty list means all cells are the same boring 1x1 size.
-     */
-    data class RecommendedSpanConfig(val spanCount: Int, val bigCellPositions: List<Int>)
-
-    var recommendedHeight: Int = -1
     private val _recentlyPlayed = MutableStateFlow<List<Audio>>(emptyList())
 
     /** Recently played songs flow ordered by last-played timestamp descending. */
@@ -82,13 +65,6 @@ class DashboardViewModel @Inject constructor(
     /** Favorite songs flow. */
     val favorites: StateFlow<List<Audio>> = _favorites.asStateFlow()
 
-    private val _recommended = MutableStateFlow<List<Audio>?>(null)
-
-    /**
-     * A random selection of songs fetched from the database on each explicit
-     * refresh, used to populate the spanned art grid in the recommended section.
-     */
-    val recommended: StateFlow<List<Audio>?> = _recommended.asStateFlow()
 
     private val _libraryStats = MutableStateFlow<LibraryStats?>(null)
 
@@ -114,24 +90,7 @@ class DashboardViewModel @Inject constructor(
      */
     val topAlbums: StateFlow<List<Album>> = _topAlbums.asStateFlow()
 
-    private val _recommendedSpanConfig = MutableStateFlow<RecommendedSpanConfig?>(null)
 
-    /**
-     * The layout configuration (columns and big-cell positions) last computed
-     * for the recommended grid. The fragment picks this up and applies it
-     * together with an orientation check so landscape doesn't get huge cells.
-     */
-    val recommendedSpanConfig: StateFlow<RecommendedSpanConfig?> = _recommendedSpanConfig.asStateFlow()
-
-    /**
-     * Incremented each time the user explicitly requests a new recommendation shuffle.
-     * Including this value in the [combine] for the recommended flow ensures a reshuffle
-     * even when the underlying data has not changed.
-     */
-    private val _recommendedRefreshTrigger = MutableStateFlow(0)
-
-    /** Active coroutine job collecting the recommended combined flow. */
-    private var recommendedJob: Job? = null
 
     private val _activeQueue = MutableStateFlow<Int>(0)
 
@@ -212,7 +171,6 @@ class DashboardViewModel @Inject constructor(
         startRecentlyPlayedFlow()
         startRecentlyAddedFlow()
         startFavoritesFlow()
-        startRecommendedFlow()
         startLibraryStatsFlow()
         startTopArtistsFlow()
         startTopAlbumsFlow()
@@ -396,115 +354,6 @@ class DashboardViewModel @Inject constructor(
             }
     }
 
-    /**
-     * Starts (or restarts) the recommended-grid flow by combining three reactive Room flows
-     * with [_recommendedRefreshTrigger]. Any change in the audio table, the stats table, or
-     * an explicit refresh request will trigger a full recompute of the recommendation list.
-     *
-     * The previous collection job is canceled before a new one starts to avoid duplicate
-     * emissions when [refreshRecommended] is called.
-     */
-    private fun startRecommendedFlow() {
-        recommendedJob?.cancel()
-        recommendedJob = viewModelScope.launch(Dispatchers.IO) {
-            combine(
-                    songStatRepository.getMostPlayed(),
-                    songStatRepository.getRecentlyPlayed(),
-                    audioRepository.getAllAudio(),
-                    _recommendedRefreshTrigger
-            ) { mostPlayed, recentlyPlayed, allAudio, _ ->
-                computeRecommended(mostPlayed, recentlyPlayed, allAudio)
-            }
-                .catch { e -> Log.e(TAG, "Error loading recommended section", e) }
-                .collect { songs ->
-                    if (songs.isNotEmpty()) {
-                        _recommended.value = songs
-                        // Recompute the span config every time the recommended list refreshes
-                        // so a new shuffle also brings a fresh layout — keeping things visually interesting.
-                        _recommendedSpanConfig.value = buildPortraitSpanConfig()
-                        Log.d(TAG, "recommended updated: ${songs.size} songs")
-                    }
-                }
-        }
-    }
-
-    /**
-     * Pure function that derives the final recommended list from the three data sources.
-     * Keeps the top [RECOMMENDED_MOST_PLAYED_COUNT] most-played songs, adds up to
-     * [RECOMMENDED_RECENTLY_PLAYED_COUNT] recently-played songs that are not already
-     * in the most-played set, then fills remaining slots from the full library using
-     * [millerShuffle].
-     *
-     * @param mostPlayedList  Latest most-played list from the stats table.
-     * @param recentlyPlayedList  Latest recently-played list from the stats table.
-     * @param allAudio  Latest full audio library snapshot.
-     * @return A shuffled list of up to [RECOMMENDED_MAX_COUNT] songs.
-     */
-    private fun computeRecommended(
-            mostPlayedList: List<Audio>,
-            recentlyPlayedList: List<Audio>,
-            allAudio: List<Audio>
-    ): List<Audio> {
-        val mostPlayed = mostPlayedList.take(RECOMMENDED_MOST_PLAYED_COUNT)
-        val mostPlayedIds = mostPlayed.map { it.id }.toHashSet()
-        val recentlyPlayed = recentlyPlayedList
-            .filterNot { it.id in mostPlayedIds }
-            .take(RECOMMENDED_RECENTLY_PLAYED_COUNT)
-
-        val composed = (mostPlayed + recentlyPlayed).distinctBy { it.id }
-
-        return if (composed.size >= RECOMMENDED_MAX_COUNT) {
-            composed.shuffled().take(RECOMMENDED_MAX_COUNT)
-        } else {
-            val existingIds = composed.map { it.id }.toHashSet()
-            val filler = allAudio
-                .filterNot { it.id in existingIds }
-                .take(RECOMMENDED_MAX_COUNT - composed.size)
-            (composed + filler).shuffled()
-        }
-    }
-
-    /**
-     * Builds a portrait layout config by randomly picking which two positions in the 3-column
-     * grid should be rendered as large 2x2 cells. The valid patterns ensure the big cells
-     * never overlap each other and always fit the 6-item grid neatly.
-     *
-     * @return A [RecommendedSpanConfig] ready to be applied in portrait orientation.
-     */
-    private fun buildPortraitSpanConfig(): RecommendedSpanConfig {
-        val validPatterns = listOf(
-                listOf(0, 4),
-                listOf(1, 4),
-                listOf(1, 3),
-                listOf(0, 3)
-        )
-        return RecommendedSpanConfig(
-                spanCount = RECOMMENDED_PORTRAIT_SPAN_COUNT,
-                bigCellPositions = validPatterns.random()
-        )
-    }
-
-    /**
-     * Returns the appropriate [RecommendedSpanConfig] for the current orientation.
-     *
-     * In portrait we use 3 columns with two big 2x2 cells — looks gorgeous.
-     * In landscape we skip the big cells and spread everything across 5 columns
-     * so the grid doesn't turn into a wall of album art.
-     *
-     * @param orientation The current [Configuration] orientation value.
-     * @return The correct [RecommendedSpanConfig] for the given orientation.
-     */
-    fun getSpanConfigForOrientation(orientation: Int): RecommendedSpanConfig {
-        return if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            RecommendedSpanConfig(
-                    spanCount = RECOMMENDED_LANDSCAPE_SPAN_COUNT,
-                    bigCellPositions = emptyList()
-            )
-        } else {
-            _recommendedSpanConfig.value ?: buildPortraitSpanConfig()
-        }
-    }
-
     fun fetchActiveQueue() {
         viewModelScope.launch {
             audioRepository.getPlaybackStateDao().getActiveQueueIdFlow()
@@ -517,36 +366,8 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Triggers a fresh random selection of songs for the recommended grid.
-     *
-     * Increments [_recommendedRefreshTrigger] so the combined flow emits a new value
-     * and [computeRecommended] runs again with the current data set, producing a new
-     * shuffled result even when the underlying DB tables have not changed.
-     */
-    fun refreshRecommended() {
-        _recommendedRefreshTrigger.value++
-    }
-
     companion object {
         private const val TAG = "DashboardViewModel"
-
-        /** Total number of songs shown in the recommended spanned art grid. */
-        private const val RECOMMENDED_MAX_COUNT = 6
-
-        /** Number of slots in the recommended grid filled from the most-played list. */
-        private const val RECOMMENDED_MOST_PLAYED_COUNT = 4
-
-        /** Number of slots in the recommended grid filled from the recently-played list. */
-        private const val RECOMMENDED_RECENTLY_PLAYED_COUNT = 2
-
-        /** Number of columns in the recommended grid when in portrait orientation. */
-        private const val RECOMMENDED_PORTRAIT_SPAN_COUNT = 3
-
-        /** Number of columns in the recommended grid when in landscape — more columns, smaller cells. */
-        private const val RECOMMENDED_LANDSCAPE_SPAN_COUNT = 5
-
-        /** How many top artists or albums to show in the dashboard horizontal lists. */
         private const val TOP_LIST_COUNT = 10
     }
 }

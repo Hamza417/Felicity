@@ -87,6 +87,7 @@ class MixPanel : BasePanelFragment() {
 
     private fun getTitleRes(): Int {
         return when (mixType) {
+            MixType.RECOMMENDED -> R.string.recommended
             MixType.DISCOVER -> R.string.discover
             MixType.RANDOM_PICKS -> R.string.random_picks
             MixType.QUEUE -> R.string.queue_mix

@@ -35,7 +35,7 @@ class MixesViewModel @Inject constructor(
 ) : WrappedViewModel(application) {
 
     /** The kinds of auto-generated mixes. */
-    enum class MixType { DISCOVER, RANDOM_PICKS, QUEUE }
+    enum class MixType { RECOMMENDED, DISCOVER, RANDOM_PICKS, QUEUE }
 
     /**
      * An auto-generated playlist.
@@ -81,6 +81,7 @@ class MixesViewModel @Inject constructor(
                 }
 
                 trigger to listOf(
+                        Mix(MixType.RECOMMENDED, R.string.recommended, allAudio.shuffled().take(MIX_SIZE)),
                         Mix(MixType.DISCOVER, R.string.discover, discoverPool.shuffled().take(MIX_SIZE)),
                         Mix(MixType.RANDOM_PICKS, R.string.random_picks, allAudio.shuffled().take(MIX_SIZE)),
                         Mix(MixType.QUEUE, R.string.queue_mix, buildQueueMix(mostPlayed, allAudio))
