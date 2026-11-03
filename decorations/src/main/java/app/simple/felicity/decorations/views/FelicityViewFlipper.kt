@@ -193,8 +193,15 @@ class FelicityViewFlipper @JvmOverloads constructor(
                 velocityTracker?.addMovement(ev)
                 val dx = abs(ev.x - downX)
                 val dy = abs(ev.y - downY)
+                val rawDx = (ev.x - lastX).toInt()
                 if (!isHorizontalDrag && dx > touchSlop) {
                     if (dx > dy) {
+                        if (canScroll(this, false, rawDx, ev.x.toInt(), ev.y.toInt())) {
+                            // The nested child can handle this horizontal scroll
+                            downX = ev.x // reset downX so it doesn't immediately intercept if user reverses direction
+                            lastX = ev.x
+                            return false
+                        }
                         isHorizontalDrag = true
                         isDragging = true
                         parent?.requestDisallowInterceptTouchEvent(true)
@@ -211,6 +218,26 @@ class FelicityViewFlipper @JvmOverloads constructor(
             }
         }
         return false
+    }
+
+    /**
+     * Tests scrollability within child views of v given a delta of dx.
+     */
+    private fun canScroll(v: View, checkV: Boolean, dx: Int, x: Int, y: Int): Boolean {
+        if (v is ViewGroup) {
+            val scrollX = v.scrollX
+            val scrollY = v.scrollY
+            val count = v.childCount
+            for (i in count - 1 downTo 0) {
+                val child = v.getChildAt(i)
+                if (x + scrollX >= child.left && x + scrollX < child.right &&
+                        y + scrollY >= child.top && y + scrollY < child.bottom &&
+                        canScroll(child, true, dx, x + scrollX - child.left, y + scrollY - child.top)) {
+                    return true
+                }
+            }
+        }
+        return checkV && v.canScrollHorizontally(-dx)
     }
 
     override fun performClick(): Boolean {
