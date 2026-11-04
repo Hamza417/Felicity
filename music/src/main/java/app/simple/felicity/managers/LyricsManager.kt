@@ -4,7 +4,6 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import app.simple.felicity.decorations.lrc.model.LrcData
-import app.simple.felicity.decorations.lrc.model.LrcEntry
 import app.simple.felicity.decorations.lrc.parser.ILyricsParser
 import app.simple.felicity.decorations.lrc.parser.LrcParser
 import app.simple.felicity.decorations.lrc.parser.LyricsParseException
@@ -27,6 +26,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.abs
 
 /**
  * A single place where all lyrics data lives for the currently playing song.
@@ -45,10 +45,6 @@ class LyricsManager @Inject constructor(
 ) {
 
     private val TAG = "LyricsManager"
-
-    private val EMPTY_LRC_DATA = LrcData().apply {
-        addEntry(LrcEntry(0L, "No lyrics found for this song."))
-    }
 
     /**
      * App-wide coroutine scope. A [SupervisorJob] is used so that a failed lyrics
@@ -157,7 +153,7 @@ class LyricsManager @Inject constructor(
         }
 
         // If the path is null we can't do anything meaningful — bail here so doLoad
-        // never receives a null path and we don't need the non-null assertion below.
+        // never receives a null path, and we don't need the non-null assertion below.
 
         // Bake any unsaved sync adjustment for the outgoing song before resetting state.
         persistSyncAdjustment()
@@ -243,6 +239,7 @@ class LyricsManager @Inject constructor(
             fetchAndSaveLrc(
                     trackName = song.title ?: song.name,
                     artistName = song.artist ?: "",
+                    durationMs = song.duration,
                     audioPath = song.uri,
                     songPath = songPath
             )
@@ -273,7 +270,7 @@ class LyricsManager @Inject constructor(
 
     /**
      * Emits [data] into [_lrcData] only if [songPath] still matches [lastLoadedPath].
-     * Stale results from cancelled-but-not-yet-dead coroutines are quietly dropped here.
+     * Stale results from canceled-but-not-yet-dead coroutines are quietly dropped here.
      */
     private fun emitIfStillRelevant(songPath: String?, data: LrcData) {
         if (isStillRelevant(songPath)) {
@@ -323,6 +320,7 @@ class LyricsManager @Inject constructor(
     private suspend fun fetchAndSaveLrc(
             trackName: String,
             artistName: String,
+            durationMs: Long,
             audioPath: String,
             songPath: String
     ) {
@@ -338,12 +336,30 @@ class LyricsManager @Inject constructor(
         var failure: Throwable? = null
 
         result.onSuccess { results ->
-            val syncedLyrics = results.firstOrNull()?.syncedLyrics
+            val durationSec = durationMs / 1000.0
+            val wiggleZone = 5.0
+
+            val matchedResult = results
+                .filter {
+                    !it.syncedLyrics.isNullOrBlank()
+                }
+                .firstOrNull {
+                    abs(it.duration - durationSec) <= wiggleZone
+                }
+
+            val syncedLyrics = matchedResult?.syncedLyrics
+
             if (!syncedLyrics.isNullOrBlank()) {
                 _loadingStatus.value = LyricsLoadingStatus.Downloading(trackName)
                 try {
-                    val parsed = withContext(Dispatchers.Default) { LrcParser().parse(syncedLyrics) }
-                    withContext(Dispatchers.IO) { lrcRepository.saveLrcToFile(syncedLyrics, audioPath) }
+                    val parsed = withContext(Dispatchers.Default) {
+                        LrcParser().parse(syncedLyrics)
+                    }
+
+                    withContext(Dispatchers.IO) {
+                        lrcRepository.saveLrcToFile(syncedLyrics, audioPath)
+                    }
+
                     Log.d(TAG, "Downloaded and saved lyrics for '$trackName'.")
                     emitIfStillRelevant(songPath, parsed)
                 } catch (e: LyricsParseException) {
@@ -360,8 +376,9 @@ class LyricsManager @Inject constructor(
             emitIfStillRelevant(songPath, LrcData())
         }
 
-        _loadingStatus.value = failure?.let { LyricsLoadingStatus.Failed(it.toLyricsErrorCode()) }
-            ?: LyricsLoadingStatus.Idle
+        _loadingStatus.value = failure?.let {
+            LyricsLoadingStatus.Failed(it.toLyricsErrorCode())
+        } ?: LyricsLoadingStatus.Idle
     }
 
     /**
