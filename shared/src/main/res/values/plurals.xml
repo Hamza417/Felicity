@@ -24,4 +24,9 @@
         <item quantity="one">%d Bookmark</item>
         <item quantity="other">%d Bookmarks</item>
     </plurals>
+
+    <plurals name="best_matches">
+        <item quantity="one">%d Best Match</item>
+        <item quantity="other">%d Best Matches</item>
+    </plurals>
 </resources>

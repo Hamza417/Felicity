@@ -9,9 +9,12 @@ import androidx.recyclerview.widget.AsyncListDiffer
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListUpdateCallback
 import androidx.recyclerview.widget.RecyclerView
+import app.simple.felicity.R
 import app.simple.felicity.databinding.AdapterLrcSearchBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
+import app.simple.felicity.decorations.utils.TextViewUtils.setEndDrawable
 import app.simple.felicity.repository.models.LrcLibResponse
+import kotlin.math.abs
 
 /**
  * RecyclerView adapter for displaying a list of [LrcLibResponse] search results in
@@ -20,11 +23,13 @@ import app.simple.felicity.repository.models.LrcLibResponse
  * Each item shows the track name, artist name, and album with duration. Tapping an item
  * invokes [onItemClick] so the panel can download and save the selected LRC entry.
  *
+ * @param targetDuration the duration of the current audio in milliseconds.
  * @param onItemClick callback invoked with the tapped [LrcLibResponse].
  *
  * @author Hamza417
  */
 class AdapterLrcSearch(
+        private val targetDuration: Long,
         private val onItemClick: (LrcLibResponse) -> Unit
 ) : RecyclerView.Adapter<AdapterLrcSearch.LrcViewHolder>() {
 
@@ -111,6 +116,14 @@ class AdapterLrcSearch(
             binding.albumDuration.text = when {
                 album != null -> "$album · $duration"
                 else -> duration
+            }
+
+            val isBestMatch = abs(response.duration - (targetDuration / 1000.0)) <= 5.0
+
+            if (isBestMatch) {
+                binding.trackName.setEndDrawable(R.drawable.ic_star_16dp)
+            } else {
+                binding.trackName.setEndDrawable(0)
             }
 
             // Show the badge whenever this result carries LRC timestamps.

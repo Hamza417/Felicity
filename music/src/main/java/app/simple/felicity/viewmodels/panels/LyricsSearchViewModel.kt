@@ -18,6 +18,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.math.abs
 
 /**
  * ViewModel for the [app.simple.felicity.ui.subpanels.LyricsSearch] panel.
@@ -76,6 +77,8 @@ class LyricsSearchViewModel @Inject constructor(
     val isKeywordUserModified: Boolean
         get() = savedStateHandle.get<Boolean>(KEY_USER_MODIFIED) ?: false
 
+    var targetDuration: Long = 0L
+
     init {
         // Populate the default keyword in SavedStateHandle so the fragment can read it
         // immediately without an extra call to buildDefaultKeyword().
@@ -93,6 +96,7 @@ class LyricsSearchViewModel @Inject constructor(
     private fun triggerAutoSearch() {
         val audio = MediaPlaybackManager.getCurrentSong()
         if (audio != null) {
+            targetDuration = audio.duration
             val title = audio.getProperTitle()
             val artist = audio.artist ?: ""
             performSearch(title, artist)
@@ -147,11 +151,18 @@ class LyricsSearchViewModel @Inject constructor(
             val result = lrcRepository.searchLyrics(trackName, artistName)
 
             result.onSuccess { results ->
-                searchResults.postValue(results)
-                if (results.isEmpty()) {
+                val durationSec = targetDuration / 1000.0
+                val sortedResults = results.sortedBy {
+                    abs(it.duration - durationSec)
+                }
+
+                searchResults.postValue(sortedResults)
+
+                if (sortedResults.isEmpty()) {
                     warning.postValue(getString(R.string.no_lyrics_found))
                 }
-                Log.d(TAG, "Search returned ${results.size} result(s)")
+
+                Log.d(TAG, "Search returned ${sortedResults.size} result(s)")
             }.onFailure { exception ->
                 Log.e(TAG, "Search failed", exception)
                 val code = exception.toLyricsErrorCode()
