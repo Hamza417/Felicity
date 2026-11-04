@@ -27,7 +27,7 @@ import app.simple.felicity.decorations.views.FelicityMediaControls
 import app.simple.felicity.decorations.views.FelicityVisualizer
 import app.simple.felicity.decorations.views.FlexStackLayout
 import app.simple.felicity.dialogs.app.AudioPipelineDialog.Companion.showAudioPipeline
-import app.simple.felicity.dialogs.player.VisualizerConfig.Companion.showVisualizerConfig
+import app.simple.felicity.dialogs.player.VisualizerMenu.Companion.showVisualizerMenu
 import app.simple.felicity.dialogs.player.WaveformMenu.Companion.showWaveformMenu
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.engine.managers.VisualizerManager
@@ -377,7 +377,7 @@ abstract class BasePlayerFragment : MediaFragment() {
 
         visualizerButton.setOnClickListener {
             if (shouldShowProcessors()) {
-                childFragmentManager.showVisualizerConfig()
+                childFragmentManager.showVisualizerMenu()
             } else {
                 showWarning("All processors are disabled. Visualizers are not available in 32-bit output mode.")
             }

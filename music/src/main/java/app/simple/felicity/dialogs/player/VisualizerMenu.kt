@@ -17,7 +17,7 @@ import app.simple.felicity.preferences.VisualizerPreferences
 import java.util.Locale
 import kotlin.math.roundToInt
 
-class VisualizerConfig : MediaBottomDialogFragment() {
+class VisualizerMenu : MediaBottomDialogFragment() {
 
     private lateinit var binding: DialogVisualizerTuningBinding
 
@@ -123,20 +123,20 @@ class VisualizerConfig : MediaBottomDialogFragment() {
     }
 
     companion object {
-        fun newInstance(): VisualizerConfig {
+        fun newInstance(): VisualizerMenu {
             val args = Bundle()
-            val fragment = VisualizerConfig()
+            val fragment = VisualizerMenu()
             fragment.arguments = args
             return fragment
         }
 
-        fun FragmentManager.showVisualizerConfig(): VisualizerConfig {
+        fun FragmentManager.showVisualizerMenu(): VisualizerMenu {
             val dialog = newInstance()
             dialog.show(this, TAG)
             return dialog
         }
 
-        private const val TAG = "VisualizerConfig"
+        private const val TAG = "VisualizerMenu"
         private const val LATENCY_STEP_MS = 5
     }
 }
