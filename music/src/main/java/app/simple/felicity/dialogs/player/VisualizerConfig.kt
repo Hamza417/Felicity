@@ -31,14 +31,14 @@ class VisualizerConfig : MediaBottomDialogFragment() {
 
         updateVizStyleState()
 
-        binding.visualizerToggle.isChecked = PlayerPreferences.isVisualizerEnabled()
+        binding.visualizerToggle.setChecked(PlayerPreferences.isVisualizerEnabled(), false)
         binding.visualizerToggle.setOnCheckedChangeListener { _, isChecked ->
             PlayerPreferences.setVisualizerEnabled(isChecked)
         }
 
         setupLatencySeekbar()
 
-        binding.spectrumColorsToggle.isChecked = VisualizerPreferences.isSpectrumColorsEnabled()
+        binding.spectrumColorsToggle.setChecked(VisualizerPreferences.isSpectrumColorsEnabled(), false)
         binding.spectrumColorsToggle.setOnCheckedChangeListener { _, isChecked ->
             VisualizerPreferences.setSpectrumColorsEnabled(isChecked)
         }
