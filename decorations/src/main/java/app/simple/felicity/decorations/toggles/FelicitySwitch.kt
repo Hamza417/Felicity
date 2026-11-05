@@ -26,6 +26,7 @@ import android.view.animation.LinearInterpolator
 import android.view.animation.OvershootInterpolator
 import android.widget.Checkable
 import androidx.annotation.ColorInt
+import androidx.core.graphics.withTranslation
 import app.simple.felicity.decoration.R
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
@@ -147,6 +148,8 @@ class FelicitySwitch @JvmOverloads constructor(
     private var squashStrengthY: Float = -0.30f
     private var skipElasticThisToggle = false
 
+    private var disableAncestorClipping: Boolean = true
+
     init {
         isClickable = true
         isFocusable = true
@@ -170,6 +173,9 @@ class FelicitySwitch @JvmOverloads constructor(
                 checked = a.getBoolean(R.styleable.FelicitySwitch_felicitySwitchChecked, false)
                 // Reuse the same attr for shadow radius when checked (target value)
                 shadowRadiusTargetPx = a.getDimension(R.styleable.FelicitySwitch_felicitySwitchCheckedElevation, shadowRadiusTargetPx)
+                if (a.hasValue(R.styleable.FelicitySwitch_felicitySwitchDisableAncestorClipping)) {
+                    disableAncestorClipping = a.getBoolean(R.styleable.FelicitySwitch_felicitySwitchDisableAncestorClipping, disableAncestorClipping)
+                }
             } finally {
                 a.recycle()
             }
@@ -187,13 +193,17 @@ class FelicitySwitch @JvmOverloads constructor(
         updateElevation()
 
         post {
-            disableAncestorClipping()
+            if (disableAncestorClipping) {
+                disableAncestorClipping()
+            }
         }
     }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        disableAncestorClipping()
+        if (disableAncestorClipping) {
+            disableAncestorClipping()
+        }
         if (!isInEditMode) {
             ThemeManager.addListener(this)
         }
@@ -289,11 +299,11 @@ class FelicitySwitch @JvmOverloads constructor(
 
         // Draw ring thumb with elastic scale
         ringPaint.color = thumbRingColor
-        canvas.save()
-        canvas.translate(cx, cy)
-        canvas.scale(thumbScaleX, thumbScaleY)
-        canvas.drawCircle(0f, 0f, scaledRadius, ringPaint)
-        canvas.restore()
+
+        canvas.withTranslation(cx, cy) {
+            scale(thumbScaleX, thumbScaleY)
+            drawCircle(0f, 0f, scaledRadius, ringPaint)
+        }
 
         super.onDraw(canvas)
     }

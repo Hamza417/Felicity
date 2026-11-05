@@ -18,7 +18,7 @@
         android:gravity="end"
         android:clipChildren="true"
         android:layout_marginTop="@dimen/padding_10"
-        android:paddingHorizontal="@dimen/padding_20"
+        android:paddingHorizontal="@dimen/padding_15"
         android:orientation="horizontal">
 
         <HorizontalScrollView
@@ -124,7 +124,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="@dimen/padding_10"
-            android:layout_gravity="center_vertical" />
+            android:layout_gravity="center_vertical"
+            app:felicitySwitchDisableAncestorClipping="false" />
 
     </LinearLayout>
 

@@ -192,6 +192,8 @@
         <attr name="felicitySwitchChecked" format="boolean" />
         <!-- Elevation to apply when checked; 0 when unchecked -->
         <attr name="felicitySwitchCheckedElevation" format="dimension" />
+        <!-- Whether to disable ancestor clipping (clipChildren, clipToPadding, clipToOutline) to let shadows and animations overflow. Default is true. -->
+        <attr name="felicitySwitchDisableAncestorClipping" format="boolean" />
     </declare-styleable>
 
     <declare-styleable name="AppHeader">
