@@ -402,6 +402,15 @@ class Equalizer : MediaFragment() {
                     } else {
                         FelicityEqualizer.Companion.Mode.GRAPHIC
                     }
+
+                    binding.equalizerScreen.switchMode.setTextWithFade(
+                            getString(if (mode == EqualizerPreferences.EQ_MODE_PARAMETRIC) {
+                                R.string.switch_to_graphic_eq
+                            } else {
+                                R.string.switch_to_peq
+                            })
+                    )
+
                     if (binding.equalizerScreen.equalizerSliders.mode != targetMode) {
                         binding.equalizerScreen.equalizerSliders.mode = targetMode
 
@@ -484,12 +493,19 @@ class Equalizer : MediaFragment() {
      * Collects [EqualizerViewModel.currentPresetName] and keeps the preset name label
      * between the Save and Reset buttons up to date. The fade animation makes the
      * transition between "Custom" and a named preset look smooth rather than jarring.
+     * Also hides the Save button when the current EQ curve already matches a saved preset.
      */
     private fun observeCurrentPresetName() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.currentPresetName.collect { name ->
                     binding.equalizerScreen.presetName.text = name
+
+                    if (name == EqualizerViewModel.CUSTOM_PRESET_NAME) {
+                        binding.equalizerScreen.savePreset.visibility = View.VISIBLE
+                    } else {
+                        binding.equalizerScreen.savePreset.visibility = View.GONE
+                    }
                 }
             }
         }
