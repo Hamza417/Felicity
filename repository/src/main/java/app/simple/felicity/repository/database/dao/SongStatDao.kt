@@ -111,6 +111,22 @@ interface SongStatDao {
     """)
     fun getMostSkippedWithStat(): Flow<List<AudioWithStat>>
 
+    /**
+     * Returns all available songs along with their statistical records.
+     * Uses a LEFT JOIN so songs without stats are included with zeroed out default values.
+     */
+    @Query("""
+        SELECT a.*, 
+               IFNULL(ss.lastPlayed, 0) AS lastPlayed, 
+               IFNULL(ss.playCount, 0) AS playCount, 
+               IFNULL(ss.skipCount, 0) AS skipCount, 
+               IFNULL(ss.replayCount, 0) AS replayCount
+        FROM audio a
+        LEFT JOIN song_stats ss ON a.hash = ss.audioHash
+        WHERE a.is_available = 1
+    """)
+    fun getAllAudioWithStat(): Flow<List<AudioWithStat>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertStat(audioStat: AudioStat)
 

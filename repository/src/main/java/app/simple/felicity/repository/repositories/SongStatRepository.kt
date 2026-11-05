@@ -194,6 +194,13 @@ class SongStatRepository @Inject constructor(
         return database.songStatDao().getMostSkippedWithStat()
     }
 
+    /**
+     * Returns a reactive flow of the entire available library paired with each song's playback stats.
+     */
+    fun getAllAudioWithStat(): Flow<List<AudioWithStat>> {
+        return database.songStatDao().getAllAudioWithStat()
+    }
+
     suspend fun wipeStats() {
         database.songStatDao().deleteAllStatsInternal()
     }

@@ -5,8 +5,8 @@ import android.util.Log
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.R
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
+import app.simple.felicity.repository.engines.OfflineRecommendationEngine
 import app.simple.felicity.repository.models.Audio
-import app.simple.felicity.repository.repositories.AudioRepository
 import app.simple.felicity.repository.repositories.SongStatRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -30,7 +30,6 @@ import javax.inject.Inject
 @HiltViewModel
 class MixesViewModel @Inject constructor(
         application: Application,
-        private val audioRepository: AudioRepository,
         private val songStatRepository: SongStatRepository
 ) : WrappedViewModel(application) {
 
@@ -54,6 +53,8 @@ class MixesViewModel @Inject constructor(
     private val refreshTrigger = MutableStateFlow(0)
     private var appliedTrigger = -1
 
+    private val recommendationEngine = OfflineRecommendationEngine()
+
     init {
         startMixesFlow()
     }
@@ -65,60 +66,35 @@ class MixesViewModel @Inject constructor(
     private fun startMixesFlow() {
         viewModelScope.launch(Dispatchers.IO) {
             combine(
-                    songStatRepository.getNeverPlayed(),
-                    songStatRepository.getRecentlyPlayed(),
-                    songStatRepository.getMostPlayed(),
-                    audioRepository.getAllAudio(),
+                    songStatRepository.getAllAudioWithStat(),
                     refreshTrigger
-            ) { neverPlayed, recentlyPlayed, mostPlayed, allAudio, trigger ->
+            ) { library, trigger ->
                 if (_mixes.value.isNotEmpty() && trigger == appliedTrigger) return@combine null
 
-                // Discover prefers never played songs; once everything has been played it
-                // falls back to songs that are not among the recently played ones.
-                val discoverPool = neverPlayed.ifEmpty {
-                    val recentIds = recentlyPlayed.map { it.id }.toHashSet()
-                    allAudio.filterNot { it.id in recentIds }
-                }
-
                 trigger to listOf(
-                        Mix(MixType.RECOMMENDED, R.string.recommended, allAudio.shuffled().take(MIX_SIZE)),
-                        Mix(MixType.DISCOVER, R.string.discover, discoverPool.shuffled().take(MIX_SIZE)),
-                        Mix(MixType.RANDOM_PICKS, R.string.random_picks, allAudio.shuffled().take(MIX_SIZE)),
-                        Mix(MixType.QUEUE, R.string.queue_mix, buildQueueMix(mostPlayed, allAudio))
-                ).filter { it.songs.isNotEmpty() }
-            }
-                .catch { e -> Log.e(TAG, "Error loading mixes", e) }
-                .collect { result ->
-                    if (result == null) return@collect
-                    appliedTrigger = result.first
-                    _mixes.value = result.second
-                    Log.d(TAG, "mixes updated: ${result.second.size}")
+                        Mix(MixType.RECOMMENDED, R.string.recommended, recommendationEngine.recommendOverallMix(library).map {
+                            it.audio
+                        }),
+
+                        Mix(MixType.DISCOVER, R.string.discover, recommendationEngine.recommendDiscover(library).map {
+                            it.audio
+                        }),
+
+                        Mix(MixType.RANDOM_PICKS, R.string.random_picks, recommendationEngine.recommendRandomPicks(library).map {
+                            it.audio
+                        })
+                ).filter {
+                    it.songs.isNotEmpty()
                 }
+            }.catch { e ->
+                Log.e(TAG, "Error loading mixes", e)
+            }.collect { result ->
+                if (result == null) return@collect
+                appliedTrigger = result.first
+                _mixes.value = result.second
+                Log.d(TAG, "mixes updated: ${result.second.size}")
+            }
         }
-    }
-
-    /**
-     * Builds a ready-to-play queue from the user's play activity. The most played songs are
-     * ranked, the artists behind them are weighted by that rank, and the queue is filled with
-     * songs from the top artists in the library. Returns an empty list when there is no play
-     * history yet.
-     */
-    private fun buildQueueMix(mostPlayed: List<Audio>, allAudio: List<Audio>): List<Audio> {
-        val artistWeights = HashMap<String, Int>()
-        mostPlayed.forEachIndexed { index, audio ->
-            val artist = audio.artist?.takeIf { it.isNotBlank() } ?: return@forEachIndexed
-            artistWeights[artist] = (artistWeights[artist] ?: 0) + (mostPlayed.size - index)
-        }
-
-        val topArtists = artistWeights.entries
-            .sortedByDescending { it.value }
-            .take(QUEUE_ARTISTS)
-            .map { it.key }
-            .toHashSet()
-
-        if (topArtists.isEmpty()) return emptyList()
-
-        return allAudio.filter { it.artist in topArtists }.shuffled().take(MIX_SIZE)
     }
 
     /** Generates a fresh shuffle of every mix. */
@@ -128,11 +104,5 @@ class MixesViewModel @Inject constructor(
 
     companion object {
         private const val TAG = "MixesViewModel"
-
-        /** Number of songs in each mix. */
-        private const val MIX_SIZE = 25
-
-        /** Number of top artists the queue mix draws from. */
-        private const val QUEUE_ARTISTS = 5
     }
 }

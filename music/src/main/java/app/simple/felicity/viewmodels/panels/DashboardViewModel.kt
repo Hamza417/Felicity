@@ -90,9 +90,7 @@ class DashboardViewModel @Inject constructor(
      */
     val topAlbums: StateFlow<List<Album>> = _topAlbums.asStateFlow()
 
-
-
-    private val _activeQueue = MutableStateFlow<Int>(0)
+    private val _activeQueue = MutableStateFlow(0)
 
     val activeQueue: StateFlow<Int> = _activeQueue.asStateFlow()
 
