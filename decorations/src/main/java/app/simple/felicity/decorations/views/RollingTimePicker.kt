@@ -17,6 +17,7 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
 import android.widget.OverScroller
+import androidx.core.graphics.withTranslation
 import androidx.interpolator.view.animation.LinearOutSlowInInterpolator
 import app.simple.felicity.decorations.typeface.TypeFace
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
@@ -356,9 +357,17 @@ class RollingTimePicker @JvmOverloads constructor(
                 val text = String.format(Locale.getDefault(), "%02d", i)
 
                 val fontMetrics = paint.fontMetrics
-                val textY = projectedY - (fontMetrics.ascent + fontMetrics.descent) / 2
 
-                canvas.drawText(text, centerX, textY, paint)
+                canvas.withTranslation(centerX, projectedY) {
+
+                    // Tilt/Rotate the text on the X-axis for a 3D cylindrical perspective
+                    // We use scaleY to achieve the visual squishing associated with X-axis rotation
+                    // Visual compression (simulating rotation around X-axis)
+                    scale(1f, scale)
+
+                    drawText(text, 0f, -(fontMetrics.ascent + fontMetrics.descent) / 2, paint)
+
+                }
             }
         }
 
