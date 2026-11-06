@@ -18,10 +18,12 @@ import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
 import app.simple.felicity.theme.models.Theme
+import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
@@ -176,6 +178,7 @@ class RollingTimePicker @JvmOverloads constructor(
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (!isEnabled) return false
         if (event.actionMasked == MotionEvent.ACTION_DOWN) {
             parent?.requestDisallowInterceptTouchEvent(true)
 
@@ -289,7 +292,7 @@ class RollingTimePicker @JvmOverloads constructor(
                 val scale = cos(angle.toDouble()).toFloat()
 
                 // Adjust alpha and text size based on scale with steeper fade
-                val edgeFade = Math.pow((1f - (abs(angle) / (Math.PI / 2))), 2.0).toFloat()
+                val edgeFade = (1f - (abs(angle) / (Math.PI / 2))).pow(2.0).toFloat()
                 val alphaVal = (edgeFade * scale * 255).toInt().coerceIn(0, 255)
 
                 // Distance in pixels from center
@@ -308,7 +311,7 @@ class RollingTimePicker @JvmOverloads constructor(
                 paint.alpha = alphaVal
                 paint.color = textColor
 
-                val text = String.format(java.util.Locale.getDefault(), "%02d", i)
+                val text = String.format(Locale.getDefault(), "%02d", i)
 
                 val fontMetrics = paint.fontMetrics
                 val textY = projectedY - (fontMetrics.ascent + fontMetrics.descent) / 2

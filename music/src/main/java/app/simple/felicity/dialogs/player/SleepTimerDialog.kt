@@ -6,7 +6,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import app.simple.felicity.databinding.DialogSleepTimerBinding
-import app.simple.felicity.decorations.corners.LayoutBackground
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 
@@ -27,23 +26,22 @@ class SleepTimerDialog : ScopedBottomSheetFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        LayoutBackground.setBackground(requireContext(), binding.root, null)
-
         val isRunning = MediaPlaybackManager.isSleepTimerRunning()
 
         if (isRunning) {
-            binding.timePicker.visibility = View.GONE
-            binding.countdownText.visibility = View.VISIBLE
+            binding.timePicker.isEnabled = false
             binding.startButton.visibility = View.GONE
             binding.stopButton.visibility = View.VISIBLE
 
             displayTimer = object : CountDownTimer(MediaPlaybackManager.sleepTimerRemainingMs, 1000) {
                 override fun onTick(millisUntilFinished: Long) {
                     val totalSeconds = millisUntilFinished / 1000
-                    val h = totalSeconds / 3600
-                    val m = (totalSeconds % 3600) / 60
-                    val s = totalSeconds % 60
-                    binding.countdownText.text = String.format(java.util.Locale.getDefault(), "%02d:%02d:%02d", h, m, s)
+                    val h = (totalSeconds / 3600).toInt()
+                    val m = ((totalSeconds % 3600) / 60).toInt()
+                    val s = (totalSeconds % 60).toInt()
+                    binding.timePicker.hours = h
+                    binding.timePicker.minutes = m
+                    binding.timePicker.seconds = s
                 }
 
                 override fun onFinish() {
@@ -51,8 +49,7 @@ class SleepTimerDialog : ScopedBottomSheetFragment() {
                 }
             }.start()
         } else {
-            binding.timePicker.visibility = View.VISIBLE
-            binding.countdownText.visibility = View.GONE
+            binding.timePicker.isEnabled = true
             binding.startButton.visibility = View.VISIBLE
             binding.stopButton.visibility = View.GONE
 
