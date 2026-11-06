@@ -33,15 +33,15 @@ class SleepTimerDialog : ScopedBottomSheetFragment() {
             binding.startButton.visibility = View.GONE
             binding.stopButton.visibility = View.VISIBLE
 
+            var isFirstTick = true
             displayTimer = object : CountDownTimer(MediaPlaybackManager.sleepTimerRemainingMs, 1000) {
                 override fun onTick(millisUntilFinished: Long) {
                     val totalSeconds = millisUntilFinished / 1000
                     val h = (totalSeconds / 3600).toInt()
                     val m = ((totalSeconds % 3600) / 60).toInt()
                     val s = (totalSeconds % 60).toInt()
-                    binding.timePicker.hours = h
-                    binding.timePicker.minutes = m
-                    binding.timePicker.seconds = s
+                    binding.timePicker.setTime(h, m, s, animate = !isFirstTick)
+                    isFirstTick = false
                 }
 
                 override fun onFinish() {
@@ -53,11 +53,7 @@ class SleepTimerDialog : ScopedBottomSheetFragment() {
             binding.startButton.visibility = View.VISIBLE
             binding.stopButton.visibility = View.GONE
 
-            binding.timePicker.apply {
-                hours = 0
-                minutes = 0
-                seconds = 0
-            }
+            binding.timePicker.setTime(0, 0, 0, animate = false)
         }
 
         binding.cancelButton.setOnClickListener {

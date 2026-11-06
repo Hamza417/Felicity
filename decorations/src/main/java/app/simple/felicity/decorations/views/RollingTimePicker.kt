@@ -5,7 +5,12 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.BlurMaskFilter
 import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.LinearGradient
 import android.graphics.Paint
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
+import android.graphics.Shader
 import android.graphics.Typeface
 import android.util.AttributeSet
 import android.view.GestureDetector
@@ -39,25 +44,44 @@ class RollingTimePicker @JvmOverloads constructor(
     private val scrollers = Array(3) { OverScroller(context) }
     private val isFlinging = booleanArrayOf(false, false, false)
 
+    fun setTime(h: Int, m: Int, s: Int, animate: Boolean = true) {
+        setColumnValue(0, h, animate)
+        setColumnValue(1, m, animate)
+        setColumnValue(2, s, animate)
+    }
+
+    private fun setColumnValue(column: Int, value: Int, animate: Boolean) {
+        val targetY = value.coerceIn(minValues[column], maxValues[column]) * itemHeight
+        if (animate) {
+            val currentY = scrollYOffsets[column].toInt()
+            val dy = (targetY - currentY).toInt()
+            if (dy != 0) {
+                scrollers[column].startScroll(0, currentY, 0, dy, 500)
+                postInvalidateOnAnimation()
+            }
+        } else {
+            scrollYOffsets[column] = targetY
+            if (!scrollers[column].isFinished) scrollers[column].forceFinished(true)
+            invalidate()
+        }
+    }
+
     var hours: Int
         get() = (scrollYOffsets[0] / itemHeight).roundToInt().coerceIn(minValues[0], maxValues[0])
         set(v) {
-            scrollYOffsets[0] = v.coerceIn(minValues[0], maxValues[0]) * itemHeight
-            invalidate()
+            setColumnValue(0, v, false)
         }
 
     var minutes: Int
         get() = (scrollYOffsets[1] / itemHeight).roundToInt().coerceIn(minValues[1], maxValues[1])
         set(v) {
-            scrollYOffsets[1] = v.coerceIn(minValues[1], maxValues[1]) * itemHeight
-            invalidate()
+            setColumnValue(1, v, false)
         }
 
     var seconds: Int
         get() = (scrollYOffsets[2] / itemHeight).roundToInt().coerceIn(minValues[2], maxValues[2])
         set(v) {
-            scrollYOffsets[2] = v.coerceIn(minValues[2], maxValues[2]) * itemHeight
-            invalidate()
+            setColumnValue(2, v, false)
         }
 
     private var textColor: Int = 0xFF000000.toInt()
@@ -126,7 +150,7 @@ class RollingTimePicker @JvmOverloads constructor(
     init {
         val density = resources.displayMetrics.density
         itemHeight = 60f * density
-        setFadingEdgeLength((itemHeight * 1.5f).toInt())
+        setFadingEdgeLength((itemHeight * 3.0f).toInt())
         isVerticalFadingEdgeEnabled = true
 
         if (!isInEditMode) {
@@ -264,7 +288,25 @@ class RollingTimePicker @JvmOverloads constructor(
         }
     }
 
+    private val fadePaint = Paint().apply {
+        xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_OUT)
+    }
+
+    private var topFadeShader: Shader? = null
+    private var bottomFadeShader: Shader? = null
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        val fadeHeight = itemHeight * 1.5f
+        if (h > 0) {
+            topFadeShader = LinearGradient(0f, 0f, 0f, fadeHeight, 0xFF000000.toInt(), Color.TRANSPARENT, Shader.TileMode.CLAMP)
+            bottomFadeShader = LinearGradient(0f, h.toFloat(), 0f, h - fadeHeight, 0xFF000000.toInt(), Color.TRANSPARENT, Shader.TileMode.CLAMP)
+        }
+    }
+
     override fun onDraw(canvas: Canvas) {
+        val saveCount = canvas.saveLayer(0f, 0f, width.toFloat(), height.toFloat(), null)
+
         super.onDraw(canvas)
         val centerY = height / 2f
         val radius = height / 2f
@@ -328,5 +370,22 @@ class RollingTimePicker @JvmOverloads constructor(
 
         canvas.drawText(":", colWidth, colonY - (8f * density), colonPaint)
         canvas.drawText(":", colWidth * 2, colonY - (8f * density), colonPaint)
+
+        // Draw vertical fading edges manually
+        val fadeHeight = itemHeight * 1.5f
+
+        // Top fade
+        if (topFadeShader != null) {
+            fadePaint.shader = topFadeShader
+            canvas.drawRect(0f, 0f, width.toFloat(), fadeHeight, fadePaint)
+        }
+
+        // Bottom fade
+        if (bottomFadeShader != null) {
+            fadePaint.shader = bottomFadeShader
+            canvas.drawRect(0f, height - fadeHeight, width.toFloat(), height.toFloat(), fadePaint)
+        }
+
+        canvas.restoreToCount(saveCount)
     }
 }
