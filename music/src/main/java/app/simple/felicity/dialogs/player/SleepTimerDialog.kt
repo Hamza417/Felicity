@@ -56,6 +56,26 @@ class SleepTimerDialog : ScopedBottomSheetFragment() {
             binding.timePicker.setTime(0, 0, 0, animate = false)
         }
 
+        binding.tillThisSon.setOnClickListener {
+            val duration = MediaPlaybackManager.getDuration()
+            val position = MediaPlaybackManager.getSeekPosition()
+            val remainingMs = duration - position
+            if (remainingMs > 0) {
+                val totalSeconds = (remainingMs / 1000).toInt()
+                val h = totalSeconds / 3600
+                val m = (totalSeconds % 3600) / 60
+                val s = totalSeconds % 60
+                binding.timePicker.setTime(h, m, s, animate = true)
+                binding.tillThisSon.postDelayed({
+                                                    if (isAdded) {
+                                                        onTimerSet?.invoke(h, m, s)
+                                                        MediaPlaybackManager.play() // start playing too?
+                                                        dismiss()
+                                                    }
+                                                }, 500) // Delay to let the animation play
+            }
+        }
+
         binding.cancelButton.setOnClickListener {
             dismiss()
         }

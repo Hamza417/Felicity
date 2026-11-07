@@ -563,4 +563,5 @@
     <string name="seconds" translatable="false">Seconds</string>
     <string name="start" translatable="false">Start</string>
     <string name="stop" translatable="false">Stop</string>
+    <string name="till_this_song">Till This Song</string>
 </resources>
