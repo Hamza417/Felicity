@@ -19,6 +19,7 @@ import android.view.View
 import android.widget.OverScroller
 import androidx.core.graphics.withTranslation
 import androidx.interpolator.view.animation.LinearOutSlowInInterpolator
+import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.typeface.TypeFace
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
@@ -45,6 +46,8 @@ class RollingTimePicker @JvmOverloads constructor(
     private val scrollers = Array(3) { OverScroller(context) }
     private val isFlinging = booleanArrayOf(false, false, false)
 
+    private var rawScrollYOffsets = floatArrayOf(0f, 0f, 0f)
+
     fun setTime(h: Int, m: Int, s: Int, animate: Boolean = true) {
         setColumnValue(0, h, animate)
         setColumnValue(1, m, animate)
@@ -62,25 +65,32 @@ class RollingTimePicker @JvmOverloads constructor(
             }
         } else {
             scrollYOffsets[column] = targetY
+            rawScrollYOffsets[column] = targetY
             if (!scrollers[column].isFinished) scrollers[column].forceFinished(true)
             invalidate()
         }
     }
 
     var hours: Int
-        get() = (scrollYOffsets[0] / itemHeight).roundToInt().coerceIn(minValues[0], maxValues[0])
+        get() = (scrollYOffsets[0] / itemHeight)
+            .roundToInt()
+            .coerceIn(minValues[0], maxValues[0])
         set(v) {
             setColumnValue(0, v, false)
         }
 
     var minutes: Int
-        get() = (scrollYOffsets[1] / itemHeight).roundToInt().coerceIn(minValues[1], maxValues[1])
+        get() = (scrollYOffsets[1] / itemHeight)
+            .roundToInt()
+            .coerceIn(minValues[1], maxValues[1])
         set(v) {
             setColumnValue(1, v, false)
         }
 
     var seconds: Int
-        get() = (scrollYOffsets[2] / itemHeight).roundToInt().coerceIn(minValues[2], maxValues[2])
+        get() = (scrollYOffsets[2] / itemHeight)
+            .roundToInt()
+            .coerceIn(minValues[2], maxValues[2])
         set(v) {
             setColumnValue(2, v, false)
         }
@@ -105,45 +115,51 @@ class RollingTimePicker @JvmOverloads constructor(
     private var itemHeight = 150f
     private val visibleItems = 3
     private var activeColumn = -1
+    private var lastTouchY = 0f
 
     private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
         override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
-            if (activeColumn == -1) return false
-            val minOffset = minValues[activeColumn] * itemHeight
-            val maxOffset = maxValues[activeColumn] * itemHeight
-
-            if (scrollYOffsets[activeColumn] !in minOffset..maxOffset) {
-                scrollYOffsets[activeColumn] += distanceY * 0.3f // Resistance when overscrolling
-            } else {
-                scrollYOffsets[activeColumn] += distanceY
-            }
-            invalidate()
-            return true
+            return false // Handled manually in onTouchEvent to avoid slop jump
         }
 
         override fun onFling(e1: MotionEvent?, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
             if (activeColumn == -1) return false
-            isFlinging[activeColumn] = true
+
             val minOffset = (minValues[activeColumn] * itemHeight).toInt()
             val maxOffset = (maxValues[activeColumn] * itemHeight).toInt()
+
+            // If we are already overscrolled, don't fling, just spring back
+            if (scrollYOffsets[activeColumn] < minOffset || scrollYOffsets[activeColumn] > maxOffset) {
+                if (scrollers[activeColumn].springBack(0, scrollYOffsets[activeColumn].toInt(), 0, 0, minOffset, maxOffset)) {
+                    isFlinging[activeColumn] = false
+                    rawScrollYOffsets[activeColumn] = scrollYOffsets[activeColumn]
+                    postInvalidateOnAnimation()
+                }
+                return true
+            }
+
+            isFlinging[activeColumn] = true
             val overscroll = (itemHeight * 1.5f).toInt()
 
+            rawScrollYOffsets[activeColumn] = scrollYOffsets[activeColumn]
+
             scrollers[activeColumn].fling(
-                    0, scrollYOffsets[activeColumn].toInt(),
-                    0, -velocityY.toInt(),
-                    0, 0,
-                    minOffset, maxOffset,
-                    0, overscroll
+                    /* startX = */ 0,
+                    /* startY = */ scrollYOffsets[activeColumn].toInt(),
+                    /* velocityX = */ 0,
+                    /* velocityY = */ -velocityY.toInt(),
+                    /* minX = */ 0,
+                    /* maxX = */ 0,
+                    /* minY = */ minOffset,
+                    /* maxY = */ maxOffset,
+                    /* overX = */ 0,
+                    /* overY = */ overscroll
             )
             postInvalidateOnAnimation()
             return true
         }
 
         override fun onDown(e: MotionEvent): Boolean {
-            if (activeColumn != -1 && !scrollers[activeColumn].isFinished) {
-                scrollers[activeColumn].forceFinished(true)
-                isFlinging[activeColumn] = false
-            }
             return true
         }
     })
@@ -183,7 +199,7 @@ class RollingTimePicker @JvmOverloads constructor(
         if (animate) {
             colorAnimator?.cancel()
             colorAnimator = ValueAnimator.ofArgb(textColor, endColor).apply {
-                duration = resources.getInteger(app.simple.felicity.decoration.R.integer.animation_duration).toLong()
+                duration = resources.getInteger(R.integer.animation_duration).toLong()
                 interpolator = LinearOutSlowInInterpolator()
                 addUpdateListener { animation ->
                     textColor = animation.animatedValue as Int
@@ -204,34 +220,73 @@ class RollingTimePicker @JvmOverloads constructor(
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (!isEnabled) return false
-        if (event.actionMasked == MotionEvent.ACTION_DOWN) {
-            parent?.requestDisallowInterceptTouchEvent(true)
-
-            // Determine active column based on touch X
-            val colWidth = width / 3f
-            activeColumn = when {
-                event.x < colWidth -> 0
-                event.x > 2 * colWidth -> 2
-                else -> 1
-            }
-
-            if (!scrollers[activeColumn].isFinished) {
-                scrollers[activeColumn].forceFinished(true)
-                isFlinging[activeColumn] = false
-            }
-        }
 
         var handled = gestureDetector.onTouchEvent(event)
 
-        if (event.action == MotionEvent.ACTION_UP || event.action == MotionEvent.ACTION_CANCEL) {
-            if (activeColumn != -1) {
-                if (scrollers[activeColumn].isFinished) {
-                    snapToNearest(activeColumn)
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                parent?.requestDisallowInterceptTouchEvent(true)
+
+                // Determine active column based on touch X
+                val colWidth = width / 3f
+                activeColumn = when {
+                    event.x < colWidth -> 0
+                    event.x > 2 * colWidth -> 2
+                    else -> 1
                 }
-                activeColumn = -1
+
+                if (activeColumn != -1 && !scrollers[activeColumn].isFinished) {
+                    scrollers[activeColumn].forceFinished(true)
+                    rawScrollYOffsets[activeColumn] = scrollYOffsets[activeColumn]
+                    isFlinging[activeColumn] = false
+                }
+                lastTouchY = event.y
+                handled = true
             }
-            handled = true
+            MotionEvent.ACTION_MOVE -> {
+                if (activeColumn != -1) {
+                    val distanceY = lastTouchY - event.y
+                    lastTouchY = event.y
+
+                    val minOffset = minValues[activeColumn] * itemHeight
+                    val maxOffset = maxValues[activeColumn] * itemHeight
+
+                    rawScrollYOffsets[activeColumn] += distanceY
+
+                    scrollYOffsets[activeColumn] = if (rawScrollYOffsets[activeColumn] !in minOffset..maxOffset) {
+                        // Use a rubber-band like resistance for overscroll
+                        val overflow = if (rawScrollYOffsets[activeColumn] < minOffset) {
+                            minOffset - rawScrollYOffsets[activeColumn]
+                        } else {
+                            rawScrollYOffsets[activeColumn] - maxOffset
+                        }
+
+                        val limit = itemHeight * 1.5f
+                        val resistance = limit * (1f - (1f / ((overflow * 0.5f / limit) + 1f)))
+
+                        if (rawScrollYOffsets[activeColumn] < minOffset) {
+                            minOffset - resistance
+                        } else {
+                            maxOffset + resistance
+                        }
+                    } else {
+                        rawScrollYOffsets[activeColumn]
+                    }
+                    invalidate()
+                    handled = true
+                }
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                if (activeColumn != -1) {
+                    if (scrollers[activeColumn].isFinished) {
+                        snapToNearest(activeColumn)
+                    }
+                    activeColumn = -1
+                }
+                handled = true
+            }
         }
+
         return handled || super.onTouchEvent(event)
     }
 
@@ -240,6 +295,7 @@ class RollingTimePicker @JvmOverloads constructor(
         for (i in 0..2) {
             if (scrollers[i].computeScrollOffset()) {
                 scrollYOffsets[i] = scrollers[i].currY.toFloat()
+                rawScrollYOffsets[i] = scrollYOffsets[i]
                 needsInvalidate = true
             } else if (isFlinging[i]) {
                 isFlinging[i] = false
@@ -257,6 +313,7 @@ class RollingTimePicker @JvmOverloads constructor(
         val maxOffset = (maxValues[column] * itemHeight).toInt()
 
         if (scrollYOffsets[column] < minOffset || scrollYOffsets[column] > maxOffset) {
+            rawScrollYOffsets[column] = scrollYOffsets[column]
             if (scrollers[column].springBack(0, scrollYOffsets[column].toInt(), 0, 0, minOffset, maxOffset)) {
                 postInvalidateOnAnimation()
                 return
@@ -266,6 +323,7 @@ class RollingTimePicker @JvmOverloads constructor(
         val targetIndex = (scrollYOffsets[column] / itemHeight).roundToInt().coerceIn(minValues[column], maxValues[column])
         val targetY = targetIndex * itemHeight
         if (scrollYOffsets[column] != targetY) {
+            rawScrollYOffsets[column] = scrollYOffsets[column]
             scrollers[column].startScroll(0, scrollYOffsets[column].toInt(), 0, (targetY - scrollYOffsets[column]).toInt(), 300)
             postInvalidateOnAnimation()
         }
