@@ -557,4 +557,10 @@
     <string name="miniplayer_width_summary">Adjust horizontal width of the Mini Player in landscape mode.</string>
     <string name="fft_resolution">FFT Resolution</string>
     <string name="fft_resolution_summary">Higher resolution improves frequency accuracy but consumes more CPU and may affect rendering framerate.</string>
+    <string name="sleep_timer" translatable="false">Sleep Timer</string>
+    <string name="hours" translatable="false">Hours</string>
+    <string name="minutes" translatable="false">Minutes</string>
+    <string name="seconds" translatable="false">Seconds</string>
+    <string name="start" translatable="false">Start</string>
+    <string name="stop" translatable="false">Stop</string>
 </resources>

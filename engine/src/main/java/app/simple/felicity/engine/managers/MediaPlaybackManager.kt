@@ -13,20 +13,9 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.session.MediaController
 import app.simple.felicity.engine.managers.MediaPlaybackManager._songPositionFlow
 import app.simple.felicity.engine.managers.MediaPlaybackManager.currentSongPosition
-import app.simple.felicity.engine.managers.MediaPlaybackManager.getSongs
 import app.simple.felicity.engine.managers.MediaPlaybackManager.mediaController
-import app.simple.felicity.engine.managers.MediaPlaybackManager.moveQueueItemSilently
-import app.simple.felicity.engine.managers.MediaPlaybackManager.next
-import app.simple.felicity.engine.managers.MediaPlaybackManager.notifyCurrentPosition
-import app.simple.felicity.engine.managers.MediaPlaybackManager.notifyPlaybackState
 import app.simple.felicity.engine.managers.MediaPlaybackManager.originalQueue
 import app.simple.felicity.engine.managers.MediaPlaybackManager.pendingSeekPositions
-import app.simple.felicity.engine.managers.MediaPlaybackManager.playNext
-import app.simple.felicity.engine.managers.MediaPlaybackManager.previous
-import app.simple.felicity.engine.managers.MediaPlaybackManager.removeQueueItemSilently
-import app.simple.felicity.engine.managers.MediaPlaybackManager.setSongs
-import app.simple.felicity.engine.managers.MediaPlaybackManager.switchToQueue
-import app.simple.felicity.engine.managers.MediaPlaybackManager.updatePosition
 import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.listeners.MediaStateListener
@@ -1473,5 +1462,38 @@ object MediaPlaybackManager {
 
     fun unregisterListener(listener: MediaStateListener) {
         listeners.remove(listener)
+    }
+
+    private var sleepTimer: android.os.CountDownTimer? = null
+    var sleepTimerRemainingMs: Long = 0L
+        private set
+
+    fun isSleepTimerRunning(): Boolean {
+        return sleepTimer != null
+    }
+
+    fun stopSleepTimer() {
+        sleepTimer?.cancel()
+        sleepTimer = null
+        sleepTimerRemainingMs = 0L
+    }
+
+    fun setSleepTimer(hours: Int, minutes: Int, seconds: Int) {
+        stopSleepTimer()
+        val totalMs = (hours * 3600 + minutes * 60 + seconds) * 1000L
+        if (totalMs > 0) {
+            sleepTimerRemainingMs = totalMs
+            sleepTimer = object : android.os.CountDownTimer(totalMs, 1000) {
+                override fun onTick(millisUntilFinished: Long) {
+                    sleepTimerRemainingMs = millisUntilFinished
+                }
+
+                override fun onFinish() {
+                    sleepTimerRemainingMs = 0L
+                    sleepTimer = null
+                    pause()
+                }
+            }.start()
+        }
     }
 }

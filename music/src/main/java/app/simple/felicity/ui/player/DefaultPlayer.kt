@@ -43,6 +43,9 @@ class DefaultPlayer : BasePlayerFragment() {
     override val search: View
         get() = binding.search
 
+    override val sleepTimer: View
+        get() = binding.sleepTimer
+
     override val menu: View
         get() = binding.menu
 

@@ -27,6 +27,7 @@ import app.simple.felicity.decorations.views.FelicityMediaControls
 import app.simple.felicity.decorations.views.FelicityVisualizer
 import app.simple.felicity.decorations.views.FlexStackLayout
 import app.simple.felicity.dialogs.app.AudioPipelineDialog.Companion.showAudioPipeline
+import app.simple.felicity.dialogs.player.SleepTimerDialog
 import app.simple.felicity.dialogs.player.VisualizerMenu.Companion.showVisualizerMenu
 import app.simple.felicity.dialogs.player.WaveformMenu.Companion.showWaveformMenu
 import app.simple.felicity.engine.managers.MediaPlaybackManager
@@ -104,6 +105,9 @@ abstract class BasePlayerFragment : MediaFragment() {
 
     /** The button that opens the search panel. */
     protected abstract val search: View
+
+    /** The button that opens the sleep timer dialog. */
+    protected abstract val sleepTimer: View
 
     /** The button that opens the overflow / song menu dialog. */
     protected abstract val menu: View
@@ -285,6 +289,17 @@ abstract class BasePlayerFragment : MediaFragment() {
 
         search.setOnClickListener {
             openFragment(Search.newInstance(), Search.TAG)
+        }
+
+        sleepTimer.setOnClickListener {
+            SleepTimerDialog.newInstance().apply {
+                onTimerSet = { hours, minutes, seconds ->
+                    MediaPlaybackManager.setSleepTimer(hours, minutes, seconds)
+                }
+                onTimerStop = {
+                    MediaPlaybackManager.stopSleepTimer()
+                }
+            }.show(childFragmentManager, "SleepTimerDialog")
         }
 
         menu.setOnClickListener {
