@@ -1468,6 +1468,9 @@ object MediaPlaybackManager {
     var sleepTimerRemainingMs: Long = 0L
         private set
 
+    private val _sleepTimerStateFlow = MutableStateFlow(false)
+    val sleepTimerStateFlow: StateFlow<Boolean> = _sleepTimerStateFlow.asStateFlow()
+
     fun isSleepTimerRunning(): Boolean {
         return sleepTimer != null
     }
@@ -1476,6 +1479,7 @@ object MediaPlaybackManager {
         sleepTimer?.cancel()
         sleepTimer = null
         sleepTimerRemainingMs = 0L
+        _sleepTimerStateFlow.value = false
     }
 
     fun setSleepTimer(hours: Int, minutes: Int, seconds: Int) {
@@ -1491,9 +1495,11 @@ object MediaPlaybackManager {
                 override fun onFinish() {
                     sleepTimerRemainingMs = 0L
                     sleepTimer = null
+                    _sleepTimerStateFlow.value = false
                     pause()
                 }
             }.start()
+            _sleepTimerStateFlow.value = true
         }
     }
 }
