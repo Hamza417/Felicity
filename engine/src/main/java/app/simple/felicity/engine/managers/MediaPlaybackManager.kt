@@ -878,6 +878,10 @@ object MediaPlaybackManager {
         mediaController?.seekTo(clamped)
         // StateFlow update is instant and non-suspending, no coroutine wrapper needed
         _songSeekPositionFlow.value = clamped
+        if (isSleepTimerSyncedWithSong) {
+            val remainingMs = getDuration() - clamped
+            updateSleepTimerRemaining(if (remainingMs > 0) remainingMs else 0L)
+        }
     }
 
     fun seekRelative(offsetMs: Long) {
@@ -1097,6 +1101,11 @@ object MediaPlaybackManager {
                         _songSeekPositionFlow.value = position
                         lastEmittedPosition = position
                     }
+                }
+
+                if (isSleepTimerSyncedWithSong) {
+                    val remainingMs = getDuration() - position
+                    updateSleepTimerRemaining(if (remainingMs > 0) remainingMs else 0L)
                 }
 
                 delay(intervalMs.milliseconds)
@@ -1353,6 +1362,7 @@ object MediaPlaybackManager {
 
                 if (pauseAfterCurrentSong) {
                     pauseAfterCurrentSong = false
+                    isSleepTimerSyncedWithSong = false
                     handleSleepTimerAction()
                 }
                 
@@ -1483,6 +1493,9 @@ object MediaPlaybackManager {
             _sleepTimerStateFlow.value = value || sleepTimer != null
         }
 
+    var isSleepTimerSyncedWithSong: Boolean = false
+        private set
+
     private val _sleepTimerStateFlow = MutableStateFlow(false)
     val sleepTimerStateFlow: StateFlow<Boolean> = _sleepTimerStateFlow.asStateFlow()
 
@@ -1501,7 +1514,7 @@ object MediaPlaybackManager {
     val shutdownAppFlow: SharedFlow<Unit> = _shutdownAppFlow.asSharedFlow()
 
     fun isSleepTimerRunning(): Boolean {
-        return sleepTimer != null
+        return sleepTimer != null || isSleepTimerSyncedWithSong
     }
 
     private fun handleSleepTimerAction() {
@@ -1531,8 +1544,20 @@ object MediaPlaybackManager {
         sleepTimer?.cancel()
         sleepTimer = null
         sleepTimerRemainingMs = 0L
+        isSleepTimerSyncedWithSong = false
         updateSleepTimerRemaining(0L)
         _sleepTimerStateFlow.value = pauseAfterCurrentSong
+    }
+
+    fun setSleepTimerSyncedWithSong(synced: Boolean) {
+        stopSleepTimer()
+        isSleepTimerSyncedWithSong = synced
+        pauseAfterCurrentSong = synced
+        _sleepTimerStateFlow.value = synced || pauseAfterCurrentSong
+        if (synced) {
+            val remainingMs = getDuration() - getSeekPosition()
+            updateSleepTimerRemaining(if (remainingMs > 0) remainingMs else 0L)
+        }
     }
 
     fun setSleepTimer(hours: Int, minutes: Int, seconds: Int) {

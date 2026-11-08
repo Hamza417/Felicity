@@ -111,7 +111,7 @@ class SleepTimerDialog : ScopedBottomSheetFragment() {
                 binding.timePicker.setTime(h, m, s, animate = true)
 
                 postDelayed(500L) {
-                    MediaPlaybackManager.setSleepTimer(h, m, s)
+                    MediaPlaybackManager.setSleepTimerSyncedWithSong(true)
                     MediaPlaybackManager.play() // start playing too?
                     dismiss()
                 }
