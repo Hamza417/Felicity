@@ -1,6 +1,7 @@
 package app.simple.felicity.dialogs.player
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -37,6 +38,7 @@ class SleepTimerDialog : ScopedBottomSheetFragment() {
             binding.timePicker.isEnabled = false
             binding.startButton.visibility = View.GONE
             binding.stopButton.visibility = View.VISIBLE
+            binding.tillThisSon.visibility = View.GONE
 
             viewLifecycleOwner.lifecycleScope.launch {
                 viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -45,8 +47,13 @@ class SleepTimerDialog : ScopedBottomSheetFragment() {
                         binding.timePicker.setTime(
                                 remaining.hours, remaining.minutes, remaining.seconds, animate = !isFirstTick)
                         isFirstTick = false
+
                         if (!MediaPlaybackManager.isSleepTimerRunning()) {
-                            dismiss()
+                            if (isAdded) {
+                                dismiss()
+                            }
+                        } else {
+                            Log.d(TAG, "Sleep timer remaining: ${remaining.hours}h ${remaining.minutes}m ${remaining.seconds}s")
                         }
                     }
                 }
@@ -55,6 +62,16 @@ class SleepTimerDialog : ScopedBottomSheetFragment() {
             binding.timePicker.isEnabled = true
             binding.startButton.visibility = View.VISIBLE
             binding.stopButton.visibility = View.GONE
+
+            val duration = MediaPlaybackManager.getDuration()
+            val position = MediaPlaybackManager.getSeekPosition()
+            val remainingMs = duration - position
+
+            if (remainingMs > 10000L) {
+                binding.tillThisSon.visibility = View.VISIBLE
+            } else {
+                binding.tillThisSon.visibility = View.GONE
+            }
 
             binding.timePicker.setTime(0, 0, 0, animate = false)
         }
@@ -78,13 +95,15 @@ class SleepTimerDialog : ScopedBottomSheetFragment() {
             }
         }
 
-        binding.cancelButton.setOnClickListener {
-            dismiss()
-        }
-
         binding.stopButton.setOnClickListener {
             MediaPlaybackManager.stopSleepTimer()
-            dismiss()
+            binding.timePicker.setTime(0, 0, 0, animate = true)
+
+            postDelayed(500L) {
+                if (isAdded) {
+                    dismiss()
+                }
+            }
         }
 
         binding.startButton.setOnClickListener {
@@ -93,6 +112,7 @@ class SleepTimerDialog : ScopedBottomSheetFragment() {
                     binding.timePicker.minutes,
                     binding.timePicker.seconds
             )
+
             dismiss()
         }
     }

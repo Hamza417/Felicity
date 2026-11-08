@@ -3,6 +3,7 @@ package app.simple.felicity.engine.managers
 import android.animation.ValueAnimator
 import android.content.Context
 import android.net.Uri
+import android.os.CountDownTimer
 import android.util.Log
 import androidx.annotation.MainThread
 import androidx.core.net.toUri
@@ -1472,7 +1473,7 @@ object MediaPlaybackManager {
         listeners.remove(listener)
     }
 
-    private var sleepTimer: android.os.CountDownTimer? = null
+    private var sleepTimer: CountDownTimer? = null
     var sleepTimerRemainingMs: Long = 0L
         private set
 
@@ -1489,10 +1490,11 @@ object MediaPlaybackManager {
             val hours: Int,
             val minutes: Int,
             val seconds: Int,
-            val formatted: String
+            val formatted: String,
+            val isRunning: Boolean
     )
 
-    private val _sleepTimerRemainingFlow = MutableStateFlow(SleepTimerRemaining(0, 0, 0, ""))
+    private val _sleepTimerRemainingFlow = MutableStateFlow(SleepTimerRemaining(0, 0, 0, "", false))
     val sleepTimerRemainingFlow: StateFlow<SleepTimerRemaining> = _sleepTimerRemainingFlow.asStateFlow()
 
     private val _shutdownAppFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
@@ -1522,7 +1524,7 @@ object MediaPlaybackManager {
         } else {
             String.format(Locale.getDefault(), "%02d:%02d", m, s)
         }
-        _sleepTimerRemainingFlow.value = SleepTimerRemaining(h, m, s, formatted)
+        _sleepTimerRemainingFlow.value = SleepTimerRemaining(h, m, s, formatted, isSleepTimerRunning())
     }
 
     fun stopSleepTimer() {
@@ -1539,7 +1541,7 @@ object MediaPlaybackManager {
         if (totalMs > 0) {
             sleepTimerRemainingMs = totalMs
             updateSleepTimerRemaining(totalMs)
-            sleepTimer = object : android.os.CountDownTimer(totalMs, 1000) {
+            sleepTimer = object : CountDownTimer(totalMs, 1000) {
                 override fun onTick(millisUntilFinished: Long) {
                     sleepTimerRemainingMs = millisUntilFinished
                     updateSleepTimerRemaining(millisUntilFinished)
@@ -1547,8 +1549,8 @@ object MediaPlaybackManager {
 
                 override fun onFinish() {
                     sleepTimerRemainingMs = 0L
-                    updateSleepTimerRemaining(0L)
                     sleepTimer = null
+                    updateSleepTimerRemaining(0L)
                     _sleepTimerStateFlow.value = pauseAfterCurrentSong
                     handleSleepTimerAction()
                 }

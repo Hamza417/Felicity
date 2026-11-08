@@ -66,27 +66,17 @@
             android:layout_marginTop="@dimen/padding_15"
             android:gravity="end">
 
-            <app.simple.felicity.decorations.ripple.DynamicRippleTextView
-                android:id="@+id/till_this_son"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:padding="@dimen/padding_10"
-                android:text="@string/till_this_song"
-                android:textSize="@dimen/text_size_14"
-                app:appFontStyle="bold"
-                app:textColorStyle="secondary" />
-
             <Space
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1" />
 
             <app.simple.felicity.decorations.ripple.DynamicRippleTextView
-                android:id="@+id/cancel_button"
+                android:id="@+id/till_this_son"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:padding="@dimen/padding_15"
-                android:text="@string/cancel"
+                android:text="@string/till_this_song"
                 android:textSize="@dimen/text_size_14"
                 app:appFontStyle="bold"
                 app:textColorStyle="secondary" />
