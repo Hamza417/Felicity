@@ -48,6 +48,16 @@ class RollingTimePicker @JvmOverloads constructor(
 
     private var rawScrollYOffsets = floatArrayOf(0f, 0f, 0f)
 
+    interface OnTimeChangeListener {
+        fun onTimeChanged(hours: Int, minutes: Int, seconds: Int)
+    }
+
+    private var onTimeChangeListener: OnTimeChangeListener? = null
+
+    fun setOnTimeChangeListener(listener: OnTimeChangeListener) {
+        onTimeChangeListener = listener
+    }
+
     fun setTime(h: Int, m: Int, s: Int, animate: Boolean = true) {
         setColumnValue(0, h, animate)
         setColumnValue(1, m, animate)
@@ -77,6 +87,7 @@ class RollingTimePicker @JvmOverloads constructor(
             .coerceIn(minValues[0], maxValues[0])
         set(v) {
             setColumnValue(0, v, false)
+            notifyTimeChanged()
         }
 
     var minutes: Int
@@ -85,6 +96,7 @@ class RollingTimePicker @JvmOverloads constructor(
             .coerceIn(minValues[1], maxValues[1])
         set(v) {
             setColumnValue(1, v, false)
+            notifyTimeChanged()
         }
 
     var seconds: Int
@@ -93,6 +105,7 @@ class RollingTimePicker @JvmOverloads constructor(
             .coerceIn(minValues[2], maxValues[2])
         set(v) {
             setColumnValue(2, v, false)
+            notifyTimeChanged()
         }
 
     private var textColor: Int = 0xFF000000.toInt()
@@ -296,11 +309,16 @@ class RollingTimePicker @JvmOverloads constructor(
 
     override fun computeScroll() {
         var needsInvalidate = false
+        var scrollFinished = false
         for (i in 0..2) {
             if (scrollers[i].computeScrollOffset()) {
                 scrollYOffsets[i] = scrollers[i].currY.toFloat()
                 rawScrollYOffsets[i] = scrollYOffsets[i]
                 needsInvalidate = true
+
+                if (scrollers[i].isFinished && !isFlinging[i]) {
+                    scrollFinished = true
+                }
             } else if (isFlinging[i]) {
                 isFlinging[i] = false
                 snapToNearest(i)
@@ -309,6 +327,10 @@ class RollingTimePicker @JvmOverloads constructor(
         }
         if (needsInvalidate) {
             postInvalidateOnAnimation()
+        }
+
+        if (scrollFinished) {
+            notifyTimeChanged()
         }
     }
 
@@ -330,7 +352,13 @@ class RollingTimePicker @JvmOverloads constructor(
             rawScrollYOffsets[column] = scrollYOffsets[column]
             scrollers[column].startScroll(0, scrollYOffsets[column].toInt(), 0, (targetY - scrollYOffsets[column]).toInt(), 300)
             postInvalidateOnAnimation()
+        } else {
+            notifyTimeChanged()
         }
+    }
+
+    private fun notifyTimeChanged() {
+        onTimeChangeListener?.onTimeChanged(hours, minutes, seconds)
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {

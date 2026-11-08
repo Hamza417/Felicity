@@ -9,9 +9,11 @@ import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.transition.TransitionManager
 import app.simple.felicity.R
 import app.simple.felicity.databinding.DialogSleepTimerBinding
 import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
+import app.simple.felicity.decorations.views.RollingTimePicker
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import app.simple.felicity.preferences.PlayerPreferences
@@ -36,6 +38,9 @@ class SleepTimerDialog : ScopedBottomSheetFragment() {
 
         if (isRunning) {
             binding.timePicker.isEnabled = false
+            // Prevents jumping issue on BottomSheetDialogFragment
+            // Usually happens when the visibility of a view is changed
+            TransitionManager.beginDelayedTransition(binding.startButton.parent as ViewGroup)
             binding.startButton.visibility = View.GONE
             binding.stopButton.visibility = View.VISIBLE
             binding.tillThisSon.visibility = View.GONE
@@ -60,8 +65,25 @@ class SleepTimerDialog : ScopedBottomSheetFragment() {
             }
         } else {
             binding.timePicker.isEnabled = true
-            binding.startButton.visibility = View.VISIBLE
+            // Prevents jumping issue on BottomSheetDialogFragment
+            // Usually happens when the visibility of a view is changed
+            TransitionManager.beginDelayedTransition(binding.stopButton.parent as ViewGroup)
             binding.stopButton.visibility = View.GONE
+
+            binding.timePicker.setOnTimeChangeListener(object : RollingTimePicker.OnTimeChangeListener {
+                override fun onTimeChanged(hours: Int, minutes: Int, seconds: Int) {
+                    val targetVisibility = if (hours == 0 && minutes == 0 && seconds == 0) {
+                        View.GONE
+                    } else {
+                        View.VISIBLE
+                    }
+
+                    if (binding.startButton.visibility != targetVisibility) {
+                        TransitionManager.beginDelayedTransition(binding.startButton.parent as ViewGroup)
+                        binding.startButton.visibility = targetVisibility
+                    }
+                }
+            })
 
             val duration = MediaPlaybackManager.getDuration()
             val position = MediaPlaybackManager.getSeekPosition()
@@ -74,6 +96,7 @@ class SleepTimerDialog : ScopedBottomSheetFragment() {
             }
 
             binding.timePicker.setTime(0, 0, 0, animate = false)
+            binding.startButton.visibility = View.GONE
         }
 
         binding.tillThisSon.setOnClickListener {
