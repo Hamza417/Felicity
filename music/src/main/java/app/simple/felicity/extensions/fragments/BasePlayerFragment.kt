@@ -19,7 +19,9 @@ import app.simple.felicity.decorations.lrc.view.LrcLineView
 import app.simple.felicity.decorations.pager.FelicityPager
 import app.simple.felicity.decorations.pager.ImagePageAdapter
 import app.simple.felicity.decorations.popups.SimpleDialog
+import app.simple.felicity.decorations.ripple.DynamicRippleImageButton
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar
+import app.simple.felicity.decorations.theme.ThemeImageButton
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithEffect
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithFade
 import app.simple.felicity.decorations.views.FavoriteButton
@@ -27,6 +29,7 @@ import app.simple.felicity.decorations.views.FelicityMediaControls
 import app.simple.felicity.decorations.views.FelicityVisualizer
 import app.simple.felicity.decorations.views.FlexStackLayout
 import app.simple.felicity.dialogs.app.AudioPipelineDialog.Companion.showAudioPipeline
+import app.simple.felicity.dialogs.player.SleepTimerDialog.Companion.openSleepTimerDialog
 import app.simple.felicity.dialogs.player.VisualizerMenu.Companion.showVisualizerMenu
 import app.simple.felicity.dialogs.player.WaveformMenu.Companion.showWaveformMenu
 import app.simple.felicity.engine.managers.MediaPlaybackManager
@@ -105,6 +108,9 @@ abstract class BasePlayerFragment : MediaFragment() {
     /** The button that opens the search panel. */
     protected abstract val search: View
 
+    /** The button that opens the sleep timer dialog. */
+    protected abstract val sleepTimer: DynamicRippleImageButton
+
     /** The button that opens the overflow / song menu dialog. */
     protected abstract val menu: View
 
@@ -166,6 +172,7 @@ abstract class BasePlayerFragment : MediaFragment() {
         setVisualizerState()
         setLyricsState()
         updateMediaControlOverlap()
+        updateSleepTimerIcon()
 
         // Mirror swipe-down-to-close behavior on the album art pager so that a downward
         // swipe on the cover image dismisses the player, exactly like swiping on any other
@@ -287,6 +294,10 @@ abstract class BasePlayerFragment : MediaFragment() {
             openFragment(Search.newInstance(), Search.TAG)
         }
 
+        sleepTimer.setOnClickListener {
+            childFragmentManager.openSleepTimerDialog()
+        }
+
         menu.setOnClickListener {
             openMenu()
         }
@@ -320,6 +331,12 @@ abstract class BasePlayerFragment : MediaFragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             MediaPlaybackManager.repeatModeFlow.collect { repeatMode ->
                 updateRepeatButtonIcon(repeatMode)
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            MediaPlaybackManager.sleepTimerStateFlow.collect {
+                updateSleepTimerIcon()
             }
         }
 
@@ -512,6 +529,16 @@ abstract class BasePlayerFragment : MediaFragment() {
         // Route through the media controls so the grow/shrink animation fires along with
         // the play/pause icon morph — two birds, one stone.
         mediaControls.setPlaying(isPlaying)
+    }
+
+    private fun updateSleepTimerIcon() {
+        if (MediaPlaybackManager.isSleepTimerRunning()) {
+            sleepTimer.setImageResource(R.drawable.ic_timer)
+            sleepTimer.setTintMode(ThemeImageButton.ACCENT)
+        } else {
+            sleepTimer.setImageResource(R.drawable.ic_timer_off_outlined)
+            sleepTimer.setTintMode(ThemeImageButton.REGULAR)
+        }
     }
 
     private fun updateRepeatButtonIcon(repeatMode: Int) {

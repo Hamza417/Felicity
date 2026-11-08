@@ -21,11 +21,11 @@ import app.simple.felicity.adapters.home.dashboard.AdapterDashboardPanels
 import app.simple.felicity.adapters.home.dashboard.AdapterDashboardPanels.Companion.AdapterDashboardPanelsCallbacks
 import app.simple.felicity.adapters.home.dashboard.AdapterDashboardSongs
 import app.simple.felicity.adapters.home.dashboard.AdapterDashboardSongs.Companion.AdapterDashboardSongsCallbacks
-
 import app.simple.felicity.databinding.FragmentHomeDashboardBinding
 import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDecoration
-
 import app.simple.felicity.dialogs.app.AppLabel.Companion.showAppLabel
+import app.simple.felicity.dialogs.player.SleepTimerDialog.Companion.openSleepTimerDialog
+import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.fragments.BaseHomeFragment
 import app.simple.felicity.preferences.MainPreferences
 import app.simple.felicity.preferences.QueueLabelPreferences
@@ -43,7 +43,6 @@ import app.simple.felicity.ui.panels.MixPanel
 import app.simple.felicity.ui.panels.PlayingQueue
 import app.simple.felicity.viewmodels.panels.DashboardViewModel
 import app.simple.felicity.viewmodels.panels.DashboardViewModel.LibraryStats
-
 import app.simple.felicity.viewmodels.panels.MixesViewModel
 import app.simple.felicity.viewmodels.panels.MixesViewModel.Mix
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Panel
@@ -52,6 +51,7 @@ import com.google.android.flexbox.FlexDirection
 import com.google.android.flexbox.FlexboxLayoutManager
 import com.google.android.flexbox.JustifyContent
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 
@@ -128,6 +128,10 @@ class Dashboard : BaseHomeFragment() {
             mixesViewModel.refresh()
         }
 
+        binding.sleepTimer.setOnClickListener {
+            childFragmentManager.openSleepTimerDialog()
+        }
+
         // Insets
         binding.header.applyLandscapeNavBarPadding()
         binding.strip.applyLandscapeNavBarPadding()
@@ -146,6 +150,32 @@ class Dashboard : BaseHomeFragment() {
                 ServerModeService.isRunning.collect { running ->
                     if (running) binding.serverActiveChip.visible(true)
                     else binding.serverActiveChip.gone()
+                }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                MediaPlaybackManager.sleepTimerStateFlow.collectLatest { running ->
+                    if (running) {
+                        binding.sleepTimer.visible(true)
+                    } else {
+                        binding.sleepTimer.gone()
+                    }
+                }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                MediaPlaybackManager.sleepTimerRemainingFlow.collectLatest { remaining ->
+                    if (MediaPlaybackManager.isSleepTimerRunning()) {
+                        binding.sleepTimer.text = remaining.formatted
+                    } else if (MediaPlaybackManager.pauseAfterCurrentSong) {
+                        binding.sleepTimer.text = getString(R.string.till_this_song)
+                    } else {
+                        binding.sleepTimer.text = ""
+                    }
                 }
             }
         }

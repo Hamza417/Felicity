@@ -27,6 +27,11 @@ object PlayerPreferences {
     const val PCM_INFO_MODE_BITRATE = 1
     const val PCM_INFO_MODE_QUALITY = 2
 
+    const val SLEEP_TIMER_ACTION = "sleep_timer_action"
+
+    const val SLEEP_TIMER_ACTION_PAUSE = 0
+    const val SLEEP_TIMER_ACTION_SHUTDOWN = 1
+
     fun setRepeatMode(value: Int) {
         SharedPreferences.getSharedPreferences().edit { putInt(REPEAT_MODE, value) }
     }
@@ -84,5 +89,13 @@ object PlayerPreferences {
 
     fun isShowLyrics(): Boolean {
         return SharedPreferences.getSharedPreferences().getBoolean(SHOW_LYRICS, true)
+    }
+
+    fun setSleepTimerAction(value: Int) {
+        SharedPreferences.getSharedPreferences().edit { putInt(SLEEP_TIMER_ACTION, value) }
+    }
+
+    fun getSleepTimerAction(): Int {
+        return SharedPreferences.getSharedPreferences().getInt(SLEEP_TIMER_ACTION, SLEEP_TIMER_ACTION_PAUSE)
     }
 }

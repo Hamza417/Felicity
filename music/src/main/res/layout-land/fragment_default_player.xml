@@ -85,6 +85,15 @@
             app:buttonTintType="regular" />
 
         <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+            android:id="@+id/sleepTimer"
+            android:layout_width="@dimen/button_size"
+            android:layout_weight="1"
+            android:layout_height="0dp"
+            android:layout_marginEnd="@dimen/padding_1"
+            android:src="@drawable/ic_timer"
+            app:buttonTintType="regular" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
             android:id="@+id/menu"
             android:layout_width="@dimen/button_size"
             android:layout_weight="1"

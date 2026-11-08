@@ -13,6 +13,7 @@ import androidx.core.view.isGone
 import androidx.dynamicanimation.animation.DynamicAnimation
 import androidx.dynamicanimation.animation.SpringAnimation
 import androidx.dynamicanimation.animation.SpringForce
+import app.simple.felicity.shared.utils.ScrollingUtils
 import java.util.WeakHashMap
 import kotlin.math.abs
 
@@ -354,26 +355,20 @@ class FelicityViewFlipper @JvmOverloads constructor(
     }
 
     /**
-     * Calculates a bounded rubber-band offset for overscrolling.
-     */
-    private fun calculateRubberBandOffset(rawOffset: Float, width: Float): Float {
-        if (currentIndex == 0 && rawOffset > 0) {
-            return width * (1f - (1f / ((rawOffset * 0.5f / width) + 1f)))
-        } else if (currentIndex == childCount - 1 && rawOffset < 0) {
-            val absOffset = abs(rawOffset)
-            return -width * (1f - (1f / ((absOffset * 0.5f / width) + 1f)))
-        }
-        return rawOffset
-    }
-
-    /**
      * Translates all children without animation to reflect [dragOffset] and [currentIndex].
      * Called continuously during a drag gesture.
      */
     private fun applyTranslations() {
         val pageWidth = width.toFloat()
         if (pageWidth == 0f) return
-        val boundedDragOffset = calculateRubberBandOffset(dragOffset, pageWidth)
+
+        var boundedDragOffset = dragOffset
+        if (currentIndex == 0 && dragOffset > 0) {
+            boundedDragOffset = ScrollingUtils.calculateRubberBandOffset(dragOffset, pageWidth)
+        } else if (currentIndex == childCount - 1 && dragOffset < 0) {
+            boundedDragOffset = ScrollingUtils.calculateRubberBandOffset(dragOffset, pageWidth)
+        }
+
         for (i in 0 until childCount) {
             getChildAt(i).translationX = (i - currentIndex) * pageWidth + boundedDragOffset
         }

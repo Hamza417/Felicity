@@ -3,6 +3,7 @@ package app.simple.felicity.engine.managers
 import android.animation.ValueAnimator
 import android.content.Context
 import android.net.Uri
+import android.os.CountDownTimer
 import android.util.Log
 import androidx.annotation.MainThread
 import androidx.core.net.toUri
@@ -13,20 +14,10 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.session.MediaController
 import app.simple.felicity.engine.managers.MediaPlaybackManager._songPositionFlow
 import app.simple.felicity.engine.managers.MediaPlaybackManager.currentSongPosition
-import app.simple.felicity.engine.managers.MediaPlaybackManager.getSongs
 import app.simple.felicity.engine.managers.MediaPlaybackManager.mediaController
-import app.simple.felicity.engine.managers.MediaPlaybackManager.moveQueueItemSilently
-import app.simple.felicity.engine.managers.MediaPlaybackManager.next
-import app.simple.felicity.engine.managers.MediaPlaybackManager.notifyCurrentPosition
-import app.simple.felicity.engine.managers.MediaPlaybackManager.notifyPlaybackState
 import app.simple.felicity.engine.managers.MediaPlaybackManager.originalQueue
 import app.simple.felicity.engine.managers.MediaPlaybackManager.pendingSeekPositions
-import app.simple.felicity.engine.managers.MediaPlaybackManager.playNext
-import app.simple.felicity.engine.managers.MediaPlaybackManager.previous
-import app.simple.felicity.engine.managers.MediaPlaybackManager.removeQueueItemSilently
-import app.simple.felicity.engine.managers.MediaPlaybackManager.setSongs
-import app.simple.felicity.engine.managers.MediaPlaybackManager.switchToQueue
-import app.simple.felicity.engine.managers.MediaPlaybackManager.updatePosition
+import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.listeners.MediaStateListener
@@ -51,6 +42,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.Locale
 import kotlin.math.max
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -886,6 +878,10 @@ object MediaPlaybackManager {
         mediaController?.seekTo(clamped)
         // StateFlow update is instant and non-suspending, no coroutine wrapper needed
         _songSeekPositionFlow.value = clamped
+        if (isSleepTimerSyncedWithSong) {
+            val remainingMs = getDuration() - clamped
+            updateSleepTimerRemaining(if (remainingMs > 0) remainingMs else 0L)
+        }
     }
 
     fun seekRelative(offsetMs: Long) {
@@ -1105,6 +1101,11 @@ object MediaPlaybackManager {
                         _songSeekPositionFlow.value = position
                         lastEmittedPosition = position
                     }
+                }
+
+                if (isSleepTimerSyncedWithSong) {
+                    val remainingMs = getDuration() - position
+                    updateSleepTimerRemaining(if (remainingMs > 0) remainingMs else 0L)
                 }
 
                 delay(intervalMs.milliseconds)
@@ -1358,6 +1359,15 @@ object MediaPlaybackManager {
                 }
             } else {
                 // Natural ExoPlayer advance (end of track, auto-next, gapless, etc.).
+
+                if (pauseAfterCurrentSong) {
+                    pauseAfterCurrentSong = false
+                    isSleepTimerSyncedWithSong = false
+                    _sleepTimerStateFlow.value = false
+                    updateSleepTimerRemaining(0L)
+                    handleSleepTimerAction()
+                }
+                
                 // Honor the always-skip flag only here, in the auto-queue path.
                 val song = songs[position]
                 if (song.isAlwaysSkip) {
@@ -1473,5 +1483,107 @@ object MediaPlaybackManager {
 
     fun unregisterListener(listener: MediaStateListener) {
         listeners.remove(listener)
+    }
+
+    private var sleepTimer: CountDownTimer? = null
+    var sleepTimerRemainingMs: Long = 0L
+        private set
+
+    var pauseAfterCurrentSong: Boolean = false
+        set(value) {
+            field = value
+            _sleepTimerStateFlow.value = value || sleepTimer != null
+        }
+
+    var isSleepTimerSyncedWithSong: Boolean = false
+        private set
+
+    private val _sleepTimerStateFlow = MutableStateFlow(false)
+    val sleepTimerStateFlow: StateFlow<Boolean> = _sleepTimerStateFlow.asStateFlow()
+
+    data class SleepTimerRemaining(
+            val hours: Int,
+            val minutes: Int,
+            val seconds: Int,
+            val formatted: String,
+            val isRunning: Boolean
+    )
+
+    private val _sleepTimerRemainingFlow = MutableStateFlow(SleepTimerRemaining(0, 0, 0, "", false))
+    val sleepTimerRemainingFlow: StateFlow<SleepTimerRemaining> = _sleepTimerRemainingFlow.asStateFlow()
+
+    private val _shutdownAppFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val shutdownAppFlow: SharedFlow<Unit> = _shutdownAppFlow.asSharedFlow()
+
+    fun isSleepTimerRunning(): Boolean {
+        return sleepTimer != null || isSleepTimerSyncedWithSong
+    }
+
+    private fun handleSleepTimerAction() {
+        val action = PlayerPreferences.getSleepTimerAction()
+        if (action == PlayerPreferences.SLEEP_TIMER_ACTION_PAUSE) {
+            pause()
+        } else if (action == PlayerPreferences.SLEEP_TIMER_ACTION_SHUTDOWN) {
+            pause()
+            _shutdownAppFlow.tryEmit(Unit)
+        }
+    }
+
+    private fun updateSleepTimerRemaining(millisUntilFinished: Long) {
+        val totalSeconds = (millisUntilFinished / 1000).toInt()
+        val h = totalSeconds / 3600
+        val m = (totalSeconds % 3600) / 60
+        val s = totalSeconds % 60
+        val formatted = if (h > 0) {
+            String.format(Locale.getDefault(), "%02d:%02d:%02d", h, m, s)
+        } else {
+            String.format(Locale.getDefault(), "%02d:%02d", m, s)
+        }
+        _sleepTimerRemainingFlow.value = SleepTimerRemaining(h, m, s, formatted, isSleepTimerRunning())
+    }
+
+    fun stopSleepTimer() {
+        sleepTimer?.cancel()
+        sleepTimer = null
+        sleepTimerRemainingMs = 0L
+        isSleepTimerSyncedWithSong = false
+        pauseAfterCurrentSong = false
+        updateSleepTimerRemaining(0L)
+        _sleepTimerStateFlow.value = false
+    }
+
+    fun setSleepTimerSyncedWithSong(synced: Boolean) {
+        stopSleepTimer()
+        isSleepTimerSyncedWithSong = synced
+        pauseAfterCurrentSong = synced
+        _sleepTimerStateFlow.value = synced || pauseAfterCurrentSong
+        if (synced) {
+            val remainingMs = getDuration() - getSeekPosition()
+            updateSleepTimerRemaining(if (remainingMs > 0) remainingMs else 0L)
+        }
+    }
+
+    fun setSleepTimer(hours: Int, minutes: Int, seconds: Int) {
+        stopSleepTimer()
+        val totalMs = (hours * 3600 + minutes * 60 + seconds) * 1000L
+        if (totalMs > 0) {
+            sleepTimerRemainingMs = totalMs
+            updateSleepTimerRemaining(totalMs)
+            sleepTimer = object : CountDownTimer(totalMs, 1000) {
+                override fun onTick(millisUntilFinished: Long) {
+                    sleepTimerRemainingMs = millisUntilFinished
+                    updateSleepTimerRemaining(millisUntilFinished)
+                }
+
+                override fun onFinish() {
+                    sleepTimerRemainingMs = 0L
+                    sleepTimer = null
+                    updateSleepTimerRemaining(0L)
+                    _sleepTimerStateFlow.value = false
+                    handleSleepTimerAction()
+                }
+            }.start()
+            _sleepTimerStateFlow.value = true
+        }
     }
 }
