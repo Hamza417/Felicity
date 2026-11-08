@@ -2,8 +2,6 @@ package app.simple.felicity.preferences
 
 import androidx.core.content.edit
 import app.simple.felicity.manager.SharedPreferences.getSharedPreferences
-import app.simple.felicity.preferences.UserInterfacePreferences.PLAYER_INTERFACE_DEFAULT
-import app.simple.felicity.preferences.UserInterfacePreferences.PLAYER_INTERFACE_FADED
 
 /**
  * Persisted preferences that control which interface variants are shown throughout the
@@ -82,7 +80,7 @@ object UserInterfacePreferences {
 
     fun getHomeInterface(): Int {
         return getSharedPreferences()
-            .getInt(HOME_INTERFACE, HOME_INTERFACE_SIMPLE)
+            .getInt(HOME_INTERFACE, HOME_INTERFACE_DASHBOARD)
     }
 
     fun setHomeInterface(value: Int) {
