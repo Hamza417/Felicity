@@ -1363,6 +1363,8 @@ object MediaPlaybackManager {
                 if (pauseAfterCurrentSong) {
                     pauseAfterCurrentSong = false
                     isSleepTimerSyncedWithSong = false
+                    _sleepTimerStateFlow.value = false
+                    updateSleepTimerRemaining(0L)
                     handleSleepTimerAction()
                 }
                 
@@ -1545,8 +1547,9 @@ object MediaPlaybackManager {
         sleepTimer = null
         sleepTimerRemainingMs = 0L
         isSleepTimerSyncedWithSong = false
+        pauseAfterCurrentSong = false
         updateSleepTimerRemaining(0L)
-        _sleepTimerStateFlow.value = pauseAfterCurrentSong
+        _sleepTimerStateFlow.value = false
     }
 
     fun setSleepTimerSyncedWithSong(synced: Boolean) {
@@ -1576,7 +1579,7 @@ object MediaPlaybackManager {
                     sleepTimerRemainingMs = 0L
                     sleepTimer = null
                     updateSleepTimerRemaining(0L)
-                    _sleepTimerStateFlow.value = pauseAfterCurrentSong
+                    _sleepTimerStateFlow.value = false
                     handleSleepTimerAction()
                 }
             }.start()
