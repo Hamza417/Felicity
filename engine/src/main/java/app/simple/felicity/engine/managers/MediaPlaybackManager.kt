@@ -40,6 +40,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.Locale
 import kotlin.math.max
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -1468,18 +1469,48 @@ object MediaPlaybackManager {
     var sleepTimerRemainingMs: Long = 0L
         private set
 
+    var pauseAfterCurrentSong: Boolean = false
+        set(value) {
+            field = value
+            _sleepTimerStateFlow.value = value || sleepTimer != null
+        }
+
     private val _sleepTimerStateFlow = MutableStateFlow(false)
     val sleepTimerStateFlow: StateFlow<Boolean> = _sleepTimerStateFlow.asStateFlow()
 
+    data class SleepTimerRemaining(
+            val hours: Int,
+            val minutes: Int,
+            val seconds: Int,
+            val formatted: String
+    )
+
+    private val _sleepTimerRemainingFlow = MutableStateFlow(SleepTimerRemaining(0, 0, 0, ""))
+    val sleepTimerRemainingFlow: StateFlow<SleepTimerRemaining> = _sleepTimerRemainingFlow.asStateFlow()
+
     fun isSleepTimerRunning(): Boolean {
         return sleepTimer != null
+    }
+
+    private fun updateSleepTimerRemaining(millisUntilFinished: Long) {
+        val totalSeconds = (millisUntilFinished / 1000).toInt()
+        val h = totalSeconds / 3600
+        val m = (totalSeconds % 3600) / 60
+        val s = totalSeconds % 60
+        val formatted = if (h > 0) {
+            String.format(Locale.getDefault(), "%02d:%02d:%02d", h, m, s)
+        } else {
+            String.format(Locale.getDefault(), "%02d:%02d", m, s)
+        }
+        _sleepTimerRemainingFlow.value = SleepTimerRemaining(h, m, s, formatted)
     }
 
     fun stopSleepTimer() {
         sleepTimer?.cancel()
         sleepTimer = null
         sleepTimerRemainingMs = 0L
-        _sleepTimerStateFlow.value = false
+        updateSleepTimerRemaining(0L)
+        _sleepTimerStateFlow.value = pauseAfterCurrentSong
     }
 
     fun setSleepTimer(hours: Int, minutes: Int, seconds: Int) {
@@ -1487,15 +1518,18 @@ object MediaPlaybackManager {
         val totalMs = (hours * 3600 + minutes * 60 + seconds) * 1000L
         if (totalMs > 0) {
             sleepTimerRemainingMs = totalMs
+            updateSleepTimerRemaining(totalMs)
             sleepTimer = object : android.os.CountDownTimer(totalMs, 1000) {
                 override fun onTick(millisUntilFinished: Long) {
                     sleepTimerRemainingMs = millisUntilFinished
+                    updateSleepTimerRemaining(millisUntilFinished)
                 }
 
                 override fun onFinish() {
                     sleepTimerRemainingMs = 0L
+                    updateSleepTimerRemaining(0L)
                     sleepTimer = null
-                    _sleepTimerStateFlow.value = false
+                    _sleepTimerStateFlow.value = pauseAfterCurrentSong
                     pause()
                 }
             }.start()

@@ -29,7 +29,7 @@ import app.simple.felicity.decorations.views.FelicityMediaControls
 import app.simple.felicity.decorations.views.FelicityVisualizer
 import app.simple.felicity.decorations.views.FlexStackLayout
 import app.simple.felicity.dialogs.app.AudioPipelineDialog.Companion.showAudioPipeline
-import app.simple.felicity.dialogs.player.SleepTimerDialog
+import app.simple.felicity.dialogs.player.SleepTimerDialog.Companion.openSleepTimerDialog
 import app.simple.felicity.dialogs.player.VisualizerMenu.Companion.showVisualizerMenu
 import app.simple.felicity.dialogs.player.WaveformMenu.Companion.showWaveformMenu
 import app.simple.felicity.engine.managers.MediaPlaybackManager
@@ -295,14 +295,7 @@ abstract class BasePlayerFragment : MediaFragment() {
         }
 
         sleepTimer.setOnClickListener {
-            SleepTimerDialog.newInstance().apply {
-                onTimerSet = { hours, minutes, seconds ->
-                    MediaPlaybackManager.setSleepTimer(hours, minutes, seconds)
-                }
-                onTimerStop = {
-                    MediaPlaybackManager.stopSleepTimer()
-                }
-            }.show(childFragmentManager, "SleepTimerDialog")
+            childFragmentManager.openSleepTimerDialog()
         }
 
         menu.setOnClickListener {

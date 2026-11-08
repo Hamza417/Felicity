@@ -1,22 +1,22 @@
 package app.simple.felicity.dialogs.player
 
 import android.os.Bundle
-import android.os.CountDownTimer
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.fragment.app.FragmentManager
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import app.simple.felicity.databinding.DialogSleepTimerBinding
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 class SleepTimerDialog : ScopedBottomSheetFragment() {
 
     private lateinit var binding: DialogSleepTimerBinding
-
-    var onTimerSet: ((hours: Int, minutes: Int, seconds: Int) -> Unit)? = null
-    var onTimerStop: (() -> Unit)? = null
-
-    private var displayTimer: CountDownTimer? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = DialogSleepTimerBinding.inflate(inflater, container, false)
@@ -33,21 +33,19 @@ class SleepTimerDialog : ScopedBottomSheetFragment() {
             binding.startButton.visibility = View.GONE
             binding.stopButton.visibility = View.VISIBLE
 
-            var isFirstTick = true
-            displayTimer = object : CountDownTimer(MediaPlaybackManager.sleepTimerRemainingMs, 1000) {
-                override fun onTick(millisUntilFinished: Long) {
-                    val totalSeconds = millisUntilFinished / 1000
-                    val h = (totalSeconds / 3600).toInt()
-                    val m = ((totalSeconds % 3600) / 60).toInt()
-                    val s = (totalSeconds % 60).toInt()
-                    binding.timePicker.setTime(h, m, s, animate = !isFirstTick)
-                    isFirstTick = false
+            viewLifecycleOwner.lifecycleScope.launch {
+                viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    var isFirstTick = true
+                    MediaPlaybackManager.sleepTimerRemainingFlow.collectLatest { remaining ->
+                        binding.timePicker.setTime(
+                                remaining.hours, remaining.minutes, remaining.seconds, animate = !isFirstTick)
+                        isFirstTick = false
+                        if (!MediaPlaybackManager.isSleepTimerRunning()) {
+                            dismiss()
+                        }
+                    }
                 }
-
-                override fun onFinish() {
-                    dismiss()
-                }
-            }.start()
+            }
         } else {
             binding.timePicker.isEnabled = true
             binding.startButton.visibility = View.VISIBLE
@@ -68,7 +66,7 @@ class SleepTimerDialog : ScopedBottomSheetFragment() {
                 binding.timePicker.setTime(h, m, s, animate = true)
                 binding.tillThisSon.postDelayed({
                                                     if (isAdded) {
-                                                        onTimerSet?.invoke(h, m, s)
+                                                        MediaPlaybackManager.setSleepTimer(h, m, s)
                                                         MediaPlaybackManager.play() // start playing too?
                                                         dismiss()
                                                     }
@@ -81,12 +79,12 @@ class SleepTimerDialog : ScopedBottomSheetFragment() {
         }
 
         binding.stopButton.setOnClickListener {
-            onTimerStop?.invoke()
+            MediaPlaybackManager.stopSleepTimer()
             dismiss()
         }
 
         binding.startButton.setOnClickListener {
-            onTimerSet?.invoke(
+            MediaPlaybackManager.setSleepTimer(
                     binding.timePicker.hours,
                     binding.timePicker.minutes,
                     binding.timePicker.seconds
@@ -97,13 +95,19 @@ class SleepTimerDialog : ScopedBottomSheetFragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        displayTimer?.cancel()
-        displayTimer = null
     }
 
     companion object {
         fun newInstance(): SleepTimerDialog {
             return SleepTimerDialog()
         }
+
+        fun FragmentManager.openSleepTimerDialog(): SleepTimerDialog {
+            val dialog = newInstance()
+            dialog.show(this, TAG)
+            return dialog
+        }
+
+        private const val TAG = "SleepTimerDialog"
     }
 }
