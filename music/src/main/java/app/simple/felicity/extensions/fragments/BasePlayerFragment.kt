@@ -536,7 +536,7 @@ abstract class BasePlayerFragment : MediaFragment() {
             sleepTimer.setImageResource(R.drawable.ic_timer)
             sleepTimer.setTintMode(ThemeImageButton.ACCENT)
         } else {
-            sleepTimer.setImageResource(R.drawable.ic_timer_off)
+            sleepTimer.setImageResource(R.drawable.ic_timer_off_outlined)
             sleepTimer.setTintMode(ThemeImageButton.REGULAR)
         }
     }
