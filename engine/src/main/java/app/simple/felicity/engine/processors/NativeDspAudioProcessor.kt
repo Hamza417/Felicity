@@ -530,6 +530,7 @@ class NativeDspAudioProcessor(
      * @param trebleDb Treble high-shelf gain in dB.
      */
     fun setEqBands(gains: FloatArray, bassDb: Float = this.bassDb, trebleDb: Float = this.trebleDb) {
+        clearPeqBands()
         bandGains = gains.copyOf()
         this.bassDb = bassDb
         this.trebleDb = trebleDb
@@ -545,6 +546,7 @@ class NativeDspAudioProcessor(
      */
     fun setBandGain(band: Int, gainDb: Float) {
         if (band !in 0 until BAND_COUNT) return
+        clearPeqBands()
         bandGains[band] = gainDb.coerceIn(-15f, 15f)
         dspProcessor?.setEqBands(bandGains, bassDb, trebleDb)
     }
@@ -563,6 +565,7 @@ class NativeDspAudioProcessor(
      * Resets all 10 EQ bands to 0 dB without touching the bass or treble shelf gains.
      */
     fun resetEqBands() {
+        clearPeqBands()
         bandGains = FloatArray(BAND_COUNT)
         dspProcessor?.setEqBands(bandGains, bassDb, trebleDb)
     }
@@ -574,6 +577,7 @@ class NativeDspAudioProcessor(
      * @param db Gain in dB, clamped to [-12, +12].
      */
     fun setBassDb(db: Float) {
+        clearPeqBands()
         bassDb = db.coerceIn(-12f, 12f)
         dspProcessor?.setEqBands(bandGains, bassDb, trebleDb)
     }
@@ -599,12 +603,22 @@ class NativeDspAudioProcessor(
         dspProcessor?.setPeqBands(peqGains, peqFreqs, peqQValues, peqTypes)
     }
 
+    private fun clearPeqBands() {
+        if (peqGains.isNotEmpty()) {
+            peqGains = FloatArray(0)
+            peqFreqs = FloatArray(0)
+            peqQValues = FloatArray(0)
+            peqTypes = IntArray(0)
+        }
+    }
+
     /** Sets the treble high-shelf gain. Internally passes the full band state so the
      * native engine always has a consistent coefficient set.
      *
      * @param db Gain in dB, clamped to [-12, +12].
      */
     fun setTrebleDb(db: Float) {
+        clearPeqBands()
         trebleDb = db.coerceIn(-12f, 12f)
         dspProcessor?.setEqBands(bandGains, bassDb, trebleDb)
     }

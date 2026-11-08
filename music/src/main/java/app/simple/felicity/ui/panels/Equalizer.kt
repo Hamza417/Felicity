@@ -379,7 +379,9 @@ class Equalizer : MediaFragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 EqualizerManager.bandGainsFlow.collect { gains ->
                     binding.equalizerScreen.equalizerSliders.setAllGains(gains, animate = true)
-                    binding.equalizerScreen.equalizerWave.setGains(gains)
+                    if (EqualizerManager.eqModeFlow.value == EqualizerPreferences.EQ_MODE_GRAPHIC) {
+                        binding.equalizerScreen.equalizerWave.setGains(gains)
+                    }
                 }
             }
         }
@@ -442,7 +444,9 @@ class Equalizer : MediaFragment() {
                             )
                         }
                         binding.equalizerScreen.equalizerSliders.setPeqBands(peqBands)
-                        binding.equalizerScreen.equalizerWave.setPeqBands(bands)
+                        if (EqualizerManager.eqModeFlow.value == EqualizerPreferences.EQ_MODE_PARAMETRIC) {
+                            binding.equalizerScreen.equalizerWave.setPeqBands(bands)
+                        }
                     }
                 }
             }
