@@ -17,6 +17,99 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content" />
 
+        <HorizontalScrollView
+            android:id="@+id/presets_scroll"
+            android:layout_width="match_parent"
+            android:layout_marginTop="@dimen/padding_15"
+            android:layout_marginBottom="@dimen/padding_5"
+            android:scrollbars="none"
+            android:clipToPadding="true"
+            android:paddingHorizontal="@dimen/padding_15"
+            android:fadingEdge="horizontal"
+            android:requiresFadingEdge="horizontal"
+            android:fadingEdgeLength="@dimen/padding_20"
+            android:layout_height="wrap_content">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <app.simple.felicity.decorations.highlight.HighlightTextView
+                    android:id="@+id/preset_15m"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:paddingVertical="@dimen/padding_5"
+                    android:paddingHorizontal="@dimen/padding_10"
+                    android:textSize="@dimen/text_size_14"
+                    app:appFontStyle="bold"
+                    app:textColorStyle="tertiary" />
+
+                <app.simple.felicity.decorations.highlight.HighlightTextView
+                    android:id="@+id/preset_30m"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:paddingVertical="@dimen/padding_5"
+                    android:paddingHorizontal="@dimen/padding_10"
+                    android:layout_marginStart="@dimen/padding_10"
+                    android:textSize="@dimen/text_size_14"
+                    app:appFontStyle="bold"
+                    app:textColorStyle="tertiary" />
+
+                <app.simple.felicity.decorations.highlight.HighlightTextView
+                    android:id="@+id/preset_45m"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:paddingVertical="@dimen/padding_5"
+                    android:paddingHorizontal="@dimen/padding_10"
+                    android:layout_marginStart="@dimen/padding_10"
+                    android:textSize="@dimen/text_size_14"
+                    app:appFontStyle="bold"
+                    app:textColorStyle="tertiary" />
+
+                <app.simple.felicity.decorations.highlight.HighlightTextView
+                    android:id="@+id/preset_1h"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:paddingVertical="@dimen/padding_5"
+                    android:paddingHorizontal="@dimen/padding_10"
+                    android:layout_marginStart="@dimen/padding_10"
+                    android:textSize="@dimen/text_size_14"
+                    app:appFontStyle="bold"
+                    app:textColorStyle="tertiary" />
+
+                <app.simple.felicity.decorations.highlight.HighlightTextView
+                    android:id="@+id/preset_2h"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:paddingVertical="@dimen/padding_5"
+                    android:paddingHorizontal="@dimen/padding_10"
+                    android:layout_marginStart="@dimen/padding_10"
+                    android:textSize="@dimen/text_size_14"
+                    app:appFontStyle="bold"
+                    app:textColorStyle="tertiary" />
+
+                <app.simple.felicity.decorations.highlight.HighlightTextView
+                    android:id="@+id/preset_3h"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:paddingVertical="@dimen/padding_5"
+                    android:paddingHorizontal="@dimen/padding_10"
+                    android:layout_marginStart="@dimen/padding_10"
+                    android:textSize="@dimen/text_size_14"
+                    app:appFontStyle="bold"
+                    app:textColorStyle="tertiary" />
+
+            </LinearLayout>
+
+        </HorizontalScrollView>
+
         <LinearLayout
             android:id="@+id/sync_adjust_layout"
             android:layout_width="match_parent"
@@ -34,7 +127,7 @@
                 <app.simple.felicity.decorations.typeface.TypeFaceTextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Final Action"
+                    android:text="@string/final_action"
                     android:layout_gravity="center_vertical"
                     android:textSize="@dimen/text_size_14"
                     app:appFontStyle="bold"
@@ -43,7 +136,7 @@
                 <app.simple.felicity.decorations.typeface.TypeFaceTextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Final action taken after the countdown finishes."
+                    android:text="@string/final_action_summary"
                     android:layout_gravity="center_vertical"
                     android:textSize="@dimen/text_size_12"
                     app:appFontStyle="regular"

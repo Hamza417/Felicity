@@ -5,6 +5,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -52,7 +53,7 @@ class SleepTimerDialog : ScopedBottomSheetFragment() {
                     var isFirstTick = true
                     MediaPlaybackManager.sleepTimerRemainingFlow.collectLatest { remaining ->
                         if (stopFlag) return@collectLatest
-                        
+
                         binding.timePicker.setTime(
                                 remaining.hours, remaining.minutes, remaining.seconds, animate = !isFirstTick)
                         isFirstTick = false
@@ -121,6 +122,31 @@ class SleepTimerDialog : ScopedBottomSheetFragment() {
                 }
             }
         }
+
+        fun setupPreset(view: TextView, hours: Int, minutes: Int, seconds: Int) {
+            val text = when {
+                hours > 0 && minutes > 0 -> "${resources.getQuantityString(R.plurals.hours_plural, hours, hours)} ${resources.getQuantityString(R.plurals.minutes_plural, minutes, minutes)}"
+                hours > 0 -> resources.getQuantityString(R.plurals.hours_plural, hours, hours)
+                minutes > 0 -> resources.getQuantityString(R.plurals.minutes_plural, minutes, minutes)
+                else -> ""
+            }
+            view.text = text
+            view.setOnClickListener {
+                binding.timePicker.setTime(hours, minutes, seconds, animate = true)
+                postDelayed(500L) {
+                    MediaPlaybackManager.setSleepTimer(hours, minutes, seconds)
+                    MediaPlaybackManager.play()
+                    dismiss()
+                }
+            }
+        }
+
+        setupPreset(binding.preset15m, 0, 15, 0)
+        setupPreset(binding.preset30m, 0, 30, 0)
+        setupPreset(binding.preset45m, 0, 45, 0)
+        setupPreset(binding.preset1h, 1, 0, 0)
+        setupPreset(binding.preset2h, 2, 0, 0)
+        setupPreset(binding.preset3h, 3, 0, 0)
 
         binding.stopButton.setOnClickListener {
             stopFlag = true

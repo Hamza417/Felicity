@@ -29,4 +29,14 @@
         <item quantity="one">%d Best Match</item>
         <item quantity="other">%d Best Matches</item>
     </plurals>
+
+    <plurals name="minutes_plural" translatable="false">
+        <item quantity="one">%d Minute</item>
+        <item quantity="other">%d Minutes</item>
+    </plurals>
+
+    <plurals name="hours_plural" translatable="false">
+        <item quantity="one">%d Hour</item>
+        <item quantity="other">%d Hours</item>
+    </plurals>
 </resources>
