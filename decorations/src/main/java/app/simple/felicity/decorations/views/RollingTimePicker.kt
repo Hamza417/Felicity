@@ -252,6 +252,7 @@ class RollingTimePicker @JvmOverloads constructor(
                     else -> 1
                 }
 
+                @Suppress("KotlinConstantConditions")
                 if (activeColumn != -1 && !scrollers[activeColumn].isFinished) {
                     scrollers[activeColumn].forceFinished(true)
                     rawScrollYOffsets[activeColumn] = scrollYOffsets[activeColumn]

@@ -24,6 +24,8 @@ class SleepTimerDialog : ScopedBottomSheetFragment() {
 
     private lateinit var binding: DialogSleepTimerBinding
 
+    private var stopFlag = false
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = DialogSleepTimerBinding.inflate(inflater, container, false)
         return binding.root
@@ -49,6 +51,8 @@ class SleepTimerDialog : ScopedBottomSheetFragment() {
                 viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                     var isFirstTick = true
                     MediaPlaybackManager.sleepTimerRemainingFlow.collectLatest { remaining ->
+                        if (stopFlag) return@collectLatest
+                        
                         binding.timePicker.setTime(
                                 remaining.hours, remaining.minutes, remaining.seconds, animate = !isFirstTick)
                         isFirstTick = false
@@ -119,10 +123,12 @@ class SleepTimerDialog : ScopedBottomSheetFragment() {
         }
 
         binding.stopButton.setOnClickListener {
-            MediaPlaybackManager.stopSleepTimer()
+            stopFlag = true
             binding.timePicker.setTime(0, 0, 0, animate = true)
 
             postDelayed(500L) {
+                MediaPlaybackManager.stopSleepTimer()
+
                 if (isAdded) {
                     dismiss()
                 }
