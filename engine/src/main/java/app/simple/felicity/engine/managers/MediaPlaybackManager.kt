@@ -16,6 +16,7 @@ import app.simple.felicity.engine.managers.MediaPlaybackManager.currentSongPosit
 import app.simple.felicity.engine.managers.MediaPlaybackManager.mediaController
 import app.simple.felicity.engine.managers.MediaPlaybackManager.originalQueue
 import app.simple.felicity.engine.managers.MediaPlaybackManager.pendingSeekPositions
+import app.simple.felicity.preferences.PlayerPreferences
 import app.simple.felicity.preferences.ShufflePreferences
 import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.listeners.MediaStateListener
@@ -1348,6 +1349,12 @@ object MediaPlaybackManager {
                 }
             } else {
                 // Natural ExoPlayer advance (end of track, auto-next, gapless, etc.).
+
+                if (pauseAfterCurrentSong) {
+                    pauseAfterCurrentSong = false
+                    handleSleepTimerAction()
+                }
+                
                 // Honor the always-skip flag only here, in the auto-queue path.
                 val song = songs[position]
                 if (song.isAlwaysSkip) {
@@ -1488,8 +1495,21 @@ object MediaPlaybackManager {
     private val _sleepTimerRemainingFlow = MutableStateFlow(SleepTimerRemaining(0, 0, 0, ""))
     val sleepTimerRemainingFlow: StateFlow<SleepTimerRemaining> = _sleepTimerRemainingFlow.asStateFlow()
 
+    private val _shutdownAppFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val shutdownAppFlow: SharedFlow<Unit> = _shutdownAppFlow.asSharedFlow()
+
     fun isSleepTimerRunning(): Boolean {
         return sleepTimer != null
+    }
+
+    private fun handleSleepTimerAction() {
+        val action = PlayerPreferences.getSleepTimerAction()
+        if (action == PlayerPreferences.SLEEP_TIMER_ACTION_PAUSE) {
+            pause()
+        } else if (action == PlayerPreferences.SLEEP_TIMER_ACTION_SHUTDOWN) {
+            pause()
+            _shutdownAppFlow.tryEmit(Unit)
+        }
     }
 
     private fun updateSleepTimerRemaining(millisUntilFinished: Long) {
@@ -1530,7 +1550,7 @@ object MediaPlaybackManager {
                     updateSleepTimerRemaining(0L)
                     sleepTimer = null
                     _sleepTimerStateFlow.value = pauseAfterCurrentSong
-                    pause()
+                    handleSleepTimerAction()
                 }
             }.start()
             _sleepTimerStateFlow.value = true

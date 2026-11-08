@@ -100,7 +100,11 @@ class RollingTimePicker @JvmOverloads constructor(
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER
-        typeface = TypeFace.getLightTypeFace(context)
+        typeface = if (isInEditMode) {
+            Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+        } else {
+            TypeFace.getLightTypeFace(context)
+        }
     }
 
     private val colonPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {

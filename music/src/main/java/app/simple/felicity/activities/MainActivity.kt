@@ -154,6 +154,7 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         // Seek via long-press drag on the miniplayer
         binding.miniPlayer.seekListener = { fraction ->
             val duration = MediaPlaybackManager.getDuration()
+
             if (duration > 0L) {
                 MediaPlaybackManager.seekTo((fraction * duration).toLong())
             }
@@ -223,6 +224,12 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
                     MediaConstants.PLAYBACK_PLAYING -> binding.miniPlayer.setPlaying(true)
                     MediaConstants.PLAYBACK_PAUSED -> binding.miniPlayer.setPlaying(false)
                 }
+            }
+        }
+
+        lifecycleScope.launch {
+            MediaPlaybackManager.shutdownAppFlow.collect {
+                finishAndRemoveTask()
             }
         }
 

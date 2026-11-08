@@ -8,9 +8,12 @@ import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import app.simple.felicity.R
 import app.simple.felicity.databinding.DialogSleepTimerBinding
+import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
+import app.simple.felicity.preferences.PlayerPreferences
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -25,6 +28,8 @@ class SleepTimerDialog : ScopedBottomSheetFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        updateFinalAction()
 
         val isRunning = MediaPlaybackManager.isSleepTimerRunning()
 
@@ -64,13 +69,12 @@ class SleepTimerDialog : ScopedBottomSheetFragment() {
                 val m = (totalSeconds % 3600) / 60
                 val s = totalSeconds % 60
                 binding.timePicker.setTime(h, m, s, animate = true)
-                binding.tillThisSon.postDelayed({
-                                                    if (isAdded) {
-                                                        MediaPlaybackManager.setSleepTimer(h, m, s)
-                                                        MediaPlaybackManager.play() // start playing too?
-                                                        dismiss()
-                                                    }
-                                                }, 500) // Delay to let the animation play
+
+                postDelayed(500L) {
+                    MediaPlaybackManager.setSleepTimer(h, m, s)
+                    MediaPlaybackManager.play() // start playing too?
+                    dismiss()
+                }
             }
         }
 
@@ -90,6 +94,28 @@ class SleepTimerDialog : ScopedBottomSheetFragment() {
                     binding.timePicker.seconds
             )
             dismiss()
+        }
+    }
+
+    private fun updateFinalAction() {
+        binding.finalAction.iconSize = 14F
+        binding.finalAction.setButtons(
+                listOf(
+                        Button(iconResId = R.drawable.ic_pause),
+                        Button(iconResId = R.drawable.ic_power_off),
+                )
+        )
+
+        when (PlayerPreferences.getSleepTimerAction()) {
+            PlayerPreferences.SLEEP_TIMER_ACTION_PAUSE -> binding.finalAction.setSelectedIndex(0)
+            PlayerPreferences.SLEEP_TIMER_ACTION_SHUTDOWN -> binding.finalAction.setSelectedIndex(1)
+        }
+
+        binding.finalAction.setOnButtonSelectedListener {
+            when (it) {
+                0 -> PlayerPreferences.setSleepTimerAction(PlayerPreferences.SLEEP_TIMER_ACTION_PAUSE)
+                1 -> PlayerPreferences.setSleepTimerAction(PlayerPreferences.SLEEP_TIMER_ACTION_SHUTDOWN)
+            }
         }
     }
 
