@@ -144,6 +144,12 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
             onSuccess: () -> Unit
     ) {
         val trimmedName = name.trim()
+
+        if (trimmedName.equals(CUSTOM_PRESET_NAME, ignoreCase = true)) {
+            onDuplicate()
+            return
+        }
+
         viewModelScope.launch(Dispatchers.IO) {
             val existing = db.equalizerPresetDao().getPresetByName(trimmedName)
             if (existing != null) {
@@ -179,6 +185,12 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
             onSuccess: () -> Unit
     ) {
         val trimmedName = name.trim()
+
+        if (trimmedName.equals(CUSTOM_PRESET_NAME, ignoreCase = true)) {
+            onDuplicate()
+            return
+        }
+
         viewModelScope.launch(Dispatchers.IO) {
             val existing = db.equalizerPresetDao().getPresetByName(trimmedName)
             if (existing != null) {
@@ -266,13 +278,16 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
 
             val presetBands = preset.getPeqBands()
             val bandsMatch = bands.size == presetBands.size &&
-                    bands.indices.all { i ->
-                        abs(bands[i].gain - presetBands[i].gain) < GAIN_TOLERANCE &&
-                                abs(bands[i].q - presetBands[i].q) < 0.1f &&
-                                abs(bands[i].frequencyHz - presetBands[i].frequencyHz) < 1.5f &&
-                                bands[i].color == presetBands[i].color &&
-                                bands[i].type == presetBands[i].type
+                    bands.all { band ->
+                        presetBands.any { presetBand ->
+                            abs(band.gain - presetBand.gain) < GAIN_TOLERANCE &&
+                                    abs(band.q - presetBand.q) < 0.1f &&
+                                    abs(band.frequencyHz - presetBand.frequencyHz) < 1.5f &&
+                                    band.color == presetBand.color &&
+                                    band.type == presetBand.type
+                        }
                     }
+
             val preampMatch = abs(preamp - preset.preampDb) < GAIN_TOLERANCE
 
             bandsMatch && preampMatch

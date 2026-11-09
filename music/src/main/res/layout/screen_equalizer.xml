@@ -31,14 +31,12 @@
             android:fadingEdge="horizontal"
             android:clipChildren="true"
             android:clipToPadding="true"
-            android:animateLayoutChanges="true"
             android:requiresFadingEdge="horizontal"
             android:fadingEdgeLength="@dimen/padding_20">
 
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:animateLayoutChanges="true"
                 android:orientation="horizontal">
 
                 <app.simple.felicity.decorations.highlight.HighlightTextView
@@ -66,6 +64,7 @@
                     android:text="@string/save_preset"
                     android:textSize="@dimen/text_size_14"
                     app:appFontStyle="bold"
+                    android:visibility="gone"
                     app:drawableTintStyle="accent"
                     app:textColorStyle="tertiary" />
 

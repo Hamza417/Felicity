@@ -974,6 +974,7 @@ class FelicityEqualizer @JvmOverloads constructor(
                 peqBands[i].q = bands[i].q
                 peqBands[i].frequencyHz = bands[i].frequencyHz
                 peqBands[i].color = bands[i].color
+                peqBands[i].type = bands[i].type
             }
             invalidate()
             return
@@ -1204,7 +1205,7 @@ class FelicityEqualizer @JvmOverloads constructor(
         val zeroY = gainToThumbY(0f)
         for (i in 0 until BAND_COUNT) {
             val cx = bandCenterX(i)
-            if (cx < visibleLeft || cx > visibleRight) continue
+            if (cx !in visibleLeft..visibleRight) continue
             drawColumnTrackAndThumb(canvas, cx, gainToThumbY(displayGains[i]), zeroY, pressScales[i])
         }
     }

@@ -375,10 +375,12 @@ class Equalizer : MediaFragment() {
             binding.equalizerScreen.equalizerWave.setPeqBands(parsedBands)
         }
 
+        var isFirstGainsRun = true
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 EqualizerManager.bandGainsFlow.collect { gains ->
-                    binding.equalizerScreen.equalizerSliders.setAllGains(gains, animate = true)
+                    binding.equalizerScreen.equalizerSliders.setAllGains(gains, animate = !isFirstGainsRun)
+                    isFirstGainsRun = false
                     if (EqualizerManager.eqModeFlow.value == EqualizerPreferences.EQ_MODE_GRAPHIC) {
                         binding.equalizerScreen.equalizerWave.setGains(gains)
                     }
@@ -386,16 +388,19 @@ class Equalizer : MediaFragment() {
             }
         }
 
+        var isFirstPreampRun = true
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 EqualizerManager.preampFlow.collect { db ->
-                    binding.equalizerScreen.equalizerSliders.setPreampGain(db, animate = true)
+                    binding.equalizerScreen.equalizerSliders.setPreampGain(db, animate = !isFirstPreampRun)
+                    isFirstPreampRun = false
                 }
             }
         }
 
         // Watch for mode switches triggered by preset loading so the slider layout
         // flips between graphic and parametric automatically when the user comes back.
+        var isFirstModeRun = true
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 EqualizerManager.eqModeFlow.collect { mode ->
@@ -405,13 +410,18 @@ class Equalizer : MediaFragment() {
                         FelicityEqualizer.Companion.Mode.GRAPHIC
                     }
 
-                    binding.equalizerScreen.switchMode.setTextWithFade(
-                            getString(if (mode == EqualizerPreferences.EQ_MODE_PARAMETRIC) {
-                                R.string.switch_to_graphic_eq
-                            } else {
-                                R.string.switch_to_peq
-                            })
-                    )
+                    val targetText = getString(if (mode == EqualizerPreferences.EQ_MODE_PARAMETRIC) {
+                        R.string.switch_to_graphic_eq
+                    } else {
+                        R.string.switch_to_peq
+                    })
+
+                    if (isFirstModeRun) {
+                        binding.equalizerScreen.switchMode.text = targetText
+                        isFirstModeRun = false
+                    } else {
+                        binding.equalizerScreen.switchMode.setTextWithFade(targetText)
+                    }
 
                     if (binding.equalizerScreen.equalizerSliders.mode != targetMode) {
                         binding.equalizerScreen.equalizerSliders.mode = targetMode
