@@ -86,7 +86,6 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
     companion object {
         private const val TRANSITION_NAME = "shared_element_popup_transition"
         private const val DURATION = 350L
-        private const val END_ELEVATION = 0f
         private const val MARGIN = 16 // in dp
         private const val MAX_WIGGLE_THRESHOLD = 72F
         private const val MAX_FINGER_DISTANCE = 0.05f
@@ -106,7 +105,7 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
                     ViewGroup.LayoutParams.WRAP_CONTENT
             )
             isFillViewport = false
-            elevation = END_ELEVATION
+            elevation = 0f
             ViewCompat.setTransitionName(this, TRANSITION_NAME)
             clipChildren = true
             clipToPadding = false
@@ -381,8 +380,8 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
                 scrimColor = Color.TRANSPARENT
                 containerColor = Color.TRANSPARENT
                 fadeMode = MaterialContainerTransform.FADE_MODE_CROSS
-                startElevation = END_ELEVATION
-                endElevation = END_ELEVATION
+                startElevation = anchorView.elevation
+                endElevation = popupContainer.elevation
                 interpolator = INTERPOLATOR
             }
 
@@ -423,8 +422,8 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
             scrimColor = Color.TRANSPARENT
             containerColor = Color.TRANSPARENT
             fadeMode = MaterialContainerTransform.FADE_MODE_CROSS
-            startElevation = END_ELEVATION
-            endElevation = END_ELEVATION
+            startElevation = popupContainer.elevation
+            endElevation = anchorView.elevation
             interpolator = INTERPOLATOR
         }
 
