@@ -122,8 +122,6 @@ class Dashboard : BaseHomeFragment() {
             openPreferencesPanel()
         }
 
-
-
         binding.refreshMixes.setOnClickListener {
             mixesViewModel.refresh()
         }
