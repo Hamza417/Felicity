@@ -19,7 +19,6 @@ import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
-import app.simple.felicity.engine.audio.FelicityAudioSink.Companion.requestImmediatePause
 import app.simple.felicity.engine.processors.AaudioOutputProcessor
 import app.simple.felicity.engine.processors.NativeDspAudioProcessor
 import app.simple.felicity.engine.processors.OboeOutputProcessor
@@ -856,17 +855,20 @@ class FelicityAudioSink(
 
     override fun play() {
         isPaused = false
+        visualizer.setPlaybackPaused(false)
         activeSink.play()
     }
 
     override fun pause() {
         isPaused = true
+        visualizer.setPlaybackPaused(true)
         activeSink.pause()
     }
 
     override fun flush() {
         nativeSourceEnded = false
         nativeEndDeadlineMs = 0L
+        visualizer.clearPendingFrames()
         activeSink.flush()
     }
 
