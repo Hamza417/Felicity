@@ -40,6 +40,7 @@
                 android:layout_gravity="center_vertical"
                 android:scrollbars="none"
                 android:fadingEdge="horizontal"
+                android:layout_marginEnd="@dimen/padding_10"
                 android:requiresFadingEdge="horizontal"
                 android:fadingEdgeLength="@dimen/padding_20">
 
@@ -126,7 +127,12 @@
                         app:textColorStyle="tertiary" />
 
                 </LinearLayout>
+
             </HorizontalScrollView>
+
+            <app.simple.felicity.decorations.theme.ThemeDivider
+                android:layout_width="1px"
+                android:layout_height="match_parent" />
 
             <app.simple.felicity.decorations.toggles.FelicitySwitch
                 android:id="@+id/eq_switch"
@@ -134,6 +140,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="@dimen/padding_10"
                 android:layout_gravity="center_vertical"
+                app:felicitySwitchCheckedElevation="0dp"
                 app:felicitySwitchDisableAncestorClipping="false" />
 
         </LinearLayout>

@@ -2,7 +2,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:clipChildren="true"
+    android:clipChildren="false"
     android:orientation="vertical">
 
     <app.simple.felicity.decorations.equalizer.FelicityEqualizer
@@ -28,6 +28,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
             android:scrollbars="none"
+            android:layout_marginEnd="@dimen/padding_10"
             android:fadingEdge="horizontal"
             android:clipChildren="true"
             android:clipToPadding="true"
@@ -63,8 +64,8 @@
                     android:drawablePadding="@dimen/padding_5"
                     android:text="@string/save_preset"
                     android:textSize="@dimen/text_size_14"
-                    app:appFontStyle="bold"
                     android:visibility="gone"
+                    app:appFontStyle="bold"
                     app:drawableTintStyle="accent"
                     app:textColorStyle="tertiary" />
 
@@ -120,12 +121,17 @@
 
         </HorizontalScrollView>
 
+        <app.simple.felicity.decorations.theme.ThemeDivider
+            android:layout_width="1px"
+            android:layout_height="match_parent" />
+
         <app.simple.felicity.decorations.toggles.FelicitySwitch
             android:id="@+id/eq_switch"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="@dimen/padding_10"
             android:layout_gravity="center_vertical"
+            app:felicitySwitchCheckedElevation="0dp"
             app:felicitySwitchDisableAncestorClipping="false" />
 
     </LinearLayout>
