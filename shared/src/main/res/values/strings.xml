@@ -571,5 +571,10 @@
     <string name="left">Left</string>
     <string name="right">Right</string>
     <string name="center">Center</string>
+    <string name="weather_effect">Weather Effect</string>
+    <string name="weather_effect_summary">Show a weather effect like snow or autumn leaves on the background.</string>
+    <string name="off">Off</string>
+    <string name="winter">Winter</string>
+    <string name="autumn">Autumn</string>
 
 </resources>

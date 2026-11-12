@@ -591,6 +591,55 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val weatherEffect = Preference(
+                title = R.string.weather_effect,
+                summary = R.string.weather_effect_summary,
+                icon = R.drawable.ic_cloud,
+                type = PreferenceType.POPUP,
+                valueProvider = {
+                    when (UserInterfacePreferences.getWeatherEffect()) {
+                        UserInterfacePreferences.WEATHER_EFFECT_OFF -> getString(R.string.off)
+                        UserInterfacePreferences.WEATHER_EFFECT_AUTO -> getString(R.string.auto)
+                        UserInterfacePreferences.WEATHER_EFFECT_WINTER -> getString(R.string.winter)
+                        UserInterfacePreferences.WEATHER_EFFECT_AUTUMN -> getString(R.string.autumn)
+                        else -> getString(R.string.auto)
+                    }
+                },
+                onPreferenceAction = { view, _ ->
+                    SharedScrollViewPopup(
+                            container = requireContainerView(),
+                            anchorView = view,
+                            menuItems = listOf(
+                                    PopupMenuItem(title = R.string.off),
+                                    PopupMenuItem(title = R.string.auto),
+                                    PopupMenuItem(title = R.string.winter),
+                                    PopupMenuItem(title = R.string.autumn)
+                            ),
+                            onMenuItemClick = {
+                                when (it) {
+                                    R.string.off -> {
+                                        UserInterfacePreferences.setWeatherEffect(UserInterfacePreferences.WEATHER_EFFECT_OFF)
+                                        (view as TextView).text = getString(R.string.off)
+                                    }
+                                    R.string.auto -> {
+                                        UserInterfacePreferences.setWeatherEffect(UserInterfacePreferences.WEATHER_EFFECT_AUTO)
+                                        (view as TextView).text = getString(R.string.auto)
+                                    }
+                                    R.string.winter -> {
+                                        UserInterfacePreferences.setWeatherEffect(UserInterfacePreferences.WEATHER_EFFECT_WINTER)
+                                        (view as TextView).text = getString(R.string.winter)
+                                    }
+                                    R.string.autumn -> {
+                                        UserInterfacePreferences.setWeatherEffect(UserInterfacePreferences.WEATHER_EFFECT_AUTUMN)
+                                        (view as TextView).text = getString(R.string.autumn)
+                                    }
+                                }
+                            },
+                            onDismiss = {}
+                    ).show()
+                }
+        )
+
         preferences.add(homeHeader)
         preferences.add(panelVisibility)
         preferences.add(homeInterface)
@@ -607,6 +656,7 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(likeButton)
         preferences.add(volumeControls)
         preferences.add(volumeKnobPosition)
+        preferences.add(weatherEffect)
 
         return preferences
     }

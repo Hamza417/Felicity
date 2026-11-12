@@ -26,6 +26,14 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <app.simple.felicity.decorations.weather.WeatherEffectView
+        android:id="@+id/weather_effect_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clickable="false"
+        android:focusable="false"
+        android:importantForAccessibility="no" />
+
     <!--
         This row of quick-action buttons floats just above the mini player card.
         It only appears when the user has songs in their selection basket.

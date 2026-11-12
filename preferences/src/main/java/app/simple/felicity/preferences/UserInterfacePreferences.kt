@@ -56,6 +56,12 @@ object UserInterfacePreferences {
     const val VOLUME_KNOB_POSITION_CENTER = 1
     const val VOLUME_KNOB_POSITION_RIGHT = 2
 
+    const val WEATHER_EFFECT = "weather_effect"
+    const val WEATHER_EFFECT_OFF = 0
+    const val WEATHER_EFFECT_AUTO = 1
+    const val WEATHER_EFFECT_WINTER = 2
+    const val WEATHER_EFFECT_AUTUMN = 3
+
     const val MAX_LANDSCAPE_MINIPLAYER_WIDTH = 1.0f
     const val MIN_LANDSCAPE_MINIPLAYER_WIDTH = 0f
     const val DEFAULT_LANDSCAPE_MINIPLAYER_WIDTH = 0.8f
@@ -166,6 +172,18 @@ object UserInterfacePreferences {
         getSharedPreferences()
             .edit {
                 putInt(VOLUME_KNOB_POSITION, position)
+            }
+    }
+
+    fun getWeatherEffect(): Int {
+        return getSharedPreferences()
+            .getInt(WEATHER_EFFECT, WEATHER_EFFECT_OFF)
+    }
+
+    fun setWeatherEffect(effect: Int) {
+        getSharedPreferences()
+            .edit {
+                putInt(WEATHER_EFFECT, effect)
             }
     }
 
