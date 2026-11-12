@@ -13,6 +13,7 @@ import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceCha
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.UserInterfacePreferences
 import java.util.Calendar
+import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
@@ -95,11 +96,19 @@ class WeatherEffectView @JvmOverloads constructor(
                 // Slower speed, gentle falling
                 particle.speedY = Random.nextFloat() * 0.001f + 0.0005f
                 particle.speedX = Random.nextFloat() * 0.0005f - 0.00025f
-                particle.size = Random.nextFloat() * 8f + 4f
+                particle.size = Random.nextFloat() * 10f + 6f // Slightly larger to see complex snowflake details
                 particle.color = Color.WHITE
                 particle.alpha = Random.nextInt(100, 255)
                 particle.wobbleSpeed = Random.nextFloat() * 0.015f
                 particle.wobbleAmount = Random.nextFloat() * 0.01f
+
+                // 3D Rotation params
+                particle.rotation = Random.nextFloat() * 360f
+                particle.rotationSpeed = Random.nextFloat() * 1f - 0.5f
+                particle.rotationX = Random.nextFloat() * 360f
+                particle.rotationXSpeed = Random.nextFloat() * 2f - 1f
+                particle.rotationY = Random.nextFloat() * 360f
+                particle.rotationYSpeed = Random.nextFloat() * 2f - 1f 
             }
             Season.AUTUMN -> {
                 // Top-right to bottom-left diagonal motion (slower)
@@ -110,10 +119,16 @@ class WeatherEffectView @JvmOverloads constructor(
                 val colors = intArrayOf(0xFFD2691E.toInt(), 0xFFFF8C00.toInt(), 0xFFB22222.toInt(), 0xFFFFD700.toInt())
                 particle.color = colors[Random.nextInt(colors.size)]
                 particle.alpha = Random.nextInt(150, 255)
-                particle.rotation = Random.nextFloat() * 360f
-                particle.rotationSpeed = Random.nextFloat() * 2f - 1f
                 particle.wobbleSpeed = Random.nextFloat() * 0.02f
                 particle.wobbleAmount = Random.nextFloat() * 0.02f
+
+                // 3D Rotation params
+                particle.rotation = Random.nextFloat() * 360f
+                particle.rotationSpeed = Random.nextFloat() * 2f - 1f
+                particle.rotationX = Random.nextFloat() * 360f
+                particle.rotationXSpeed = Random.nextFloat() * 3f - 1.5f
+                particle.rotationY = Random.nextFloat() * 360f
+                particle.rotationYSpeed = Random.nextFloat() * 3f - 1.5f 
             }
             Season.NONE -> {
                 particle.alpha = 0
@@ -175,8 +190,10 @@ class WeatherEffectView @JvmOverloads constructor(
                 p.x += p.speedX
                 p.wobblePhase += p.wobbleSpeed
 
-                if (activeSeason == Season.AUTUMN) {
+                if (activeSeason == Season.AUTUMN || activeSeason == Season.WINTER) {
                     p.rotation += p.rotationSpeed
+                    p.rotationX += p.rotationXSpeed
+                    p.rotationY += p.rotationYSpeed
                 }
 
                 // Wrap around X (if going off-screen to the left)
@@ -215,10 +232,39 @@ class WeatherEffectView @JvmOverloads constructor(
 
             when (activeSeason) {
                 Season.WINTER -> {
-                    canvas.drawCircle(drawX, drawY, p.size, paint)
+                    paint.strokeWidth = p.size / 6f // Thinner strokes for complex shape
+                    paint.strokeCap = Paint.Cap.ROUND
+                    canvas.withTranslation(drawX, drawY) {
+                        // Simulate 3D rotation using Canvas Scaling
+                        val scaleX = cos(Math.toRadians(p.rotationY.toDouble())).toFloat()
+                        val scaleY = cos(Math.toRadians(p.rotationX.toDouble())).toFloat()
+                        scale(scaleX, scaleY)
+                        rotate(p.rotation)
+
+                        val branchStart = p.size * 0.5f
+                        val branchDx = p.size * 0.35f
+                        val branchDy = p.size * 0.35f
+
+                        // Draw a complex 6-pointed star/snowflake shape with sub-spikes
+                        repeat(6) {
+                            // Main arm from center to tip
+                            drawLine(0f, 0f, p.size, 0f, paint)
+
+                            // Tiny sub-spikes branching off the main arm
+                            drawLine(branchStart, 0f, branchStart + branchDx, branchDy, paint)
+                            drawLine(branchStart, 0f, branchStart + branchDx, -branchDy, paint)
+
+                            rotate(60f)
+                        }
+                    }
+                    paint.style = Paint.Style.FILL // restore to default fill for other things if needed
                 }
                 Season.AUTUMN -> {
                     canvas.withTranslation(drawX, drawY) {
+                        // Simulate 3D rotation using Canvas Scaling
+                        val scaleX = cos(Math.toRadians(p.rotationY.toDouble())).toFloat()
+                        val scaleY = cos(Math.toRadians(p.rotationX.toDouble())).toFloat()
+                        scale(scaleX, scaleY)
                         rotate(p.rotation)
                         // Draw a simple leaf shape (oval)
                         drawOval(-p.size, -p.size / 2f, p.size, p.size / 2f, paint)
@@ -242,8 +288,14 @@ class WeatherEffectView @JvmOverloads constructor(
         var wobbleSpeed: Float = 0f
         var wobbleAmount: Float = 0f
 
-        // For autumn
+        // For autumn and winter (3D simulated tumbling)
         var rotation: Float = 0f
         var rotationSpeed: Float = 0f
+
+        var rotationX: Float = 0f
+        var rotationXSpeed: Float = 0f
+
+        var rotationY: Float = 0f
+        var rotationYSpeed: Float = 0f
     }
 }
