@@ -2185,11 +2185,25 @@ class MiniPlayer @JvmOverloads constructor(
             val pageFill = if (i == scrollEngine.currentPage) progress else 0f
             drawPageProgress(canvas, tx, pageW.toFloat(), h, pageFill)
 
-            // Art slot — square on the left edge
+            // Art slot, square on the left edge
+            // Bitmap drawn is center cropped
             canvas.save()
             canvas.clipRect(tx, 0f, tx + artSize, h)
             if (bmp != null && !bmp.isRecycled) {
-                artSrcRect.set(0, 0, bmp.width, bmp.height)
+                val dstRatio = artSize / h
+                val srcRatio = bmp.width.toFloat() / bmp.height.toFloat()
+                val srcW: Int
+                val srcH: Int
+                if (srcRatio > dstRatio) {
+                    srcH = bmp.height
+                    srcW = (srcH * dstRatio).toInt()
+                } else {
+                    srcW = bmp.width
+                    srcH = (srcW / dstRatio).toInt()
+                }
+                val srcX = (bmp.width - srcW) / 2
+                val srcY = (bmp.height - srcH) / 2
+                artSrcRect.set(srcX, srcY, srcX + srcW, srcY + srcH)
                 artDstRect.set(tx, 0f, tx + artSize, h)
                 canvas.drawBitmap(bmp, artSrcRect, artDstRect, bmpPaint)
             } else {
