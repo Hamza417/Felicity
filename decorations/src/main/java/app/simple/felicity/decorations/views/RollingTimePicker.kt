@@ -10,6 +10,7 @@ import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
+import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
 import android.util.AttributeSet
@@ -21,6 +22,8 @@ import androidx.core.graphics.withTranslation
 import androidx.interpolator.view.animation.LinearOutSlowInInterpolator
 import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.typeface.TypeFace
+import app.simple.felicity.preferences.AccessibilityPreferences
+import app.simple.felicity.preferences.AppearancePreferences
 import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
@@ -129,6 +132,12 @@ class RollingTimePicker @JvmOverloads constructor(
         }
     }
 
+    private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+    }
+
+    private val strokeRect = RectF()
+
     private var itemHeight = 150f
     private val visibleItems = 3
     private var activeColumn = -1
@@ -189,6 +198,7 @@ class RollingTimePicker @JvmOverloads constructor(
 
         if (!isInEditMode) {
             updateTextColor(ThemeManager.theme.textViewTheme.primaryTextColor, false)
+            strokePaint.color = ThemeManager.accent.primaryAccentColor
         }
     }
 
@@ -209,7 +219,8 @@ class RollingTimePicker @JvmOverloads constructor(
     }
 
     override fun onAccentChanged(accent: Accent) {
-        // No accent color used here currently
+        strokePaint.color = accent.primaryAccentColor
+        invalidate()
     }
 
     private fun updateTextColor(endColor: Int, animate: Boolean) {
@@ -487,5 +498,20 @@ class RollingTimePicker @JvmOverloads constructor(
         }
 
         canvas.restoreToCount(saveCount)
+
+        if (!isInEditMode && AccessibilityPreferences.isHighlightStroke()) {
+            val density = resources.displayMetrics.density
+            val strokeWidth = 0.5f * density
+            val cornerRadius = AppearancePreferences.getCornerRadius()
+
+            strokePaint.strokeWidth = strokeWidth
+            strokeRect.set(
+                    /* left = */ strokeWidth / 2f,
+                    /* top = */ strokeWidth / 2f,
+                    /* right = */ width.toFloat() - strokeWidth / 2f,
+                    /* bottom = */ height.toFloat() - strokeWidth / 2f
+            )
+            canvas.drawRoundRect(strokeRect, cornerRadius, cornerRadius, strokePaint)
+        }
     }
 }
