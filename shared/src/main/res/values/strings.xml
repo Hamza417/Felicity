@@ -566,4 +566,10 @@
     <string name="till_this_song">Till This Song</string>
     <string name="final_action">Final Action</string>
     <string name="final_action_summary">Final action taken after the countdown finishes.</string>
+    <string name="volume_knob_position">Volume Knob Position</string>
+    <string name="volume_knob_position_summary">Change the position of the volume knob.</string>
+    <string name="left">Left</string>
+    <string name="right">Right</string>
+    <string name="center">Center</string>
+
 </resources>

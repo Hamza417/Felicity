@@ -50,6 +50,12 @@ object UserInterfacePreferences {
     const val TIMER_POSITION_CENTER = 1
     const val TIMER_POSITION_BOTTOM = 2
 
+    const val VOLUME_KNOB_POSITION = "volume_knob_position"
+
+    const val VOLUME_KNOB_POSITION_LEFT = 0
+    const val VOLUME_KNOB_POSITION_CENTER = 1
+    const val VOLUME_KNOB_POSITION_RIGHT = 2
+
     const val MAX_LANDSCAPE_MINIPLAYER_WIDTH = 1.0f
     const val MIN_LANDSCAPE_MINIPLAYER_WIDTH = 0f
     const val DEFAULT_LANDSCAPE_MINIPLAYER_WIDTH = 0.8f
@@ -148,6 +154,18 @@ object UserInterfacePreferences {
         getSharedPreferences()
             .edit {
                 putInt(TIMER_POSITION, position)
+            }
+    }
+
+    fun getVolumeKnobPosition(): Int {
+        return getSharedPreferences()
+            .getInt(VOLUME_KNOB_POSITION, VOLUME_KNOB_POSITION_CENTER)
+    }
+
+    fun setVolumeKnobPosition(position: Int) {
+        getSharedPreferences()
+            .edit {
+                putInt(VOLUME_KNOB_POSITION, position)
             }
     }
 

@@ -9,6 +9,7 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.util.Log
+import android.view.Gravity
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
@@ -23,6 +24,7 @@ import app.simple.felicity.dialogs.app.VolumeKnob.Companion.VOLUME_REPEAT_DELAY_
 import app.simple.felicity.engine.usb.UsbDacDriver
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import app.simple.felicity.preferences.EqualizerPreferences
+import app.simple.felicity.preferences.UserInterfacePreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -90,6 +92,8 @@ class VolumeKnob : ScopedBottomSheetFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         startCloseRunnable()
+        setVolumeKnobPosition()
+        
         binding.dotsIndicator.setCount(2)
         binding.dotsIndicator.setCurrentPage(0)
         binding.dotsIndicator.useThemeColors = true
@@ -294,6 +298,20 @@ class VolumeKnob : ScopedBottomSheetFragment() {
         stopCloseRunnable()
         closeRunnable = Runnable { dismissAllowingStateLoss() }
         closeHandler.postDelayed(closeRunnable!!, VOLUME_CLOSE_DELAY_MS)
+    }
+
+    private fun setVolumeKnobGravity() {
+        when (UserInterfacePreferences.getVolumeKnobPosition()) {
+            UserInterfacePreferences.VOLUME_KNOB_POSITION_LEFT -> {
+                binding.volumeKnobLayout.root.gravity = Gravity.START
+            }
+            UserInterfacePreferences.VOLUME_KNOB_POSITION_RIGHT -> {
+                binding.volumeKnobLayout.root.gravity = Gravity.END
+            }
+            else -> {
+                binding.volumeKnobLayout.root.gravity = Gravity.CENTER_HORIZONTAL
+            }
+        }
     }
 
     private fun stopCloseRunnable() {

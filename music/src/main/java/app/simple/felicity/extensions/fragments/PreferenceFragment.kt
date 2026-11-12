@@ -545,6 +545,52 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val volumeKnobPosition = Preference(
+                title = R.string.volume_knob_position,
+                summary = R.string.volume_knob_position_summary,
+                icon = R.drawable.ic_align_center,
+                type = PreferenceType.POPUP,
+                valueProvider = {
+                    when (UserInterfacePreferences.getVolumeKnobPosition()) {
+                        UserInterfacePreferences.VOLUME_KNOB_POSITION_LEFT -> getString(R.string.left)
+                        UserInterfacePreferences.VOLUME_KNOB_POSITION_CENTER -> getString(R.string.center)
+                        UserInterfacePreferences.VOLUME_KNOB_POSITION_RIGHT -> getString(R.string.right)
+                        else -> getString(R.string.center)
+                    }
+                },
+                onPreferenceAction = { view, _ ->
+                    SharedScrollViewPopup(
+                            container = requireContainerView(),
+                            anchorView = view,
+                            menuItems = listOf(
+                                    PopupMenuItem(title = R.string.left),
+                                    PopupMenuItem(title = R.string.center),
+                                    PopupMenuItem(title = R.string.right)
+                            ),
+                            onMenuItemClick = {
+                                when (it) {
+                                    R.string.left -> {
+                                        UserInterfacePreferences.setVolumeKnobPosition(
+                                                UserInterfacePreferences.VOLUME_KNOB_POSITION_LEFT)
+                                        (view as TextView).text = getString(R.string.left)
+                                    }
+                                    R.string.center -> {
+                                        UserInterfacePreferences.setVolumeKnobPosition(
+                                                UserInterfacePreferences.VOLUME_KNOB_POSITION_CENTER)
+                                        (view as TextView).text = getString(R.string.center)
+                                    }
+                                    R.string.right -> {
+                                        UserInterfacePreferences.setVolumeKnobPosition(
+                                                UserInterfacePreferences.VOLUME_KNOB_POSITION_RIGHT)
+                                        (view as TextView).text = getString(R.string.right)
+                                    }
+                                }
+                            },
+                            onDismiss = {}
+                    ).show()
+                }
+        )
+
         preferences.add(homeHeader)
         preferences.add(panelVisibility)
         preferences.add(homeInterface)
@@ -560,6 +606,7 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(applicationHeader)
         preferences.add(likeButton)
         preferences.add(volumeControls)
+        preferences.add(volumeKnobPosition)
 
         return preferences
     }

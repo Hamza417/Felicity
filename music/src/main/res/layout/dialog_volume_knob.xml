@@ -6,6 +6,7 @@
     android:padding="@dimen/padding_15">
 
     <app.simple.felicity.decorations.corners.DynamicCornerLinearLayout
+        android:id="@+id/volume_knob_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
