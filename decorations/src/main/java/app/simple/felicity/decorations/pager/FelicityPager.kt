@@ -23,9 +23,6 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.core.content.withStyledAttributes
 import app.simple.felicity.decoration.R
-import app.simple.felicity.decorations.pager.FelicityPager.Companion.SCROLL_STATE_DRAGGING
-import app.simple.felicity.decorations.pager.FelicityPager.Companion.SCROLL_STATE_IDLE
-import app.simple.felicity.decorations.pager.FelicityPager.Companion.SCROLL_STATE_SETTLING
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.abs
 import kotlin.math.floor
@@ -1189,7 +1186,7 @@ class FelicityPager @JvmOverloads constructor(
                     // through to ancestors such as a swipe-to-close handler or RecyclerView.
                     if (dy > touchSlop * 0.6f && dy > dx) {
                         parent?.requestDisallowInterceptTouchEvent(false)
-                        return false
+                        return verticalDragListener != null
                     }
                     if (dx > touchSlop * 0.6f && dx > dy) return true
                 }
