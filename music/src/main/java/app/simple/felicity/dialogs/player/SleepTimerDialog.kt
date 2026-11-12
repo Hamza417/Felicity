@@ -124,6 +124,7 @@ class SleepTimerDialog : ScopedBottomSheetFragment() {
             }
             view.text = text
             view.setOnClickListener {
+                stopFlag = true
                 binding.timePicker.setTime(hours, minutes, seconds, animate = true)
                 postDelayed(500L) {
                     MediaPlaybackManager.setSleepTimer(hours, minutes, seconds)
