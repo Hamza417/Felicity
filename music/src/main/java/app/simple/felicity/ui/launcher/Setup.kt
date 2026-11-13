@@ -50,9 +50,7 @@ class Setup : MediaFragment() {
      * Opens the system folder picker and waits for the user to choose a directory.
      * Once they pick one, we lock in the persistent read permission and save the URI.
      */
-    private val safFolderPickerLauncher = registerForActivityResult(
-            ActivityResultContracts.OpenDocumentTree()
-    ) { uri: Uri? ->
+    private val safFolderPickerLauncher = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
         if (uri != null) {
             // Lock in a persistent read permission so we can still access the
             // folder after the app restarts (SAF permissions survive reboots only

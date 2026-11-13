@@ -15,9 +15,9 @@ import app.simple.felicity.databinding.FragmentEqualizerBinding
 import app.simple.felicity.decorations.equalizer.FelicityEqualizer
 import app.simple.felicity.decorations.knobs.FelicityKnobListener
 import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
+import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithFade
 import app.simple.felicity.dialogs.player.EqualizerBandInputDialog.Companion.showGraphicEqInputDialog
 import app.simple.felicity.dialogs.player.EqualizerBandInputDialog.Companion.showPeqInputDialog
-import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithFade
 import app.simple.felicity.dialogs.player.SaveEqualizerPreset.Companion.showSaveEqualizerPreset
 import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.extensions.fragments.MediaFragment
@@ -67,10 +67,9 @@ class Equalizer : MediaFragment() {
      * Accepts any file type so the user can pick .txt, .peq, or whatever extension their
      * EQ tool happened to produce. The actual format validation happens in [PEQFileParser].
      */
-    private val peqFilePicker = registerForActivityResult(
-            ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        if (uri == null) throw NullPointerException("URI is null")
+    private val peqFilePicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@registerForActivityResult
+
         val fileName = uri.lastPathSegment?.substringAfterLast("/") ?: "Imported Preset"
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             try {
@@ -391,7 +390,7 @@ class Equalizer : MediaFragment() {
                 band.gain = newGain
                 band.frequencyHz = newFreq
                 band.q = newQ
-                
+
                 // Re-apply to UI
                 val bands = binding.equalizerScreen.equalizerSliders.getPeqBands()
                 val parsedBands = bands.map { ParsedBand(it.gain, it.q, it.frequencyHz, it.color, it.type) }
