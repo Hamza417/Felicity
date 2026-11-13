@@ -5,18 +5,20 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import app.simple.felicity.R
+import app.simple.felicity.databinding.DialogEqInputBinding
 import app.simple.felicity.databinding.FragmentEqualizerBinding
 import app.simple.felicity.decorations.equalizer.FelicityEqualizer
 import app.simple.felicity.decorations.knobs.FelicityKnobListener
+import app.simple.felicity.decorations.popups.SimpleDialog
 import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithFade
-
 import app.simple.felicity.dialogs.player.SaveEqualizerPreset.Companion.showSaveEqualizerPreset
 import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.extensions.fragments.MediaFragment
@@ -373,6 +375,88 @@ class Equalizer : MediaFragment() {
             val parsedBands = bands.map { ParsedBand(it.gain, it.q, it.frequencyHz, it.color, it.type) }
             EqualizerManager.setPeqBands(parsedBands)
             binding.equalizerScreen.equalizerWave.setPeqBands(parsedBands)
+        }
+
+        binding.equalizerScreen.equalizerSliders.setOnBandLongClickListener { bandIndex, currentGain ->
+            SimpleDialog.Builder(
+                    container = requireContainerView(),
+                    inflateBinding = DialogEqInputBinding::inflate
+            )
+                .setWidthRatio(SimpleDialog.DEFAULT_WIDTH_RATIO)
+                .onDialogInflated { dialogBinding, dismiss, _ ->
+                    dialogBinding.inputGain.setText(currentGain.toString())
+                    dialogBinding.inputGain.setSelection(dialogBinding.inputGain.text.toString().length)
+                    dialogBinding.inputGain.postDelayed({
+                                                            dialogBinding.inputGain.showInput()
+                                                        }, 200)
+
+                    dialogBinding.cancel.setOnClickListener { dismiss() }
+                    dialogBinding.save.setOnClickListener {
+                        val newGainStr = dialogBinding.inputGain.text.toString()
+                        val newGain = newGainStr.toFloatOrNull()
+                        if (newGain != null && newGain in FelicityEqualizer.MIN_DB..FelicityEqualizer.MAX_DB) {
+                            if (bandIndex == FelicityEqualizer.PREAMP_BAND_INDEX) {
+                                EqualizerManager.setPreamp(newGain)
+                            } else {
+                                EqualizerManager.setBandGain(bandIndex, newGain)
+                            }
+                            dismiss()
+                        } else {
+                            Toast.makeText(requireContext(), "Invalid gain value. Must be between ${FelicityEqualizer.MIN_DB} and ${FelicityEqualizer.MAX_DB}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+                .build()
+                .show()
+        }
+
+        binding.equalizerScreen.equalizerSliders.setOnPeqBandEditClickListener { bandIndex, band ->
+            SimpleDialog.Builder(
+                    container = requireContainerView(),
+                    inflateBinding = DialogEqInputBinding::inflate
+            )
+                .setWidthRatio(SimpleDialog.DEFAULT_WIDTH_RATIO)
+                .onDialogInflated { dialogBinding, dismiss, _ ->
+                    dialogBinding.inputFreq.visibility = View.VISIBLE
+                    dialogBinding.inputQ.visibility = View.VISIBLE
+
+                    dialogBinding.inputGain.setText(band.gain.toString())
+                    dialogBinding.inputFreq.setText(band.frequencyHz.toString())
+                    dialogBinding.inputQ.setText(band.q.toString())
+
+                    dialogBinding.inputGain.postDelayed({
+                                                            dialogBinding.inputGain.showInput()
+                                                        }, 200)
+
+                    dialogBinding.cancel.setOnClickListener { dismiss() }
+                    dialogBinding.save.setOnClickListener {
+                        val newGain = dialogBinding.inputGain.text.toString().toFloatOrNull()
+                        val newFreq = dialogBinding.inputFreq.text.toString().toFloatOrNull()
+                        val newQ = dialogBinding.inputQ.text.toString().toFloatOrNull()
+
+                        if (newGain != null && newFreq != null && newQ != null &&
+                                newGain in FelicityEqualizer.MIN_DB..FelicityEqualizer.MAX_DB &&
+                                newFreq in FelicityEqualizer.PEQ_FREQ_MIN_HZ..FelicityEqualizer.PEQ_FREQ_MAX_HZ &&
+                                newQ in FelicityEqualizer.PEQ_Q_MIN..FelicityEqualizer.PEQ_Q_MAX) {
+
+                            band.gain = newGain
+                            band.frequencyHz = newFreq
+                            band.q = newQ
+
+                            // Re-apply to UI
+                            val bands = binding.equalizerScreen.equalizerSliders.getPeqBands()
+                            val parsedBands = bands.map { ParsedBand(it.gain, it.q, it.frequencyHz, it.color, it.type) }
+                            EqualizerManager.setPeqBands(parsedBands)
+                            binding.equalizerScreen.equalizerWave.setPeqBands(parsedBands)
+                            binding.equalizerScreen.equalizerSliders.invalidate()
+                            dismiss()
+                        } else {
+                            Toast.makeText(requireContext(), "Invalid values. Check ranges.", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+                .build()
+                .show()
         }
 
         var isFirstGainsRun = true
