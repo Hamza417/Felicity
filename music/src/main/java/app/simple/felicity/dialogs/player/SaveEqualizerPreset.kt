@@ -9,6 +9,7 @@ import app.simple.felicity.databinding.DialogSaveEqualizerPresetBinding
 import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import app.simple.felicity.preferences.EqualizerPreferences
+import app.simple.felicity.shared.utils.ViewUtils.shakeView
 
 /**
  * A compact bottom-sheet dialog that lets the user type a name for their current
@@ -26,19 +27,14 @@ import app.simple.felicity.preferences.EqualizerPreferences
  */
 class SaveEqualizerPreset : ScopedBottomSheetFragment() {
 
-    private var binding: DialogSaveEqualizerPresetBinding? = null
+    private lateinit var binding: DialogSaveEqualizerPresetBinding
 
     /** Callback invoked with the trimmed preset name when the user confirms the save. */
     var onSave: ((String) -> Unit)? = null
 
-    override fun onCreateView(
-            inflater: LayoutInflater,
-            container: ViewGroup?,
-            savedInstanceState: Bundle?
-    ): View {
-        return DialogSaveEqualizerPresetBinding.inflate(inflater, container, false).also {
-            binding = it
-        }.root
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+        binding = DialogSaveEqualizerPresetBinding.inflate(inflater, container, false)
+        return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -47,47 +43,29 @@ class SaveEqualizerPreset : ScopedBottomSheetFragment() {
         // Show the current EQ curve in the little wave preview so the user knows exactly
         // what they're about to save. If this is flat, maybe they should tweak a bit first!
         if (EqualizerPreferences.isParametricEqMode()) {
-            binding?.presetWavePreview?.setPeqBands(EqualizerManager.getPeqBands())
+            binding.presetWavePreview.setPeqBands(EqualizerManager.getPeqBands())
         } else {
-            binding?.presetWavePreview?.setGains(EqualizerManager.getAllGains())
+            binding.presetWavePreview.setGains(EqualizerManager.getAllGains())
         }
 
         // Focus the text field immediately so the keyboard pops up right away —
         // no need to tap the input field first.
-        binding?.presetNameInput?.requestFocus()
+        binding.presetNameInput.requestFocus()
 
-        binding?.cancel?.setOnClickListener {
+        binding.cancel.setOnClickListener {
             dismissAllowingStateLoss()
         }
 
-        binding?.save?.setOnClickListener {
-            val name = binding?.presetNameInput?.text?.toString()?.trim() ?: ""
+        binding.save.setOnClickListener {
+            val name = binding.presetNameInput.text.toString().trim()
             if (name.isNotEmpty()) {
                 onSave?.invoke(name)
                 dismissAllowingStateLoss()
             } else {
                 // Gently shake the input field to hint that a name is required.
-                binding?.presetNameInput?.animate()
-                    ?.translationX(10f)
-                    ?.setDuration(50)
-                    ?.withEndAction {
-                        binding?.presetNameInput?.animate()
-                            ?.translationX(-10f)
-                            ?.setDuration(50)
-                            ?.withEndAction {
-                                binding?.presetNameInput?.animate()
-                                    ?.translationX(0f)
-                                    ?.setDuration(50)
-                                    ?.start()
-                            }?.start()
-                    }?.start()
+                binding.presetNameInput.shakeView()
             }
         }
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        binding = null
     }
 
     companion object {

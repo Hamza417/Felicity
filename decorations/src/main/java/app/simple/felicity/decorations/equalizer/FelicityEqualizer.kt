@@ -102,8 +102,18 @@ class FelicityEqualizer @JvmOverloads constructor(
         fun onPeqBandsChanged(bands: List<PeqBand>)
     }
 
+    fun interface OnBandLongClickListener {
+        fun onBandLongClick(bandIndex: Int, currentGain: Float)
+    }
+
+    fun interface OnPeqBandEditClickListener {
+        fun onPeqBandEditClick(bandIndex: Int, band: PeqBand)
+    }
+
     private var bandChangedListener: OnBandChangedListener? = null
     private var peqBandChangedListener: OnPeqBandChangedListener? = null
+    private var bandLongClickListener: OnBandLongClickListener? = null
+    private var peqBandEditClickListener: OnPeqBandEditClickListener? = null
 
     fun setOnBandChangedListener(listener: OnBandChangedListener?) {
         bandChangedListener = listener
@@ -112,6 +122,16 @@ class FelicityEqualizer @JvmOverloads constructor(
     fun setOnPeqBandChangedListener(listener: OnPeqBandChangedListener?) {
         peqBandChangedListener = listener
     }
+
+    fun setOnBandLongClickListener(listener: OnBandLongClickListener?) {
+        bandLongClickListener = listener
+    }
+
+    fun setOnPeqBandEditClickListener(listener: OnPeqBandEditClickListener?) {
+        peqBandEditClickListener = listener
+    }
+
+
 
     // -------------------------------------------------------------------------
     // Constants
@@ -314,7 +334,7 @@ class FelicityEqualizer @JvmOverloads constructor(
         SimpleBaseKnobDrawable().also { it.callback = this }
 
     /** Which element in a PEQ section is currently being dragged. */
-    private enum class PeqTarget { NONE, GAIN_SLIDER, Q_KNOB, FREQ_KNOB, ADD_BUTTON, DELETE_BUTTON }
+    private enum class PeqTarget { NONE, GAIN_SLIDER, Q_KNOB, FREQ_KNOB, ADD_BUTTON, DELETE_BUTTON, EDIT_BUTTON }
 
     private var peqTouchTarget = PeqTarget.NONE
     private var peqTouchBandIndex = -1
@@ -407,6 +427,20 @@ class FelicityEqualizer @JvmOverloads constructor(
     private var touchStartY = 0f
     private var scrollOffsetAtDown = 0f
     private var thumbYAtDown = 0f
+    private var isLongPressTriggered = false
+
+    private val longPressRunnable = Runnable {
+        if (!isScrollGesture && !isBandGesture) {
+            isLongPressTriggered = true
+            context.vibrateEffect(VibrationEffect.EFFECT_HEAVY_CLICK, TAG)
+            if (mode == Mode.GRAPHIC && activeBandIndex != NO_ACTIVE_BAND) {
+                val gain = if (activeBandIndex == PREAMP_BAND_INDEX) preampDisplayGain else displayGains[activeBandIndex]
+                bandLongClickListener?.onBandLongClick(activeBandIndex, gain)
+            } else if (mode == Mode.PARAMETRIC && peqTouchTarget == PeqTarget.GAIN_SLIDER && peqTouchBandIndex >= 0) {
+                bandLongClickListener?.onBandLongClick(peqTouchBandIndex, peqBands[peqTouchBandIndex].gain)
+            }
+        }
+    }
 
     // -------------------------------------------------------------------------
     // Press-scale animations per band (EQ bands 0–9 + preamp)
@@ -659,6 +693,16 @@ class FelicityEqualizer @JvmOverloads constructor(
         }
     } else null
 
+    private val editBtnBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+    }
+
+    private val editIconDrawable = if (!isInEditMode) {
+        ContextCompat.getDrawable(context, R.drawable.ic_edit_16dp)?.mutate()?.also {
+            it.setTint(ThemeManager.theme.iconTheme.secondaryIconColor)
+        }
+    } else null
+
     private val knobArcRect = RectF()
 
     // -------------------------------------------------------------------------
@@ -753,6 +797,7 @@ class FelicityEqualizer @JvmOverloads constructor(
         deleteBtnXPaint.color = Color.argb(200, 25, 25, 25)
         deleteBtnXPaint.strokeWidth = 1.8f * d
         deleteBtnBgPaint.color = Color.argb(60, 220, 60, 60)
+        editBtnBgPaint.color = Color.argb(30, Color.red(accentColor), Color.green(accentColor), Color.blue(accentColor))
 
         // Re-apply shadow layers so the glow color tracks accent/theme changes.
         applyShadowLayers()
@@ -1484,6 +1529,10 @@ class FelicityEqualizer @JvmOverloads constructor(
         val delCx = bgRight - delR - delMargin
         val delCy = bgTop + delR + delMargin
         drawDeleteButton(canvas, delCx, delCy, delR)
+
+        val editCx = delCx - delR * 2.5f
+        val editCy = bgTop + delR + delMargin
+        drawEditButton(canvas, editCx, editCy, delR)
     }
 
     /**
@@ -1612,16 +1661,29 @@ class FelicityEqualizer @JvmOverloads constructor(
      * converted to pixels. The background gives the button clear visual padding so the icon
      * never sits flush against the section edge.
      */
+    private fun drawEditButton(canvas: Canvas, cx: Float, cy: Float, radius: Float) {
+        val icon = editIconDrawable
+        if (icon != null) {
+            val iconHalf = (radius * 0.62f).toInt()
+            icon.setBounds((cx - iconHalf).toInt(), (cy - iconHalf).toInt(),
+                           (cx + iconHalf).toInt(), (cy + iconHalf).toInt())
+            canvas.drawCircle(cx, cy, radius, editBtnBgPaint)
+            icon.draw(canvas)
+        }
+    }
+
     private fun drawDeleteButton(canvas: Canvas, cx: Float, cy: Float, radius: Float) {
         val icon = deleteIconDrawable
         if (icon != null) {
             val iconHalf = (radius * 0.62f).toInt()
             icon.setBounds((cx - iconHalf).toInt(), (cy - iconHalf).toInt(),
                            (cx + iconHalf).toInt(), (cy + iconHalf).toInt())
+            canvas.drawCircle(cx, cy, radius, deleteBtnBgPaint)
             icon.draw(canvas)
         } else {
             // Fallback: simple × in case the drawable couldn't be loaded.
             val arm = radius * 0.45f
+            canvas.drawCircle(cx, cy, radius, deleteBtnBgPaint)
             canvas.drawLine(cx - arm, cy - arm, cx + arm, cy + arm, deleteBtnXPaint)
             canvas.drawLine(cx + arm, cy - arm, cx - arm, cy + arm, deleteBtnXPaint)
         }
@@ -1721,6 +1783,7 @@ class FelicityEqualizer @JvmOverloads constructor(
         scrollOffsetAtDown = scrollOffset
         isScrollGesture = false
         isBandGesture = false
+        isLongPressTriggered = false
 
         if (scrollSpring.isRunning) scrollSpring.cancel()
         if (scrollFling.isRunning) scrollFling.cancel()
@@ -1736,6 +1799,7 @@ class FelicityEqualizer @JvmOverloads constructor(
             )
             startBandPressAnimation(band, true)
             context.vibrateEffect(VibrationEffect.EFFECT_TICK, TAG)
+            postDelayed(longPressRunnable, ViewConfiguration.getLongPressTimeout().toLong())
         }
         activeBandIndex = band
         parent?.requestDisallowInterceptTouchEvent(true)
@@ -1746,10 +1810,13 @@ class FelicityEqualizer @JvmOverloads constructor(
         val dx = event.x - touchStartX
         val dy = event.y - touchStartY
 
+        if (isLongPressTriggered) return
+
         if (!isScrollGesture && !isBandGesture) {
             val adx = abs(dx);
             val ady = abs(dy)
             if (adx > touchSlop || ady > touchSlop) {
+                removeCallbacks(longPressRunnable)
                 isBandGesture = activeBandIndex != NO_ACTIVE_BAND && ady > adx * 0.8f
                 isScrollGesture = !isBandGesture && adx > ady * 0.8f
                 if (isScrollGesture && activeBandIndex != NO_ACTIVE_BAND) {
@@ -1799,6 +1866,7 @@ class FelicityEqualizer @JvmOverloads constructor(
     }
 
     private fun handleUp(@Suppress("UNUSED_PARAMETER") event: MotionEvent) {
+        removeCallbacks(longPressRunnable)
         if (activeBandIndex != NO_ACTIVE_BAND) startBandPressAnimation(activeBandIndex, false)
 
         if (!centeredMode) {
@@ -1868,6 +1936,7 @@ class FelicityEqualizer @JvmOverloads constructor(
         scrollOffsetAtDown = scrollOffset
         isScrollGesture = false
         isBandGesture = false
+        isLongPressTriggered = false
         peqTouchTarget = PeqTarget.NONE
         peqTouchBandIndex = -1
         activeBandIndex = NO_ACTIVE_BAND
@@ -1887,6 +1956,7 @@ class FelicityEqualizer @JvmOverloads constructor(
             thumbYAtDown = gainToThumbY(preampDisplayGain)
             startBandPressAnimation(PREAMP_BAND_INDEX, true)
             context.vibrateEffect(VibrationEffect.EFFECT_TICK, TAG)
+            postDelayed(longPressRunnable, ViewConfiguration.getLongPressTimeout().toLong())
             parent?.requestDisallowInterceptTouchEvent(true)
             return
         }
@@ -1909,8 +1979,14 @@ class FelicityEqualizer @JvmOverloads constructor(
             // Mirror the knob center calculation from drawPeqSection so hit-test positions
             // always match what's actually drawn on screen (including landscape mode).
             val kc = computeKnobCenters(sliderCx)
+            val editCx = delCx - delR * 2.5f
 
             when {
+                dist(event.x, event.y, editCx, delCy) <= delR * 1.5f -> {
+                    peqTouchTarget = PeqTarget.EDIT_BUTTON
+                    peqTouchBandIndex = sectionIndex
+                    context.vibrateEffect(VibrationEffect.EFFECT_TICK, TAG)
+                }
                 dist(event.x, event.y, delCx, delCy) <= delR * 1.5f -> {
                     peqTouchTarget = PeqTarget.DELETE_BUTTON
                     peqTouchBandIndex = sectionIndex
@@ -1941,6 +2017,7 @@ class FelicityEqualizer @JvmOverloads constructor(
                     thumbYAtDown = gainToThumbY(peqGainAtDown)
                     startPeqGainPressAnimation(sectionIndex, true)
                     context.vibrateEffect(VibrationEffect.EFFECT_TICK, TAG)
+                    postDelayed(longPressRunnable, ViewConfiguration.getLongPressTimeout().toLong())
                 }
             }
             parent?.requestDisallowInterceptTouchEvent(true)
@@ -1974,11 +2051,18 @@ class FelicityEqualizer @JvmOverloads constructor(
         val dx = event.x - touchStartX
         val dy = event.y - touchStartY
 
+        if (isLongPressTriggered) return
+
         // Preamp slider drag.
         if (activeBandIndex == PREAMP_BAND_INDEX) {
             if (!isBandGesture && !isScrollGesture) {
-                if (abs(dy) > touchSlop) isBandGesture = true
-                else if (abs(dx) > touchSlop) isScrollGesture = true
+                if (abs(dy) > touchSlop) {
+                    removeCallbacks(longPressRunnable)
+                    isBandGesture = true
+                } else if (abs(dx) > touchSlop) {
+                    removeCallbacks(longPressRunnable)
+                    isScrollGesture = true
+                }
             }
             if (isBandGesture) {
                 val newGain = thumbYToGain(thumbYAtDown + dy).coerceIn(MIN_DB, MAX_DB)
@@ -1999,8 +2083,12 @@ class FelicityEqualizer @JvmOverloads constructor(
         when (peqTouchTarget) {
             PeqTarget.GAIN_SLIDER -> {
                 if (!isBandGesture && !isScrollGesture) {
-                    if (abs(dy) > touchSlop) isBandGesture = true
+                    if (abs(dy) > touchSlop) {
+                        removeCallbacks(longPressRunnable)
+                        isBandGesture = true
+                    }
                     else if (abs(dx) > touchSlop) {
+                        removeCallbacks(longPressRunnable)
                         isScrollGesture = true
                         // Finger moved sideways — cancel the thumb press state.
                         startPeqGainPressAnimation(peqTouchBandIndex, false)
@@ -2072,7 +2160,7 @@ class FelicityEqualizer @JvmOverloads constructor(
                     }
                 }
             }
-            PeqTarget.NONE, PeqTarget.ADD_BUTTON, PeqTarget.DELETE_BUTTON -> {
+            PeqTarget.NONE, PeqTarget.ADD_BUTTON, PeqTarget.DELETE_BUTTON, PeqTarget.EDIT_BUTTON -> {
                 // Treat as a plain horizontal scroll when no specific element was hit.
                 if (!isScrollGesture && abs(dx) > touchSlop) isScrollGesture = true
                 if (isScrollGesture && !centeredMode) {
@@ -2084,6 +2172,7 @@ class FelicityEqualizer @JvmOverloads constructor(
     }
 
     private fun peqHandleUp(event: MotionEvent) {
+        removeCallbacks(longPressRunnable)
         if (activeBandIndex == PREAMP_BAND_INDEX) startBandPressAnimation(PREAMP_BAND_INDEX, false)
 
         // Release any knob or gain-slider press animations before list mutation.
@@ -2103,6 +2192,15 @@ class FelicityEqualizer @JvmOverloads constructor(
             val dy = event.y - touchStartY
             if (abs(dx) < touchSlop * 2 && abs(dy) < touchSlop * 2) {
                 addPeqBand()
+                context.vibrateEffect(VibrationEffect.EFFECT_TICK, TAG)
+            }
+        }
+
+        if (peqTouchTarget == PeqTarget.EDIT_BUTTON && peqTouchBandIndex in peqBands.indices) {
+            val dx = event.x - touchStartX
+            val dy = event.y - touchStartY
+            if (abs(dx) < touchSlop * 2 && abs(dy) < touchSlop * 2) {
+                peqBandEditClickListener?.onPeqBandEditClick(peqTouchBandIndex, peqBands[peqTouchBandIndex])
                 context.vibrateEffect(VibrationEffect.EFFECT_TICK, TAG)
             }
         }

@@ -15,8 +15,9 @@ import app.simple.felicity.databinding.FragmentEqualizerBinding
 import app.simple.felicity.decorations.equalizer.FelicityEqualizer
 import app.simple.felicity.decorations.knobs.FelicityKnobListener
 import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
+import app.simple.felicity.dialogs.player.EqualizerBandInputDialog.Companion.showGraphicEqInputDialog
+import app.simple.felicity.dialogs.player.EqualizerBandInputDialog.Companion.showPeqInputDialog
 import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithFade
-
 import app.simple.felicity.dialogs.player.SaveEqualizerPreset.Companion.showSaveEqualizerPreset
 import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.extensions.fragments.MediaFragment
@@ -373,6 +374,31 @@ class Equalizer : MediaFragment() {
             val parsedBands = bands.map { ParsedBand(it.gain, it.q, it.frequencyHz, it.color, it.type) }
             EqualizerManager.setPeqBands(parsedBands)
             binding.equalizerScreen.equalizerWave.setPeqBands(parsedBands)
+        }
+
+        binding.equalizerScreen.equalizerSliders.setOnBandLongClickListener { bandIndex, currentGain ->
+            childFragmentManager.showGraphicEqInputDialog(currentGain) { newGain ->
+                if (bandIndex == FelicityEqualizer.PREAMP_BAND_INDEX) {
+                    EqualizerManager.setPreamp(newGain)
+                } else {
+                    EqualizerManager.setBandGain(bandIndex, newGain)
+                }
+            }
+        }
+
+        binding.equalizerScreen.equalizerSliders.setOnPeqBandEditClickListener { _, band ->
+            childFragmentManager.showPeqInputDialog(band.gain, band.frequencyHz, band.q) { newGain, newFreq, newQ ->
+                band.gain = newGain
+                band.frequencyHz = newFreq
+                band.q = newQ
+                
+                // Re-apply to UI
+                val bands = binding.equalizerScreen.equalizerSliders.getPeqBands()
+                val parsedBands = bands.map { ParsedBand(it.gain, it.q, it.frequencyHz, it.color, it.type) }
+                EqualizerManager.setPeqBands(parsedBands)
+                binding.equalizerScreen.equalizerWave.setPeqBands(parsedBands)
+                binding.equalizerScreen.equalizerSliders.invalidate()
+            }
         }
 
         var isFirstGainsRun = true

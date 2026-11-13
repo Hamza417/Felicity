@@ -386,4 +386,21 @@ object ViewUtils {
         dispatchTouchEvent(cancelEvent)
         cancelEvent.recycle()
     }
+
+    fun View.shakeView() {
+        animate()
+            .translationX(10f)
+            .setDuration(50)
+            .withEndAction {
+                animate()
+                    .translationX(-10f)
+                    .setDuration(50)
+                    .withEndAction {
+                        animate()
+                            .translationX(0f)
+                            .setDuration(50)
+                            .start()
+                    }.start()
+            }.start()
+    }
 }
