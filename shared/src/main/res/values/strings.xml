@@ -576,5 +576,7 @@
     <string name="off">Off</string>
     <string name="winter">Winter</string>
     <string name="autumn">Autumn</string>
+    <string name="gain_db">Gain (dB)</string>
+    <string name="frequency_hz">Frequency (Hz)</string>
 
 </resources>
