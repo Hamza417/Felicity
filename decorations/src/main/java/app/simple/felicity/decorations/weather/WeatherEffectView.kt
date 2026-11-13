@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
 import android.util.AttributeSet
 import android.view.Choreographer
 import android.view.View
@@ -48,6 +49,13 @@ class WeatherEffectView @JvmOverloads constructor(
     }
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    private val leafPath = Path().apply {
+        moveTo(-1f, 0f)
+        quadTo(0f, -1f, 1f, 0f)
+        quadTo(0f, 1f, -1f, 0f)
+        close()
+    }
 
     init {
         updateSeasonFromPreferences()
@@ -266,8 +274,32 @@ class WeatherEffectView @JvmOverloads constructor(
                         val scaleY = cos(Math.toRadians(p.rotationX.toDouble())).toFloat()
                         scale(scaleX, scaleY)
                         rotate(p.rotation)
-                        // Draw a simple leaf shape (oval)
-                        drawOval(-p.size, -p.size / 2f, p.size, p.size / 2f, paint)
+
+                        scale(p.size, p.size)
+
+                        // Draw a leafy shape
+                        paint.style = Paint.Style.FILL
+                        drawPath(leafPath, paint)
+
+                        // Draw some texture/veins
+                        val origColor = paint.color
+                        paint.color = Color.argb((paint.alpha * 0.3f).toInt(), 0, 0, 0)
+                        paint.style = Paint.Style.STROKE
+                        paint.strokeWidth = 1f / 8f
+                        paint.strokeJoin = Paint.Join.ROUND
+                        paint.strokeCap = Paint.Cap.ROUND
+
+                        // Center vein
+                        drawLine(-0.9f, 0f, 0.8f, 0f, paint)
+                        // Side veins
+                        paint.strokeWidth = 1f / 12f
+                        drawLine(-0.4f, 0f, 0f, -0.3f, paint)
+                        drawLine(-0.4f, 0f, 0f, 0.3f, paint)
+                        drawLine(0.1f, 0f, 0.4f, -0.2f, paint)
+                        drawLine(0.1f, 0f, 0.4f, 0.2f, paint)
+
+                        paint.color = origColor
+                        paint.style = Paint.Style.FILL
                     }
                 }
                 Season.NONE -> {}
