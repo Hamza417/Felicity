@@ -20,29 +20,67 @@
         app:appFontStyle="bold"
         app:drawableTintStyle="accent"
         app:layout_constraintBottom_toTopOf="@+id/artist_name"
-        app:layout_constraintEnd_toStartOf="@+id/synced_badge"
+        app:layout_constraintEnd_toStartOf="@+id/badges_container"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_chainStyle="packed"
         app:textColorStyle="primary" />
 
-    <!-- Lights up when this result includes timestamped LRC lyrics -->
-    <app.simple.felicity.decorations.highlight.HighlightTextView
-        android:id="@+id/synced_badge"
+    <LinearLayout
+        android:id="@+id/badges_container"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:gravity="center"
-        android:paddingHorizontal="@dimen/padding_8"
-        android:paddingVertical="@dimen/padding_5"
-        android:text="@string/synced"
-        android:textSize="@dimen/text_size_12"
-        android:visibility="gone"
-        app:appFontStyle="bold"
-        app:highlightMode="flat"
+        android:orientation="horizontal"
         app:layout_constraintBottom_toBottomOf="@+id/track_name"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/track_name"
-        app:textColorStyle="accent" />
+        app:layout_constraintTop_toTopOf="@+id/track_name">
+
+        <!-- Lights up when this result includes timestamped LRC lyrics -->
+        <app.simple.felicity.decorations.highlight.HighlightTextView
+            android:id="@+id/synced_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="@dimen/padding_5"
+            android:gravity="center"
+            android:paddingHorizontal="@dimen/padding_8"
+            android:paddingVertical="@dimen/padding_5"
+            android:text="@string/synced"
+            android:textSize="@dimen/text_size_12"
+            android:visibility="gone"
+            app:appFontStyle="bold"
+            app:highlightMode="flat"
+            app:textColorStyle="accent" />
+
+        <app.simple.felicity.decorations.highlight.HighlightTextView
+            android:id="@+id/word_sync_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="@dimen/padding_5"
+            android:gravity="center"
+            android:paddingHorizontal="@dimen/padding_8"
+            android:paddingVertical="@dimen/padding_5"
+            android:text="@string/word_sync"
+            android:textSize="@dimen/text_size_12"
+            android:visibility="gone"
+            app:appFontStyle="bold"
+            app:highlightMode="flat"
+            app:textColorStyle="accent" />
+
+        <app.simple.felicity.decorations.highlight.HighlightTextView
+            android:id="@+id/instrumental_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:paddingHorizontal="@dimen/padding_8"
+            android:paddingVertical="@dimen/padding_5"
+            android:text="@string/instrumental"
+            android:textSize="@dimen/text_size_12"
+            android:visibility="gone"
+            app:appFontStyle="bold"
+            app:highlightMode="flat"
+            app:textColorStyle="accent" />
+
+    </LinearLayout>
 
     <app.simple.felicity.decorations.typeface.TypeFaceTextView
         android:id="@+id/artist_name"
@@ -69,10 +107,32 @@
         android:textSize="@dimen/desc_text_size"
         app:appFontStyle="regular"
         app:drawableTintStyle="accent"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/divider"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/artist_name"
         app:textColorStyle="secondary" />
+
+    <app.simple.felicity.decorations.theme.ThemeDivider
+        android:id="@+id/divider"
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:layout_marginVertical="@dimen/padding_5"
+        app:layout_constraintBottom_toTopOf="@id/lyrics_preview"
+        app:layout_constraintTop_toBottomOf="@+id/album_duration" />
+
+    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+        android:id="@+id/lyrics_preview"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="7"
+        android:textSize="@dimen/desc_text_size"
+        app:appFontStyle="regular"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/divider"
+        app:textColorStyle="tertiary" />
 
 </app.simple.felicity.decorations.ripple.DynamicRippleConstraintLayout>

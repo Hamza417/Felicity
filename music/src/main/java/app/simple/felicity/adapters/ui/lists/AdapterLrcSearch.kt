@@ -130,6 +130,20 @@ class AdapterLrcSearch(
             binding.syncedBadge.visibility =
                 if (!response.syncedLyrics.isNullOrBlank()) View.VISIBLE else View.GONE
 
+            binding.wordSyncBadge.visibility =
+                if (response.hasWordSync) View.VISIBLE else View.GONE
+
+            binding.instrumentalBadge.visibility =
+                if (response.isInstrumental) View.VISIBLE else View.GONE
+
+            val previewText = response.syncedLyrics?.trim() ?: response.plainLyrics?.trim()
+            if (!previewText.isNullOrBlank()) {
+                binding.lyricsPreview.text = previewText
+                binding.lyricsPreview.visibility = View.VISIBLE
+            } else {
+                binding.lyricsPreview.visibility = View.GONE
+            }
+
             binding.container.setOnClickListener {
                 onItemClick(response)
             }
