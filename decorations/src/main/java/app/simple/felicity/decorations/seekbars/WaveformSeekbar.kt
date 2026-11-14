@@ -283,7 +283,6 @@ class WaveformSeekbar @JvmOverloads constructor(
         performClick()
     }
 
-
     private var playedColor: Int = Color.WHITE
     private var unplayedColor: Int = Color.GRAY
     private var labelTextColor: Int = Color.GRAY
@@ -994,7 +993,6 @@ class WaveformSeekbar @JvmOverloads constructor(
             val colorT = ((distFromCenter + blendedTransitionZone) / (2f * blendedTransitionZone)).coerceIn(0f, 1f)
             barPaint.color = blendArgb(playedColor, unplayedColor, colorT)
 
-
             // Bars closest to the playhead render at full opacity; bars toward the outer
             // edges fade toward HIGHLIGHT_MIN_ALPHA, creating a spotlight effect that follows
             // the focal point in both scrolling and full-track layouts.
@@ -1174,7 +1172,6 @@ class WaveformSeekbar @JvmOverloads constructor(
         // Draw time labels outside the compositing layer so they are never erased
         drawLabels(canvas, displayProgress, w, h)
     }
-
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
@@ -1357,9 +1354,9 @@ class WaveformSeekbar @JvmOverloads constructor(
                         val deltaMs = if (amplitudes.isNotEmpty() && barStep > 0f) {
                             // Swiping left → seeking forward; swiping right → seeking backward
                             (-deltaX / barStep * (durationMs.toFloat() / amplitudes.size)).roundToLong()
-                    } else {
+                        } else {
                             0L
-                    }
+                        }
                         dragCurrentProgressMs = (dragStartProgressMs + deltaMs).coerceIn(0L, durationMs)
                     }
                     seekListener?.onSeekTo(dragCurrentProgressMs, fromUser = true)
@@ -1491,7 +1488,7 @@ class WaveformSeekbar @JvmOverloads constructor(
         val fromAlpha = labelAlpha
         val fromScale = labelScale
         // Never force alpha to 1f if immersive mode wants it hidden
-        val toAlpha = targetLabelAlpha 
+        val toAlpha = targetLabelAlpha
         val toScale = if (visible) 1f else LABEL_SEEK_ACTIVE_SCALE
         labelAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
             duration = LABEL_ANIM_DURATION_MS
@@ -1504,6 +1501,14 @@ class WaveformSeekbar @JvmOverloads constructor(
             }
             start()
         }
+    }
+
+    fun showLabels() {
+        setLabelsVisible(show = true)
+    }
+
+    fun hideLabels() {
+        setLabelsVisible(show = false)
     }
 
     /**
@@ -1523,19 +1528,19 @@ class WaveformSeekbar @JvmOverloads constructor(
             return
         }
 
-        if (!isDragging && !isFling) {
-            labelAnimator?.cancel()
-            val fromAlpha = labelAlpha
-            labelAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-                duration = 500L // Match the immersive fade duration
-                interpolator = DecelerateInterpolator()
-                addUpdateListener { anim ->
-                    val t = anim.animatedValue as Float
-                    labelAlpha = fromAlpha + (newTargetAlpha - fromAlpha) * t
-                    invalidate()
-                }
-                start()
+        val fromAlpha = labelAlpha
+
+        labelAnimator?.cancel()
+        labelAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 500L
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { anim ->
+                val t = anim.animatedValue as Float
+                labelAlpha = fromAlpha + (newTargetAlpha - fromAlpha) * t
+                invalidate()
             }
+
+            start()
         }
     }
 

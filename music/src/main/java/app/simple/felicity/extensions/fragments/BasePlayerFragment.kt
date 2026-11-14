@@ -387,11 +387,25 @@ abstract class BasePlayerFragment : MediaFragment() {
         waveformSeekbar.setOnSeekListener(object : WaveformSeekbar.OnSeekListener {
             override fun onSeekEnd(positionMs: Long) {
                 MediaPlaybackManager.seekTo(positionMs)
+
+                if (UserInterfacePreferences.isImmersiveMode()) {
+                    waveformSeekbar.hideLabels()
+                }
+            }
+
+            override fun onSeekStart() {
+                if (UserInterfacePreferences.isImmersiveMode()) {
+                    waveformSeekbar.showLabels()
+                }
             }
         })
 
         waveformSeekbar.setOnFlingEndListener { positionMs ->
             MediaPlaybackManager.seekTo(positionMs)
+
+            if (UserInterfacePreferences.isImmersiveMode()) {
+                waveformSeekbar.hideLabels()
+            }
         }
 
         // When the user taps a bar (no drag) we show the bookmark context menu
@@ -883,10 +897,6 @@ abstract class BasePlayerFragment : MediaFragment() {
         val targetAlpha = if (show) 1f else 0f
 
         getImmersiveViews().forEach { view ->
-            if (show && (view === lyrics || view === repeat)) {
-                view.visibility = View.VISIBLE
-            }
-
             if (view.alpha != targetAlpha) {
                 if (animate) {
                     view.animate()
@@ -894,23 +904,14 @@ abstract class BasePlayerFragment : MediaFragment() {
                         .setDuration(500L)
                         .withEndAction {
                             view.isEnabled = show
-                            if (!show && (view === lyrics || view === repeat)) {
-                                view.visibility = View.GONE
-                            }
                         }
                         .start()
                 } else {
                     view.alpha = targetAlpha
                     view.isEnabled = show
-                    if (!show && (view === lyrics || view === repeat)) {
-                        view.visibility = View.GONE
-                    }
                 }
             } else {
                 view.isEnabled = show
-                if (!show && (view === lyrics || view === repeat)) {
-                    view.visibility = View.GONE
-                }
             }
         }
 
@@ -922,7 +923,7 @@ abstract class BasePlayerFragment : MediaFragment() {
 
         fadeImmersiveViews(true)
         handler.removeCallbacks(immersiveFadeRunnable)
-        handler.postDelayed(immersiveFadeRunnable, 3000L)
+        handler.postDelayed(immersiveFadeRunnable, IMMERSIVE_MODE_ON_DELAY)
     }
 
     companion object {
@@ -930,6 +931,7 @@ abstract class BasePlayerFragment : MediaFragment() {
         const val TAG = "BasePlayer"
         private const val LOG_TAG = "BasePlayerFragment"
         private const val KEY_IMMERSIVE_CONTROLS_VISIBLE = "immersive_controls_visible"
+        private const val IMMERSIVE_MODE_ON_DELAY = 2500L
     }
 }
 
