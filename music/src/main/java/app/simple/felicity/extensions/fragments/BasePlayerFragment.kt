@@ -872,6 +872,8 @@ abstract class BasePlayerFragment : MediaFragment() {
                 view.isEnabled = show
             }
         }
+
+        seekbar.setLabelsVisible(show)
     }
 
     private fun resetImmersiveFadeTimer() {

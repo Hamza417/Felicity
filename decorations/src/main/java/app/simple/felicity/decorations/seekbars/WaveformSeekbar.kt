@@ -27,20 +27,8 @@ import app.simple.felicity.decoration.R
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.BAR_YAW_STRENGTH
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.FULL_TRANSITION_ZONE_DP
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.HIGHLIGHT_MIN_ALPHA
-import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_GRAVITY_BOTTOM
-import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_GRAVITY_CENTER
-import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_GRAVITY_TOP
-import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_HIGHLIGHT_BOTH
-import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_HIGHLIGHT_FLAT
-import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_HIGHLIGHT_NONE
-import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LABEL_HIGHLIGHT_OUTLINE
-import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LAYOUT_MODE_FULL
-import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LAYOUT_MODE_SCROLLING
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.LEFT_FADE_DURATION_MS
 import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.MAX_BAR_YAW_DEG
-import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.WAVEFORM_MODE_FULL
-import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.WAVEFORM_MODE_HALF
-import app.simple.felicity.decorations.seekbars.WaveformSeekbar.Companion.WAVEFORM_MODE_REFLECTION
 import app.simple.felicity.decorations.typeface.TypeFace
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
@@ -440,9 +428,13 @@ class WaveformSeekbar @JvmOverloads constructor(
     private var colorTransitionAnimator: ValueAnimator? = null
 
     // Label visibility animation — scales time labels when a drag or fling begins/ends
+    // In immersive mode, labelAlpha is also used to fade labels out alongside other controls
     private var labelAlpha: Float = 1f
     private var labelScale: Float = 1f
     private var labelAnimator: ValueAnimator? = null
+
+    // Tracks the current target alpha for labels (driven by immersive mode)
+    private var targetLabelAlpha: Float = 1f
 
     // Seek line animation — fades the center playhead indicator line in on drag start and out on drag end
     private var seekLineAlpha: Float = 0f
@@ -1365,9 +1357,9 @@ class WaveformSeekbar @JvmOverloads constructor(
                         val deltaMs = if (amplitudes.isNotEmpty() && barStep > 0f) {
                             // Swiping left → seeking forward; swiping right → seeking backward
                             (-deltaX / barStep * (durationMs.toFloat() / amplitudes.size)).roundToLong()
-                        } else {
+                    } else {
                             0L
-                        }
+                    }
                         dragCurrentProgressMs = (dragStartProgressMs + deltaMs).coerceIn(0L, durationMs)
                     }
                     seekListener?.onSeekTo(dragCurrentProgressMs, fromUser = true)
@@ -1498,7 +1490,8 @@ class WaveformSeekbar @JvmOverloads constructor(
         labelAnimator?.cancel()
         val fromAlpha = labelAlpha
         val fromScale = labelScale
-        val toAlpha = 1f
+        // Never force alpha to 1f if immersive mode wants it hidden
+        val toAlpha = targetLabelAlpha 
         val toScale = if (visible) 1f else LABEL_SEEK_ACTIVE_SCALE
         labelAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
             duration = LABEL_ANIM_DURATION_MS
@@ -1510,6 +1503,32 @@ class WaveformSeekbar @JvmOverloads constructor(
                 invalidate()
             }
             start()
+        }
+    }
+
+    /**
+     * Set the visibility of the time labels programmatically (useful for fading out in immersive mode).
+     * @param show `true` to fade in, `false` to fade out.
+     */
+    fun setLabelsVisible(show: Boolean) {
+        val newTargetAlpha = if (show) 1f else 0f
+        if (targetLabelAlpha == newTargetAlpha) return
+
+        targetLabelAlpha = newTargetAlpha
+
+        if (!isDragging && !isFling) {
+            labelAnimator?.cancel()
+            val fromAlpha = labelAlpha
+            labelAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = 500L // Match the immersive fade duration
+                interpolator = DecelerateInterpolator()
+                addUpdateListener { anim ->
+                    val t = anim.animatedValue as Float
+                    labelAlpha = fromAlpha + (newTargetAlpha - fromAlpha) * t
+                    invalidate()
+                }
+                start()
+            }
         }
     }
 
