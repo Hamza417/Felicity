@@ -9,10 +9,14 @@ import android.graphics.Path
 import android.util.AttributeSet
 import android.view.Choreographer
 import android.view.View
+import androidx.core.graphics.ColorUtils
 import androidx.core.graphics.withTranslation
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.UserInterfacePreferences
+import app.simple.felicity.theme.interfaces.ThemeChangedListener
+import app.simple.felicity.theme.managers.ThemeManager
+import app.simple.felicity.theme.models.Accent
 import java.util.Calendar
 import kotlin.math.cos
 import kotlin.math.sin
@@ -20,7 +24,10 @@ import kotlin.random.Random
 
 class WeatherEffectView @JvmOverloads constructor(
         context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
-) : View(context, attrs, defStyleAttr), Choreographer.FrameCallback, SharedPreferences.OnSharedPreferenceChangeListener {
+) : View(context, attrs, defStyleAttr),
+    Choreographer.FrameCallback,
+    SharedPreferences.OnSharedPreferenceChangeListener,
+    ThemeChangedListener {
 
     enum class Season {
         WINTER, AUTUMN, NONE
@@ -62,6 +69,11 @@ class WeatherEffectView @JvmOverloads constructor(
     }
 
     private fun updateSeasonFromPreferences() {
+        if (isInEditMode) {
+            season = Season.AUTUMN
+            return
+        }
+
         val pref = UserInterfacePreferences.getWeatherEffect()
         season = when (pref) {
             UserInterfacePreferences.WEATHER_EFFECT_OFF -> Season.NONE
@@ -99,13 +111,18 @@ class WeatherEffectView @JvmOverloads constructor(
         particle.y = -0.1f
         particle.wobblePhase = Random.nextFloat() * (Math.PI.toFloat() * 2)
 
+        val accentColor = ThemeManager.accent.primaryAccentColor
+        val hsl = FloatArray(3)
+        ColorUtils.colorToHSL(accentColor, hsl)
+
         when (activeSeason) {
             Season.WINTER -> {
                 // Slower speed, gentle falling
                 particle.speedY = Random.nextFloat() * 0.001f + 0.0005f
                 particle.speedX = Random.nextFloat() * 0.0005f - 0.00025f
                 particle.size = Random.nextFloat() * 10f + 6f // Slightly larger to see complex snowflake details
-                particle.color = Color.WHITE
+                hsl[2] = Random.nextFloat() * 0.4f + 0.5f // Lightness from 0.5 to 0.9
+                particle.color = ColorUtils.HSLToColor(hsl)
                 particle.alpha = Random.nextInt(100, 255)
                 particle.wobbleSpeed = Random.nextFloat() * 0.015f
                 particle.wobbleAmount = Random.nextFloat() * 0.01f
@@ -116,16 +133,16 @@ class WeatherEffectView @JvmOverloads constructor(
                 particle.rotationX = Random.nextFloat() * 360f
                 particle.rotationXSpeed = Random.nextFloat() * 2f - 1f
                 particle.rotationY = Random.nextFloat() * 360f
-                particle.rotationYSpeed = Random.nextFloat() * 2f - 1f 
+                particle.rotationYSpeed = Random.nextFloat() * 2f - 1f
             }
             Season.AUTUMN -> {
                 // Top-right to bottom-left diagonal motion (slower)
                 particle.speedY = Random.nextFloat() * 0.0015f + 0.001f
                 particle.speedX = -(Random.nextFloat() * 0.001f + 0.0005f) // Moving leftwards
                 particle.size = Random.nextFloat() * 12f + 6f
-                // Autumn colors: Orange, Red, Yellow, Brown
-                val colors = intArrayOf(0xFFD2691E.toInt(), 0xFFFF8C00.toInt(), 0xFFB22222.toInt(), 0xFFFFD700.toInt())
-                particle.color = colors[Random.nextInt(colors.size)]
+                // Autumn colors: Darker shades of accent color
+                hsl[2] = Random.nextFloat() * 0.4f + 0.1f // Lightness from 0.1 to 0.5
+                particle.color = ColorUtils.HSLToColor(hsl)
                 particle.alpha = Random.nextInt(150, 255)
                 particle.wobbleSpeed = Random.nextFloat() * 0.02f
                 particle.wobbleAmount = Random.nextFloat() * 0.02f
@@ -136,7 +153,7 @@ class WeatherEffectView @JvmOverloads constructor(
                 particle.rotationX = Random.nextFloat() * 360f
                 particle.rotationXSpeed = Random.nextFloat() * 3f - 1.5f
                 particle.rotationY = Random.nextFloat() * 360f
-                particle.rotationYSpeed = Random.nextFloat() * 3f - 1.5f 
+                particle.rotationYSpeed = Random.nextFloat() * 3f - 1.5f
             }
             Season.NONE -> {
                 particle.alpha = 0
@@ -146,33 +163,60 @@ class WeatherEffectView @JvmOverloads constructor(
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        registerSharedPreferenceChangeListener()
+        ThemeManager.addListener(this)
         updateSeasonFromPreferences()
         Choreographer.getInstance().postFrameCallback(this)
+
+        if (isInEditMode.not()) {
+            registerSharedPreferenceChangeListener()
+        }
     }
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
+        ThemeManager.removeListener(this)
         unregisterSharedPreferenceChangeListener()
         Choreographer.getInstance().removeFrameCallback(this)
     }
 
+    override fun onAccentChanged(accent: Accent) {
+        val accentColor = accent.primaryAccentColor
+        val hsl = FloatArray(3)
+        ColorUtils.colorToHSL(accentColor, hsl)
+
+        for (particle in particles) {
+            val pHSL = FloatArray(3)
+            ColorUtils.colorToHSL(particle.color, pHSL)
+
+            // Keep the randomized lightness, only change hue and saturation
+            hsl[2] = pHSL[2]
+            particle.color = ColorUtils.HSLToColor(hsl)
+        }
+
+        invalidate()
+    }
+
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
-        if (key == UserInterfacePreferences.WEATHER_EFFECT) {
-            updateSeasonFromPreferences()
+        when (key) {
+            UserInterfacePreferences.WEATHER_EFFECT -> {
+                updateSeasonFromPreferences()
+            }
         }
     }
 
     override fun onWindowVisibilityChanged(visibility: Int) {
         super.onWindowVisibilityChanged(visibility)
-        if (visibility == VISIBLE) {
-            isStopping = false
-            updateSeasonFromPreferences()
-            if (activeSeason != Season.NONE) {
-                initParticles() // Start gradually when app is reopened
+        when (visibility) {
+            VISIBLE -> {
+                isStopping = false
+                updateSeasonFromPreferences()
+                if (activeSeason != Season.NONE) {
+                    initParticles() // Start gradually when app is reopened
+                }
             }
-        } else {
-            isStopping = true // Drain when hidden
+            else -> {
+                isStopping = true // Drain when hidden
+            }
         }
     }
 
