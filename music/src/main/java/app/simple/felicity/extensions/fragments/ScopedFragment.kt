@@ -14,6 +14,7 @@ import androidx.activity.BackEventCompat
 import androidx.annotation.IntegerRes
 import androidx.annotation.RequiresApi
 import androidx.annotation.StringRes
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.doOnPreDraw
@@ -426,6 +427,10 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
      * Hides the status bar and navigation bar for as long as this fragment is on screen,
      * but only when the user has immersive mode turned on in settings.
      *
+     * It actively intercepts the window insets using `getInsetsIgnoringVisibility` to
+     * simulate the system bars' original height, ensuring that the layout doesn't jump
+     * upwards when the bars are hidden.
+     *
      * Think of it as a "do not disturb" sign for the system bars — they vanish when
      * this fragment shows up and politely come back the moment the user navigates away.
      * A swipe from any edge temporarily peeks them back in.
@@ -441,16 +446,38 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
         val controller = WindowInsetsControllerCompat(window, window.decorView)
 
         viewLifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onCreate(owner: LifecycleOwner) {
+                // Intercept insets for this fragment's view to prevent layout jumps
+                // by passing down the 'ignored visibility' insets to its children.
+                view?.let { fragmentView ->
+                    ViewCompat.setOnApplyWindowInsetsListener(fragmentView) { v, insets ->
+                        val fakeInsets = WindowInsetsCompat.Builder(insets)
+                            .setInsets(
+                                    WindowInsetsCompat.Type.systemBars(),
+                                    insets.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.systemBars())
+                            )
+                            .build()
+                        ViewCompat.onApplyWindowInsets(v, fakeInsets)
+                    }
+                }
+            }
+
             override fun onResume(owner: LifecycleOwner) {
                 controller.hide(WindowInsetsCompat.Type.systemBars())
                 controller.systemBarsBehavior =
                     WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             }
 
-            override fun onDestroy(owner: LifecycleOwner) {
+            override fun onPause(owner: LifecycleOwner) {
+                super.onPause(owner)
                 controller.show(WindowInsetsCompat.Type.systemBars())
                 controller.systemBarsBehavior =
                     WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+            }
+
+            override fun onDestroy(owner: LifecycleOwner) {
+                // Clear the listener when the view is destroyed
+                view?.let { ViewCompat.setOnApplyWindowInsetsListener(it, null) }
             }
         })
     }
