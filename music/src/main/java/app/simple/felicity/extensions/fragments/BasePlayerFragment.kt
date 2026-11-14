@@ -208,6 +208,8 @@ abstract class BasePlayerFragment : MediaFragment() {
         updateMediaControlOverlap()
         updateSleepTimerIcon()
 
+        mediaControls.showSeekButtons = UserInterfacePreferences.isForwardRewindButtons()
+
         // Mirror swipe-down-to-close behavior on the album art pager so that a downward
         // swipe on the cover image dismisses the player, exactly like swiping on any other
         // area of the screen.

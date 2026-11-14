@@ -22,6 +22,7 @@ object UserInterfacePreferences {
 
     private const val VOLUME_CONTROLS = "volume_controls"
     const val STACK_MEDIA_CONTROLS = "stack_media_controls"
+    const val SHOW_FORWARD_REWIND_BUTTONS = "show_forward_rewind_buttons"
     const val TIMER_POSITION = "timer_position"
     const val WAVEFORM_OPTICS = "waveform_optics"
 
@@ -161,6 +162,18 @@ object UserInterfacePreferences {
         getSharedPreferences()
             .edit {
                 putBoolean(STACK_MEDIA_CONTROLS, enabled)
+            }
+    }
+
+    fun isForwardRewindButtons(): Boolean {
+        return getSharedPreferences()
+            .getBoolean(SHOW_FORWARD_REWIND_BUTTONS, true)
+    }
+
+    fun setForwardRewindButtons(enabled: Boolean) {
+        getSharedPreferences()
+            .edit {
+                putBoolean(SHOW_FORWARD_REWIND_BUTTONS, enabled)
             }
     }
 

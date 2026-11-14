@@ -502,6 +502,32 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val showForwardAndRewindButtons = Preference(
+                title = R.string.show_forward_rewind_buttons,
+                summary = R.string.show_forward_rewind_buttons_summary,
+                icon = R.drawable.ic_fast_forward,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    UserInterfacePreferences.setForwardRewindButtons((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    UserInterfacePreferences.isForwardRewindButtons()
+                }
+        )
+
+        val immersiveMode = Preference(
+                title = R.string.immersive_mode,
+                summary = R.string.immersive_mode_summary,
+                icon = R.drawable.ic_fullscreen,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    UserInterfacePreferences.setImmersiveMode((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    UserInterfacePreferences.isImmersiveMode()
+                }
+        )
+
         val pagesHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.pages)
 
         val songsFirstToggle = Preference(
@@ -529,19 +555,6 @@ abstract class PreferenceFragment : MediaFragment() {
                 },
                 valueProvider = Supplier {
                     UserInterfacePreferences.isLikeIconInsteadOfThumb()
-                }
-        )
-
-        val immersiveMode = Preference(
-                title = R.string.immersive_mode,
-                summary = R.string.immersive_mode_summary,
-                icon = R.drawable.ic_fullscreen,
-                type = PreferenceType.SWITCH,
-                onPreferenceAction = { view, callback ->
-                    UserInterfacePreferences.setImmersiveMode((view as FelicitySwitch).isChecked)
-                },
-                valueProvider = Supplier {
-                    UserInterfacePreferences.isImmersiveMode()
                 }
         )
 
@@ -660,13 +673,14 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(playerInterface)
         preferences.add(lyricsToggle)
         preferences.add(stackMediaControlsToggle)
+        preferences.add(showForwardAndRewindButtons)
+        preferences.add(immersiveMode)
         preferences.add(pagesHeader)
         preferences.add(songsFirstToggle)
         preferences.add(miniPlayerHeader)
         preferences.add(miniplayerWidth)
         preferences.add(marginAroundMiniplayerToggle)
         preferences.add(applicationHeader)
-        preferences.add(immersiveMode)
         preferences.add(likeButton)
         preferences.add(volumeControls)
         preferences.add(volumeKnobPosition)
