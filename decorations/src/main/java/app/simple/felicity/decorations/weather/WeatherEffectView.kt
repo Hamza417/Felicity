@@ -38,10 +38,17 @@ class WeatherEffectView @JvmOverloads constructor(
             if (field != value) {
                 field = value
                 if (value != Season.NONE) {
-                    activeSeason = value
-                    isStopping = false
-                    initParticles()
-                    invalidate()
+                    if (activeSeason == Season.NONE) {
+                        activeSeason = value
+                        isStopping = false
+                        initParticles()
+                        invalidate()
+                    } else {
+                        // When transitioning, set activeSeason without re-initializing all particles.
+                        // As old particles fall off-screen, they will respawn as the new season.
+                        activeSeason = value
+                        isStopping = false
+                    }
                 } else {
                     isStopping = true
                 }
@@ -99,6 +106,7 @@ class WeatherEffectView @JvmOverloads constructor(
 
     private fun initParticles() {
         for (particle in particles) {
+            particle.type = activeSeason
             resetParticle(particle)
             // Distribute initially above the screen for a gradual start
             val spread = 2.5f
@@ -107,6 +115,7 @@ class WeatherEffectView @JvmOverloads constructor(
     }
 
     private fun resetParticle(particle: Particle) {
+        particle.type = activeSeason
         particle.x = Random.nextFloat()
         particle.y = -0.1f
         particle.wobblePhase = Random.nextFloat() * (Math.PI.toFloat() * 2)
@@ -115,7 +124,7 @@ class WeatherEffectView @JvmOverloads constructor(
         val hsl = FloatArray(3)
         ColorUtils.colorToHSL(accentColor, hsl)
 
-        when (activeSeason) {
+        when (particle.type) {
             Season.WINTER -> {
                 // Slower speed, gentle falling
                 particle.speedY = Random.nextFloat() * 0.001f + 0.0005f
@@ -242,7 +251,7 @@ class WeatherEffectView @JvmOverloads constructor(
                 p.x += p.speedX
                 p.wobblePhase += p.wobbleSpeed
 
-                if (activeSeason == Season.AUTUMN || activeSeason == Season.WINTER) {
+                if (p.type == Season.AUTUMN || p.type == Season.WINTER) {
                     p.rotation += p.rotationSpeed
                     p.rotationX += p.rotationXSpeed
                     p.rotationY += p.rotationYSpeed
@@ -282,10 +291,11 @@ class WeatherEffectView @JvmOverloads constructor(
             paint.color = p.color
             paint.alpha = p.alpha
 
-            when (activeSeason) {
+            when (p.type) {
                 Season.WINTER -> {
                     paint.strokeWidth = p.size / 6f // Thinner strokes for complex shape
                     paint.strokeCap = Paint.Cap.ROUND
+
                     canvas.withTranslation(drawX, drawY) {
                         // Simulate 3D rotation using Canvas Scaling
                         val scaleX = cos(Math.toRadians(p.rotationY.toDouble())).toFloat()
@@ -309,6 +319,7 @@ class WeatherEffectView @JvmOverloads constructor(
                             rotate(60f)
                         }
                     }
+
                     paint.style = Paint.Style.FILL // restore to default fill for other things if needed
                 }
                 Season.AUTUMN -> {
@@ -352,6 +363,8 @@ class WeatherEffectView @JvmOverloads constructor(
     }
 
     private class Particle {
+        var type: Season = Season.NONE
+        
         var x: Float = 0f
         var y: Float = 0f
         var speedX: Float = 0f
