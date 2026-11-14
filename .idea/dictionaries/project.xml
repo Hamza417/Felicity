@@ -45,6 +45,7 @@
       <w>microframes</w>
       <w>minX</w>
       <w>minY</w>
+      <w>pappus</w>
       <w>playhead</w>
       <w>preamb</w>
       <w>qfactor</w>
@@ -53,6 +54,7 @@
       <w>scrollability</w>
       <w>snapshotted</w>
       <w>startY</w>
+      <w>stopY</w>
       <w>totaltracks</w>
       <w>tracknumber</w>
       <w>tracktotal</w>

@@ -63,6 +63,7 @@ object UserInterfacePreferences {
     const val WEATHER_EFFECT_AUTO = 1
     const val WEATHER_EFFECT_WINTER = 2
     const val WEATHER_EFFECT_AUTUMN = 3
+    const val WEATHER_EFFECT_SUMMER = 4
 
     const val MAX_LANDSCAPE_MINIPLAYER_WIDTH = 1.0f
     const val MIN_LANDSCAPE_MINIPLAYER_WIDTH = 0f

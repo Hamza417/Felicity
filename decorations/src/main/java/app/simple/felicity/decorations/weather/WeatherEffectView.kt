@@ -18,6 +18,7 @@ import app.simple.felicity.theme.interfaces.ThemeChangedListener
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.theme.models.Accent
 import java.util.Calendar
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
@@ -30,7 +31,7 @@ class WeatherEffectView @JvmOverloads constructor(
     ThemeChangedListener {
 
     enum class Season {
-        WINTER, AUTUMN, NONE
+        WINTER, AUTUMN, SUMMER, NONE
     }
 
     var season: Season = Season.NONE
@@ -71,6 +72,8 @@ class WeatherEffectView @JvmOverloads constructor(
         close()
     }
 
+    private val seedPath = Path()
+
     init {
         updateSeasonFromPreferences()
     }
@@ -86,6 +89,7 @@ class WeatherEffectView @JvmOverloads constructor(
             UserInterfacePreferences.WEATHER_EFFECT_OFF -> Season.NONE
             UserInterfacePreferences.WEATHER_EFFECT_WINTER -> Season.WINTER
             UserInterfacePreferences.WEATHER_EFFECT_AUTUMN -> Season.AUTUMN
+            UserInterfacePreferences.WEATHER_EFFECT_SUMMER -> Season.SUMMER
             else -> {
                 // Auto
                 val month = Calendar.getInstance().get(Calendar.MONTH)
@@ -95,6 +99,9 @@ class WeatherEffectView @JvmOverloads constructor(
                     }
                     Calendar.SEPTEMBER, Calendar.OCTOBER, Calendar.NOVEMBER -> {
                         Season.AUTUMN
+                    }
+                    Calendar.MAY, Calendar.JUNE, Calendar.JULY, Calendar.AUGUST -> {
+                        Season.SUMMER
                     }
                     else -> {
                         Season.NONE
@@ -108,16 +115,32 @@ class WeatherEffectView @JvmOverloads constructor(
         for (particle in particles) {
             particle.type = activeSeason
             resetParticle(particle)
-            // Distribute initially above the screen for a gradual start
-            val spread = 2.5f
-            particle.y = -(Random.nextFloat() * spread + 0.1f)
+            // Distribute initially across the screen for a gradual start
+            val spreadY = 2.5f
+            val spreadX = 1.2f
+
+            if (activeSeason == Season.SUMMER) {
+                // Summer dandelion seeds start distributed across the screen
+                particle.y = Random.nextFloat() * 1.2f - 0.1f
+                particle.x = Random.nextFloat() * spreadX - 0.1f
+            } else {
+                particle.y = -(Random.nextFloat() * spreadY + 0.1f)
+            }
         }
     }
 
     private fun resetParticle(particle: Particle) {
         particle.type = activeSeason
         particle.x = Random.nextFloat()
-        particle.y = -0.1f
+
+        if (particle.type == Season.SUMMER) {
+            // Summer seeds respawn at the bottom
+            particle.y = 1.1f
+        } else {
+            // Winter/Autumn respawn at the top
+            particle.y = -0.1f
+        }
+
         particle.wobblePhase = Random.nextFloat() * (Math.PI.toFloat() * 2)
 
         val accentColor = ThemeManager.accent.primaryAccentColor
@@ -163,6 +186,29 @@ class WeatherEffectView @JvmOverloads constructor(
                 particle.rotationXSpeed = Random.nextFloat() * 3f - 1.5f
                 particle.rotationY = Random.nextFloat() * 360f
                 particle.rotationYSpeed = Random.nextFloat() * 3f - 1.5f
+            }
+            Season.SUMMER -> {
+                // Gentle floating up/diagonally like dandelion seeds in a breeze
+                particle.speedY = -(Random.nextFloat() * 0.001f + 0.0005f)
+                particle.speedX = Random.nextFloat() * 0.001f - 0.0005f
+                particle.size = Random.nextFloat() * 20f + 15f // Need to be large enough to see the lines
+
+                // Summer colors: Very light, almost white accent color shades
+                hsl[2] = Random.nextFloat() * 0.2f + 0.7f // Lightness from 0.7 to 0.9
+                particle.color = ColorUtils.HSLToColor(hsl)
+                particle.alpha = Random.nextInt(150, 255) // Less transparent
+
+                // Drift/Wobble
+                particle.wobbleSpeed = Random.nextFloat() * 0.005f
+                particle.wobbleAmount = Random.nextFloat() * 0.03f
+
+                // No complex 3D rotation, just a slight 2D spin
+                particle.rotation = Random.nextFloat() * 360f
+                particle.rotationSpeed = Random.nextFloat() * 0.5f - 0.25f
+                particle.rotationX = 0f
+                particle.rotationXSpeed = 0f
+                particle.rotationY = 0f
+                particle.rotationYSpeed = 0f
             }
             Season.NONE -> {
                 particle.alpha = 0
@@ -241,10 +287,16 @@ class WeatherEffectView @JvmOverloads constructor(
     private fun updateParticles() {
         var hasActiveParticles = false
         for (p in particles) {
-            if (p.y > 1.1f) {
+            val isOffScreen = if (p.type == Season.SUMMER) {
+                p.y < -0.1f // Floating up, off-screen at the top
+            } else {
+                p.y > 1.1f // Falling down, off-screen at the bottom
+            }
+
+            if (isOffScreen) {
                 if (!isStopping) {
                     resetParticle(p)
-                    p.x = Random.nextFloat() // randomize X again when resetting at top
+                    p.x = Random.nextFloat() // randomize X again when resetting
                 }
             } else {
                 p.y += p.speedY
@@ -255,9 +307,11 @@ class WeatherEffectView @JvmOverloads constructor(
                     p.rotation += p.rotationSpeed
                     p.rotationX += p.rotationXSpeed
                     p.rotationY += p.rotationYSpeed
+                } else if (p.type == Season.SUMMER) {
+                    p.rotation += p.rotationSpeed
                 }
 
-                // Wrap around X (if going off-screen to the left)
+                // Wrap around X (if going off-screen to the left or right)
                 if (p.x < -0.2f) {
                     p.x = 1.2f
                 } else if (p.x > 1.2f) {
@@ -265,7 +319,13 @@ class WeatherEffectView @JvmOverloads constructor(
                 }
             }
 
-            if (p.y <= 1.1f) {
+            val isActive = if (p.type == Season.SUMMER) {
+                p.y >= -0.1f
+            } else {
+                p.y <= 1.1f
+            }
+
+            if (isActive) {
                 hasActiveParticles = true
             }
         }
@@ -282,35 +342,41 @@ class WeatherEffectView @JvmOverloads constructor(
         val w = width.toFloat()
         val h = height.toFloat()
 
-        for (p in particles) {
-            if (p.y > 1.1f) continue // don't draw particles off-screen
+        for (particle in particles) {
+            val isOffScreen = if (particle.type == Season.SUMMER) {
+                particle.y < -0.1f
+            } else {
+                particle.y > 1.1f
+            }
 
-            val drawX = (p.x + sin(p.wobblePhase.toDouble()).toFloat() * p.wobbleAmount) * w
-            val drawY = p.y * h
+            if (isOffScreen) continue // don't draw particles off-screen
 
-            paint.color = p.color
-            paint.alpha = p.alpha
+            val drawX = (particle.x + sin(particle.wobblePhase.toDouble()).toFloat() * particle.wobbleAmount) * w
+            val drawY = particle.y * h
 
-            when (p.type) {
+            paint.color = particle.color
+            paint.alpha = particle.alpha
+
+            when (particle.type) {
                 Season.WINTER -> {
-                    paint.strokeWidth = p.size / 6f // Thinner strokes for complex shape
+                    paint.strokeWidth = particle.size / 6f // Thinner strokes for complex shape
                     paint.strokeCap = Paint.Cap.ROUND
 
                     canvas.withTranslation(drawX, drawY) {
                         // Simulate 3D rotation using Canvas Scaling
-                        val scaleX = cos(Math.toRadians(p.rotationY.toDouble())).toFloat()
-                        val scaleY = cos(Math.toRadians(p.rotationX.toDouble())).toFloat()
+                        val scaleX = cos(Math.toRadians(particle.rotationY.toDouble())).toFloat()
+                        val scaleY = cos(Math.toRadians(particle.rotationX.toDouble())).toFloat()
                         scale(scaleX, scaleY)
-                        rotate(p.rotation)
+                        rotate(particle.rotation)
 
-                        val branchStart = p.size * 0.5f
-                        val branchDx = p.size * 0.35f
-                        val branchDy = p.size * 0.35f
+                        val branchStart = particle.size * 0.5f
+                        val branchDx = particle.size * 0.35f
+                        val branchDy = particle.size * 0.35f
 
                         // Draw a complex 6-pointed star/snowflake shape with sub-spikes
                         repeat(6) {
                             // Main arm from center to tip
-                            drawLine(0f, 0f, p.size, 0f, paint)
+                            drawLine(0f, 0f, particle.size, 0f, paint)
 
                             // Tiny sub-spikes branching off the main arm
                             drawLine(branchStart, 0f, branchStart + branchDx, branchDy, paint)
@@ -325,12 +391,12 @@ class WeatherEffectView @JvmOverloads constructor(
                 Season.AUTUMN -> {
                     canvas.withTranslation(drawX, drawY) {
                         // Simulate 3D rotation using Canvas Scaling
-                        val scaleX = cos(Math.toRadians(p.rotationY.toDouble())).toFloat()
-                        val scaleY = cos(Math.toRadians(p.rotationX.toDouble())).toFloat()
+                        val scaleX = cos(Math.toRadians(particle.rotationY.toDouble())).toFloat()
+                        val scaleY = cos(Math.toRadians(particle.rotationX.toDouble())).toFloat()
                         scale(scaleX, scaleY)
-                        rotate(p.rotation)
+                        rotate(particle.rotation)
 
-                        scale(p.size, p.size)
+                        scale(particle.size, particle.size)
 
                         // Draw a leafy shape
                         paint.style = Paint.Style.FILL
@@ -357,14 +423,94 @@ class WeatherEffectView @JvmOverloads constructor(
                         paint.style = Paint.Style.FILL
                     }
                 }
-                Season.NONE -> {}
+                Season.SUMMER -> {
+                    canvas.withTranslation(drawX, drawY) {
+                        rotate(particle.rotation)
+
+                        // The main plant stalk (curved for natural variation)
+                        paint.style = Paint.Style.STROKE
+                        paint.strokeWidth = particle.size / 30f
+                        paint.strokeCap = Paint.Cap.ROUND
+
+                        val stemLength = particle.size * 1.25f
+
+                        // Generate a stable random bend factor between -1f and 1f based on the particle
+                        val bendFactor = ((particle.hashCode() % 100) / 50f) - 1f
+
+                        val controlPointX = bendFactor * (particle.size * 0.6f)
+                        val endPointX = bendFactor * (particle.size * 0.2f)
+
+                        seedPath.reset()
+                        seedPath.moveTo(0f, 0f)
+                        seedPath.quadTo(controlPointX, stemLength / 2f, endPointX, stemLength)
+                        canvas.drawPath(seedPath, paint)
+
+                        // The dark central core of the flower head
+                        paint.style = Paint.Style.FILL
+                        drawCircle(0f, 0f, particle.size * 0.08f, paint)
+
+                        // The 360-degree puffball (lollipop)
+                        paint.style = Paint.Style.STROKE
+                        paint.strokeWidth = particle.size / 60f
+
+                        val fluffCount = 24
+                        val baseFluffLength = particle.size * 0.45f
+                        val angleStep = 360f / fluffCount.toFloat()
+
+                        for (i in 0 until fluffCount) {
+                            val angle = Math.toRadians((i * angleStep).toDouble())
+
+                            // Generate a stable random value between 0.0 and 1.0 for this specific strand
+                            val strandRand = abs((particle.hashCode() xor (i * 31)) % 100) / 100f
+                            // Vary the length between 75% and 100% of the base length
+                            val currentFluffLength = baseFluffLength * (0.75f + 0.25f * strandRand)
+
+                            val endX = (cos(angle) * currentFluffLength).toFloat()
+                            val endY = (sin(angle) * currentFluffLength).toFloat()
+
+                            // Draw the main strand from the center outwards
+                            drawLine(0f, 0f, endX, endY, paint)
+
+                            // Tiny branching hairs at the tips
+                            val branchDist = currentFluffLength * 0.75f
+                            val branchX = (cos(angle) * branchDist).toFloat()
+                            val branchY = (sin(angle) * branchDist).toFloat()
+                            val branchLength = particle.size * 0.06f
+
+                            // Left branch
+                            val bAngle1 = angle - 0.5
+                            drawLine(
+                                    /* startX = */ branchX,
+                                    /* startY = */ branchY,
+                                    /* stopX = */ branchX + (cos(bAngle1) * branchLength).toFloat(),
+                                    /* stopY = */ branchY + (sin(bAngle1) * branchLength).toFloat(),
+                                    /* paint = */ paint
+                            )
+
+                            // Right branch
+                            val bAngle2 = angle + 0.5
+                            drawLine(
+                                    /* startX = */ branchX,
+                                    /* startY = */ branchY,
+                                    /* stopX = */ branchX + (cos(bAngle2) * branchLength).toFloat(),
+                                    /* stopY = */ branchY + (sin(bAngle2) * branchLength).toFloat(),
+                                    /* paint = */ paint
+                            )
+                        }
+                    }
+
+                    paint.style = Paint.Style.FILL
+                }
+                Season.NONE -> {
+
+                }
             }
         }
     }
 
     private class Particle {
         var type: Season = Season.NONE
-        
+
         var x: Float = 0f
         var y: Float = 0f
         var speedX: Float = 0f

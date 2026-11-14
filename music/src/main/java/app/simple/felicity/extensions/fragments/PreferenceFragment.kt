@@ -628,6 +628,7 @@ abstract class PreferenceFragment : MediaFragment() {
                         UserInterfacePreferences.WEATHER_EFFECT_AUTO -> getString(R.string.auto)
                         UserInterfacePreferences.WEATHER_EFFECT_WINTER -> getString(R.string.winter)
                         UserInterfacePreferences.WEATHER_EFFECT_AUTUMN -> getString(R.string.autumn)
+                        UserInterfacePreferences.WEATHER_EFFECT_SUMMER -> getString(R.string.summer)
                         else -> getString(R.string.auto)
                     }
                 },
@@ -639,7 +640,8 @@ abstract class PreferenceFragment : MediaFragment() {
                                     PopupMenuItem(title = R.string.off),
                                     PopupMenuItem(title = R.string.auto),
                                     PopupMenuItem(title = R.string.winter),
-                                    PopupMenuItem(title = R.string.autumn)
+                                    PopupMenuItem(title = R.string.autumn),
+                                    PopupMenuItem(title = R.string.summer)
                             ),
                             onMenuItemClick = {
                                 when (it) {
@@ -658,6 +660,10 @@ abstract class PreferenceFragment : MediaFragment() {
                                     R.string.autumn -> {
                                         UserInterfacePreferences.setWeatherEffect(UserInterfacePreferences.WEATHER_EFFECT_AUTUMN)
                                         (view as TextView).text = getString(R.string.autumn)
+                                    }
+                                    R.string.summer -> {
+                                        UserInterfacePreferences.setWeatherEffect(UserInterfacePreferences.WEATHER_EFFECT_SUMMER)
+                                        (view as TextView).text = getString(R.string.summer)
                                     }
                                 }
                             },
