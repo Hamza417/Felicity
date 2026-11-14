@@ -47,7 +47,7 @@ class FavoriteButton : DynamicRippleImageButton {
         setImageResource(notFavoriteIconRes)
     }
 
-    fun setFavorite(isFavorite: Boolean, animate: Boolean) {
+    fun setFavorite(isFavorite: Boolean, animate: Boolean = true) {
         this.isFavorite = isFavorite
 
         if (WAS_FAVORITE != isFavorite) {
@@ -56,6 +56,13 @@ class FavoriteButton : DynamicRippleImageButton {
         }
 
         updateTint(animate, isFavorite)
+    }
+
+    fun setFavoriteQuietly(isFavorite: Boolean) {
+        this.isFavorite = isFavorite
+        WAS_FAVORITE = isFavorite
+        setAppropriateIcon(isFavorite, animate = false)
+        updateTint(animate = false, isFavorite)
     }
 
     private fun setAppropriateIcon(isFavorite: Boolean, animate: Boolean) {

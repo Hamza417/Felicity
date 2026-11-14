@@ -40,6 +40,7 @@ open class ImagePageAdapter(
         private val provider: ImageBitmapProvider,
         private val canceller: ImageBitmapCanceller,
         private val scaleType: ImageView.ScaleType = ImageView.ScaleType.CENTER_CROP,
+        private val onClick: ((position: Int, view: ImageView) -> Unit)? = null,
         private val onLongClick: ((position: Int, view: ImageView) -> Boolean)? = null
 ) : FelicityPager.PageAdapter {
 
@@ -61,6 +62,7 @@ open class ImagePageAdapter(
                     ViewGroup.LayoutParams.MATCH_PARENT
             )
 
+            onClick?.let { setOnClickListener { onClick(position, this) } }
             onLongClick?.let { setOnLongClickListener { onLongClick(position, this) } }
         }
 

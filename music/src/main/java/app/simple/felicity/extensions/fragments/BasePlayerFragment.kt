@@ -99,6 +99,13 @@ abstract class BasePlayerFragment : MediaFragment() {
      */
     private var lastLoadedAudioId: Long = -1L
 
+    /**
+     * Timer used to fade out buttons in immersive mode.
+     */
+    private val immersiveFadeRunnable = Runnable {
+        fadeImmersiveViews(false)
+    }
+
     /** The pager that cycles through album art pages. */
     protected abstract val pager: FelicityPager
 
@@ -166,7 +173,17 @@ abstract class BasePlayerFragment : MediaFragment() {
         super.onViewCreated(view, savedInstanceState)
         swipeDownListener = SwipeDownToCloseListener(this, requireView())
 
-        requireView().setOnTouchListener(swipeDownListener)
+        requireView().setOnTouchListener { view, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN,
+                MotionEvent.ACTION_UP -> {
+                    resetImmersiveFadeTimer()
+                    view.performClick()
+                }
+            }
+            swipeDownListener?.passOnTouchEvent(event) ?: false
+        }
+
         requireHiddenMiniPlayer()
         requireImmersiveMode()
         updateState()
@@ -186,11 +203,13 @@ abstract class BasePlayerFragment : MediaFragment() {
         // dismiss-or-snap-back logic that ACTION_UP would normally trigger.
         pager.setOnVerticalDragListener(object : FelicityPager.OnVerticalDragListener {
             override fun onVerticalDrag(totalDeltaY: Float, event: MotionEvent) {
+                resetImmersiveFadeTimer()
                 // event.rawY - totalDeltaY reconstructs the raw Y at gesture start.
                 swipeDownListener?.passExternalDrag(event, event.rawY - totalDeltaY)
             }
 
             override fun onVerticalDragEnd(totalDeltaY: Float, velocityY: Float, event: MotionEvent) {
+                resetImmersiveFadeTimer()
                 swipeDownListener?.endExternalDrag(event.rawY - totalDeltaY)
             }
         })
@@ -203,13 +222,15 @@ abstract class BasePlayerFragment : MediaFragment() {
                             if (UserInterfacePreferences.isCarouselInterface()) {
                                 iv.loadArtCoverWithPayload(audio)
                             } else {
-                                iv.loadArtCover(audio,
-                                                shadow = false,
-                                                crop = true,
-                                                roundedCorners = false,
-                                                blur = false,
-                                                greyscale = AlbumArtPreferences.isGreyscaleEnabled(),
-                                                darken = false)
+                                iv.loadArtCover(
+                                        item = audio,
+                                        shadow = false,
+                                        crop = true,
+                                        roundedCorners = false,
+                                        blur = false,
+                                        greyscale = AlbumArtPreferences.isGreyscaleEnabled(),
+                                        darken = false
+                                )
                             }
                         },
                         scaleType = if (UserInterfacePreferences.isCarouselInterface()) {
@@ -219,6 +240,9 @@ abstract class BasePlayerFragment : MediaFragment() {
                         },
                         canceller = { iv ->
                             Glide.with(iv).clear(iv)
+                        },
+                        onClick = { _, _ ->
+                            resetImmersiveFadeTimer()
                         },
                         onLongClick = { pos, iv ->
                             openMenu()
@@ -583,7 +607,13 @@ abstract class BasePlayerFragment : MediaFragment() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        resetImmersiveFadeTimer()
+    }
+
     override fun onDestroyView() {
+        handler.removeCallbacks(immersiveFadeRunnable)
         // Release the direct twin-buffer connection so the audio thread no longer holds
         // a WeakReference to the now-destroyed visualizer view.
         VisualizerManager.processor?.clearDirectOutput()
@@ -696,8 +726,12 @@ abstract class BasePlayerFragment : MediaFragment() {
      * Updates the favorite button icon from the [Audio] model's [Audio.isFavorite] field.
      * No database query required — the model is the source of truth.
      */
-    private fun updateFavoriteIcon(audio: Audio) {
-        favorite.setFavorite(audio.isFavorite, true)
+    private fun updateFavoriteIcon(audio: Audio, quiet: Boolean = UserInterfacePreferences.isImmersiveMode()) {
+        if (quiet) {
+            favorite.setFavoriteQuietly(audio.isFavorite)
+        } else {
+            favorite.setFavorite(audio.isFavorite)
+        }
     }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
@@ -813,6 +847,39 @@ abstract class BasePlayerFragment : MediaFragment() {
                     bookmarksViewModel.removeBookmark(bookmark)
                 }
         )
+    }
+
+    private fun getImmersiveViews(): List<View> {
+        return listOf(
+                count, search, sleepTimer, menu, repeat, pcmInfo,
+                lyrics, favorite, equalizer, visualizerButton, shuffle
+        )
+    }
+
+    private fun fadeImmersiveViews(show: Boolean) {
+        val targetAlpha = if (show) 1f else 0f
+
+        getImmersiveViews().forEach { view ->
+            if (view.alpha != targetAlpha) {
+                view.animate()
+                    .alpha(targetAlpha)
+                    .setDuration(500L)
+                    .withEndAction {
+                        view.isEnabled = show
+                    }
+                    .start()
+            } else {
+                view.isEnabled = show
+            }
+        }
+    }
+
+    private fun resetImmersiveFadeTimer() {
+        if (!UserInterfacePreferences.isImmersiveMode()) return
+
+        fadeImmersiveViews(true)
+        handler.removeCallbacks(immersiveFadeRunnable)
+        handler.postDelayed(immersiveFadeRunnable, 3000L)
     }
 
     companion object {
