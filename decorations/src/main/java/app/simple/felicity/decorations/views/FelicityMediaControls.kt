@@ -67,10 +67,22 @@ class FelicityMediaControls @JvmOverloads constructor(
      * runtime will trigger a layout pass so the view resizes correctly — no orphaned
      * empty space left behind!
      */
+    fun showSeekButtons(show: Boolean, animate: Boolean = true) {
+        if (this.showSeekButtons == show) return
+        this.showSeekButtons = show
+        // Changing the boolean above naturally causes requestLayout() + invalidate()
+        // to recompute the width required for either 3 or 5 buttons.
+        // We'll lean into the existing Android LayoutTransition or just instantly snap
+        // if animate = false since the view itself actually resizes.
+    }
+
     var showSeekButtons: Boolean = true
         set(value) {
             if (field == value) return
             field = value
+            if (width > 0 && height > 0) {
+                computeLayout(width, height)
+            }
             requestLayout()
             invalidate()
         }
@@ -85,6 +97,9 @@ class FelicityMediaControls @JvmOverloads constructor(
             val clamped = value.coerceIn(0f, 1f)
             if (field == clamped) return
             field = clamped
+            if (width > 0 && height > 0) {
+                computeLayout(width, height)
+            }
             requestLayout()
             invalidate()
         }
