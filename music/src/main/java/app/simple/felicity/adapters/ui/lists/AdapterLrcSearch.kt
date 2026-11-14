@@ -126,9 +126,8 @@ class AdapterLrcSearch(
                 binding.trackName.setEndDrawable(0)
             }
 
-            // Show the badge whenever this result carries LRC timestamps.
             binding.syncedBadge.visibility =
-                if (!response.syncedLyrics.isNullOrBlank()) View.VISIBLE else View.GONE
+                if (response.hasLineSync && !response.hasWordSync) View.VISIBLE else View.GONE
 
             binding.wordSyncBadge.visibility =
                 if (response.hasWordSync) View.VISIBLE else View.GONE

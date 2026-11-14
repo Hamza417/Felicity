@@ -230,6 +230,7 @@ class LrcRepository @Inject constructor(
                     }
                     val listType = object : TypeToken<List<LrcLibResponse>>() {}.type
                     val results: List<LrcLibResponse> = gson.fromJson(response.body.string(), listType)
+                    results.forEach { it.processSyncState() }
                     return@withContext Result.success(results)
                 }
             } catch (e: Exception) {
@@ -273,6 +274,7 @@ class LrcRepository @Inject constructor(
 
                     val listType = object : TypeToken<List<LrcLibResponse>>() {}.type
                     val results: List<LrcLibResponse> = gson.fromJson(responseBody, listType)
+                    results.forEach { it.processSyncState() }
 
                     // Keep only entries that actually have synced lyrics — plain text is handled separately.
                     val filteredResults = results.filter { !it.syncedLyrics.isNullOrBlank() }
@@ -315,6 +317,7 @@ class LrcRepository @Inject constructor(
 
                     val responseBody = response.body.string()
                     val result: LrcLibResponse = gson.fromJson(responseBody, LrcLibResponse::class.java)
+                    result.processSyncState()
                     return@withContext Result.success(result)
                 }
             } catch (e: Exception) {
