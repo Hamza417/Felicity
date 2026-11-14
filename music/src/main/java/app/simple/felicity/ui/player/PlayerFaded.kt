@@ -56,7 +56,7 @@ class PlayerFaded : BasePlayerFragment() {
     override val pcmInfo: TextView
         get() = binding.pcmInfo
 
-    override val seekbar: WaveformSeekbar
+    override val waveformSeekbar: WaveformSeekbar
         get() = binding.seekbar
 
     override val lyrics: View

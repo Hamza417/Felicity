@@ -134,7 +134,7 @@ abstract class BasePlayerFragment : MediaFragment() {
     protected abstract val pcmInfo: TextView
 
     /** The waveform seekbar that shows playback progress. */
-    protected abstract val seekbar: WaveformSeekbar
+    protected abstract val waveformSeekbar: WaveformSeekbar
 
     /** The button that navigates to the lyrics panel. */
     protected abstract val lyrics: View
@@ -384,13 +384,13 @@ abstract class BasePlayerFragment : MediaFragment() {
         // Set initial icon based on saved preference.
         updateRepeatButtonIcon(PlayerPreferences.getRepeatMode())
 
-        seekbar.setOnSeekListener(object : WaveformSeekbar.OnSeekListener {
+        waveformSeekbar.setOnSeekListener(object : WaveformSeekbar.OnSeekListener {
             override fun onSeekEnd(positionMs: Long) {
                 MediaPlaybackManager.seekTo(positionMs)
             }
         })
 
-        seekbar.setOnFlingEndListener { positionMs ->
+        waveformSeekbar.setOnFlingEndListener { positionMs ->
             MediaPlaybackManager.seekTo(positionMs)
         }
 
@@ -400,21 +400,21 @@ abstract class BasePlayerFragment : MediaFragment() {
         //            openBookmarkMenu(positionMs)
         //        }
 
-        seekbar.setOnBarLongTapListener { positionMs ->
+        waveformSeekbar.setOnBarLongTapListener { positionMs ->
             openBookmarkMenu(positionMs)
         }
 
-        seekbar.setLeftLabelProvider { progress, _, _ ->
+        waveformSeekbar.setLeftLabelProvider { progress, _, _ ->
             DateUtils.formatElapsedTime(progress / 1000L)
         }
 
-        seekbar.setRightLabelProvider { _, _, max ->
+        waveformSeekbar.setRightLabelProvider { _, _, max ->
             DateUtils.formatElapsedTime(max / 1000L)
         }
 
         // Observe waveform amplitude data from the ViewModel.
         waveformViewModel.getWaveformData().observe(viewLifecycleOwner) { amplitudes ->
-            seekbar.setAmplitudes(amplitudes)
+            waveformSeekbar.setAmplitudes(amplitudes)
         }
 
         lyrics.setOnClickListener {
@@ -464,7 +464,7 @@ abstract class BasePlayerFragment : MediaFragment() {
         // seekbar so the dot indicators always match what is stored in the database.
         viewLifecycleOwner.lifecycleScope.launch {
             bookmarksViewModel.bookmarks.collect { bookmarkList ->
-                seekbar.bookmarks = bookmarkList.map { it.timestampMs }.toSet()
+                waveformSeekbar.bookmarks = bookmarkList.map { it.timestampMs }.toSet()
             }
         }
     }
@@ -526,7 +526,7 @@ abstract class BasePlayerFragment : MediaFragment() {
     private fun updateMediaControlOverlap() {
         seekbarContainer.isOverlapping = UserInterfacePreferences.isStackMediaControls()
 
-        seekbar.labelGravity = if (seekbarContainer.isOverlapping) {
+        waveformSeekbar.labelGravity = if (seekbarContainer.isOverlapping) {
             when (UserInterfacePreferences.getTimerPosition()) {
                 UserInterfacePreferences.TIMER_POSITION_TOP -> WaveformSeekbar.LABEL_GRAVITY_TOP
                 UserInterfacePreferences.TIMER_POSITION_BOTTOM -> WaveformSeekbar.LABEL_GRAVITY_BOTTOM
@@ -549,13 +549,13 @@ abstract class BasePlayerFragment : MediaFragment() {
         artist.text = audio.getProperArtists()
         album.text = audio.getProperAlbum()
         pcmInfo.text = PcmInfoFormatter.formatPcmInfo(audio)
-        seekbar.setDuration(audio.duration)
-        seekbar.setProgress(MediaPlaybackManager.getSeekPosition(), animate = false)
+        waveformSeekbar.setDuration(audio.duration)
+        waveformSeekbar.setProgress(MediaPlaybackManager.getSeekPosition(), animate = false)
         updatePlayButtonState(MediaPlaybackManager.isPlaying())
         updateFavoriteIcon(audio)
-        seekbar.optics = UserInterfacePreferences.getWaveformOptics()
+        waveformSeekbar.optics = UserInterfacePreferences.getWaveformOptics()
 
-        seekbar.layoutMode = if (UserInterfacePreferences.isWaveformFullMode()) {
+        waveformSeekbar.layoutMode = if (UserInterfacePreferences.isWaveformFullMode()) {
             WaveformSeekbar.LAYOUT_MODE_FULL
         } else {
             WaveformSeekbar.LAYOUT_MODE_SCROLLING
@@ -684,7 +684,7 @@ abstract class BasePlayerFragment : MediaFragment() {
             artist.setTextWithEffect(audio.getProperArtists(), forward, 50L)
             album.setTextWithEffect(audio.getProperAlbum(), forward, 100L)
             pcmInfo.text = PcmInfoFormatter.formatPcmInfo(audio)
-            seekbar.setDurationWithReset(audio.duration)
+            waveformSeekbar.setDurationWithReset(audio.duration)
             lrc.clear()
             lyricsViewModel.loadLrcData()
             bookmarksViewModel.loadBookmarks()
@@ -692,7 +692,7 @@ abstract class BasePlayerFragment : MediaFragment() {
 
         // Always sync seek position. For a same-song re-emission (e.g., predictive back
         // cancel) this is the only seekbar call needed — no reset, no animation from zero.
-        seekbar.setProgress(MediaPlaybackManager.getSeekPosition(), animate = true)
+        waveformSeekbar.setProgress(MediaPlaybackManager.getSeekPosition(), animate = true)
         updateFavoriteIcon(audio)
 
         // Defer waveform decoding until ExoPlayer is actually playing to avoid
@@ -706,7 +706,7 @@ abstract class BasePlayerFragment : MediaFragment() {
 
     override fun onSeekChanged(seek: Long) {
         super.onSeekChanged(seek)
-        seekbar.setProgress(seek, animate = true)
+        waveformSeekbar.setProgress(seek, animate = true)
         lrc.updateTime(seek + lyricsViewModel.syncOffset)
     }
 
@@ -763,7 +763,7 @@ abstract class BasePlayerFragment : MediaFragment() {
                 setVisualizerState()
             }
             PlayerPreferences.WAVEFORM_MODE -> {
-                seekbar.waveformMode = PlayerPreferences.getWaveformMode()
+                waveformSeekbar.waveformMode = PlayerPreferences.getWaveformMode()
             }
             PlayerPreferences.PCM_INFO_MODE -> {
                 val audio = MediaPlaybackManager.getCurrentSong() ?: return
@@ -776,10 +776,10 @@ abstract class BasePlayerFragment : MediaFragment() {
                 updateMediaControlOverlap()
             }
             UserInterfacePreferences.WAVEFORM_OPTICS -> {
-                seekbar.optics = UserInterfacePreferences.getWaveformOptics()
+                waveformSeekbar.optics = UserInterfacePreferences.getWaveformOptics()
             }
             UserInterfacePreferences.WAVEFORM_FULL_MODE -> {
-                seekbar.layoutMode = if (UserInterfacePreferences.isWaveformFullMode()) {
+                waveformSeekbar.layoutMode = if (UserInterfacePreferences.isWaveformFullMode()) {
                     WaveformSeekbar.LAYOUT_MODE_FULL
                 } else {
                     WaveformSeekbar.LAYOUT_MODE_SCROLLING
@@ -914,7 +914,7 @@ abstract class BasePlayerFragment : MediaFragment() {
             }
         }
 
-        seekbar.setLabelsVisible(show)
+        waveformSeekbar.setLabelsVisible(show)
     }
 
     private fun resetImmersiveFadeTimer() {
