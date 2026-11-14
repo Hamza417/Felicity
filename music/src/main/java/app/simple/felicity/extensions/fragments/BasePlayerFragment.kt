@@ -100,6 +100,12 @@ abstract class BasePlayerFragment : MediaFragment() {
     private var lastLoadedAudioId: Long = -1L
 
     /**
+     * True if the immersive view controls are currently being shown.
+     * This is saved across configuration changes.
+     */
+    private var isImmersiveControlsVisible = true
+
+    /**
      * Timer used to fade out buttons in immersive mode.
      */
     private val immersiveFadeRunnable = Runnable {
@@ -169,8 +175,18 @@ abstract class BasePlayerFragment : MediaFragment() {
      */
     protected abstract val mediaControls: FelicityMediaControls
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean(KEY_IMMERSIVE_CONTROLS_VISIBLE, isImmersiveControlsVisible)
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        savedInstanceState?.let {
+            isImmersiveControlsVisible = it.getBoolean(KEY_IMMERSIVE_CONTROLS_VISIBLE, true)
+        }
+
         swipeDownListener = SwipeDownToCloseListener(this, requireView())
 
         requireView().setOnTouchListener { view, event ->
@@ -609,7 +625,9 @@ abstract class BasePlayerFragment : MediaFragment() {
 
     override fun onResume() {
         super.onResume()
-        resetImmersiveFadeTimer()
+        if (isImmersiveControlsVisible) {
+            resetImmersiveFadeTimer()
+        }
     }
 
     override fun onDestroyView() {
@@ -680,6 +698,10 @@ abstract class BasePlayerFragment : MediaFragment() {
         // Defer waveform decoding until ExoPlayer is actually playing to avoid
         // Amplituda and ExoPlayer fighting over the same file I/O resources.
         loadWaveformWhenReady(audio)
+
+        if (!isImmersiveControlsVisible && UserInterfacePreferences.isImmersiveMode()) {
+            fadeImmersiveViews(show = false, animate = false)
+        }
     }
 
     override fun onSeekChanged(seek: Long) {
@@ -856,20 +878,39 @@ abstract class BasePlayerFragment : MediaFragment() {
         )
     }
 
-    private fun fadeImmersiveViews(show: Boolean) {
+    private fun fadeImmersiveViews(show: Boolean, animate: Boolean = true) {
+        isImmersiveControlsVisible = show
         val targetAlpha = if (show) 1f else 0f
 
         getImmersiveViews().forEach { view ->
+            if (show && (view === lyrics || view === repeat)) {
+                view.visibility = View.VISIBLE
+            }
+
             if (view.alpha != targetAlpha) {
-                view.animate()
-                    .alpha(targetAlpha)
-                    .setDuration(500L)
-                    .withEndAction {
-                        view.isEnabled = show
+                if (animate) {
+                    view.animate()
+                        .alpha(targetAlpha)
+                        .setDuration(500L)
+                        .withEndAction {
+                            view.isEnabled = show
+                            if (!show && (view === lyrics || view === repeat)) {
+                                view.visibility = View.GONE
+                            }
+                        }
+                        .start()
+                } else {
+                    view.alpha = targetAlpha
+                    view.isEnabled = show
+                    if (!show && (view === lyrics || view === repeat)) {
+                        view.visibility = View.GONE
                     }
-                    .start()
+                }
             } else {
                 view.isEnabled = show
+                if (!show && (view === lyrics || view === repeat)) {
+                    view.visibility = View.GONE
+                }
             }
         }
 
@@ -888,6 +929,7 @@ abstract class BasePlayerFragment : MediaFragment() {
         /** Back-stack tag shared by all player interface variants. */
         const val TAG = "BasePlayer"
         private const val LOG_TAG = "BasePlayerFragment"
+        private const val KEY_IMMERSIVE_CONTROLS_VISIBLE = "immersive_controls_visible"
     }
 }
 

@@ -1510,11 +1510,18 @@ class WaveformSeekbar @JvmOverloads constructor(
      * Set the visibility of the time labels programmatically (useful for fading out in immersive mode).
      * @param show `true` to fade in, `false` to fade out.
      */
-    fun setLabelsVisible(show: Boolean) {
+    fun setLabelsVisible(show: Boolean, animate: Boolean = true) {
         val newTargetAlpha = if (show) 1f else 0f
         if (targetLabelAlpha == newTargetAlpha) return
 
         targetLabelAlpha = newTargetAlpha
+
+        if (!animate) {
+            labelAnimator?.cancel()
+            labelAlpha = newTargetAlpha
+            invalidate()
+            return
+        }
 
         if (!isDragging && !isFling) {
             labelAnimator?.cancel()
