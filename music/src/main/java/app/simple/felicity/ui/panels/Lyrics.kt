@@ -99,6 +99,7 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         requireHiddenMiniPlayer()
+        requireImmersiveMode()
         setAlignment()
         applyTextSize()
         setAlbumArtBackground(animate = false)
