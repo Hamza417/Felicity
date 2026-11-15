@@ -115,7 +115,6 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
                     reverbDamp = EqualizerPreferences.getReverbDamp(),
                     pitch = EqualizerPreferences.getPitch(),
                     playbackSpeed = EqualizerPreferences.getPlaybackSpeed(),
-                    replayGainDb = EqualizerPreferences.getReplayGainDb(),
                     pitchSpeedLocked = EqualizerPreferences.isPitchSpeedLocked(),
                     isParametricMode = EqualizerPreferences.isParametricEqMode(),
                     peqBandsRaw = EqualizerPreferences.getPeqBandsRaw()
@@ -313,7 +312,6 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
      * @property reverbDamp Reverb high-frequency damping in [0 .. 1].
      * @property pitch Pitch offset in semitones [-12 .. +12]. 0 = no shift.
      * @property playbackSpeed Playback speed multiplier in [0.5 .. 2.0]. 1.0 = normal.
-     * @property replayGainDb Manual replay gain offset in dB [-15 .. +15]. 0.0 = unity.
      * @property pitchSpeedLocked Whether the pitch and speed knobs are linked together.
      * @property isParametricMode Whether the EQ is currently in parametric mode.
      * @property peqBandsRaw Previously saved PEQ band configuration, null if never used.
@@ -333,7 +331,6 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
             val reverbDamp: Float,
             val pitch: Float,
             val playbackSpeed: Float,
-            val replayGainDb: Float = 0f,
             val pitchSpeedLocked: Boolean = false,
             val isParametricMode: Boolean = false,
             val peqBandsRaw: String? = null
@@ -355,7 +352,6 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
                     && reverbDamp == other.reverbDamp
                     && pitch == other.pitch
                     && playbackSpeed == other.playbackSpeed
-                    && replayGainDb == other.replayGainDb
                     && pitchSpeedLocked == other.pitchSpeedLocked
                     && isParametricMode == other.isParametricMode
                     && peqBandsRaw == other.peqBandsRaw
@@ -376,7 +372,6 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
             result = 31 * result + reverbDamp.hashCode()
             result = 31 * result + pitch.hashCode()
             result = 31 * result + playbackSpeed.hashCode()
-            result = 31 * result + replayGainDb.hashCode()
             result = 31 * result + pitchSpeedLocked.hashCode()
             result = 31 * result + isParametricMode.hashCode()
             result = 31 * result + peqBandsRaw.hashCode()

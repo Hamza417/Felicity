@@ -1394,11 +1394,6 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 Log.d(TAG, "Treble gain preference changed to: ${db}dB")
                 audioProcessorManager.applyTreble(db)
             }
-            EqualizerPreferences.REPLAY_GAIN_DB -> {
-                val db = EqualizerPreferences.getReplayGainDb()
-                Log.d(TAG, "Replay gain preference changed to: ${db}dB")
-                audioProcessorManager.applyReplayGain(db)
-            }
             EqualizerPreferences.REVERB_MIX,
             EqualizerPreferences.REVERB_DECAY,
             EqualizerPreferences.REVERB_DAMP,
