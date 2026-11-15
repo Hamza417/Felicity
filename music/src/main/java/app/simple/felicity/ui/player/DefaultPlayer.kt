@@ -1,6 +1,8 @@
 package app.simple.felicity.ui.player
 
 import android.os.Bundle
+import android.transition.AutoTransition
+import android.transition.TransitionManager
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -74,7 +76,6 @@ class DefaultPlayer : BasePlayerFragment() {
     override val visualizer: FelicityVisualizer
         get() = binding.visualizer
 
-
     override val title: TextView
         get() = binding.title
 
@@ -104,6 +105,18 @@ class DefaultPlayer : BasePlayerFragment() {
         lrc.setShowBackground(true)
     }
 
+    override fun fadeImmersiveViews(show: Boolean, animate: Boolean) {
+        super.fadeImmersiveViews(show, animate)
+
+        if (animate) {
+            val transition = AutoTransition()
+            transition.duration = 500L
+            TransitionManager.beginDelayedTransition(binding.root, transition)
+        }
+
+        binding.stripContainer.visibility = if (show) View.VISIBLE else View.GONE
+    }
+
     companion object {
         /**
          * Creates a new instance of [DefaultPlayer] with an empty argument bundle.
@@ -116,7 +129,6 @@ class DefaultPlayer : BasePlayerFragment() {
             fragment.arguments = args
             return fragment
         }
-
 
         const val TAG = "DefaultPlayer"
     }

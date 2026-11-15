@@ -41,6 +41,7 @@
         android:layout_height="match_parent" />
 
     <LinearLayout
+        android:id="@+id/strip_container"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:orientation="vertical"

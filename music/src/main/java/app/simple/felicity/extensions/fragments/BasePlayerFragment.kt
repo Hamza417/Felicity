@@ -894,7 +894,7 @@ abstract class BasePlayerFragment : MediaFragment() {
         )
     }
 
-    private fun fadeImmersiveViews(show: Boolean, animate: Boolean = true) {
+    open fun fadeImmersiveViews(show: Boolean, animate: Boolean = true) {
         isImmersiveControlsVisible = show
         val targetAlpha = if (show) 1f else 0f
 
