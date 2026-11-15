@@ -928,6 +928,7 @@ abstract class BasePlayerFragment : MediaFragment() {
         if (!UserInterfacePreferences.isImmersiveMode()) return
 
         fadeImmersiveViews(true)
+        showSystemBarsTransient()
         handler.removeCallbacks(immersiveFadeRunnable)
         handler.postDelayed(immersiveFadeRunnable, IMMERSIVE_MODE_ON_DELAY)
     }

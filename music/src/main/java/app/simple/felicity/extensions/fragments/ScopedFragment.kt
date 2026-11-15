@@ -21,6 +21,7 @@ import androidx.core.view.doOnPreDraw
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import app.simple.felicity.R
 import app.simple.felicity.decorations.popups.SharedImageDialogMenu
@@ -480,6 +481,20 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
                 view?.let { ViewCompat.setOnApplyWindowInsetsListener(it, null) }
             }
         })
+    }
+
+    protected fun showSystemBarsTransient() {
+        if (!UserInterfacePreferences.isImmersiveMode()) return
+
+        val window = requireActivity().window
+        val controller = WindowInsetsControllerCompat(window, window.decorView)
+        controller.show(WindowInsetsCompat.Type.systemBars())
+
+        postDelayed(2500L) {
+            if (view != null && viewLifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                controller.hide(WindowInsetsCompat.Type.systemBars())
+            }
+        }
     }
 
     protected open fun getTransitionType(): TransitionType = TransitionType.SHARED_AXIS
