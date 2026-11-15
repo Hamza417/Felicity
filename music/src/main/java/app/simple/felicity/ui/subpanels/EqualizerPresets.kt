@@ -73,7 +73,13 @@ class EqualizerPresets : MediaFragment() {
     private fun setupAdapter() {
         adapter = AdapterEqualizerPresets(
                 onPresetClicked = ::applyPreset,
-                onOptionClicked = ::showPresetOptions
+                onOptionClicked = ::showPresetOptions,
+                onSavedPresetsClicked = {
+                    viewModel.switchListType(EqualizerPresetsViewModel.ListType.SAVED_PRESETS)
+                },
+                onHeadphoneProfilesClicked = {
+                    viewModel.switchListType(EqualizerPresetsViewModel.ListType.HEADPHONE_PROFILES)
+                }
         )
         binding.recyclerView.adapter = adapter
     }
@@ -85,10 +91,37 @@ class EqualizerPresets : MediaFragment() {
     private fun observePresets() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.presets.collect { presets ->
-                    adapter?.submitList(presets)
+                launch {
+                    viewModel.currentListType.collect { type ->
+                        adapter?.setListType(type)
+                        updateListForType(type)
+                    }
+                }
+
+                launch {
+                    viewModel.presets.collect { presets ->
+                        if (viewModel.currentListType.value == EqualizerPresetsViewModel.ListType.SAVED_PRESETS) {
+                            adapter?.submitList(presets)
+                        }
+                    }
+                }
+
+                launch {
+                    viewModel.headphoneProfiles.collect { profiles ->
+                        if (viewModel.currentListType.value == EqualizerPresetsViewModel.ListType.HEADPHONE_PROFILES) {
+                            adapter?.submitList(profiles)
+                        }
+                    }
                 }
             }
+        }
+    }
+
+    private fun updateListForType(type: EqualizerPresetsViewModel.ListType) {
+        if (type == EqualizerPresetsViewModel.ListType.SAVED_PRESETS) {
+            adapter?.submitList(viewModel.presets.value)
+        } else {
+            adapter?.submitList(viewModel.headphoneProfiles.value)
         }
     }
 

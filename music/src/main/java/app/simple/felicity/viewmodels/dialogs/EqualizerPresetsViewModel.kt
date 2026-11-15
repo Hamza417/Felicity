@@ -3,13 +3,17 @@ package app.simple.felicity.viewmodels.dialogs
 import android.app.Application
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
+import app.simple.felicity.preferences.EqualizerPreferences
 import app.simple.felicity.repository.database.instances.EqualizerDatabase
 import app.simple.felicity.repository.models.EqualizerPreset
+import app.simple.felicity.shared.models.ParsedBand
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import org.json.JSONArray
 
 /**
  * ViewModel that manages the equalizer preset list and all the database operations
@@ -43,6 +47,27 @@ class EqualizerPresetsViewModel(application: Application) : WrappedViewModel(app
                 initialValue = emptyList()
         )
 
+    private val _headphoneProfiles = MutableStateFlow<List<EqualizerPreset>>(emptyList())
+    val headphoneProfiles: StateFlow<List<EqualizerPreset>> = _headphoneProfiles
+
+    private val _currentListType = MutableStateFlow(
+            try {
+                ListType.valueOf(EqualizerPreferences.getPresetsListType())
+            } catch (_: Exception) {
+                ListType.SAVED_PRESETS
+            }
+    )
+    val currentListType: StateFlow<ListType> = _currentListType
+
+    enum class ListType {
+        SAVED_PRESETS, HEADPHONE_PROFILES
+    }
+
+    fun switchListType(type: ListType) {
+        _currentListType.value = type
+        EqualizerPreferences.setPresetsListType(type.name)
+    }
+
     init {
         // Make sure built-in presets are seeded on first launch. If they're already in the
         // database this is a very fast no-op (the DAO uses IGNORE on conflict).
@@ -51,6 +76,45 @@ class EqualizerPresetsViewModel(application: Application) : WrappedViewModel(app
             if (builtInCount == 0) {
                 db.equalizerPresetDao().insertPresets(EqualizerDatabase.builtInPresets())
             }
+            loadHeadphoneProfiles()
+        }
+    }
+
+    private fun loadHeadphoneProfiles() {
+        try {
+            val jsonString = getApplication<Application>().assets.open("autoeq/headphones.json").bufferedReader().use { it.readText() }
+            val jsonArray = JSONArray(jsonString)
+            val profiles = mutableListOf<EqualizerPreset>()
+
+            for (i in 0 until jsonArray.length()) {
+                val item = jsonArray.getJSONObject(i)
+                val name = item.getString("name")
+                val preampDb = item.getDouble("preampDb").toFloat()
+                val bandsArray = item.getJSONArray("bands")
+                val bands = mutableListOf<ParsedBand>()
+
+                for (j in 0 until bandsArray.length()) {
+                    val bandObj = bandsArray.getJSONObject(j)
+                    bands.add(ParsedBand(
+                            frequencyHz = bandObj.getDouble("frequencyHz").toFloat(),
+                            gain = bandObj.getDouble("gain").toFloat(),
+                            q = bandObj.getDouble("q").toFloat(),
+                            type = bandObj.getInt("type"),
+                            color = bandObj.getInt("color")
+                    ))
+                }
+
+                profiles.add(EqualizerPreset.fromPeqBands(
+                        name = name,
+                        bands = bands,
+                        preampDb = preampDb,
+                        isBuiltIn = true
+                ))
+            }
+
+            _headphoneProfiles.value = profiles
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 

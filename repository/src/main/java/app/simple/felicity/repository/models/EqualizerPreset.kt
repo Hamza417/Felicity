@@ -182,13 +182,14 @@ data class EqualizerPreset(
         fun fromPeqBands(
                 name: String,
                 bands: List<ParsedBand>,
-                preampDb: Float = 0f
+                preampDb: Float = 0f,
+                isBuiltIn: Boolean = false
         ): EqualizerPreset {
             return EqualizerPreset(
                     name = name,
                     bandGainsRaw = gainsToRaw(FloatArray(10)),
                     preampDb = preampDb,
-                    isBuiltIn = false,
+                    isBuiltIn = isBuiltIn,
                     presetType = PRESET_TYPE_PARAMETRIC,
                     peqBandsRaw = peqBandsToRaw(bands),
                     dateCreated = System.currentTimeMillis()

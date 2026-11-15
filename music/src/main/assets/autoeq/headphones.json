@@ -1,0 +1,70 @@
+[
+    {
+        "name": "Sennheiser HD 600",
+        "preampDb": -5.5,
+        "bands": [
+            {
+                "frequencyHz": 20,
+                "gain": 4.5,
+                "q": 0.5,
+                "type": 0,
+                "color": -1
+            },
+            {
+                "frequencyHz": 50,
+                "gain": 3.0,
+                "q": 1.0,
+                "type": 0,
+                "color": -1
+            },
+            {
+                "frequencyHz": 100,
+                "gain": -1.0,
+                "q": 0.7,
+                "type": 0,
+                "color": -1
+            },
+            {
+                "frequencyHz": 2000,
+                "gain": -2.0,
+                "q": 1.5,
+                "type": 0,
+                "color": -1
+            },
+            {
+                "frequencyHz": 8000,
+                "gain": -1.5,
+                "q": 2.0,
+                "type": 0,
+                "color": -1
+            }
+        ]
+    },
+    {
+        "name": "AirPods Pro",
+        "preampDb": -3.0,
+        "bands": [
+            {
+                "frequencyHz": 30,
+                "gain": 2.0,
+                "q": 0.7,
+                "type": 0,
+                "color": -1
+            },
+            {
+                "frequencyHz": 200,
+                "gain": -1.5,
+                "q": 1.0,
+                "type": 0,
+                "color": -1
+            },
+            {
+                "frequencyHz": 4000,
+                "gain": -2.0,
+                "q": 2.0,
+                "type": 0,
+                "color": -1
+            }
+        ]
+    }
+]

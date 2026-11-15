@@ -161,6 +161,12 @@ object EqualizerPreferences {
      */
     const val PEQ_BANDS_RAW = "eq_peq_bands_raw"
 
+    /**
+     * Stores the last selected tab in the Presets screen.
+     * Either "SAVED_PRESETS" or "HEADPHONE_PROFILES".
+     */
+    const val PRESETS_LIST_TYPE = "presets_list_type"
+
     fun setBalance(pan: Float) {
         SharedPreferences.getSharedPreferences().edit { putFloat(BALANCE, pan.coerceIn(-1f, 1f)) }
     }
@@ -503,5 +509,20 @@ object EqualizerPreferences {
      */
     fun getPeqBandsRaw(): String? {
         return SharedPreferences.getSharedPreferences().getString(PEQ_BANDS_RAW, null)
+    }
+
+    /**
+     * Persists the last selected tab in the Equalizer Presets screen.
+     */
+    fun setPresetsListType(type: String) {
+        SharedPreferences.getSharedPreferences().edit { putString(PRESETS_LIST_TYPE, type) }
+    }
+
+    /**
+     * Retrieves the last selected tab in the Equalizer Presets screen.
+     * Defaults to "SAVED_PRESETS".
+     */
+    fun getPresetsListType(): String {
+        return SharedPreferences.getSharedPreferences().getString(PRESETS_LIST_TYPE, "SAVED_PRESETS") ?: "SAVED_PRESETS"
     }
 }
