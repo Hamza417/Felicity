@@ -93,6 +93,7 @@ class VolumeKnob : ScopedBottomSheetFragment() {
 
         startCloseRunnable()
         setVolumeKnobPosition()
+        setVolumeKnobGravity()
         
         binding.dotsIndicator.setCount(2)
         binding.dotsIndicator.setCurrentPage(0)
