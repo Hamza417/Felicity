@@ -901,19 +901,23 @@ abstract class BasePlayerFragment : MediaFragment() {
         getImmersiveViews().forEach { view ->
             if (view.alpha != targetAlpha) {
                 if (animate) {
+                    if (show) view.visibility = View.VISIBLE
                     view.animate()
                         .alpha(targetAlpha)
                         .setDuration(500L)
                         .withEndAction {
                             view.isEnabled = show
+                            if (!show) view.visibility = View.INVISIBLE
                         }
                         .start()
                 } else {
                     view.alpha = targetAlpha
                     view.isEnabled = show
+                    view.visibility = if (show) View.VISIBLE else View.INVISIBLE
                 }
             } else {
                 view.isEnabled = show
+                view.visibility = if (show) View.VISIBLE else View.INVISIBLE
             }
         }
 
