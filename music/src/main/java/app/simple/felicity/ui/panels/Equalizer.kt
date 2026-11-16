@@ -116,7 +116,7 @@ class Equalizer : MediaFragment() {
         binding.equalizerScreen.savePreset.setOnClickListener {
             if (EqualizerPreferences.isParametricEqMode()) {
                 // Save the current parametric EQ bands as a PEQ preset.
-                childFragmentManager.showSaveEqualizerPreset { name ->
+                childFragmentManager.showSaveEqualizerPreset { name, category ->
                     val bands = binding.equalizerScreen.equalizerSliders
                         .getPeqBands()
                         .map { band ->
@@ -126,17 +126,19 @@ class Equalizer : MediaFragment() {
                             name = name,
                             bands = bands,
                             preampDb = EqualizerManager.getPreamp(),
+                            category = category,
                             onDuplicate = { /* show warning */ },
                             onSuccess = { /* list auto-updates via Room */ }
                     )
                 }
             } else {
                 // Save the current 10-band graphic EQ gains as a normal preset.
-                childFragmentManager.showSaveEqualizerPreset { name ->
+                childFragmentManager.showSaveEqualizerPreset { name, category ->
                     viewModel.savePreset(
                             name = name,
                             gains = EqualizerManager.getAllGains(),
                             preampDb = EqualizerManager.getPreamp(),
+                            category = category,
                             onDuplicate = { /* show warning */ },
                             onSuccess = { /* the preset list updates automatically via Room */ }
                     )

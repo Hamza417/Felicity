@@ -66,6 +66,12 @@ data class EqualizerPreset(
         val presetType: String = PRESET_TYPE_GRAPHIC,
 
         /**
+         * The category of the preset, such as [CATEGORY_SAVED_PRESETS] or [CATEGORY_HEADPHONE_PROFILES].
+         */
+        @ColumnInfo(name = "category", defaultValue = CATEGORY_SAVED_PRESETS)
+        val category: String = CATEGORY_SAVED_PRESETS,
+
+        /**
          * Pipe-separated PEQ band data for parametric presets. Each band is stored as
          * "gain:q:freq" — three floats separated by colons, bands separated by pipes.
          * This field is null for graphic presets and not meaningful in that context.
@@ -118,6 +124,9 @@ data class EqualizerPreset(
         const val PRESET_TYPE_GRAPHIC = "GRAPHIC"
         const val PRESET_TYPE_PARAMETRIC = "PARAMETRIC"
 
+        const val CATEGORY_SAVED_PRESETS = "SAVED_PRESETS"
+        const val CATEGORY_HEADPHONE_PROFILES = "HEADPHONE_PROFILES"
+
         /**
          * Converts a [FloatArray] of 10 band gains into the comma-separated string format
          * expected by [bandGainsRaw]. This is the reverse of [getBandGains].
@@ -158,7 +167,8 @@ data class EqualizerPreset(
                 name: String,
                 gains: FloatArray,
                 preampDb: Float = 0f,
-                isBuiltIn: Boolean = false
+                isBuiltIn: Boolean = false,
+                category: String = CATEGORY_SAVED_PRESETS
         ): EqualizerPreset {
             return EqualizerPreset(
                     name = name,
@@ -166,6 +176,7 @@ data class EqualizerPreset(
                     preampDb = preampDb,
                     isBuiltIn = isBuiltIn,
                     presetType = PRESET_TYPE_GRAPHIC,
+                    category = category,
                     dateCreated = System.currentTimeMillis()
             )
         }
@@ -183,7 +194,8 @@ data class EqualizerPreset(
                 name: String,
                 bands: List<ParsedBand>,
                 preampDb: Float = 0f,
-                isBuiltIn: Boolean = false
+                isBuiltIn: Boolean = false,
+                category: String = CATEGORY_SAVED_PRESETS
         ): EqualizerPreset {
             return EqualizerPreset(
                     name = name,
@@ -191,6 +203,7 @@ data class EqualizerPreset(
                     preampDb = preampDb,
                     isBuiltIn = isBuiltIn,
                     presetType = PRESET_TYPE_PARAMETRIC,
+                    category = category,
                     peqBandsRaw = peqBandsToRaw(bands),
                     dateCreated = System.currentTimeMillis()
             )

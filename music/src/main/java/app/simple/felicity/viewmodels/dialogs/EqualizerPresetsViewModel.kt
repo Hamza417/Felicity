@@ -11,6 +11,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.json.JSONArray
@@ -41,14 +43,34 @@ class EqualizerPresetsViewModel(application: Application) : WrappedViewModel(app
      */
     val presets: StateFlow<List<EqualizerPreset>> = db.equalizerPresetDao()
         .getAllPresetsFlow()
+        .map { list ->
+            list.filter {
+                it.category == EqualizerPreset.CATEGORY_SAVED_PRESETS
+            }
+        }
         .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
                 initialValue = emptyList()
         )
 
-    private val _headphoneProfiles = MutableStateFlow<List<EqualizerPreset>>(emptyList())
-    val headphoneProfiles: StateFlow<List<EqualizerPreset>> = _headphoneProfiles
+    private val _jsonHeadphoneProfiles = MutableStateFlow<List<EqualizerPreset>>(emptyList())
+
+    val headphoneProfiles: StateFlow<List<EqualizerPreset>> = combine(
+            _jsonHeadphoneProfiles,
+            db.equalizerPresetDao().getAllPresetsFlow()
+                .map { list ->
+                    list.filter {
+                        it.category == EqualizerPreset.CATEGORY_HEADPHONE_PROFILES
+                    }
+                }
+    ) { json, dbProfiles ->
+        dbProfiles + json
+    }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList()
+    )
 
     private val _currentListType = MutableStateFlow(
             try {
@@ -112,7 +134,7 @@ class EqualizerPresetsViewModel(application: Application) : WrappedViewModel(app
                 ))
             }
 
-            _headphoneProfiles.value = profiles
+            _jsonHeadphoneProfiles.value = profiles
         } catch (e: Exception) {
             e.printStackTrace()
         }

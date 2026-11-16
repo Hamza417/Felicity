@@ -29,7 +29,7 @@ import kotlinx.coroutines.launch
  */
 @Database(
         entities = [EqualizerPreset::class],
-        version = 2,
+        version = 3,
         exportSchema = true
 )
 abstract class EqualizerDatabase : RoomDatabase() {
@@ -63,7 +63,7 @@ abstract class EqualizerDatabase : RoomDatabase() {
 
         private fun buildDatabase(context: Context): EqualizerDatabase {
             return Room.databaseBuilder(context, EqualizerDatabase::class.java, DB_NAME)
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .addCallback(object : Callback() {
                     override fun onCreate(db: SupportSQLiteDatabase) {
                         super.onCreate(db)
@@ -90,6 +90,14 @@ abstract class EqualizerDatabase : RoomDatabase() {
                 )
                 db.execSQL(
                         "ALTER TABLE equalizer_presets ADD COLUMN peq_bands_raw TEXT"
+                )
+            }
+        }
+
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                        "ALTER TABLE equalizer_presets ADD COLUMN category TEXT NOT NULL DEFAULT 'SAVED_PRESETS'"
                 )
             }
         }
