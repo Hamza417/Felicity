@@ -48,7 +48,11 @@ class ImportEqualizerPreset : ScopedBottomSheetFragment() {
             return
         }
 
-        binding.presetWavePreview.setPeqBands(preset.bands)
+        if (preset.isPeq) {
+            binding.presetWavePreview.setPeqBands(preset.bands)
+        } else {
+            binding.presetWavePreview.setGains(preset.bands.map { it.gain }.toFloatArray())
+        }
 
         binding.presetNameInput.setText(preset.name)
         binding.presetNameInput.requestFocus()

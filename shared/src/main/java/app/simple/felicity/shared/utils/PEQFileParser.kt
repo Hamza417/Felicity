@@ -79,11 +79,13 @@ object PEQFileParser {
      *                     Defaults to 0 dB when the line is absent.
      * @property bands     All enabled bands as (gainDb, qFactor, frequencyHz) triples,
      *                     in the order they appeared in the file.
+     * @property isPeq     Whether the preset is parametric or a 10-band graphic EQ curve.
      */
     data class ParsedPreset(
             val name: String,
             val preampDb: Float,
-            val bands: List<ParsedBand>
+            val bands: List<ParsedBand>,
+            val isPeq: Boolean = true
     )
 
     /**
@@ -267,7 +269,7 @@ object PEQFileParser {
         val bands = sampled.map { (freq, gain) -> ParsedBand(gain, 1.0f, freq, fallbackBandColor) }
         if (bands.isEmpty()) return null
 
-        return ParsedPreset(name = fallbackName, preampDb = preampDb, bands = bands)
+        return ParsedPreset(name = fallbackName, preampDb = preampDb, bands = bands, isPeq = false)
     }
 
     // -------------------------------------------------------------------------

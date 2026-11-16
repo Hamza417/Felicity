@@ -22,6 +22,7 @@ import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.EqualizerPreferences
 import app.simple.felicity.repository.models.EqualizerPreset
 import app.simple.felicity.shared.utils.PEQFileParser
+import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.viewmodels.dialogs.EqualizerPresetsViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -65,12 +66,16 @@ class EqualizerPresets : MediaFragment() {
                     ?.use { it.readText() }
                     ?: throw IllegalArgumentException("Failed to read PEQ file")
 
-                val preset = PEQFileParser.parse(text, fileName, app.simple.felicity.theme.managers.ThemeManager.accent.primaryAccentColor)
+                val preset = PEQFileParser.parse(text, fileName, ThemeManager.accent.primaryAccentColor)
                     ?: throw IllegalArgumentException("File contains no valid enabled filter lines")
 
                 withContext(Dispatchers.Main) {
                     childFragmentManager.showImportEqualizerPreset(preset) { name, category ->
-                        viewModel.savePeqPreset(name, preset.bands, preset.preampDb, category)
+                        if (preset.isPeq) {
+                            viewModel.savePeqPreset(name, preset.bands, preset.preampDb, category)
+                        } else {
+                            viewModel.savePreset(name, preset.bands.map { it.gain }.toFloatArray(), preset.preampDb, category)
+                        }
                     }
                 }
             } catch (e: Exception) {
