@@ -69,7 +69,9 @@
                     android:paddingHorizontal="@dimen/padding_10"
                     android:text="@string/presets"
                     android:textSize="@dimen/text_size_14"
+                    android:drawablePadding="@dimen/padding_5"
                     app:appFontStyle="bold"
+                    app:drawableStartCompat="@drawable/ic_tune_16dp"
                     app:drawableTintStyle="accent"
                     app:textColorStyle="tertiary" />
 
@@ -83,7 +85,9 @@
                     android:layout_marginStart="@dimen/padding_10"
                     android:text="@string/headphone_profiles"
                     android:textSize="@dimen/text_size_14"
+                    android:drawablePadding="@dimen/padding_5"
                     app:appFontStyle="bold"
+                    app:drawableStartCompat="@drawable/ic_headset_16dp"
                     app:drawableTintStyle="accent"
                     app:textColorStyle="tertiary" />
 
