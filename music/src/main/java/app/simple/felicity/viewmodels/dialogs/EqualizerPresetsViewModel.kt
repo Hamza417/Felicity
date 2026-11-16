@@ -7,6 +7,7 @@ import app.simple.felicity.preferences.EqualizerPreferences
 import app.simple.felicity.repository.database.instances.EqualizerDatabase
 import app.simple.felicity.repository.models.EqualizerPreset
 import app.simple.felicity.shared.models.ParsedBand
+import app.simple.felicity.theme.managers.ThemeManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -15,7 +16,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import org.json.JSONArray
 
 /**
  * ViewModel that manages the equalizer preset list and all the database operations
@@ -104,34 +104,67 @@ class EqualizerPresetsViewModel(application: Application) : WrappedViewModel(app
 
     private fun loadHeadphoneProfiles() {
         try {
-            val jsonString = getApplication<Application>().assets.open("autoeq/headphones.json").bufferedReader().use { it.readText() }
-            val jsonArray = JSONArray(jsonString)
+            val assets = getApplication<Application>().assets
+            val files = assets.list("profiles") ?: return
             val profiles = mutableListOf<EqualizerPreset>()
 
-            for (i in 0 until jsonArray.length()) {
-                val item = jsonArray.getJSONObject(i)
-                val name = item.getString("name")
-                val preampDb = item.getDouble("preampDb").toFloat()
-                val bandsArray = item.getJSONArray("bands")
-                val bands = mutableListOf<ParsedBand>()
+            for (file in files) {
+                if (file.endsWith(".txt")) {
+                    val name = file.removeSuffix(".txt")
+                    val content = assets.open("profiles/$file").bufferedReader().use { it.readText() }
 
-                for (j in 0 until bandsArray.length()) {
-                    val bandObj = bandsArray.getJSONObject(j)
-                    bands.add(ParsedBand(
-                            frequencyHz = bandObj.getDouble("frequencyHz").toFloat(),
-                            gain = bandObj.getDouble("gain").toFloat(),
-                            q = bandObj.getDouble("q").toFloat(),
-                            type = bandObj.getInt("type"),
-                            color = bandObj.getInt("color")
-                    ))
+                    val lines = content.lines()
+                    var preampDb = 0f
+                    val bands = mutableListOf<ParsedBand>()
+
+                    for (line in lines) {
+                        val tLine = line.trim()
+                        if (tLine.startsWith("Preamp:")) {
+                            // Preamp: -6.1 dB
+                            val match = Regex("Preamp:\\s*([+-]?[0-9.]+)\\s*dB").find(tLine)
+                            if (match != null) {
+                                preampDb = match.groupValues[1].toFloatOrNull() ?: 0f
+                            }
+                        } else if (tLine.startsWith("Filter ")) {
+                            // Filter 1: ON LSC Fc 105 Hz Gain -4.2 dB Q 0.70
+                            // Filter 2: ON PK Fc 143 Hz Gain -5.2 dB Q 1.10
+                            // Filter 6: ON HSC Fc 10000 Hz Gain -1.0 dB Q 0.70
+                            val typeMatch = Regex("ON\\s+([A-Z]+)\\s+Fc").find(tLine)
+                            val freqMatch = Regex("Fc\\s+([0-9.]+)\\s+Hz").find(tLine)
+                            val gainMatch = Regex("Gain\\s+([+-]?[0-9.]+)\\s+dB").find(tLine)
+                            val qMatch = Regex("Q\\s+([0-9.]+)").find(tLine)
+
+                            if (typeMatch != null && freqMatch != null && gainMatch != null && qMatch != null) {
+                                val typeStr = typeMatch.groupValues[1]
+                                val type = when (typeStr) {
+                                    "LSC" -> 1 // Low Shelf
+                                    "HSC" -> 2 // High Shelf
+                                    else -> 0 // Peaking (PK)
+                                }
+
+                                val color = ThemeManager.accent.primaryAccentColor
+
+                                bands.add(ParsedBand(
+                                        frequencyHz = freqMatch.groupValues[1].toFloat(),
+                                        gain = gainMatch.groupValues[1].toFloat(),
+                                        q = qMatch.groupValues[1].toFloat(),
+                                        type = type,
+                                        color = color
+                                ))
+                            }
+                        }
+                    }
+
+                    if (bands.isNotEmpty()) {
+                        profiles.add(EqualizerPreset.fromPeqBands(
+                                name = name,
+                                bands = bands,
+                                preampDb = preampDb,
+                                isBuiltIn = true,
+                                category = EqualizerPreset.CATEGORY_HEADPHONE_PROFILES
+                        ))
+                    }
                 }
-
-                profiles.add(EqualizerPreset.fromPeqBands(
-                        name = name,
-                        bands = bands,
-                        preampDb = preampDb,
-                        isBuiltIn = true
-                ))
             }
 
             _jsonHeadphoneProfiles.value = profiles
