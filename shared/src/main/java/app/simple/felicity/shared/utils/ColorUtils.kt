@@ -262,4 +262,11 @@ object ColorUtils {
         val b = (Color.blue(colorFrom) * inverseRatio + Color.blue(colorTo) * ratio).toInt()
         return Color.argb(a, r, g, b)
     }
+
+    /**
+     * Returns true if the color is white or empty (0).
+     */
+    fun Int.isColorWhiteOrEmpty(): Boolean {
+        return this == 0 || this == Color.WHITE
+    }
 }

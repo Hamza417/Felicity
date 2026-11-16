@@ -6,7 +6,7 @@ import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.preferences.EqualizerPreferences
 import app.simple.felicity.repository.database.instances.EqualizerDatabase
 import app.simple.felicity.repository.models.EqualizerPreset
-import app.simple.felicity.shared.models.ParsedBand
+import app.simple.felicity.shared.utils.PEQFileParser
 import app.simple.felicity.theme.managers.ThemeManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -110,56 +110,14 @@ class EqualizerPresetsViewModel(application: Application) : WrappedViewModel(app
 
             for (file in files) {
                 if (file.endsWith(".txt")) {
-                    val name = file.removeSuffix(".txt")
                     val content = assets.open("profiles/$file").bufferedReader().use { it.readText() }
 
-                    val lines = content.lines()
-                    var preampDb = 0f
-                    val bands = mutableListOf<ParsedBand>()
-
-                    for (line in lines) {
-                        val tLine = line.trim()
-                        if (tLine.startsWith("Preamp:")) {
-                            // Preamp: -6.1 dB
-                            val match = Regex("Preamp:\\s*([+-]?[0-9.]+)\\s*dB").find(tLine)
-                            if (match != null) {
-                                preampDb = match.groupValues[1].toFloatOrNull() ?: 0f
-                            }
-                        } else if (tLine.startsWith("Filter ")) {
-                            // Filter 1: ON LSC Fc 105 Hz Gain -4.2 dB Q 0.70
-                            // Filter 2: ON PK Fc 143 Hz Gain -5.2 dB Q 1.10
-                            // Filter 6: ON HSC Fc 10000 Hz Gain -1.0 dB Q 0.70
-                            val typeMatch = Regex("ON\\s+([A-Z]+)\\s+Fc").find(tLine)
-                            val freqMatch = Regex("Fc\\s+([0-9.]+)\\s+Hz").find(tLine)
-                            val gainMatch = Regex("Gain\\s+([+-]?[0-9.]+)\\s+dB").find(tLine)
-                            val qMatch = Regex("Q\\s+([0-9.]+)").find(tLine)
-
-                            if (typeMatch != null && freqMatch != null && gainMatch != null && qMatch != null) {
-                                val typeStr = typeMatch.groupValues[1]
-                                val type = when (typeStr) {
-                                    "LSC" -> 1 // Low Shelf
-                                    "HSC" -> 2 // High Shelf
-                                    else -> 0 // Peaking (PK)
-                                }
-
-                                val color = ThemeManager.accent.primaryAccentColor
-
-                                bands.add(ParsedBand(
-                                        frequencyHz = freqMatch.groupValues[1].toFloat(),
-                                        gain = gainMatch.groupValues[1].toFloat(),
-                                        q = qMatch.groupValues[1].toFloat(),
-                                        type = type,
-                                        color = color
-                                ))
-                            }
-                        }
-                    }
-
-                    if (bands.isNotEmpty()) {
+                    val parsed = PEQFileParser.parse(content, file, ThemeManager.accent.primaryAccentColor)
+                    if (parsed != null && parsed.bands.isNotEmpty()) {
                         profiles.add(EqualizerPreset.fromPeqBands(
-                                name = name,
-                                bands = bands,
-                                preampDb = preampDb,
+                                name = parsed.name,
+                                bands = parsed.bands,
+                                preampDb = parsed.preampDb,
                                 isBuiltIn = true,
                                 category = EqualizerPreset.CATEGORY_HEADPHONE_PROFILES
                         ))
