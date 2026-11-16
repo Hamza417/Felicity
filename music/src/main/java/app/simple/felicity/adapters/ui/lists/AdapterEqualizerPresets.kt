@@ -41,6 +41,7 @@ class AdapterEqualizerPresets(
         private val onOptionClicked: (EqualizerPreset, View) -> Unit = { _, _ -> },
         private val onSavedPresetsClicked: () -> Unit = {},
         private val onHeadphoneProfilesClicked: () -> Unit = {},
+        private val onImportClicked: () -> Unit = {},
 ) : ListAdapter<EqualizerPreset, VerticalListViewHolder>(DIFF_CALLBACK) {
 
     /** The id of the currently applied preset, or -1 if none is active. */
@@ -122,6 +123,10 @@ class AdapterEqualizerPresets(
 
             holder.binding.headphoneProfiles.setOnClickListener {
                 onHeadphoneProfilesClicked()
+            }
+
+            holder.binding.importPreset.setOnClickListener {
+                onImportClicked()
             }
         }
     }

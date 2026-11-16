@@ -6,6 +6,7 @@ import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.preferences.EqualizerPreferences
 import app.simple.felicity.repository.database.instances.EqualizerDatabase
 import app.simple.felicity.repository.models.EqualizerPreset
+import app.simple.felicity.shared.models.ParsedBand
 import app.simple.felicity.shared.utils.PEQFileParser
 import app.simple.felicity.theme.managers.ThemeManager
 import kotlinx.coroutines.Dispatchers
@@ -139,13 +140,35 @@ class EqualizerPresetsViewModel(application: Application) : WrappedViewModel(app
      * @param gains    The 10 current band gains in dB to snapshot.
      * @param preampDb The current preamp gain in dB.
      */
-    fun savePreset(name: String, gains: FloatArray, preampDb: Float) {
+    fun savePreset(name: String, gains: FloatArray, preampDb: Float, category: String = EqualizerPreset.CATEGORY_SAVED_PRESETS) {
         viewModelScope.launch(Dispatchers.IO) {
             val preset = EqualizerPreset.fromGains(
                     name = name.trim(),
                     gains = gains,
                     preampDb = preampDb,
-                    isBuiltIn = false
+                    isBuiltIn = false,
+                    category = category
+            )
+            db.equalizerPresetDao().insertPreset(preset)
+        }
+    }
+
+    /**
+     * Saves the current PEQ settings as a new user-created preset with the given name.
+     *
+     * @param name     Display name the user typed in the save dialog.
+     * @param bands    The parsed parametric bands.
+     * @param preampDb The preamp gain in dB.
+     * @param category The category to save the preset in.
+     */
+    fun savePeqPreset(name: String, bands: List<ParsedBand>, preampDb: Float, category: String = EqualizerPreset.CATEGORY_SAVED_PRESETS) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val preset = EqualizerPreset.fromPeqBands(
+                    name = name.trim(),
+                    bands = bands,
+                    preampDb = preampDb,
+                    isBuiltIn = false,
+                    category = category
             )
             db.equalizerPresetDao().insertPreset(preset)
         }
