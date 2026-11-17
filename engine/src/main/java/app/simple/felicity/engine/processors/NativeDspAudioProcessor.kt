@@ -556,9 +556,8 @@ class NativeDspAudioProcessor(
      * @param db Gain in dB, clamped to [-12, +12].
      */
     fun setBassDb(db: Float) {
-        clearPeqBands()
         bassDb = db.coerceIn(-12f, 12f)
-        dspProcessor?.setEqBands(bandGains, bassDb, trebleDb)
+        dspProcessor?.setBassAndTreble(bassDb, trebleDb)
     }
 
     /**
@@ -597,9 +596,8 @@ class NativeDspAudioProcessor(
      * @param db Gain in dB, clamped to [-12, +12].
      */
     fun setTrebleDb(db: Float) {
-        clearPeqBands()
         trebleDb = db.coerceIn(-12f, 12f)
-        dspProcessor?.setEqBands(bandGains, bassDb, trebleDb)
+        dspProcessor?.setBassAndTreble(bassDb, trebleDb)
     }
 
     /**
@@ -676,6 +674,7 @@ class NativeDspAudioProcessor(
         // push the standard 10-band graphic EQ so the two modes don't step on each other.
         if (peqGains.isNotEmpty()) {
             dsp.setPeqBands(peqGains, peqFreqs, peqQValues, peqTypes)
+            dsp.setBassAndTreble(bassDb, trebleDb)
         } else {
             dsp.setEqBands(bandGains, bassDb, trebleDb)
         }
