@@ -236,6 +236,8 @@ class AudioProcessorManager {
     fun applyEqualizerState() {
         if (EqualizerPreferences.isParametricEqMode()) {
             applyPeqStateFromPreferences()
+            nativeDspProcessor.setBassDb(EqualizerPreferences.getBassDb())
+            nativeDspProcessor.setTrebleDb(EqualizerPreferences.getTrebleDb())
         } else {
             nativeDspProcessor.setEqBands(
                     EqualizerPreferences.getAllBandGains(),
