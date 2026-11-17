@@ -139,6 +139,7 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
             name: String,
             gains: FloatArray,
             preampDb: Float,
+            category: String = EqualizerPreset.CATEGORY_SAVED_PRESETS,
             onDuplicate: () -> Unit,
             onSuccess: () -> Unit
     ) {
@@ -159,7 +160,8 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
                     name = trimmedName,
                     gains = gains,
                     preampDb = preampDb,
-                    isBuiltIn = false
+                    isBuiltIn = false,
+                    category = category
             )
             db.equalizerPresetDao().insertPreset(preset)
             withContext(Dispatchers.Main) { onSuccess() }
@@ -180,6 +182,7 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
             name: String,
             bands: List<ParsedBand>,
             preampDb: Float,
+            category: String = EqualizerPreset.CATEGORY_SAVED_PRESETS,
             onDuplicate: () -> Unit,
             onSuccess: () -> Unit
     ) {
@@ -199,7 +202,9 @@ class EqualizerViewModel(application: Application) : WrappedViewModel(applicatio
             val preset = EqualizerPreset.fromPeqBands(
                     name = trimmedName,
                     bands = bands,
-                    preampDb = preampDb
+                    preampDb = preampDb,
+                    isBuiltIn = false,
+                    category = category
             )
             db.equalizerPresetDao().insertPreset(preset)
             withContext(Dispatchers.Main) { onSuccess() }

@@ -9,6 +9,7 @@ import app.simple.felicity.databinding.DialogSaveEqualizerPresetBinding
 import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.extensions.dialogs.ScopedBottomSheetFragment
 import app.simple.felicity.preferences.EqualizerPreferences
+import app.simple.felicity.repository.models.EqualizerPreset
 import app.simple.felicity.shared.utils.ViewUtils.shakeView
 
 /**
@@ -29,8 +30,10 @@ class SaveEqualizerPreset : ScopedBottomSheetFragment() {
 
     private lateinit var binding: DialogSaveEqualizerPresetBinding
 
-    /** Callback invoked with the trimmed preset name when the user confirms the save. */
-    var onSave: ((String) -> Unit)? = null
+    /** Callback invoked with the trimmed preset name and category when the user confirms the save. */
+    var onSave: ((String, String) -> Unit)? = null
+
+    private var currentCategory = EqualizerPreset.CATEGORY_SAVED_PRESETS
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = DialogSaveEqualizerPresetBinding.inflate(inflater, container, false)
@@ -52,6 +55,18 @@ class SaveEqualizerPreset : ScopedBottomSheetFragment() {
         // no need to tap the input field first.
         binding.presetNameInput.requestFocus()
 
+        updateCategoryUi()
+
+        binding.categorySavedPresets.setOnClickListener {
+            currentCategory = EqualizerPreset.CATEGORY_SAVED_PRESETS
+            updateCategoryUi()
+        }
+
+        binding.categoryHeadphoneProfiles.setOnClickListener {
+            currentCategory = EqualizerPreset.CATEGORY_HEADPHONE_PROFILES
+            updateCategoryUi()
+        }
+
         binding.cancel.setOnClickListener {
             dismissAllowingStateLoss()
         }
@@ -59,13 +74,18 @@ class SaveEqualizerPreset : ScopedBottomSheetFragment() {
         binding.save.setOnClickListener {
             val name = binding.presetNameInput.text.toString().trim()
             if (name.isNotEmpty()) {
-                onSave?.invoke(name)
+                onSave?.invoke(name, currentCategory)
                 dismissAllowingStateLoss()
             } else {
                 // Gently shake the input field to hint that a name is required.
                 binding.presetNameInput.shakeView()
             }
         }
+    }
+
+    private fun updateCategoryUi() {
+        binding.categorySavedPresets.setUseAccentColor(currentCategory == EqualizerPreset.CATEGORY_SAVED_PRESETS)
+        binding.categoryHeadphoneProfiles.setUseAccentColor(currentCategory == EqualizerPreset.CATEGORY_HEADPHONE_PROFILES)
     }
 
     companion object {
@@ -79,9 +99,9 @@ class SaveEqualizerPreset : ScopedBottomSheetFragment() {
         /**
          * Shows the "Save Preset" dialog from a [FragmentManager].
          *
-         * @param onSave Called with the trimmed preset name when the user confirms.
+         * @param onSave Called with the trimmed preset name and category when the user confirms.
          */
-        fun FragmentManager.showSaveEqualizerPreset(onSave: (String) -> Unit) {
+        fun FragmentManager.showSaveEqualizerPreset(onSave: (String, String) -> Unit) {
             val fragment = newInstance()
             fragment.onSave = onSave
             fragment.show(this, TAG)

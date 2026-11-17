@@ -1,5 +1,6 @@
 package app.simple.felicity.shared.utils
 
+import android.graphics.Color
 import app.simple.felicity.shared.models.ParsedBand
 import app.simple.felicity.shared.utils.PEQFileParser.CSV_MATCH_THRESHOLD
 import app.simple.felicity.shared.utils.PEQFileParser.MAX_GRAPHIC_EQ_BANDS
@@ -78,11 +79,13 @@ object PEQFileParser {
      *                     Defaults to 0 dB when the line is absent.
      * @property bands     All enabled bands as (gainDb, qFactor, frequencyHz) triples,
      *                     in the order they appeared in the file.
+     * @property isPeq     Whether the preset is parametric or a 10-band graphic EQ curve.
      */
     data class ParsedPreset(
             val name: String,
             val preampDb: Float,
-            val bands: List<ParsedBand>
+            val bands: List<ParsedBand>,
+            val isPeq: Boolean = true
     )
 
     /**
@@ -96,25 +99,26 @@ object PEQFileParser {
      *
      * @param text     The full text content of the imported file.
      * @param fileName The original file name (with or without an extension).
+     * @param fallbackBandColor The color to use when the parsed file does not specify a valid band color.
      */
-    fun parse(text: String, fileName: String): ParsedPreset? {
+    fun parse(text: String, fileName: String, fallbackBandColor: Int = Color.DKGRAY): ParsedPreset? {
         val presetName = fileName.substringBeforeLast(".", fileName)
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return null
 
         // 1. JSON is the most unambiguous signature — try it first if it looks like JSON.
         if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
-            parseJson(trimmed, presetName)?.let { return it }
+            parseJson(trimmed, presetName, fallbackBandColor)?.let { return it }
         }
 
         // 2. Equalizer APO GraphicEQ single-line curve.
-        parseGraphicEq(text, presetName)?.let { return it }
+        parseGraphicEq(text, presetName, fallbackBandColor)?.let { return it }
 
         // 3. Standard AutoEQ / Equalizer APO ParametricEQ plain text (Preamp:/Filter lines).
-        parsePlainText(text, presetName)?.let { return it }
+        parsePlainText(text, presetName, fallbackBandColor)?.let { return it }
 
         // 4. Last resort: raw numeric "freq, gain[, q]" rows with no keywords at all.
-        parseCsv(text, presetName)?.let { return it }
+        parseCsv(text, presetName, fallbackBandColor)?.let { return it }
 
         return null
     }
@@ -128,7 +132,7 @@ object PEQFileParser {
      * (first one wins), or a bare array of band objects with no wrapper. Key names are
      * matched against every alias used by the tools in the wild.
      */
-    private fun parseJson(text: String, fallbackName: String): ParsedPreset? {
+    private fun parseJson(text: String, fallbackName: String, fallbackBandColor: Int = Color.DKGRAY): ParsedPreset? {
         return try {
             when (val root = JSONTokener(text).nextValue()) {
                 is JSONArray -> {
@@ -137,12 +141,12 @@ object PEQFileParser {
                     // object has a bands/filters/peq/eq key, a band object has a frequency key.
                     val first = root.optJSONObject(0) ?: return null
                     if (findBandsArray(first) != null || first.has("name")) {
-                        parseJsonPreset(first, fallbackName)
+                        parseJsonPreset(first, fallbackName, fallbackBandColor)
                     } else {
-                        parseJsonBandArray(root, fallbackName, preambDb = 0f)
+                        parseJsonBandArray(root, fallbackName, 0f, fallbackBandColor)
                     }
                 }
-                is JSONObject -> parseJsonPreset(root, fallbackName)
+                is JSONObject -> parseJsonPreset(root, fallbackName, fallbackBandColor)
                 else -> null
             }
         } catch (_: JSONException) {
@@ -150,14 +154,14 @@ object PEQFileParser {
         }
     }
 
-    private fun parseJsonPreset(root: JSONObject, fallbackName: String): ParsedPreset? {
+    private fun parseJsonPreset(root: JSONObject, fallbackName: String, fallbackBandColor: Int = Color.DKGRAY): ParsedPreset? {
         val name = firstNonEmptyString(root, "name", "title", "presetName", "preset_name") ?: fallbackName
         val preampDb = firstDouble(root, "preamp", "preAmp", "preampGain", "preamp_gain", "globalGain")?.toFloat() ?: 0f
         val bandsJson = findBandsArray(root) ?: return null
-        return parseJsonBandArray(bandsJson, name, preampDb)
+        return parseJsonBandArray(bandsJson, name, preampDb, fallbackBandColor)
     }
 
-    private fun parseJsonBandArray(bandsJson: JSONArray, name: String, preambDb: Float): ParsedPreset? {
+    private fun parseJsonBandArray(bandsJson: JSONArray, name: String, preambDb: Float, fallbackBandColor: Int = Color.DKGRAY): ParsedPreset? {
         val bands = mutableListOf<ParsedBand>()
         for (i in 0 until bandsJson.length()) {
             val band = bandsJson.optJSONObject(i) ?: continue
@@ -231,7 +235,7 @@ object PEQFileParser {
      * separated by `;` or `,`. The curve is uniformly down-sampled to [MAX_GRAPHIC_EQ_BANDS]
      * peaking bands so it stays usable on the parametric slider.
      */
-    private fun parseGraphicEq(text: String, fallbackName: String): ParsedPreset? {
+    private fun parseGraphicEq(text: String, fallbackName: String, fallbackBandColor: Int = Color.DKGRAY): ParsedPreset? {
         val line = text.lines().firstOrNull { it.trim().startsWith("GraphicEQ:", ignoreCase = true) }
             ?: return null
 
@@ -262,10 +266,10 @@ object PEQFileParser {
             }.distinctBy { it.first }
         }
 
-        val bands = sampled.map { (freq, gain) -> ParsedBand(gain, 1.0f, freq) }
+        val bands = sampled.map { (freq, gain) -> ParsedBand(gain, 1.0f, freq, fallbackBandColor) }
         if (bands.isEmpty()) return null
 
-        return ParsedPreset(name = fallbackName, preampDb = preampDb, bands = bands)
+        return ParsedPreset(name = fallbackName, preampDb = preampDb, bands = bands, isPeq = false)
     }
 
     // -------------------------------------------------------------------------
@@ -275,7 +279,7 @@ object PEQFileParser {
     /**
      * Handles the standard AutoEQ / ParametricEQ plain-text format.
      */
-    private fun parsePlainText(text: String, fallbackName: String): ParsedPreset? {
+    private fun parsePlainText(text: String, fallbackName: String, fallbackBandColor: Int = Color.DKGRAY): ParsedPreset? {
         var preampDb = 0f
         val bands = mutableListOf<ParsedBand>()
 
@@ -286,7 +290,7 @@ object PEQFileParser {
                     preampDb = parsePreampLine(trimmed) ?: preampDb
                 }
                 trimmed.startsWith("Filter", ignoreCase = true) -> {
-                    val band = parseFilterLine(trimmed)
+                    val band = parseFilterLine(trimmed, fallbackBandColor)
                     if (band != null) bands.add(band)
                 }
             }
@@ -316,7 +320,7 @@ object PEQFileParser {
      * presence of the "Filter N:" / "ON" tokens so it handles files produced by a
      * wide variety of tools, not just the canonical Equalizer APO format.
      */
-    private fun parseFilterLine(line: String): ParsedBand? {
+    private fun parseFilterLine(line: String, fallbackBandColor: Int = Color.DKGRAY): ParsedBand? {
         val afterColon = line.substringAfter(":", line).trim()
         val tokens = afterColon.split("\\s+".toRegex()).filter { it.isNotBlank() }
         if (tokens.isEmpty()) return null
@@ -372,7 +376,7 @@ object PEQFileParser {
         // Q is optional in some tool outputs; fall back to a neutral value of 1.0.
         val qVal = q ?: 1.0f
 
-        return ParsedBand(g, qVal, f, type = filterType)
+        return ParsedBand(g, qVal, f, fallbackBandColor, filterType)
     }
 
     // -------------------------------------------------------------------------
@@ -385,7 +389,7 @@ object PEQFileParser {
      * files, this is only used when at least [CSV_MATCH_THRESHOLD] of the non-empty
      * lines actually look like a numeric row.
      */
-    private fun parseCsv(text: String, fallbackName: String): ParsedPreset? {
+    private fun parseCsv(text: String, fallbackName: String, fallbackBandColor: Int = Color.DKGRAY): ParsedPreset? {
         val lines = text.lines().map { it.trim() }.filter { it.isNotEmpty() }
         if (lines.isEmpty()) return null
 
@@ -399,7 +403,7 @@ object PEQFileParser {
             val gain = parts.getOrNull(1)?.toFloatOrNull() ?: return@mapNotNull null
             if (freq <= 0f) return@mapNotNull null
             val q = parts.getOrNull(2)?.toFloatOrNull() ?: 1.0f
-            ParsedBand(gain, q, freq)
+            ParsedBand(gain, q, freq, fallbackBandColor)
         }
 
         if (bands.isEmpty()) return null

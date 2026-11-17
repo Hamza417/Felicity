@@ -3,11 +3,18 @@ package app.simple.felicity.viewmodels.dialogs
 import android.app.Application
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
+import app.simple.felicity.preferences.EqualizerPreferences
 import app.simple.felicity.repository.database.instances.EqualizerDatabase
 import app.simple.felicity.repository.models.EqualizerPreset
+import app.simple.felicity.shared.models.ParsedBand
+import app.simple.felicity.shared.utils.PEQFileParser
+import app.simple.felicity.theme.managers.ThemeManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -37,11 +44,52 @@ class EqualizerPresetsViewModel(application: Application) : WrappedViewModel(app
      */
     val presets: StateFlow<List<EqualizerPreset>> = db.equalizerPresetDao()
         .getAllPresetsFlow()
+        .map { list ->
+            list.filter {
+                it.category == EqualizerPreset.CATEGORY_SAVED_PRESETS
+            }
+        }
         .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
                 initialValue = emptyList()
         )
+
+    private val _jsonHeadphoneProfiles = MutableStateFlow<List<EqualizerPreset>>(emptyList())
+
+    val headphoneProfiles: StateFlow<List<EqualizerPreset>> = combine(
+            _jsonHeadphoneProfiles,
+            db.equalizerPresetDao().getAllPresetsFlow()
+                .map { list ->
+                    list.filter {
+                        it.category == EqualizerPreset.CATEGORY_HEADPHONE_PROFILES
+                    }
+                }
+    ) { json, dbProfiles ->
+        dbProfiles + json
+    }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList()
+    )
+
+    private val _currentListType = MutableStateFlow(
+            try {
+                ListType.valueOf(EqualizerPreferences.getPresetsListType())
+            } catch (_: Exception) {
+                ListType.SAVED_PRESETS
+            }
+    )
+    val currentListType: StateFlow<ListType> = _currentListType
+
+    enum class ListType {
+        SAVED_PRESETS, HEADPHONE_PROFILES
+    }
+
+    fun switchListType(type: ListType) {
+        _currentListType.value = type
+        EqualizerPreferences.setPresetsListType(type.name)
+    }
 
     init {
         // Make sure built-in presets are seeded on first launch. If they're already in the
@@ -51,6 +99,36 @@ class EqualizerPresetsViewModel(application: Application) : WrappedViewModel(app
             if (builtInCount == 0) {
                 db.equalizerPresetDao().insertPresets(EqualizerDatabase.builtInPresets())
             }
+            loadHeadphoneProfiles()
+        }
+    }
+
+    private fun loadHeadphoneProfiles() {
+        try {
+            val assets = getApplication<Application>().assets
+            val files = assets.list("profiles") ?: return
+            val profiles = mutableListOf<EqualizerPreset>()
+
+            for (file in files) {
+                if (file.endsWith(".txt")) {
+                    val content = assets.open("profiles/$file").bufferedReader().use { it.readText() }
+
+                    val parsed = PEQFileParser.parse(content, file, ThemeManager.accent.primaryAccentColor)
+                    if (parsed != null && parsed.bands.isNotEmpty()) {
+                        profiles.add(EqualizerPreset.fromPeqBands(
+                                name = parsed.name,
+                                bands = parsed.bands,
+                                preampDb = parsed.preampDb,
+                                isBuiltIn = true,
+                                category = EqualizerPreset.CATEGORY_HEADPHONE_PROFILES
+                        ))
+                    }
+                }
+            }
+
+            _jsonHeadphoneProfiles.value = profiles
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
@@ -62,13 +140,35 @@ class EqualizerPresetsViewModel(application: Application) : WrappedViewModel(app
      * @param gains    The 10 current band gains in dB to snapshot.
      * @param preampDb The current preamp gain in dB.
      */
-    fun savePreset(name: String, gains: FloatArray, preampDb: Float) {
+    fun savePreset(name: String, gains: FloatArray, preampDb: Float, category: String = EqualizerPreset.CATEGORY_SAVED_PRESETS) {
         viewModelScope.launch(Dispatchers.IO) {
             val preset = EqualizerPreset.fromGains(
                     name = name.trim(),
                     gains = gains,
                     preampDb = preampDb,
-                    isBuiltIn = false
+                    isBuiltIn = false,
+                    category = category
+            )
+            db.equalizerPresetDao().insertPreset(preset)
+        }
+    }
+
+    /**
+     * Saves the current PEQ settings as a new user-created preset with the given name.
+     *
+     * @param name     Display name the user typed in the save dialog.
+     * @param bands    The parsed parametric bands.
+     * @param preampDb The preamp gain in dB.
+     * @param category The category to save the preset in.
+     */
+    fun savePeqPreset(name: String, bands: List<ParsedBand>, preampDb: Float, category: String = EqualizerPreset.CATEGORY_SAVED_PRESETS) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val preset = EqualizerPreset.fromPeqBands(
+                    name = name.trim(),
+                    bands = bands,
+                    preampDb = preampDb,
+                    isBuiltIn = false,
+                    category = category
             )
             db.equalizerPresetDao().insertPreset(preset)
         }

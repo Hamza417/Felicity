@@ -5,7 +5,6 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -24,14 +23,11 @@ import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.EqualizerPreferences
 import app.simple.felicity.repository.models.EqualizerPreset
 import app.simple.felicity.shared.models.ParsedBand
-import app.simple.felicity.shared.utils.PEQFileParser
 import app.simple.felicity.ui.subpanels.EqualizerPresets
 import app.simple.felicity.viewmodels.panels.EqualizerViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlin.math.ln
 import kotlin.math.log2
 import kotlin.math.pow
@@ -62,37 +58,6 @@ class Equalizer : MediaFragment() {
     private lateinit var binding: FragmentEqualizerBinding
     private val viewModel: EqualizerViewModel by viewModels()
 
-    /**
-     * Document picker launched when the user chooses "Import PEQ File" from the menu.
-     * Accepts any file type so the user can pick .txt, .peq, or whatever extension their
-     * EQ tool happened to produce. The actual format validation happens in [PEQFileParser].
-     */
-    private val peqFilePicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri == null) return@registerForActivityResult
-
-        val fileName = uri.lastPathSegment?.substringAfterLast("/") ?: "Imported Preset"
-        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                val text = requireContext().contentResolver
-                    .openInputStream(uri)
-                    ?.bufferedReader()
-                    ?.use { it.readText() }
-                    ?: throw IllegalArgumentException("Failed to read PEQ file")
-
-                val preset = PEQFileParser.parse(text, fileName)
-                    ?: throw IllegalArgumentException("File contains no valid enabled filter lines")
-
-                withContext(Dispatchers.Main) {
-                    applyParsedPreset(preset)
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to read or parse PEQ file", e)
-            } catch (e: NullPointerException) {
-                Log.e(TAG, "Failed to read PEQ file: URI is null", e)
-            }
-        }
-    }
-
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentEqualizerBinding.inflate(inflater, container, false)
         return binding.root
@@ -116,7 +81,7 @@ class Equalizer : MediaFragment() {
         binding.equalizerScreen.savePreset.setOnClickListener {
             if (EqualizerPreferences.isParametricEqMode()) {
                 // Save the current parametric EQ bands as a PEQ preset.
-                childFragmentManager.showSaveEqualizerPreset { name ->
+                childFragmentManager.showSaveEqualizerPreset { name, category ->
                     val bands = binding.equalizerScreen.equalizerSliders
                         .getPeqBands()
                         .map { band ->
@@ -126,28 +91,24 @@ class Equalizer : MediaFragment() {
                             name = name,
                             bands = bands,
                             preampDb = EqualizerManager.getPreamp(),
+                            category = category,
                             onDuplicate = { /* show warning */ },
                             onSuccess = { /* list auto-updates via Room */ }
                     )
                 }
             } else {
                 // Save the current 10-band graphic EQ gains as a normal preset.
-                childFragmentManager.showSaveEqualizerPreset { name ->
+                childFragmentManager.showSaveEqualizerPreset { name, category ->
                     viewModel.savePreset(
                             name = name,
                             gains = EqualizerManager.getAllGains(),
                             preampDb = EqualizerManager.getPreamp(),
+                            category = category,
                             onDuplicate = { /* show warning */ },
                             onSuccess = { /* the preset list updates automatically via Room */ }
                     )
                 }
             }
-        }
-
-        binding.equalizerScreen.importPeq.setOnClickListener {
-            // Open the system document picker and let the user pick any file.
-            // The actual parsing happens when the picker returns a URI.
-            peqFilePicker.launch(arrayOf("*/*"))
         }
 
         binding.equalizerScreen.reset.setOnClickListener {
@@ -246,40 +207,6 @@ class Equalizer : MediaFragment() {
             binding.equalizerScreen.equalizerSliders.mode =
                 FelicityEqualizer.Companion.Mode.GRAPHIC
         }
-    }
-
-    /**
-     * Takes a successfully parsed PEQ preset and applies it to the EQ engine and slider view.
-     *
-     * The EQ is automatically switched to parametric mode so the user can immediately see
-     * and interact with the imported bands. The preamp from the file is applied as-is, and
-     * all parsed bands are pushed to the DSP engine so the sound changes straight away
-     * without the user having to do anything extra.
-     *
-     * @param preset The fully parsed preset returned by [PEQFileParser.parse].
-     */
-    private fun applyParsedPreset(preset: PEQFileParser.ParsedPreset) {
-        // Switch to PEQ mode so the imported bands show up on the slider.
-        EqualizerManager.setEqMode(EqualizerPreferences.EQ_MODE_PARAMETRIC)
-
-        // Persist the bands and preamp so they survive app restarts.
-        val raw = EqualizerPreset.peqBandsToRaw(preset.bands)
-        EqualizerPreferences.setPeqBandsRaw(raw)
-        EqualizerPreferences.setPreampDb(preset.preampDb)
-
-        // Push everything to the live audio engine.
-        EqualizerManager.setPeqBands(preset.bands)
-        EqualizerManager.setPreamp(preset.preampDb)
-
-        // Auto-save the imported preset to the database.
-        viewModel.autoSaveImportedPeqPreset(
-                name = preset.name,
-                bands = preset.bands,
-                preampDb = preset.preampDb
-        )
-
-        Log.d(TAG, "Imported PEQ preset '${preset.name}' — " +
-                "${preset.bands.size} bands, preamp ${preset.preampDb} dB")
     }
 
     /**

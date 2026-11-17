@@ -116,9 +116,22 @@ object EqualizerManager {
      */
     fun attachProcessor(nativeDspProcessor: NativeDspAudioProcessor) {
         processor = nativeDspProcessor
+
         val savedGains = EqualizerPreferences.getAllBandGains()
-        /** Only the 10 EQ bands are managed here; bass and treble are handled separately. */
-        nativeDspProcessor.setEqBands(savedGains)
+        if (EqualizerPreferences.isParametricEqMode()) {
+            val peqBands = loadPeqBandsFromPreferences()
+            if (peqBands.isNotEmpty()) {
+                val gains = FloatArray(peqBands.size) { peqBands[it].gain }
+                val qValues = FloatArray(peqBands.size) { peqBands[it].q }
+                val frequencies = FloatArray(peqBands.size) { peqBands[it].frequencyHz }
+                val types = IntArray(peqBands.size) { peqBands[it].type }
+                nativeDspProcessor.setPeqBands(gains, frequencies, qValues, types)
+            }
+        } else {
+            /** Only the 10 EQ bands are managed here; bass and treble are handled separately. */
+            nativeDspProcessor.setEqBands(savedGains)
+        }
+        
         nativeDspProcessor.eqEnabled = EqualizerPreferences.isEqEnabled()
         val savedPreamp = EqualizerPreferences.getPreampDb()
         nativeDspProcessor.setPreamp(savedPreamp)

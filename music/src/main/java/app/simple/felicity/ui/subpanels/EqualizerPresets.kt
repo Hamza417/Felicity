@@ -1,9 +1,11 @@
 package app.simple.felicity.ui.subpanels
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -14,12 +16,17 @@ import app.simple.felicity.adapters.ui.lists.AdapterEqualizerPresets
 import app.simple.felicity.databinding.FragmentEqualizerPresetsBinding
 import app.simple.felicity.decorations.views.PopupMenuItem
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
+import app.simple.felicity.dialogs.player.ImportEqualizerPreset.Companion.showImportEqualizerPreset
 import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.EqualizerPreferences
 import app.simple.felicity.repository.models.EqualizerPreset
+import app.simple.felicity.shared.utils.PEQFileParser
+import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.viewmodels.dialogs.EqualizerPresetsViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * A full-screen panel that lists all saved equalizer presets — both the ones bundled
@@ -41,6 +48,43 @@ class EqualizerPresets : MediaFragment() {
 
     private val viewModel: EqualizerPresetsViewModel by viewModels()
     private var adapter: AdapterEqualizerPresets? = null
+
+    /**
+     * Document picker launched when the user chooses "Import PEQ File" from the menu.
+     * Accepts any file type so the user can pick .txt, .peq, or whatever extension their
+     * EQ tool happened to produce. The actual format validation happens in [PEQFileParser].
+     */
+    private val peqFilePicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@registerForActivityResult
+
+        val fileName = uri.lastPathSegment?.substringAfterLast("/") ?: "Imported Preset"
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val text = requireContext().contentResolver
+                    .openInputStream(uri)
+                    ?.bufferedReader()
+                    ?.use { it.readText() }
+                    ?: throw IllegalArgumentException("Failed to read PEQ file")
+
+                val preset = PEQFileParser.parse(text, fileName, ThemeManager.accent.primaryAccentColor)
+                    ?: throw IllegalArgumentException("File contains no valid enabled filter lines")
+
+                withContext(Dispatchers.Main) {
+                    childFragmentManager.showImportEqualizerPreset(preset) { name, category ->
+                        if (preset.isPeq) {
+                            viewModel.savePeqPreset(name, preset.bands, preset.preampDb, category)
+                        } else {
+                            viewModel.savePreset(name, preset.bands.map { it.gain }.toFloatArray(), preset.preampDb, category)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to read or parse PEQ file", e)
+            } catch (e: NullPointerException) {
+                Log.e(TAG, "Failed to read PEQ file: URI is null", e)
+            }
+        }
+    }
 
     override fun onCreateView(
             inflater: LayoutInflater,
@@ -73,7 +117,16 @@ class EqualizerPresets : MediaFragment() {
     private fun setupAdapter() {
         adapter = AdapterEqualizerPresets(
                 onPresetClicked = ::applyPreset,
-                onOptionClicked = ::showPresetOptions
+                onOptionClicked = ::showPresetOptions,
+                onSavedPresetsClicked = {
+                    viewModel.switchListType(EqualizerPresetsViewModel.ListType.SAVED_PRESETS)
+                },
+                onHeadphoneProfilesClicked = {
+                    viewModel.switchListType(EqualizerPresetsViewModel.ListType.HEADPHONE_PROFILES)
+                },
+                onImportClicked = {
+                    peqFilePicker.launch(arrayOf("*/*"))
+                }
         )
         binding.recyclerView.adapter = adapter
     }
@@ -85,10 +138,37 @@ class EqualizerPresets : MediaFragment() {
     private fun observePresets() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.presets.collect { presets ->
-                    adapter?.submitList(presets)
+                launch {
+                    viewModel.currentListType.collect { type ->
+                        adapter?.setListType(type)
+                        updateListForType(type)
+                    }
+                }
+
+                launch {
+                    viewModel.presets.collect { presets ->
+                        if (viewModel.currentListType.value == EqualizerPresetsViewModel.ListType.SAVED_PRESETS) {
+                            adapter?.submitList(presets)
+                        }
+                    }
+                }
+
+                launch {
+                    viewModel.headphoneProfiles.collect { profiles ->
+                        if (viewModel.currentListType.value == EqualizerPresetsViewModel.ListType.HEADPHONE_PROFILES) {
+                            adapter?.submitList(profiles)
+                        }
+                    }
                 }
             }
+        }
+    }
+
+    private fun updateListForType(type: EqualizerPresetsViewModel.ListType) {
+        if (type == EqualizerPresetsViewModel.ListType.SAVED_PRESETS) {
+            adapter?.submitList(viewModel.presets.value)
+        } else {
+            adapter?.submitList(viewModel.headphoneProfiles.value)
         }
     }
 

@@ -43,6 +43,57 @@
             app:appFontStyle="bold"
             app:textColorStyle="primary" />
 
+        <HorizontalScrollView
+            android:id="@+id/category_strip"
+            android:layout_width="match_parent"
+            android:layout_marginTop="@dimen/padding_15"
+            android:scrollbars="none"
+            android:fadingEdge="horizontal"
+            android:animateLayoutChanges="true"
+            android:requiresFadingEdge="horizontal"
+            android:fadingEdgeLength="@dimen/padding_20"
+            android:layout_height="wrap_content">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:animateLayoutChanges="true"
+                android:orientation="horizontal">
+
+                <app.simple.felicity.decorations.highlight.HighlightTextView
+                    android:id="@+id/category_saved_presets"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:paddingVertical="@dimen/padding_5"
+                    android:paddingHorizontal="@dimen/padding_10"
+                    android:text="@string/presets"
+                    android:textSize="@dimen/text_size_14"
+                    android:drawablePadding="@dimen/padding_5"
+                    app:appFontStyle="bold"
+                    app:drawableStartCompat="@drawable/ic_tune_16dp"
+                    app:drawableTintStyle="accent"
+                    app:textColorStyle="tertiary" />
+
+                <app.simple.felicity.decorations.highlight.HighlightTextView
+                    android:id="@+id/category_headphone_profiles"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:paddingVertical="@dimen/padding_5"
+                    android:paddingHorizontal="@dimen/padding_10"
+                    android:layout_marginStart="@dimen/padding_10"
+                    android:text="@string/headphone_profiles"
+                    android:textSize="@dimen/text_size_14"
+                    android:drawablePadding="@dimen/padding_5"
+                    app:appFontStyle="bold"
+                    app:drawableStartCompat="@drawable/ic_headset_16dp"
+                    app:drawableTintStyle="accent"
+                    app:textColorStyle="tertiary" />
+
+            </LinearLayout>
+        </HorizontalScrollView>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

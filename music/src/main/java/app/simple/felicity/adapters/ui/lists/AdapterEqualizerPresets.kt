@@ -7,12 +7,13 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import app.simple.felicity.R
 import app.simple.felicity.databinding.AdapterEqualizerPresetBinding
-import app.simple.felicity.databinding.AdapterPreferenceHeaderBinding
+import app.simple.felicity.databinding.AdapterPresetsHeaderBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.RecyclerViewUtils
 import app.simple.felicity.repository.models.EqualizerPreset
 import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.shared.utils.ViewUtils.visible
+import app.simple.felicity.viewmodels.dialogs.EqualizerPresetsViewModel
 
 /**
  * [ListAdapter] that populates the equalizer preset panel with one row per preset.
@@ -37,11 +38,17 @@ import app.simple.felicity.shared.utils.ViewUtils.visible
  */
 class AdapterEqualizerPresets(
         private val onPresetClicked: (EqualizerPreset) -> Unit,
-        private val onOptionClicked: (EqualizerPreset, View) -> Unit = { _, _ -> }
+        private val onOptionClicked: (EqualizerPreset, View) -> Unit = { _, _ -> },
+        private val onSavedPresetsClicked: () -> Unit = {},
+        private val onHeadphoneProfilesClicked: () -> Unit = {},
+        private val onImportClicked: () -> Unit = {},
 ) : ListAdapter<EqualizerPreset, VerticalListViewHolder>(DIFF_CALLBACK) {
 
     /** The id of the currently applied preset, or -1 if none is active. */
     private var selectedPresetId: Long = -1L
+
+    private var currentListType: EqualizerPresetsViewModel.ListType =
+        EqualizerPresetsViewModel.ListType.SAVED_PRESETS
 
     override fun submitList(list: List<EqualizerPreset>?) {
         val newList = if (list.isNullOrEmpty()) {
@@ -57,6 +64,13 @@ class AdapterEqualizerPresets(
             RecyclerViewUtils.TYPE_HEADER
         } else {
             RecyclerViewUtils.TYPE_ITEM
+        }
+    }
+
+    fun setListType(listType: EqualizerPresetsViewModel.ListType) {
+        currentListType = listType
+        if (itemCount > 0) {
+            notifyItemChanged(0) // update header
         }
     }
 
@@ -80,7 +94,7 @@ class AdapterEqualizerPresets(
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VerticalListViewHolder {
         return when (viewType) {
             RecyclerViewUtils.TYPE_HEADER -> {
-                Header(AdapterPreferenceHeaderBinding.inflate(
+                Header(AdapterPresetsHeaderBinding.inflate(
                         LayoutInflater.from(parent.context), parent, false))
             }
             RecyclerViewUtils.TYPE_ITEM -> {
@@ -97,10 +111,27 @@ class AdapterEqualizerPresets(
         } else if (holder is Header) {
             holder.binding.title.text = holder.getString(R.string.presets)
             holder.binding.summary.text = holder.getString(R.string.presets_desc)
+
+            holder.binding.savedPresets.setUseAccentColor(
+                    currentListType == EqualizerPresetsViewModel.ListType.SAVED_PRESETS)
+            holder.binding.headphoneProfiles.setUseAccentColor(
+                    currentListType == EqualizerPresetsViewModel.ListType.HEADPHONE_PROFILES)
+
+            holder.binding.savedPresets.setOnClickListener {
+                onSavedPresetsClicked()
+            }
+
+            holder.binding.headphoneProfiles.setOnClickListener {
+                onHeadphoneProfilesClicked()
+            }
+
+            holder.binding.importPreset.setOnClickListener {
+                onImportClicked()
+            }
         }
     }
 
-    inner class Header(val binding: AdapterPreferenceHeaderBinding) : VerticalListViewHolder(binding.root)
+    inner class Header(val binding: AdapterPresetsHeaderBinding) : VerticalListViewHolder(binding.root)
 
     inner class PresetHolder(
             private val binding: AdapterEqualizerPresetBinding
@@ -127,7 +158,7 @@ class AdapterEqualizerPresets(
                 binding.presetTypeLabel.gone()
             }
 
-            // Highlight the row whose preset is currently applied — handy for orientation.
+            // Highlight the row whose preset is currently applied.
             if (preset.id == selectedPresetId) {
                 binding.presetSelectedIndicator.text = "●"
                 binding.presetSelectedIndicator.visible()
