@@ -616,6 +616,25 @@ class FelicityAudioSink(
     }
 
     // -----------------------------------------------------------------------------------------
+    // Shared Mixer Direct Access
+    // -----------------------------------------------------------------------------------------
+
+    /**
+     * Allows the SharedAudioMixer to push directly to the active hardware sink without going
+     * through ExoPlayer's standard rendering loop.
+     *
+     * @param buffer The mixed PCM audio buffer
+     * @param presentationTimeUs The presentation time
+     * @return true if fully consumed, false if the mixer should retry
+     */
+    fun pushMixedBuffer(buffer: ByteBuffer, presentationTimeUs: Long, encodedAccessUnitCount: Int = 1): Boolean {
+        if (!isReleased) {
+            return activeSink.handleBuffer(buffer, presentationTimeUs, encodedAccessUnitCount)
+        }
+        return false
+    }
+
+    // -----------------------------------------------------------------------------------------
     // Routing state
     // -----------------------------------------------------------------------------------------
 
