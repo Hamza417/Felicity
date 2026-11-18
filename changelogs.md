@@ -1,44 +1,30 @@
-#### Library
+#### Equalizer
 
-- Added affinity based song recommendation system.
-    - This significantly improves the recommendation accuracy by using a probabilistic next song
-      determination based on the user's local activity and this lays the base of the app's
-      recommendation system and this will be used to add features like **Dynamic Playlists** and
-      improved suggestions everywhere in the app.
-
-#### DSP
-
-- Fixed sluggish visualizer updates especially while using the **AudioTrack** sink.
-- Fixed scalar calculation instead of hardware accelerated NEON calculation for the FFT processing.
-  #171
-    - This should save battery and make visualizer even snappier and reacts more accurately to
-      snares and basses.
+- Added dedicated **AutoEQ Headphone Profiles** section in the **EQ Presets** panel.
+- Supports both **10-Band** and **PEQ** AutoEQ headphones profiles.
+  - 31-Band will be added soon.
+- Fixed various DSP issues while working with the PEQ profiles in the app.
 
 #### User Interface
 
-- Added best matches count and indicator in the lyrics panel to indicate the best matched lyrics for
-  the song.
-- Horizontal menu strip for **Equalizer** instead of popup menu.
-- Added **Sleep Timer**.
-    - Added smooth rolling timer picker for timer setup.
-    - Added timer button in the **Dashboard** home.
-    - Added final action to pause or quit the app.
-    - Supports three modes: **Preset**, **Manual**, and **Till This Song**.
+- Added option to volume knob gravity. #176
+- Added **Weather Effect** for the whole app.
+  - Experience soothing weather simulation in the app while your music is playing, currently supports **Autumn**, **Summer**, and **Winter**.
+- Added band input dialog to manually enter values for **EQ Bands**. #169
+- Added **Weather** chip in the **Dashboard**.
 
 #### Bug Fixes
 
-- Fixed unnecessary animations in **Visualizer Menu**.
-- Fixed inconsistent presets loading in the **Equalizer** and **DSP**.
-- Fixed elevation glitch in shared popup menus.
+- Fixed album art squeezing in the **Mini Player**. #173
+- Fixed swipe down gestures not working over album art region in the player panels. #174
+- Added **Dynamic Immersive Mode** for player panels.
+  - Hide some UI elements dynamically to create immersiveness dynamically.
+  - Can be toggled from **User Interface** preferences.
 
 #### Improvements
 
-- Use duration and other params while matching lyrics to improve the lyrics auto-download accuracy.
-
-#### Changes
-
-- Changed the default home to **Dashboard**. from **Simple**.
+- Improved **Lyrics Search** panel to show lyrics best matches and lyrics previews in the results.
 
 #### Removed
 
-- Removed popup menu from the **Equalizer**.
+- Removed **Import PEQ Preset** button from **Equalizer**.
