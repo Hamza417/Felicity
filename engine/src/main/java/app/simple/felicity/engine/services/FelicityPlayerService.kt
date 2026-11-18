@@ -373,7 +373,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             PendingIntent.getActivity(this, 0, it, PendingIntent.FLAG_IMMUTABLE)
         }
 
-        mediaSession = MediaLibrarySession.Builder(this, player, LibraryCallback())
+        mediaSession = MediaLibrarySession.Builder(this, playerManager.getSessionPlayer()!!, LibraryCallback())
             .setSessionActivity(sessionActivityIntent!!)
             .setId("ExoPlayerServiceSession")
             .build()
@@ -525,7 +525,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         }
 
         // Update the session to point to the new player instance
-        mediaSession?.player = player
+        mediaSession?.player = playerManager.getSessionPlayer()!!
     }
 
     /**
@@ -556,7 +556,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         }
 
         // Update the session to point to the new player instance
-        mediaSession?.player = player
+        mediaSession?.player = playerManager.getSessionPlayer()!!
 
         Log.i(TAG, "Audio mode switch completed successfully")
     }
@@ -674,7 +674,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             player.prepare()
         }
 
-        mediaSession?.player = player
+        mediaSession?.player = playerManager.getSessionPlayer()!!
         Log.i(TAG, "FFmpeg fallback: re-trying '${failedItem.mediaId}' from the start with FFmpeg.")
     }
 
@@ -704,7 +704,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             player.prepare()
         }
 
-        mediaSession?.player = player
+        mediaSession?.player = playerManager.getSessionPlayer()!!
         Log.d(TAG, "Decoder restored to mode $decoderMode (extensionMode=$extensionMode) without preference change.")
     }
 

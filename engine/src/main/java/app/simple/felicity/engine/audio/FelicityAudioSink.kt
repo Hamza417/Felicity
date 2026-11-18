@@ -629,7 +629,8 @@ class FelicityAudioSink(
      */
     fun pushMixedBuffer(buffer: ByteBuffer, presentationTimeUs: Long, encodedAccessUnitCount: Int = 1): Boolean {
         if (!isReleased) {
-            return activeSink.handleBuffer(buffer, presentationTimeUs, encodedAccessUnitCount)
+            // Goes through handleBuffer so a pending Bluetooth reroute is applied first.
+            return handleBuffer(buffer, presentationTimeUs, encodedAccessUnitCount)
         }
         return false
     }
