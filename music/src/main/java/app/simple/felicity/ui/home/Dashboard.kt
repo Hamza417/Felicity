@@ -23,6 +23,7 @@ import app.simple.felicity.adapters.home.dashboard.AdapterDashboardSongs
 import app.simple.felicity.adapters.home.dashboard.AdapterDashboardSongs.Companion.AdapterDashboardSongsCallbacks
 import app.simple.felicity.databinding.FragmentHomeDashboardBinding
 import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDecoration
+import app.simple.felicity.decorations.utils.TextViewUtils.setStartDrawable
 import app.simple.felicity.decorations.views.PopupMenuItem
 import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.app.AppLabel.Companion.showAppLabel
@@ -268,25 +269,39 @@ class Dashboard : BaseHomeFragment() {
     private fun setWeatherChipState() {
         fun updateChipLabel(mode: Int) {
             when (mode) {
-                UserInterfacePreferences.WEATHER_EFFECT_OFF -> binding.weather.text = getString(R.string.off)
-                UserInterfacePreferences.WEATHER_EFFECT_WINTER -> binding.weather.text = getString(R.string.winter)
-                UserInterfacePreferences.WEATHER_EFFECT_AUTUMN -> binding.weather.text = getString(R.string.autumn)
-                UserInterfacePreferences.WEATHER_EFFECT_SUMMER -> binding.weather.text = getString(R.string.summer)
+                UserInterfacePreferences.WEATHER_EFFECT_OFF -> {
+                    binding.weather.text = getString(R.string.off)
+                    binding.weather.setStartDrawable(R.drawable.ic_cloud_off_16dp)
+                }
+                UserInterfacePreferences.WEATHER_EFFECT_WINTER -> {
+                    binding.weather.text = getString(R.string.winter)
+                    binding.weather.setStartDrawable(R.drawable.ic_cloud_16dp)
+                }
+                UserInterfacePreferences.WEATHER_EFFECT_AUTUMN -> {
+                    binding.weather.text = getString(R.string.autumn)
+                    binding.weather.setStartDrawable(R.drawable.ic_cloud_16dp)
+                }
+                UserInterfacePreferences.WEATHER_EFFECT_SUMMER -> {
+                    binding.weather.text = getString(R.string.summer)
+                    binding.weather.setStartDrawable(R.drawable.ic_cloud_16dp)
+                }
                 else -> {
                     // Auto
                     val month = Calendar.getInstance().get(Calendar.MONTH)
                     when (month) {
                         Calendar.DECEMBER, Calendar.JANUARY, Calendar.FEBRUARY -> {
-                            binding.weather.text = getString(R.string.winter)
+                            updateChipLabel(UserInterfacePreferences.WEATHER_EFFECT_WINTER)
                         }
                         Calendar.SEPTEMBER, Calendar.OCTOBER, Calendar.NOVEMBER -> {
-                            binding.weather.text = getString(R.string.autumn)
+                            updateChipLabel(UserInterfacePreferences.WEATHER_EFFECT_AUTUMN)
                         }
                         Calendar.MAY, Calendar.JUNE, Calendar.JULY, Calendar.AUGUST -> {
                             binding.weather.text = getString(R.string.summer)
+                            updateChipLabel(UserInterfacePreferences.WEATHER_EFFECT_SUMMER)
                         }
                         else -> {
                             binding.weather.text = getString(R.string.off)
+                            updateChipLabel(UserInterfacePreferences.WEATHER_EFFECT_OFF)
                         }
                     }
                 }
