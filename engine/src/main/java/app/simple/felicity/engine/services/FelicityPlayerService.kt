@@ -477,6 +477,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         ))
 
         playerManager = CrossfadePlayerManager(this, sharedMixer, extensionMode, loadControl)
+        playerManager.crossfadeDurationMs = AudioPreferences.getCrossfadeDuration()
         playerManager.eventListener = playerListener
         playerManager.analyticsListener = analyticsListener
         playerManager.onActivePlayerChanged = { newPlayer ->
@@ -756,6 +757,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         ))
 
         playerManager = CrossfadePlayerManager(this, sharedMixer, extensionMode, loadControl)
+        playerManager.crossfadeDurationMs = AudioPreferences.getCrossfadeDuration()
         playerManager.eventListener = playerListener
         playerManager.analyticsListener = analyticsListener
         playerManager.onActivePlayerChanged = { newPlayer ->
@@ -1327,6 +1329,11 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 // correct stream immediately. Without this, the change only takes effect the
                 // next time a song starts — the existing sink never learns about the preference flip.
                 switchAudioMode()
+            }
+            AudioPreferences.CROSSFADE_DURATION -> {
+                val duration = AudioPreferences.getCrossfadeDuration()
+                playerManager.crossfadeDurationMs = duration
+                Log.d(TAG, "Crossfade duration changed to: $duration ms")
             }
             PlayerPreferences.REPEAT_MODE -> {
                 val repeatMode = PlayerPreferences.getRepeatMode()

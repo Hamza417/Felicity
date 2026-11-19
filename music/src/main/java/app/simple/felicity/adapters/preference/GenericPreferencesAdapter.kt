@@ -142,10 +142,10 @@ class GenericPreferencesAdapter(
                 if (preference.icon != -1) {
                     holder.binding.icon.setImageResource(preference.icon)
                 }
-                holder.binding.slider.setProgress(seekbarState.position, false)
-                holder.binding.slider.setDefaultProgress(seekbarState.default)
                 holder.binding.slider.setMax(seekbarState.max)
                 holder.binding.slider.setMin(seekbarState.min)
+                holder.binding.slider.setProgress(seekbarState.position, false)
+                holder.binding.slider.setDefaultProgress(seekbarState.default)
                 holder.binding.slider.setLeftLabelEnabled(seekbarState.leftLabel)
                 holder.binding.slider.setRightLabelEnabled(seekbarState.rightLabel)
 
