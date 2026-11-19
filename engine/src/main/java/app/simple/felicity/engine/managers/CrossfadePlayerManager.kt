@@ -33,7 +33,7 @@ import app.simple.felicity.engine.audio.VirtualAudioSink
  * player is stopped once the ramp has completed.
  *
  * Because the service only ever sees the active player, events the idle player produced while it
- * was pre-rolling are swallowed and the relevant ones are synthesised at swap time.
+ * was pre-rolling are swallowed and the relevant ones are synthesized at swap time.
  */
 @UnstableApi
 class CrossfadePlayerManager(
@@ -84,6 +84,7 @@ class CrossfadePlayerManager(
     private var prerollKey: PrerollKey? = null
     private var manualRequestedAtMs = 0L
     private var manualPending = false
+    private var manualTargetIndex = C.INDEX_UNSET
     private var released = false
 
     private var sessionPlayer: ForwardingPlayer? = null
@@ -253,8 +254,24 @@ class CrossfadePlayerManager(
 
         val out = active.player
         val inn = idle.player
-        val next = out.nextMediaItemIndex
 
+        if (manualPending) {
+            val target = manualTargetIndex
+            if (target != C.INDEX_UNSET && crossfadeDurationMs > 0 && out.playbackState == Player.STATE_READY) {
+                handleManualRequest(out, inn, target)
+                return
+            } else {
+                manualPending = false
+                manualTargetIndex = C.INDEX_UNSET
+                invalidatePreroll()
+                if (target != C.INDEX_UNSET) {
+                    out.seekToDefaultPosition(target)
+                }
+                return
+            }
+        }
+
+        val next = out.nextMediaItemIndex
         val crossfadeAllowed = crossfadeDurationMs > 0 &&
                 out.playWhenReady &&
                 out.playbackState == Player.STATE_READY &&
@@ -262,13 +279,7 @@ class CrossfadePlayerManager(
                 out.repeatMode != Player.REPEAT_MODE_ONE &&
                 next != C.INDEX_UNSET
         if (!crossfadeAllowed) {
-            manualPending = false
             invalidatePreroll()
-            return
-        }
-
-        if (manualPending) {
-            handleManualRequest(out, inn, next)
             return
         }
 
@@ -293,18 +304,20 @@ class CrossfadePlayerManager(
         }
     }
 
-    private fun handleManualRequest(out: ExoPlayer, inn: ExoPlayer, next: Int) {
-        ensurePreroll(out, inn, next)
+    private fun handleManualRequest(out: ExoPlayer, inn: ExoPlayer, target: Int) {
+        ensurePreroll(out, inn, target)
         val waited = android.os.SystemClock.elapsedRealtime() - manualRequestedAtMs
         if (inn.playbackState == Player.STATE_READY) {
             manualPending = false
+            manualTargetIndex = C.INDEX_UNSET
             val duration = out.duration
             val remaining = if (duration == C.TIME_UNSET) Long.MAX_VALUE else duration - out.currentPosition
             startCrossfade(auto = false, durationMs = minOf(crossfadeDurationMs, remaining.coerceAtLeast(1)))
         } else if (waited > MANUAL_WAIT_MS) {
             // Next track did not get ready in time; fall back to an ordinary skip.
             manualPending = false
-            out.seekToNextMediaItem()
+            manualTargetIndex = C.INDEX_UNSET
+            out.seekToDefaultPosition(target)
         }
     }
 
@@ -365,7 +378,7 @@ class CrossfadePlayerManager(
 
         activeIsA = !activeIsA
 
-        // The outgoing player must not advance into the next item on its own any more.
+        // The outgoing player must not advance into the next item on its own anymore.
         out.repeatMode = Player.REPEAT_MODE_OFF
         if (oldIndex + 1 < out.mediaItemCount) {
             out.removeMediaItems(oldIndex + 1, out.mediaItemCount)
@@ -445,23 +458,42 @@ class CrossfadePlayerManager(
         return sessionPlayer ?: SessionPlayer(active.player).also { sessionPlayer = it }
     }
 
-    private inner class SessionPlayer(player: ExoPlayer) : ForwardingPlayer(player) {
+    private inner class SessionPlayer(val internalPlayer: ExoPlayer) : ForwardingPlayer(internalPlayer) {
 
         override fun seekToNext() {
-            if (!requestCrossfadeToNext()) super.seekToNext()
+            if (!requestCrossfadeTo(internalPlayer.nextMediaItemIndex)) super.seekToNext()
         }
 
         override fun seekToNextMediaItem() {
-            if (!requestCrossfadeToNext()) super.seekToNextMediaItem()
+            if (!requestCrossfadeTo(internalPlayer.nextMediaItemIndex)) super.seekToNextMediaItem()
+        }
+
+        override fun seekToPrevious() {
+            if (!requestCrossfadeTo(internalPlayer.previousMediaItemIndex)) super.seekToPrevious()
+        }
+
+        override fun seekToPreviousMediaItem() {
+            if (!requestCrossfadeTo(internalPlayer.previousMediaItemIndex)) super.seekToPreviousMediaItem()
+        }
+
+        override fun seekToDefaultPosition(mediaItemIndex: Int) {
+            if (!requestCrossfadeTo(mediaItemIndex)) super.seekToDefaultPosition(mediaItemIndex)
+        }
+
+        override fun seekTo(mediaItemIndex: Int, positionMs: Long) {
+            if ((positionMs == C.TIME_UNSET || positionMs == 0L) && mediaItemIndex != currentMediaItemIndex) {
+                if (requestCrossfadeTo(mediaItemIndex)) return
+            }
+            super.seekTo(mediaItemIndex, positionMs)
         }
     }
 
-    private fun requestCrossfadeToNext(): Boolean {
+    private fun requestCrossfadeTo(targetIndex: Int): Boolean {
         val out = active.player
         if (released || crossfading || crossfadeDurationMs <= 0) return false
         if (!out.playWhenReady || out.playbackState != Player.STATE_READY) return false
-        if (out.pauseAtEndOfMediaItems || out.repeatMode == Player.REPEAT_MODE_ONE) return false
-        if (out.nextMediaItemIndex == C.INDEX_UNSET || out.duration == C.TIME_UNSET) return false
+        if (targetIndex == C.INDEX_UNSET || targetIndex < 0 || targetIndex >= out.mediaItemCount) return false
+        manualTargetIndex = targetIndex
         manualRequestedAtMs = android.os.SystemClock.elapsedRealtime()
         manualPending = true
         tick()
