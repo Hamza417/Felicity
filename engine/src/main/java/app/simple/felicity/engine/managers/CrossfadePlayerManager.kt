@@ -22,6 +22,7 @@ import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.audio.AudioSink
 import app.simple.felicity.engine.audio.SharedAudioMixer
 import app.simple.felicity.engine.audio.VirtualAudioSink
+import app.simple.felicity.preferences.AudioPreferences
 
 /**
  * Owns two [ExoPlayer] instances (A and B) that both render into the same [SharedAudioMixer]
@@ -91,7 +92,7 @@ class CrossfadePlayerManager(
 
     /** Length of the overlap. Set to 0 to turn crossfading off. */
     @Volatile
-    var crossfadeDurationMs: Long = DEFAULT_CROSSFADE_MS
+    var crossfadeDurationMs: Long = AudioPreferences.DEFAULT_CROSSFADE_DURATION
 
     var eventListener: Player.Listener? = null
     var analyticsListener: AnalyticsListener? = null
@@ -581,7 +582,6 @@ class CrossfadePlayerManager(
 
     private companion object {
         const val TAG = "CrossfadePlayerManager"
-        const val DEFAULT_CROSSFADE_MS = 3000L
         const val TICK_MS = 200L
         const val PREROLL_LEAD_MS = 6000L
         const val MANUAL_WAIT_MS = 2500L
