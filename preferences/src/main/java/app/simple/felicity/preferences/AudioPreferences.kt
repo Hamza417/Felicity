@@ -9,6 +9,7 @@ object AudioPreferences {
     const val GAPLESS_PLAYBACK = "gapless_playback"
     const val HIRES_OUTPUT = "hires_output"
     const val SKIP_SILENCE = "skip_silence"
+    const val CROSSFADE_DURATION = "crossfade_duration"
     const val IS_STEREO_DOWNMIX_FORCED = "is_stereo_downmix_forced"
     const val IS_USB_DAC = "is_usb_dac1"
 
@@ -48,6 +49,11 @@ object AudioPreferences {
     const val FFT_RESOLUTION_HIGH = 2048
     const val FFT_RESOLUTION_ULTRA = 4096
 
+    /**
+     * Default crossfade duration in milliseconds.
+     */
+    const val DEFAULT_CROSSFADE_DURATION = 3000L
+
     // --------------------------------------------------------------------------------------------- //
 
     fun setAudioDecoder(decoder: Int) {
@@ -66,6 +72,19 @@ object AudioPreferences {
 
     fun isGaplessPlaybackEnabled(): Boolean {
         return SharedPreferences.getSharedPreferences().getBoolean(GAPLESS_PLAYBACK, true)
+    }
+
+    // --------------------------------------------------------------------------------------------- //
+
+    fun setCrossfadeDuration(durationMs: Long) {
+        SharedPreferences.getSharedPreferences().edit {
+            putLong(CROSSFADE_DURATION, durationMs)
+        }
+    }
+
+    fun getCrossfadeDuration(): Long {
+        return SharedPreferences.getSharedPreferences()
+            .getLong(CROSSFADE_DURATION, DEFAULT_CROSSFADE_DURATION)
     }
 
     // --------------------------------------------------------------------------------------------- //

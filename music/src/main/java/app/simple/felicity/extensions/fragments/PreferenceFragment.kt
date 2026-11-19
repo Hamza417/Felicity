@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.text.format.DateUtils
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -1050,6 +1051,36 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val crossfadeHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.crossfade)
+
+        val crossfadeDurationSlider = Preference(
+                title = R.string.crossfade_duration,
+                summary = R.string.crossfade_duration_summary,
+                icon = R.drawable.ic_join_right,
+                type = PreferenceType.SLIDER,
+                valueProvider = {
+                    Log.d(TAG, AudioPreferences.getCrossfadeDuration().toString())
+                    SeekbarState(
+                            position = AudioPreferences.getCrossfadeDuration().toFloat(),
+                            max = 10000F,
+                            min = 0F,
+                            default = AudioPreferences.DEFAULT_CROSSFADE_DURATION.toFloat(),
+                            leftLabel = false,
+                            rightLabel = true,
+                            rightLabelProvider = { progress, _, _ ->
+                                if (progress == 0F) {
+                                    getString(R.string.off)
+                                } else {
+                                    String.format(Locale.getDefault(), "%.1f s", progress / 1000f)
+                                }
+                            },
+                    )
+                },
+                onPreferenceAction = { view, _ ->
+                    AudioPreferences.setCrossfadeDuration((view as FelicitySeekbar).getProgress().toLong())
+                }
+        )
+
         val visualizerHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.visualizer)
 
         val fftResolutionPopup = Preference(
@@ -1219,6 +1250,8 @@ abstract class PreferenceFragment : MediaFragment() {
             preferences.add(usbDacControl)
         }
         preferences.add(hiresToggle)
+        preferences.add(crossfadeHeader)
+        preferences.add(crossfadeDurationSlider)
         preferences.add(visualizerHeader)
         preferences.add(fftResolutionPopup)
         preferences.add(playbackHeader)

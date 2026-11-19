@@ -8,6 +8,7 @@ import app.simple.felicity.engine.processors.NativeDspAudioProcessor
 import app.simple.felicity.engine.processors.NightModeProcessor
 import app.simple.felicity.engine.processors.SilenceTrimmingProcessor
 import app.simple.felicity.engine.processors.VisualizerProcessor
+import app.simple.felicity.preferences.AudioPreferences
 import app.simple.felicity.preferences.EqualizerPreferences
 import app.simple.felicity.preferences.VisualizerPreferences
 import app.simple.felicity.shared.models.ParsedBand
@@ -39,12 +40,20 @@ class AudioProcessorManager {
     @Volatile
     private var estimatedLatencyMs: Int = 0
 
+    // -----------------------------------------------------------------------------------------
+    // PRE-MIX PROCESSORS (Applied per-track inside VirtualAudioSink)
+    // -----------------------------------------------------------------------------------------
+
     /**
      * Passthrough processor that trims leading and trailing digital silence.
      * Always present in the chain; the threshold can be tuned via
      * [SilenceTrimmingProcessor.setThreshold]. Default: −60 dB (~0.001 linear).
      */
     val silenceTrimmingProcessor: SilenceTrimmingProcessor = SilenceTrimmingProcessor()
+
+    // -----------------------------------------------------------------------------------------
+    // POST-MIX PROCESSORS (Applied globally inside SharedAudioMixer / FelicityAudioSink)
+    // -----------------------------------------------------------------------------------------
 
     /**
      * Downmixes any multichannel stream (1–24 ch) to stereo.
@@ -84,6 +93,37 @@ class AudioProcessorManager {
      * Squashes loud peaks and applies makeup gain so quiet passages are more audible.
      */
     val nightModeProcessor: NightModeProcessor = NightModeProcessor()
+
+    /**
+     * Returns the array of processors that must be applied PER-TRACK before mixing.
+     * This includes silence trimming.
+     */
+    fun getPreMixProcessors(): Array<androidx.media3.common.audio.AudioProcessor> {
+        val processors = mutableListOf<androidx.media3.common.audio.AudioProcessor>()
+        if (AudioPreferences.isSkipSilenceEnabled()) {
+            processors.add(silenceTrimmingProcessor)
+        }
+        return processors.toTypedArray()
+    }
+
+    /**
+     * Returns the array of processors that must be applied GLOBALLY after mixing.
+     * This includes downmixing, karaoke, EQ, effects, night mode, and visualizer.
+     */
+    fun getPostMixProcessors(forceStereoDownmix: Boolean): Array<androidx.media3.common.audio.AudioProcessor> {
+        val processors = mutableListOf<androidx.media3.common.audio.AudioProcessor>()
+
+        if (forceStereoDownmix) {
+            processors.add(downmixProcessor)
+        }
+
+        processors.add(karaokeProcessor)
+        processors.add(nativeDspProcessor)
+        processors.add(nightModeProcessor)
+        processors.add(visualizerProcessor)
+
+        return processors.toTypedArray()
+    }
 
     /**
      * Applies a new stereo balance pan to [nativeDspProcessor].

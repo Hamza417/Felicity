@@ -16,7 +16,6 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.annotation.OptIn
-import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.Format
 import androidx.media3.common.MediaItem
@@ -46,8 +45,10 @@ import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
 import app.simple.felicity.engine.R
 import app.simple.felicity.engine.audio.FelicityAudioSink
+import app.simple.felicity.engine.audio.SharedAudioMixer
 import app.simple.felicity.engine.managers.AudioPipelineManager
 import app.simple.felicity.engine.managers.AudioProcessorManager
+import app.simple.felicity.engine.managers.CrossfadePlayerManager
 import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.engine.managers.PlaybackStateManager
@@ -105,7 +106,15 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     lateinit var songStatRepository: SongStatRepository
 
     private var mediaSession: MediaLibrarySession? = null
-    private lateinit var player: ExoPlayer
+
+    private lateinit var playerManager: CrossfadePlayerManager
+    private val isPlayerInitialized: Boolean
+        get() = ::playerManager.isInitialized && playerManager.activePlayer != null
+
+    // Helper property to access the active ExoPlayer to minimize diffs
+    private val player: ExoPlayer
+        get() = playerManager.activePlayer ?: throw IllegalStateException("Player not initialized")
+    
     private var renderersFactory: DefaultRenderersFactory? = null
 
     /**
@@ -364,7 +373,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             PendingIntent.getActivity(this, 0, it, PendingIntent.FLAG_IMMUTABLE)
         }
 
-        mediaSession = MediaLibrarySession.Builder(this, player, LibraryCallback())
+        mediaSession = MediaLibrarySession.Builder(this, playerManager.getSessionPlayer()!!, LibraryCallback())
             .setSessionActivity(sessionActivityIntent!!)
             .setId("ExoPlayerServiceSession")
             .build()
@@ -423,8 +432,6 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF
         }
 
-        renderersFactory?.setExtensionRendererMode(extensionMode)
-
         // Configure LoadControl with optimized buffer settings based on hi-res mode
         val hiresEnabled = AudioPreferences.isHiresOutputEnabled()
 
@@ -454,20 +461,28 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
         Log.i(TAG, "LoadControl configured for ${if (hiresEnabled) "Hi-Res" else "Standard"} mode")
 
-        // Build new player instance
-        player = ExoPlayer.Builder(this, renderersFactory!!)
-            .setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-                        .setUsage(C.USAGE_MEDIA)
-                        .setSpatializationBehavior(C.SPATIALIZATION_BEHAVIOR_NEVER)
-                        .build(),
-                    true
-            )
-            .setLoadControl(loadControl)
-            .setHandleAudioBecomingNoisy(true)
-            .setWakeMode(C.WAKE_MODE_LOCAL)
+        // Build new player manager instance
+        val defaultAudioSink = DefaultAudioSink.Builder(this)
+            .setEnableFloatOutput(hiresEnabled)
+            .setAudioCapabilities(AudioCapabilities.getCapabilities(this))
+            // Apply Post-Mix Processors here so AudioTrack gets EQ/Visualizer if it falls back
+            .setAudioProcessors(audioProcessorManager.getPostMixProcessors(AudioPreferences.isStereoDownmixForced()))
             .build()
+
+        val sharedMixer = SharedAudioMixer(FelicityAudioSink(
+                defaultSinkProvider = { defaultAudioSink },
+                context = this,
+                nativeDsp = audioProcessorManager.nativeDspProcessor,
+                visualizer = audioProcessorManager.visualizerProcessor
+        ))
+
+        playerManager = CrossfadePlayerManager(this, sharedMixer, extensionMode, loadControl)
+        playerManager.crossfadeDurationMs = AudioPreferences.getCrossfadeDuration()
+        playerManager.eventListener = playerListener
+        playerManager.analyticsListener = analyticsListener
+        playerManager.onActivePlayerChanged = { newPlayer ->
+            mediaSession?.player = newPlayer
+        }
 
         // Set initial silence state based on preferences
         setSilenceState()
@@ -484,9 +499,6 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 EqualizerPreferences.getPlaybackSpeed(),
                 EqualizerPreferences.getPitch()
         )
-
-        player.addListener(playerListener)
-        player.addAnalyticsListener(analyticsListener)
     }
 
     /**
@@ -501,8 +513,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         val playWhenReady = player.playWhenReady
 
         // Release the old player to free up codecs/resources
-        player.removeListener(playerListener)
-        player.release()
+        playerManager.release()
 
         // Build the new player with updated Factory settings
         buildPlayer()
@@ -515,7 +526,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         }
 
         // Update the session to point to the new player instance
-        mediaSession?.player = player
+        mediaSession?.player = playerManager.getSessionPlayer()!!
     }
 
     /**
@@ -533,8 +544,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         Log.i(TAG, "Switching audio mode to: ${if (hiresEnabled) "Hi-Res (32-bit Float)" else "Standard (16-bit PCM)"}")
 
         // Release the old player to free up audio resources
-        player.removeListener(playerListener)
-        player.release()
+        playerManager.release()
 
         // Build the new player with updated audio sink and buffer settings
         buildPlayer()
@@ -547,7 +557,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         }
 
         // Update the session to point to the new player instance
-        mediaSession?.player = player
+        mediaSession?.player = playerManager.getSessionPlayer()!!
 
         Log.i(TAG, "Audio mode switch completed successfully")
     }
@@ -652,8 +662,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         // Temporarily force the FFmpeg extension without touching user preferences.
         renderersFactory?.setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
 
-        player.removeListener(playerListener)
-        player.release()
+        playerManager.release()
 
         buildPlayerWithExtensionMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
 
@@ -666,7 +675,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             player.prepare()
         }
 
-        mediaSession?.player = player
+        mediaSession?.player = playerManager.getSessionPlayer()!!
         Log.i(TAG, "FFmpeg fallback: re-trying '${failedItem.mediaId}' from the start with FFmpeg.")
     }
 
@@ -686,8 +695,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         val currentPos = player.currentPosition
         val playWhenReady = player.playWhenReady
 
-        player.removeListener(playerListener)
-        player.release()
+        playerManager.release()
 
         buildPlayerWithExtensionMode(extensionMode)
 
@@ -697,7 +705,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             player.prepare()
         }
 
-        mediaSession?.player = player
+        mediaSession?.player = playerManager.getSessionPlayer()!!
         Log.d(TAG, "Decoder restored to mode $decoderMode (extensionMode=$extensionMode) without preference change.")
     }
 
@@ -722,8 +730,6 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
      * shared-preference read. Used for transient fallback / restore operations.
      */
     private fun buildPlayerWithExtensionMode(extensionMode: Int) {
-        renderersFactory?.setExtensionRendererMode(extensionMode)
-
         val hiresEnabled = AudioPreferences.isHiresOutputEnabled()
         val loadControl = if (hiresEnabled) {
             DefaultLoadControl.Builder()
@@ -737,19 +743,26 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 .build()
         }
 
-        player = ExoPlayer.Builder(this, renderersFactory!!)
-            .setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-                        .setUsage(C.USAGE_MEDIA)
-                        .setSpatializationBehavior(C.SPATIALIZATION_BEHAVIOR_NEVER)
-                        .build(),
-                    true
-            )
-            .setLoadControl(loadControl)
-            .setHandleAudioBecomingNoisy(true)
-            .setWakeMode(C.WAKE_MODE_LOCAL)
+        val defaultAudioSink = DefaultAudioSink.Builder(this)
+            .setEnableFloatOutput(hiresEnabled)
+            .setAudioCapabilities(AudioCapabilities.getCapabilities(this))
+            .setAudioProcessors(audioProcessorManager.getPostMixProcessors(AudioPreferences.isStereoDownmixForced()))
             .build()
+
+        val sharedMixer = SharedAudioMixer(FelicityAudioSink(
+                defaultSinkProvider = { defaultAudioSink },
+                context = this,
+                nativeDsp = audioProcessorManager.nativeDspProcessor,
+                visualizer = audioProcessorManager.visualizerProcessor
+        ))
+
+        playerManager = CrossfadePlayerManager(this, sharedMixer, extensionMode, loadControl)
+        playerManager.crossfadeDurationMs = AudioPreferences.getCrossfadeDuration()
+        playerManager.eventListener = playerListener
+        playerManager.analyticsListener = analyticsListener
+        playerManager.onActivePlayerChanged = { newPlayer ->
+            mediaSession?.player = newPlayer
+        }
 
         setSilenceState()
         configureGaplessPlayback()
@@ -758,8 +771,6 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 EqualizerPreferences.getPlaybackSpeed(),
                 EqualizerPreferences.getPitch()
         )
-        player.addListener(playerListener)
-        player.addAnalyticsListener(analyticsListener)
     }
 
     /**
@@ -1319,6 +1330,11 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 // next time a song starts — the existing sink never learns about the preference flip.
                 switchAudioMode()
             }
+            AudioPreferences.CROSSFADE_DURATION -> {
+                val duration = AudioPreferences.getCrossfadeDuration()
+                playerManager.crossfadeDurationMs = duration
+                Log.d(TAG, "Crossfade duration changed to: $duration ms")
+            }
             PlayerPreferences.REPEAT_MODE -> {
                 val repeatMode = PlayerPreferences.getRepeatMode()
                 Log.d(TAG, "Repeat mode preference changed to: $repeatMode")
@@ -1466,7 +1482,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         // notifyDetached() will find no sink listener left and won't try to release
         // DefaultAudioSink from the wrong thread (which is what was crashing before).
         mediaSession?.run {
-            player.release()
+            playerManager.release()
             release()
             mediaSession = null
         }
@@ -1566,7 +1582,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
      * are coalesced into a single trailing push. Only the last call in a burst wins.
      */
     private fun buildAndPushSnapshot() {
-        if (!::player.isInitialized) return
+        if (!isPlayerInitialized) return
         snapshotDebounceJob?.cancel()
         snapshotDebounceJob = serviceScope.launch(Dispatchers.Main) {
             delay(SNAPSHOT_DEBOUNCE_MS.milliseconds)
@@ -1580,7 +1596,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
      * this function exists only as the target of the debounced coroutine.
      */
     private fun buildAndPushSnapshotNow() {
-        if (!::player.isInitialized) return
+        if (!isPlayerInitialized) return
 
         val inputFormat = currentAudioInputFormat
         val dspInputFormat = audioProcessorManager.nativeDspProcessor.currentInputFormat
