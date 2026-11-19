@@ -841,7 +841,7 @@ object MediaPlaybackManager {
         lastNavigationDirection = true
         val nextPos = findNextNonSkippedPosition(currentSongPosition)
         if (nextPos != null) {
-            mediaController?.seekTo(nextPos, 0L)
+            updatePosition(nextPos, forcePlay = false)
         } else if (mediaController?.hasNextMediaItem() == true) {
             mediaController?.seekToNextMediaItem()
         }
@@ -856,7 +856,12 @@ object MediaPlaybackManager {
 
         lastNavigationDirection = false
         if (mediaController?.hasPreviousMediaItem() == true) {
-            mediaController?.seekToPreviousMediaItem()
+            val prevPos = mediaController?.previousMediaItemIndex ?: C.INDEX_UNSET
+            if (prevPos != C.INDEX_UNSET && prevPos in songs.indices) {
+                updatePosition(prevPos, forcePlay = false)
+            } else {
+                mediaController?.seekToPreviousMediaItem()
+            }
             // Let ExoPlayer handle the transition naturally for gapless playback
             // Don't force position updates here
         }
@@ -1373,7 +1378,7 @@ object MediaPlaybackManager {
                 if (song.isAlwaysSkip) {
                     val nextPos = findNextNonSkippedPosition(position)
                     if (nextPos != null) {
-                        mediaController?.seekTo(nextPos, 0L)
+                        updatePosition(nextPos, forcePlay = false)
                         return
                     }
                     // Every song is marked always-skip → play anyway to avoid an infinite loop.

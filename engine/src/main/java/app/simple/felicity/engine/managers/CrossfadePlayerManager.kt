@@ -461,30 +461,87 @@ class CrossfadePlayerManager(
     private inner class SessionPlayer(val internalPlayer: ExoPlayer) : ForwardingPlayer(internalPlayer) {
 
         override fun seekToNext() {
-            if (!requestCrossfadeTo(internalPlayer.nextMediaItemIndex)) super.seekToNext()
+            if (!requestCrossfadeTo(internalPlayer.nextMediaItemIndex)) {
+                super.seekToNext()
+            }
         }
 
         override fun seekToNextMediaItem() {
-            if (!requestCrossfadeTo(internalPlayer.nextMediaItemIndex)) super.seekToNextMediaItem()
+            if (!requestCrossfadeTo(internalPlayer.nextMediaItemIndex)) {
+                super.seekToNextMediaItem()
+            }
         }
 
         override fun seekToPrevious() {
-            if (!requestCrossfadeTo(internalPlayer.previousMediaItemIndex)) super.seekToPrevious()
+            if (!requestCrossfadeTo(internalPlayer.previousMediaItemIndex)) {
+                super.seekToPrevious()
+            }
         }
 
         override fun seekToPreviousMediaItem() {
-            if (!requestCrossfadeTo(internalPlayer.previousMediaItemIndex)) super.seekToPreviousMediaItem()
+            if (!requestCrossfadeTo(internalPlayer.previousMediaItemIndex)) {
+                super.seekToPreviousMediaItem()
+            }
         }
 
         override fun seekToDefaultPosition(mediaItemIndex: Int) {
-            if (!requestCrossfadeTo(mediaItemIndex)) super.seekToDefaultPosition(mediaItemIndex)
+            if (!requestCrossfadeTo(mediaItemIndex)) {
+                super.seekToDefaultPosition(mediaItemIndex)
+            }
         }
 
         override fun seekTo(mediaItemIndex: Int, positionMs: Long) {
             if ((positionMs == C.TIME_UNSET || positionMs == 0L) && mediaItemIndex != currentMediaItemIndex) {
                 if (requestCrossfadeTo(mediaItemIndex)) return
             }
+
             super.seekTo(mediaItemIndex, positionMs)
+        }
+
+        override fun getCurrentMediaItemIndex(): Int {
+            return if (manualPending && manualTargetIndex != C.INDEX_UNSET) {
+                manualTargetIndex
+            } else {
+                super.getCurrentMediaItemIndex()
+            }
+        }
+
+        override fun getCurrentPeriodIndex(): Int {
+            return if (manualPending && manualTargetIndex != C.INDEX_UNSET) {
+                val timeline = currentTimeline
+                if (!timeline.isEmpty && manualTargetIndex >= 0 && manualTargetIndex < timeline.windowCount) {
+                    timeline.getWindow(manualTargetIndex, Timeline.Window()).firstPeriodIndex
+                } else manualTargetIndex
+            } else {
+                super.getCurrentPeriodIndex()
+            }
+        }
+
+        override fun getCurrentPosition(): Long {
+            return if (manualPending && manualTargetIndex != C.INDEX_UNSET) {
+                0L
+            } else {
+                super.getCurrentPosition()
+            }
+        }
+
+        override fun getContentPosition(): Long {
+            return if (manualPending && manualTargetIndex != C.INDEX_UNSET) {
+                0L
+            } else {
+                super.getContentPosition()
+            }
+        }
+
+        override fun getCurrentMediaItem(): MediaItem? {
+            return if (manualPending
+                    && manualTargetIndex != C.INDEX_UNSET
+                    && manualTargetIndex >= 0
+                    && manualTargetIndex < internalPlayer.mediaItemCount) {
+                internalPlayer.getMediaItemAt(manualTargetIndex)
+            } else {
+                super.getCurrentMediaItem()
+            }
         }
     }
 
