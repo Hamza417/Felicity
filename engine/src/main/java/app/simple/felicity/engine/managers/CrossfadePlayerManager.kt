@@ -2,7 +2,9 @@ package app.simple.felicity.engine.managers
 
 import android.content.Context
 import android.os.Handler
+import android.os.HandlerThread
 import android.os.Looper
+import android.os.Process
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.Format
@@ -67,6 +69,11 @@ class CrossfadePlayerManager(
         .setUsage(C.USAGE_MEDIA)
         .setSpatializationBehavior(C.SPATIALIZATION_BEHAVIOR_NEVER)
         .build()
+
+    // DefaultLoadControl refuses to be shared between players on different playback threads.
+    private val playbackThread = HandlerThread("Felicity-Playback", Process.THREAD_PRIORITY_AUDIO).also {
+        it.start()
+    }
 
     private val slotA: Slot
     private val slotB: Slot
@@ -138,6 +145,7 @@ class CrossfadePlayerManager(
             .setHandleAudioBecomingNoisy(true)
             .setWakeMode(C.WAKE_MODE_LOCAL)
             .setLoadControl(loadControl)
+            .setPlaybackLooper(playbackThread.looper)
             .build()
 
         val slot = Slot(sink, player)
@@ -479,6 +487,7 @@ class CrossfadePlayerManager(
         slotA.player.release()
         slotB.player.release()
         sharedMixer.stop()
+        playbackThread.quitSafely()
     }
 
     private companion object {
