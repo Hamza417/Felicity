@@ -449,7 +449,7 @@ class SharedAudioMixer(
                 syncFlush(s, s.block.generation)
                 if (!hwConfigured && !configureHardware(s.block.sampleRate, s.block.channels)) return
             }
-            s.append(outRate, outChannels, s.sink.softwareVolume)
+            s.append(outRate, outChannels, s.sink.softwareVolume * s.sink.replayGainLinear)
         }
     }
 

@@ -87,6 +87,7 @@ import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import kotlin.math.pow
 import kotlin.math.roundToInt
@@ -178,6 +179,15 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     private lateinit var playbackErrorNotifier: PlaybackErrorNotifier
 
     private val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    /** ReplayGain in dB per media id for the current mode; cleared whenever the RG preferences change. */
+    private val replayGainDbCache = ConcurrentHashMap<String, Float>()
+    private val replayGainLookups: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
+    @Volatile
+    private var replayGainGeneration = 0
     private var periodicStateSaveJob: Job? = null
 
     /**
@@ -483,6 +493,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         playerManager.onActivePlayerChanged = { newPlayer ->
             mediaSession?.player = newPlayer
         }
+        playerManager.replayGainResolver = ::resolveReplayGainLinear
 
         // Set initial silence state based on preferences
         setSilenceState()
@@ -763,6 +774,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         playerManager.onActivePlayerChanged = { newPlayer ->
             mediaSession?.player = newPlayer
         }
+        playerManager.replayGainResolver = ::resolveReplayGainLinear
 
         setSilenceState()
         configureGaplessPlayback()
@@ -842,6 +854,53 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             Log.w(TAG, "Could not parse ReplayGain string: '$raw'")
             0f
         }
+    }
+
+    /**
+     * Linear ReplayGain for [item], called on the main thread by the player manager. Returns 1.0
+     * when auto-RG is off or the gain is not known yet; in the latter case the tag is looked up
+     * in the background and the manager is asked to re-apply the gain once it is cached.
+     */
+    private fun resolveReplayGainLinear(item: MediaItem?): Float {
+        val mediaId = item?.mediaId ?: return 1.0f
+        if (!EqualizerPreferences.isAutoReplayGainEnabled()) return 1.0f
+
+        val cachedDb = replayGainDbCache[mediaId]
+        if (cachedDb != null) return replayGainDbToLinear(cachedDb)
+
+        val audioId = mediaId.toLongOrNull() ?: return 1.0f
+        if (!replayGainLookups.add(mediaId)) return 1.0f
+
+        val generation = replayGainGeneration
+        val mode = EqualizerPreferences.getReplayGainMode()
+        serviceScope.launch(Dispatchers.IO) {
+            try {
+                val audio = audioRepository.getAudioById(audioId)
+                val db = if (audio != null) parseReplayGainDb(audio, mode) else 0f
+                if (generation != replayGainGeneration) return@launch
+                if (replayGainDbCache.size >= REPLAY_GAIN_CACHE_LIMIT) replayGainDbCache.clear()
+                replayGainDbCache[mediaId] = db
+                if (db != 0f) Log.d(TAG, "Auto-RG resolved: ${db}dB for track: ${audio?.title}")
+                mainHandler.post {
+                    if (generation == replayGainGeneration && ::playerManager.isInitialized) {
+                        playerManager.refreshReplayGain()
+                    }
+                }
+            } finally {
+                replayGainLookups.remove(mediaId)
+            }
+        }
+        return 1.0f
+    }
+
+    private fun replayGainDbToLinear(db: Float): Float = 10f.pow(db.coerceIn(-30f, 30f) / 20f)
+
+    /** Drops cached gains and re-applies ReplayGain to what is playing, after a mode change. */
+    private fun onReplayGainPreferenceChanged() {
+        replayGainGeneration++
+        replayGainDbCache.clear()
+        replayGainLookups.clear()
+        if (::playerManager.isInitialized) playerManager.refreshReplayGain()
     }
 
     /** Applies a new pan value immediately to the processor and persists it. */
@@ -1145,28 +1204,8 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             buildAndPushSnapshot()
             broadcastWidgetUpdate()
 
-            // Apply tag-based ReplayGain for the incoming track when auto-RG is on.
-            // We look up the Audio object from the database on the IO thread, parse the
-            // gain string (e.g. "+5.32 dB"), and forward the dB value to the processor.
-            // When auto-RG is off, or the track has no tag, we reset to unity (0 dB) so
-            // the previous track's gain never bleeds into the next one.
-            mediaItem?.let { item ->
-                val audioId = item.mediaId.toLongOrNull()
-                if (audioId != null) {
-                    serviceScope.launch(Dispatchers.IO) {
-                        val audio = audioRepository.getAudioById(audioId)
-                        val db = if (EqualizerPreferences.isAutoReplayGainEnabled() && audio != null) {
-                            parseReplayGainDb(audio, EqualizerPreferences.getReplayGainMode())
-                        } else {
-                            0f
-                        }
-                        audioProcessorManager.applyTagReplayGain(db)
-                        if (db != 0f) {
-                            Log.d(TAG, "Auto-RG applied: ${db}dB for track: ${audio?.title}")
-                        }
-                    }
-                }
-            }
+            // ReplayGain is applied per source inside the mixer (see CrossfadePlayerManager), so the
+            // post-mix DSP stays at unity and an outgoing track keeps its own gain while fading.
 
             // Refresh the notification custom layout so the favorite button reflects
             // the new song's favorite state straight away, without any extra user interaction.
@@ -1288,6 +1327,8 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         when (key) {
+            EqualizerPreferences.AUTO_REPLAY_GAIN_ENABLED,
+            EqualizerPreferences.REPLAY_GAIN_MODE -> onReplayGainPreferenceChanged()
             AudioPreferences.AUDIO_DECODER -> {
                 Log.d(TAG, "Audio decoder preference changed, switching decoder...")
                 switchDecoder()
@@ -2279,6 +2320,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
 
     companion object {
         private const val TAG = "FelicityPlayerService"
+        private const val REPLAY_GAIN_CACHE_LIMIT = 512
         private const val GAP_DURATION_MS = 800L // Duration of silence gap when gapless playback is disabled
 
         /**

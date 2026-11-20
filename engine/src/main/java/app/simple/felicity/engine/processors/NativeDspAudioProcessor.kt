@@ -66,17 +66,6 @@ class NativeDspAudioProcessor(
     @Volatile
     private var preampLinearGain: Float = 1f
 
-
-
-    /**
-     * Linear gain derived from the current track's embedded ReplayGain tag.
-     * Applied in the same single multiply as [preampLinearGain].
-     * Reset to 1.0 (unity) on each track transition when auto-RG is disabled.
-     * Updated by [setTagReplayGainDb] when a new track starts playing with auto-RG on.
-     */
-    @Volatile
-    private var tagReplayGainLinearGain: Float = 1f
-
     /**
      * When set to `true`, [queueInput] becomes a transparent passthrough — the buffer is
      * returned from [getOutput] unchanged and no DSP is applied. This lets [FelicityAudioSink]
@@ -318,7 +307,7 @@ class NativeDspAudioProcessor(
             workBuf = FloatArray(numSamples)
         }
 
-        val preamp = preampLinearGain * tagReplayGainLinearGain
+        val preamp = preampLinearGain
 
         /**
          * Input stage: all PCM encodings are converted to 32-bit float here.
@@ -460,7 +449,7 @@ class NativeDspAudioProcessor(
      */
     fun processInPlace(samples: FloatArray, length: Int) {
         val dsp = dspProcessor ?: return
-        val preamp = preampLinearGain * tagReplayGainLinearGain
+        val preamp = preampLinearGain
 
         if (samples.size == length) {
             if (preamp != 1f) {
@@ -487,17 +476,6 @@ class NativeDspAudioProcessor(
     fun setPreamp(db: Float) {
         val clamped = db.coerceIn(-15f, 15f)
         preampLinearGain = 10f.pow(clamped / 20f)
-    }
-
-    /**
-     * Applies the gain value extracted from the current track's embedded ReplayGain tag.
-     *
-     * Pass 0.0 to restore unity gain (e.g. when a track has no RG tag or auto-RG is off).
-     *
-     * @param db Gain in dB parsed from the REPLAYGAIN_TRACK_GAIN or REPLAYGAIN_ALBUM_GAIN tag.
-     */
-    fun setTagReplayGainDb(db: Float) {
-        tagReplayGainLinearGain = 10f.pow(db.coerceIn(-30f, 30f) / 20f)
     }
 
     /**

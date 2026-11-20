@@ -126,6 +126,28 @@ class CrossfadePlayerManager(
     var analyticsListener: AnalyticsListener? = null
     var onActivePlayerChanged: ((Player) -> Unit)? = null
 
+    /**
+     * Resolves the linear ReplayGain for an item (1.0 when it has none). Called on the main
+     * thread, so it must not block.
+     */
+    var replayGainResolver: ((MediaItem?) -> Float)? = null
+
+    private fun resolveReplayGain(item: MediaItem?): Float = replayGainResolver?.invoke(item) ?: 1.0f
+
+    /**
+     * Re-evaluates the ReplayGain of the active track, and of a pre-rolled one. The outgoing
+     * slot of a running crossfade is deliberately left alone so it fades with its own gain.
+     */
+    fun refreshReplayGain() {
+        if (released) return
+        val act = active
+        act.sink.replayGainLinear = resolveReplayGain(act.player.currentMediaItem)
+        val st = state
+        if (st is State.Prerolling && st.prepared) {
+            val inn = idle
+            inn.sink.replayGainLinear = resolveReplayGain(inn.player.currentMediaItem)
+        }
+    }
     private val active: Slot get() = if (activeIsA) slotA else slotB
     private val idle: Slot get() = if (activeIsA) slotB else slotA
 
@@ -229,6 +251,7 @@ class CrossfadePlayerManager(
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             if (!isActive()) return
+            slot.sink.replayGainLinear = resolveReplayGain(mediaItem)
             if (!ignoringInternalSeek &&
                     (reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED ||
                             reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK)) {
@@ -374,7 +397,9 @@ class CrossfadePlayerManager(
 
         copySettings(out, inn)
         inn.playWhenReady = false
-        inn.setMediaItem(out.getMediaItemAt(st.targetIndex), 0L)
+        val targetItem = out.getMediaItemAt(st.targetIndex)
+        idle.sink.replayGainLinear = resolveReplayGain(targetItem)
+        inn.setMediaItem(targetItem, 0L)
         inn.prepare()
         st.prepared = true
     }
@@ -666,6 +691,7 @@ class CrossfadePlayerManager(
         } finally {
             ignoringInternalSeek = false
         }
+        active.sink.replayGainLinear = resolveReplayGain(incoming.getMediaItemAt(targetIndex))
         sharedMixer.retargetIncoming(active.sink, crossfadeDurationMs)
         scheduleFadeTimeout(st.token, crossfadeDurationMs)
     }

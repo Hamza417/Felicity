@@ -98,6 +98,15 @@ class VirtualAudioSink(
     var softwareVolume = 1.0f
         private set
 
+    /**
+     * Linear ReplayGain of the track currently feeding this sink. Kept apart from
+     * [softwareVolume] so ExoPlayer's audio-focus ducking via [setVolume] never overwrites it,
+     * and deliberately not reset by [flush] so a seek within the same track keeps its gain.
+     * Applied per source by the mixer, which lets an outgoing track fade with its own gain.
+     */
+    @Volatile
+    var replayGainLinear = 1.0f
+
     val isActive: Boolean
         get() = isPlaying && !isMuted
 
