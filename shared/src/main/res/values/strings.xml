@@ -587,6 +587,7 @@
     <string name="frequency_hz">Frequency (Hz)</string>
     <string name="import_preset">Import Preset</string>
     <string name="crossfade">Crossfade</string>
+    <string name="crossfade_summary">Enable overlapping transition between tracks.</string>
     <string name="crossfade_duration">Crossfade Duration</string>
     <string name="crossfade_duration_summary">Duration to fade between tracks during playback transitions.</string>
 

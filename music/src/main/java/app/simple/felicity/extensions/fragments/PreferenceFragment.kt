@@ -1053,26 +1053,36 @@ abstract class PreferenceFragment : MediaFragment() {
 
         val crossfadeHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.crossfade)
 
+        val crossfadeToggle = Preference(
+                title = R.string.crossfade,
+                summary = R.string.crossfade_summary,
+                icon = R.drawable.ic_join_right,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    AudioPreferences.setCrossfadeEnabled((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    AudioPreferences.isCrossfadeEnabled()
+                }
+        )
+
         val crossfadeDurationSlider = Preference(
                 title = R.string.crossfade_duration,
                 summary = R.string.crossfade_duration_summary,
-                icon = R.drawable.ic_join_right,
+                icon = R.drawable.ic_timelapse,
                 type = PreferenceType.SLIDER,
                 valueProvider = {
                     Log.d(TAG, AudioPreferences.getCrossfadeDuration().toString())
                     SeekbarState(
                             position = AudioPreferences.getCrossfadeDuration().toFloat(),
                             max = 10000F,
-                            min = 0F,
+                            min = 1000F,
+                            stepSize = 500F,
                             default = AudioPreferences.DEFAULT_CROSSFADE_DURATION.toFloat(),
                             leftLabel = false,
                             rightLabel = true,
                             rightLabelProvider = { progress, _, _ ->
-                                if (progress == 0F) {
-                                    getString(R.string.off)
-                                } else {
-                                    String.format(Locale.getDefault(), "%.1f s", progress / 1000f)
-                                }
+                                String.format(Locale.getDefault(), "%.1f s", progress / 1000f)
                             },
                     )
                 },
@@ -1251,6 +1261,7 @@ abstract class PreferenceFragment : MediaFragment() {
         }
         preferences.add(hiresToggle)
         preferences.add(crossfadeHeader)
+        preferences.add(crossfadeToggle)
         preferences.add(crossfadeDurationSlider)
         preferences.add(visualizerHeader)
         preferences.add(fftResolutionPopup)

@@ -477,7 +477,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         ))
 
         playerManager = CrossfadePlayerManager(this, sharedMixer, audioProcessorManager, extensionMode, loadControl)
-        playerManager.crossfadeDurationMs = AudioPreferences.getCrossfadeDuration()
+        playerManager.crossfadeDurationMs = if (AudioPreferences.isCrossfadeEnabled()) AudioPreferences.getCrossfadeDuration() else 0L
         playerManager.eventListener = playerListener
         playerManager.analyticsListener = analyticsListener
         playerManager.onActivePlayerChanged = { newPlayer ->
@@ -757,7 +757,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         ))
 
         playerManager = CrossfadePlayerManager(this, sharedMixer, audioProcessorManager, extensionMode, loadControl)
-        playerManager.crossfadeDurationMs = AudioPreferences.getCrossfadeDuration()
+        playerManager.crossfadeDurationMs = if (AudioPreferences.isCrossfadeEnabled()) AudioPreferences.getCrossfadeDuration() else 0L
         playerManager.eventListener = playerListener
         playerManager.analyticsListener = analyticsListener
         playerManager.onActivePlayerChanged = { newPlayer ->
@@ -1330,8 +1330,13 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 // next time a song starts — the existing sink never learns about the preference flip.
                 switchAudioMode()
             }
-            AudioPreferences.CROSSFADE_DURATION -> {
-                val duration = AudioPreferences.getCrossfadeDuration()
+            AudioPreferences.CROSSFADE_DURATION,
+            AudioPreferences.CROSSFADE_ENABLED -> {
+                val duration = if (AudioPreferences.isCrossfadeEnabled()) {
+                    AudioPreferences.getCrossfadeDuration()
+                } else {
+                    0L
+                }
                 playerManager.crossfadeDurationMs = duration
                 Log.d(TAG, "Crossfade duration changed to: $duration ms")
             }
