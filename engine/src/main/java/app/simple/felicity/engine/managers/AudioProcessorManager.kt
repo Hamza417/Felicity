@@ -25,7 +25,7 @@ import app.simple.felicity.shared.models.ParsedBand
  *                                   stereo widening (M/S), constant-power balance,
  *                                   and tape-style saturation — all in one JNI call.
  *                                   When USB or AAudio is the active output, this processor
- *                                   acts as a passthrough here; [FelicityAudioSink] drives
+ *                                   acts as a passthrough here; [app.simple.felicity.engine.audio.FelicityAudioSink] drives
  *                                   it directly via [NativeDspAudioProcessor.processInPlace].
  *  5. [NightModeProcessor]          Dynamic compressor/limiter for late-night listening.
  *  6. [VisualizerProcessor]         Hann-windowed FFT spectrum capture on the final signal.
@@ -75,7 +75,7 @@ class AudioProcessorManager {
      * [VisualizerProcessor.VisualizerListener] or via the lock-free twin-buffer path.
      *
      * Must be the last processor in the chain so visualization reflects the fully
-     * processed signal. The listener is wired in [FelicityPlayerService].
+     * processed signal. The listener is wired in [app.simple.felicity.engine.services.FelicityPlayerService].
      */
     val visualizerProcessor: VisualizerProcessor = VisualizerProcessor()
 
@@ -97,7 +97,9 @@ class AudioProcessorManager {
 
     /**
      * Returns the array of processors that must be applied PER-TRACK before mixing.
-     * This includes silence trimming.
+     * This includes silence trimming. Each call creates new processor instances, because a
+     * processor holds per-stream state and must belong to exactly one `VirtualAudioSink`; the
+     * [silenceTrimmingProcessor] singleton is only a source for the threshold.
      */
     fun getPreMixProcessors(): Array<AudioProcessor> {
         val processors = mutableListOf<AudioProcessor>()
@@ -273,7 +275,7 @@ class AudioProcessorManager {
      * of the fixed-frequency graphic EQ bands. Both paths respect the same enabled flag and
      * preamp setting.
      *
-     * Called once from [FelicityPlayerService] when the audio pipeline is (re)built so the
+     * Called once from [app.simple.felicity.engine.services.FelicityPlayerService] when the audio pipeline is (re)built so the
      * saved settings are honored from the very first decoded frame.
      */
     fun applyEqualizerState() {

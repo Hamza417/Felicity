@@ -64,7 +64,34 @@ class CrossfadePlayerManager(
             val reuse: DecoderReuseEvaluation?
     )
 
-    private data class PrerollKey(val index: Int, val count: Int, val mediaId: String)
+    /**
+     * The two slots are always in exactly one of these states.
+     *  - [Steady]: [active] plays, [idle] is stopped and empty.
+     *  - [Prerolling]: [idle] is buffering the single target item.
+     *  - [Transitioning]: the roles were already swapped. [active] is the incoming track and
+     */
+    private sealed class State {
+        object Steady : State()
+
+        class Prerolling(
+                val targetIndex: Int,
+                val mediaId: String,
+                val itemCount: Int,
+                val manual: Boolean,
+                val requestedAtMs: Long
+        ) : State() {
+            /** Whether [idle] was already given the target item. */
+            var prepared = false
+
+            fun matches(index: Int, id: String, count: Int) =
+                targetIndex == index && mediaId == id && itemCount == count
+        }
+
+        /**
+         * [outgoingSlot] (which is [idle]) is fading out inside the mixer.
+         */
+        class Transitioning(val token: Int, val outgoingSlot: Slot) : State()
+    }
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private val audioAttributes = AudioAttributes.Builder()
@@ -82,12 +109,11 @@ class CrossfadePlayerManager(
     private val slotB: Slot
     private var activeIsA = true
 
-    private var crossfading = false
+    private var state: State = State.Steady
     private var fadeToken = 0
-    private var prerollKey: PrerollKey? = null
-    private var manualRequestedAtMs = 0L
-    private var manualPending = false
-    private var manualTargetIndex = C.INDEX_UNSET
+
+    // Set while this class seeks the incoming player itself, so the resulting events do not abort the fade.
+    private var ignoringInternalSeek = false
     private var released = false
 
     private var sessionPlayer: ForwardingPlayer? = null
@@ -123,7 +149,7 @@ class CrossfadePlayerManager(
         slotB = buildSlot(handleAudioFocus = false)
         sharedMixer.sinkA = slotA.sink
         sharedMixer.sinkB = slotB.sink
-        sharedMixer.onCrossfadeComplete = { sink -> mainHandler.post { onFadeFinished(sink) } }
+        sharedMixer.onCrossfadeComplete = { sink, token -> mainHandler.post { onFadeFinished(sink, token) } }
         sharedMixer.start()
         mainHandler.postDelayed(tickRunnable, TICK_MS)
     }
@@ -134,7 +160,8 @@ class CrossfadePlayerManager(
 
     private fun buildSlot(handleAudioFocus: Boolean): Slot {
         val sink = VirtualAudioSink(sharedMixer)
-        // Set processors directly since we bypassed DefaultAudioSink
+        // Every call builds new processor instances. Sharing one between the slots would let the
+        // pre-rolling idle player flush the state of the one that is playing.
         sink.setAudioProcessors(audioProcessorManager.getPreMixProcessors())
 
         val renderersFactory = object : DefaultRenderersFactory(context) {
@@ -167,7 +194,8 @@ class CrossfadePlayerManager(
 
         override fun onPlaybackStateChanged(playbackState: Int) {
             if (!isActive()) return
-            if (crossfading && (playbackState == Player.STATE_IDLE || playbackState == Player.STATE_ENDED)) {
+            if (state is State.Transitioning &&
+                    (playbackState == Player.STATE_IDLE || playbackState == Player.STATE_ENDED)) {
                 abortCrossfade()
             }
             eventListener?.onPlaybackStateChanged(playbackState)
@@ -179,27 +207,29 @@ class CrossfadePlayerManager(
 
         override fun onPlayerError(error: PlaybackException) {
             if (!isActive()) return
-            if (crossfading) abortCrossfade()
+            abortCrossfade()
             eventListener?.onPlayerError(error)
         }
 
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
             if (!isActive()) return
             if (!playWhenReady) {
-                manualPending = false
-                if (crossfading) abortCrossfade()
+                val st = state
+                if (st is State.Prerolling && st.manual) invalidatePreroll()
+                abortCrossfade()
             }
             eventListener?.onPlayWhenReadyChanged(playWhenReady, reason)
         }
 
         override fun onTimelineChanged(timeline: Timeline, reason: Int) {
             // The queue was edited, so whatever was pre-rolled may no longer be the next item.
-            if (isActive() && !crossfading) invalidatePreroll()
+            val st = state
+            if (isActive() && st is State.Prerolling && !st.manual) invalidatePreroll()
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             if (!isActive()) return
-            if (crossfading &&
+            if (!ignoringInternalSeek &&
                     (reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED ||
                             reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK)) {
                 abortCrossfade()
@@ -213,7 +243,7 @@ class CrossfadePlayerManager(
                 reason: Int
         ) {
             if (!isActive()) return
-            if (crossfading &&
+            if (!ignoringInternalSeek &&
                     (reason == Player.DISCONTINUITY_REASON_SEEK || reason == Player.DISCONTINUITY_REASON_REMOVE)) {
                 abortCrossfade()
             }
@@ -256,25 +286,22 @@ class CrossfadePlayerManager(
     // ---------------------------------------------------------------------------------------------
 
     private fun tick() {
-        if (crossfading) return
+        val st = state
+        if (st is State.Transitioning) return
 
         val out = active.player
         val inn = idle.player
 
-        if (manualPending) {
-            val target = manualTargetIndex
-            if (target != C.INDEX_UNSET && crossfadeDurationMs > 0 && out.playbackState == Player.STATE_READY) {
-                handleManualRequest(out, inn, target)
-                return
+        if (st is State.Prerolling && st.manual) {
+            val target = st.targetIndex
+            val valid = target in 0 until out.mediaItemCount
+            if (valid && crossfadeDurationMs > 0 && out.playbackState == Player.STATE_READY) {
+                handleManualRequest(out, inn, st)
             } else {
-                manualPending = false
-                manualTargetIndex = C.INDEX_UNSET
                 invalidatePreroll()
-                if (target != C.INDEX_UNSET) {
-                    out.seekToDefaultPosition(target)
-                }
-                return
+                if (valid) out.seekToDefaultPosition(target)
             }
+            return
         }
 
         val next = out.nextMediaItemIndex
@@ -303,47 +330,64 @@ class CrossfadePlayerManager(
             return
         }
 
-        ensurePreroll(out, inn, next)
+        val mediaId = out.getMediaItemAt(next).mediaId
+        val current = st as? State.Prerolling
+        val preroll = if (current != null && current.matches(next, mediaId, out.mediaItemCount)) {
+            current
+        } else {
+            State.Prerolling(next, mediaId, out.mediaItemCount, false, SystemClock.elapsedRealtime())
+        }
+        ensurePreroll(out, inn, preroll)
 
         if (remaining <= overlap && inn.playbackState == Player.STATE_READY) {
-            startCrossfade(auto = true, durationMs = minOf(overlap, remaining.coerceAtLeast(1)))
+            startCrossfade(preroll, auto = true, durationMs = minOf(overlap, remaining.coerceAtLeast(1)))
         }
     }
 
-    private fun handleManualRequest(out: ExoPlayer, inn: ExoPlayer, target: Int) {
-        ensurePreroll(out, inn, target)
-        val waited = SystemClock.elapsedRealtime() - manualRequestedAtMs
+    private fun handleManualRequest(out: ExoPlayer, inn: ExoPlayer, requested: State.Prerolling) {
+        // The queue may have changed since the request was made.
+        val target = requested.targetIndex
+        val mediaId = out.getMediaItemAt(target).mediaId
+        val st = if (requested.matches(target, mediaId, out.mediaItemCount)) {
+            requested
+        } else {
+            State.Prerolling(target, mediaId, out.mediaItemCount, true, requested.requestedAtMs)
+        }
+
+        ensurePreroll(out, inn, st)
+        val waited = SystemClock.elapsedRealtime() - st.requestedAtMs
         if (inn.playbackState == Player.STATE_READY) {
-            manualPending = false
-            manualTargetIndex = C.INDEX_UNSET
             val duration = out.duration
             val remaining = if (duration == C.TIME_UNSET) Long.MAX_VALUE else duration - out.currentPosition
-            startCrossfade(auto = false, durationMs = minOf(crossfadeDurationMs, remaining.coerceAtLeast(1)))
+            startCrossfade(st, auto = false, durationMs = minOf(crossfadeDurationMs, remaining.coerceAtLeast(1)))
         } else if (waited > MANUAL_WAIT_MS) {
             // Next track did not get ready in time; fall back to an ordinary skip.
-            manualPending = false
-            manualTargetIndex = C.INDEX_UNSET
+            invalidatePreroll()
             out.seekToDefaultPosition(target)
         }
     }
 
-    private fun ensurePreroll(out: ExoPlayer, inn: ExoPlayer, next: Int) {
-        val key = PrerollKey(next, out.mediaItemCount, out.getMediaItemAt(next).mediaId)
-        if (prerollKey == key) return
+    /** Makes [st] the current state and gives [idle] its item, unless that already happened. */
+    private fun ensurePreroll(out: ExoPlayer, inn: ExoPlayer, st: State.Prerolling) {
+        state = st
+        if (st.prepared) return
 
         copySettings(out, inn)
         inn.playWhenReady = false
-        inn.setMediaItem(out.getMediaItemAt(next), 0L)
+        inn.setMediaItem(out.getMediaItemAt(st.targetIndex), 0L)
         inn.prepare()
-        prerollKey = key
+        st.prepared = true
     }
 
+    /** Back to [State.Steady]: stops [idle] if it was buffering something. */
     private fun invalidatePreroll() {
-        if (prerollKey == null) return
-        prerollKey = null
-        val inn = idle.player
-        inn.stop()
-        inn.clearMediaItems()
+        val st = state as? State.Prerolling ?: return
+        state = State.Steady
+        if (st.prepared) {
+            val inn = idle.player
+            inn.stop()
+            inn.clearMediaItems()
+        }
     }
 
     private fun copySettings(from: ExoPlayer, to: ExoPlayer) {
@@ -360,7 +404,7 @@ class CrossfadePlayerManager(
     // Crossfade
     // ---------------------------------------------------------------------------------------------
 
-    private fun startCrossfade(auto: Boolean, durationMs: Long) {
+    private fun startCrossfade(preroll: State.Prerolling, auto: Boolean, durationMs: Long) {
         val outSlot = active
         val inSlot = idle
         val out = outSlot.player
@@ -370,12 +414,10 @@ class CrossfadePlayerManager(
         val oldItem = out.currentMediaItem
         val oldPosition = out.currentPosition
 
-        val targetIndex = prerollKey?.index ?: out.nextMediaItemIndex
+        val targetIndex = preroll.targetIndex
 
-        crossfading = true
-        manualPending = false
-        prerollKey = null
         val token = ++fadeToken
+        state = State.Transitioning(token, outSlot)
 
         copySettings(out, inn)
 
@@ -405,14 +447,31 @@ class CrossfadePlayerManager(
         }
 
         // Registered before the incoming sink starts so it can never be audible at full level.
-        sharedMixer.beginCrossfade(outSlot.sink, inSlot.sink, durationMs)
+        sharedMixer.beginCrossfade(outSlot.sink, inSlot.sink, durationMs, token)
 
         publishSwap(oldIndex, oldItem, oldPosition, auto)
         inn.playWhenReady = true
 
-        mainHandler.postDelayed({
-                                    if (!released && crossfading && fadeToken == token) abortCrossfade()
-                                }, durationMs + FADE_TIMEOUT_SLACK_MS)
+        scheduleFadeTimeout(token, durationMs)
+    }
+
+    private val fadeTimeout = object : Runnable {
+        var token = 0
+
+        override fun run() {
+            val st = state as? State.Transitioning ?: return
+            if (released || st.token != token) return
+            // Normally the mixer reports the end of the fade. Getting here means it did not, so
+            // fade the outgoing track out quickly and force the transition shut if even that fails.
+            abortCrossfade()
+            mainHandler.postDelayed({ if (state === st) finishTransition(st) }, ABORT_GRACE_MS)
+        }
+    }
+
+    private fun scheduleFadeTimeout(token: Int, durationMs: Long) {
+        mainHandler.removeCallbacks(fadeTimeout)
+        fadeTimeout.token = token
+        mainHandler.postDelayed(fadeTimeout, durationMs + FADE_TIMEOUT_SLACK_MS)
     }
 
     private fun publishSwap(oldIndex: Int, oldItem: MediaItem?, oldPositionMs: Long, auto: Boolean) {
@@ -450,15 +509,24 @@ class CrossfadePlayerManager(
         }
     }
 
+    /** Fades the outgoing track out over a few milliseconds; the mixer reports back when done. */
     private fun abortCrossfade() {
-        sharedMixer.finishCrossfade()
+        val st = state as? State.Transitioning ?: return
+        sharedMixer.abortOutgoing(st.outgoingSlot.sink, ABORT_FADE_MS, notify = true)
     }
 
-    private fun onFadeFinished(sink: VirtualAudioSink) {
+    private fun onFadeFinished(sink: VirtualAudioSink, token: Int) {
         if (released) return
-        val slot = if (slotA.sink === sink) slotA else slotB
-        crossfading = false
-        fadeToken++
+        val st = state as? State.Transitioning ?: return
+        // The incoming sink reports its own fade-in as well, which does not end the transition.
+        if (st.token != token || st.outgoingSlot.sink !== sink) return
+        finishTransition(st)
+    }
+
+    private fun finishTransition(st: State.Transitioning) {
+        mainHandler.removeCallbacks(fadeTimeout)
+        state = State.Steady
+        val slot = st.outgoingSlot
         if (slot !== active) {
             slot.player.stop()
             slot.player.clearMediaItems()
@@ -519,63 +587,87 @@ class CrossfadePlayerManager(
         }
 
         override fun getCurrentMediaItemIndex(): Int {
-            return if (manualPending && manualTargetIndex != C.INDEX_UNSET) {
-                manualTargetIndex
-            } else {
-                super.getCurrentMediaItemIndex()
-            }
+            val pending = pendingManualIndex()
+            return if (pending != C.INDEX_UNSET) pending else super.getCurrentMediaItemIndex()
         }
 
         override fun getCurrentPeriodIndex(): Int {
-            return if (manualPending && manualTargetIndex != C.INDEX_UNSET) {
+            val pending = pendingManualIndex()
+            return if (pending != C.INDEX_UNSET) {
                 val timeline = currentTimeline
-                if (!timeline.isEmpty && manualTargetIndex >= 0 && manualTargetIndex < timeline.windowCount) {
-                    timeline.getWindow(manualTargetIndex, Timeline.Window()).firstPeriodIndex
-                } else manualTargetIndex
+                if (!timeline.isEmpty && pending >= 0 && pending < timeline.windowCount) {
+                    timeline.getWindow(pending, Timeline.Window()).firstPeriodIndex
+                } else pending
             } else {
                 super.getCurrentPeriodIndex()
             }
         }
 
         override fun getCurrentPosition(): Long {
-            return if (manualPending && manualTargetIndex != C.INDEX_UNSET) {
-                0L
-            } else {
-                super.getCurrentPosition()
-            }
+            return if (pendingManualIndex() != C.INDEX_UNSET) 0L else super.getCurrentPosition()
         }
 
         override fun getContentPosition(): Long {
-            return if (manualPending && manualTargetIndex != C.INDEX_UNSET) {
-                0L
-            } else {
-                super.getContentPosition()
-            }
+            return if (pendingManualIndex() != C.INDEX_UNSET) 0L else super.getContentPosition()
         }
 
         override fun getCurrentMediaItem(): MediaItem? {
-            return if (manualPending
-                    && manualTargetIndex != C.INDEX_UNSET
-                    && manualTargetIndex >= 0
-                    && manualTargetIndex < internalPlayer.mediaItemCount) {
-                internalPlayer.getMediaItemAt(manualTargetIndex)
+            val pending = pendingManualIndex()
+            return if (pending != C.INDEX_UNSET && pending >= 0 && pending < internalPlayer.mediaItemCount) {
+                internalPlayer.getMediaItemAt(pending)
             } else {
                 super.getCurrentMediaItem()
             }
         }
     }
 
+    /** Target of a manual skip that is still waiting for [idle] to get ready, or [C.INDEX_UNSET]. */
+    private fun pendingManualIndex(): Int {
+        val st = state
+        return if (st is State.Prerolling && st.manual) st.targetIndex else C.INDEX_UNSET
+    }
+
     private fun requestCrossfadeTo(targetIndex: Int): Boolean {
         if (!AudioPreferences.isCrossfadeManualSkipEnabled()) return false
-        val out = active.player
-        if (released || crossfading || crossfadeDurationMs <= 0) return false
-        if (!out.playWhenReady || out.playbackState != Player.STATE_READY) return false
-        if (targetIndex == C.INDEX_UNSET || targetIndex < 0 || targetIndex >= out.mediaItemCount) return false
-        manualTargetIndex = targetIndex
-        manualRequestedAtMs = SystemClock.elapsedRealtime()
-        manualPending = true
+        if (released || crossfadeDurationMs <= 0) return false
+        val cur = active.player
+        if (!cur.playWhenReady) return false
+        if (targetIndex == C.INDEX_UNSET || targetIndex < 0 || targetIndex >= cur.mediaItemCount) return false
+
+        val st = state
+        if (st is State.Transitioning) {
+            if (targetIndex == cur.currentMediaItemIndex) return false
+            retargetIncoming(st, cur, targetIndex)
+            return true
+        }
+
+        if (cur.playbackState != Player.STATE_READY) return false
+
+        val mediaId = cur.getMediaItemAt(targetIndex).mediaId
+        val request = State.Prerolling(
+                targetIndex, mediaId, cur.mediaItemCount, true, SystemClock.elapsedRealtime())
+        // Keep a pre-roll that already holds this very item instead of loading it again.
+        if (st is State.Prerolling && st.prepared && st.matches(targetIndex, mediaId, cur.mediaItemCount)) {
+            request.prepared = true
+        }
+        state = request
         tick()
         return true
+    }
+
+    /**
+     * Points the fade-in at another track while the outgoing one keeps fading out untouched. The
+     * incoming player already holds the whole queue, so it just seeks.
+     */
+    private fun retargetIncoming(st: State.Transitioning, incoming: ExoPlayer, targetIndex: Int) {
+        ignoringInternalSeek = true
+        try {
+            incoming.seekTo(targetIndex, 0L)
+        } finally {
+            ignoringInternalSeek = false
+        }
+        sharedMixer.retargetIncoming(active.sink, crossfadeDurationMs)
+        scheduleFadeTimeout(st.token, crossfadeDurationMs)
     }
 
     fun play() {
@@ -606,5 +698,7 @@ class CrossfadePlayerManager(
         const val PREROLL_LEAD_MS = 6000L
         const val MANUAL_WAIT_MS = 2500L
         const val FADE_TIMEOUT_SLACK_MS = 5000L
+        const val ABORT_FADE_MS = 50L
+        const val ABORT_GRACE_MS = 1000L
     }
 }
