@@ -19,6 +19,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
@@ -182,15 +183,15 @@ class SharedAudioMixer(
     }
 
     fun onPlaybackParameters(parameters: PlaybackParameters) {
-        post { guarded("setPlaybackParameters") { hardwareSink.setPlaybackParameters(parameters) } }
+        post { guarded("setPlaybackParameters") { hardwareSink.playbackParameters = parameters } }
     }
 
     fun onSkipSilence(enabled: Boolean) {
-        post { guarded("setSkipSilenceEnabled") { hardwareSink.setSkipSilenceEnabled(enabled) } }
+        post { guarded("setSkipSilenceEnabled") { hardwareSink.skipSilenceEnabled = enabled } }
     }
 
     fun onAudioAttributes(attributes: AudioAttributes) {
-        post { guarded("setAudioAttributes") { hardwareSink.setAudioAttributes(attributes) } }
+        post { guarded("setAudioAttributes") { hardwareSink.audioAttributes = attributes } }
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -392,7 +393,7 @@ class SharedAudioMixer(
             outBuf.limit(samples * 4)
         } else {
             for (i in 0 until samples) {
-                val v = Math.round(mixBuf[i] * 32768f).coerceIn(-32768, 32767)
+                val v = (mixBuf[i] * 32768f).roundToInt().coerceIn(-32768, 32767)
                 outBuf.putShort(i * 2, v.toShort())
             }
             outBuf.limit(samples * 2)
@@ -519,29 +520,29 @@ class SharedAudioMixer(
             }
 
             ensureCapacity((readyFrames + (frames / step).toInt() + 8) * outChannels)
-            val ch = outChannels
+
             for (f in 0 until frames) {
-                val base = f * ch
+                val base = f * outChannels
                 if (!primed) {
-                    for (k in 0 until 4) for (c in 0 until ch) history[k * ch + c] = src[base + c]
+                    for (k in 0 until 4) for (c in 0 until outChannels) history[k * outChannels + c] = src[base + c]
                     primed = true
                     frac = 0.0
                 } else {
-                    for (c in 0 until ch) {
-                        history[c] = history[ch + c]
-                        history[ch + c] = history[2 * ch + c]
-                        history[2 * ch + c] = history[3 * ch + c]
-                        history[3 * ch + c] = src[base + c]
+                    for (c in 0 until outChannels) {
+                        history[c] = history[outChannels + c]
+                        history[outChannels + c] = history[2 * outChannels + c]
+                        history[2 * outChannels + c] = history[3 * outChannels + c]
+                        history[3 * outChannels + c] = src[base + c]
                     }
                 }
                 while (frac < 1.0) {
                     val t = frac.toFloat()
-                    val out = readyFrames * ch
-                    for (c in 0 until ch) {
+                    val out = readyFrames * outChannels
+                    for (c in 0 until outChannels) {
                         val p0 = history[c]
-                        val p1 = history[ch + c]
-                        val p2 = history[2 * ch + c]
-                        val p3 = history[3 * ch + c]
+                        val p1 = history[outChannels + c]
+                        val p2 = history[2 * outChannels + c]
+                        val p3 = history[3 * outChannels + c]
                         val v = p1 + 0.5f * t * (p2 - p0 + t * (2f * p0 - 5f * p1 + 4f * p2 - p3 +
                                 t * (3f * (p1 - p2) + p3 - p0)))
                         ready[out + c] = v * volume
