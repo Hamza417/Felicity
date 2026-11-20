@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
 import android.os.Process
+import android.os.SystemClock
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.Format
@@ -311,7 +312,7 @@ class CrossfadePlayerManager(
 
     private fun handleManualRequest(out: ExoPlayer, inn: ExoPlayer, target: Int) {
         ensurePreroll(out, inn, target)
-        val waited = android.os.SystemClock.elapsedRealtime() - manualRequestedAtMs
+        val waited = SystemClock.elapsedRealtime() - manualRequestedAtMs
         if (inn.playbackState == Player.STATE_READY) {
             manualPending = false
             manualTargetIndex = C.INDEX_UNSET
@@ -565,12 +566,13 @@ class CrossfadePlayerManager(
     }
 
     private fun requestCrossfadeTo(targetIndex: Int): Boolean {
+        if (!AudioPreferences.isCrossfadeManualSkipEnabled()) return false
         val out = active.player
         if (released || crossfading || crossfadeDurationMs <= 0) return false
         if (!out.playWhenReady || out.playbackState != Player.STATE_READY) return false
         if (targetIndex == C.INDEX_UNSET || targetIndex < 0 || targetIndex >= out.mediaItemCount) return false
         manualTargetIndex = targetIndex
-        manualRequestedAtMs = android.os.SystemClock.elapsedRealtime()
+        manualRequestedAtMs = SystemClock.elapsedRealtime()
         manualPending = true
         tick()
         return true

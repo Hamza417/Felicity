@@ -11,6 +11,7 @@ object AudioPreferences {
     const val SKIP_SILENCE = "skip_silence"
     const val CROSSFADE_DURATION = "crossfade_duration"
     const val CROSSFADE_ENABLED = "crossfade_enabled"
+    const val CROSSFADE_MANUAL_SKIP = "crossfade_manual_skip"
     const val IS_STEREO_DOWNMIX_FORCED = "is_stereo_downmix_forced"
     const val IS_USB_DAC = "is_usb_dac1"
 
@@ -94,6 +95,14 @@ object AudioPreferences {
 
     fun isCrossfadeEnabled(): Boolean {
         return SharedPreferences.getSharedPreferences().getBoolean(CROSSFADE_ENABLED, true)
+    }
+
+    fun setCrossfadeManualSkip(enabled: Boolean) {
+        SharedPreferences.getSharedPreferences().edit { putBoolean(CROSSFADE_MANUAL_SKIP, enabled) }
+    }
+
+    fun isCrossfadeManualSkipEnabled(): Boolean {
+        return SharedPreferences.getSharedPreferences().getBoolean(CROSSFADE_MANUAL_SKIP, true)
     }
 
     // --------------------------------------------------------------------------------------------- //

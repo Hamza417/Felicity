@@ -1066,6 +1066,19 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val crossfadeManualSkipToggle = Preference(
+                title = R.string.crossfade_manual_skips,
+                summary = R.string.crossfade_manual_skips_summary,
+                icon = -1,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, callback ->
+                    AudioPreferences.setCrossfadeManualSkip((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    AudioPreferences.isCrossfadeManualSkipEnabled()
+                }
+        )
+
         val crossfadeDurationSlider = Preference(
                 title = R.string.crossfade_duration,
                 summary = R.string.crossfade_duration_summary,
@@ -1262,6 +1275,7 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(hiresToggle)
         preferences.add(crossfadeHeader)
         preferences.add(crossfadeToggle)
+        preferences.add(crossfadeManualSkipToggle)
         preferences.add(crossfadeDurationSlider)
         preferences.add(visualizerHeader)
         preferences.add(fftResolutionPopup)
