@@ -19,9 +19,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.roundToInt
 import kotlin.math.sin
-import kotlin.math.tanh
 
 /**
  * Pulls decoded audio from the [VirtualAudioSink] of each ExoPlayer, brings every source to a
@@ -377,7 +375,7 @@ class SharedAudioMixer(
             s.consume(take, channels)
         }
 
-        writeOutput(n, channels, ramp)
+        writeOutput(n, channels)
 
         if (f != null && ramp) {
             f.doneFrames += n
@@ -386,7 +384,7 @@ class SharedAudioMixer(
         return true
     }
 
-    private fun writeOutput(frames: Int, channels: Int, ramp: Boolean) {
+    private fun writeOutput(frames: Int, channels: Int) {
         val samples = frames * channels
         outBuf.clear()
         if (floatOutput) {
@@ -394,8 +392,7 @@ class SharedAudioMixer(
             outBuf.limit(samples * 4)
         } else {
             for (i in 0 until samples) {
-                val x = if (ramp) tanh(mixBuf[i]) else mixBuf[i]
-                val v = (x * 32768f).roundToInt().coerceIn(-32768, 32767)
+                val v = Math.round(mixBuf[i] * 32768f).coerceIn(-32768, 32767)
                 outBuf.putShort(i * 2, v.toShort())
             }
             outBuf.limit(samples * 2)
@@ -576,60 +573,33 @@ class SharedAudioMixer(
         /** Assumes the usual WAV/ITU channel order: L R C LFE Ls Rs (Lb Rb). The LFE is dropped. */
         private fun downmixToStereo(src: Int, m: FloatArray) {
             val c = 0.7071f
-
             fun set(o: Int, i: Int, w: Float) {
                 m[o * src + i] = w
             }
-
             set(0, 0, 1f)
             set(1, 1, 1f)
-
             when (src) {
                 3 -> {
-                    set(0, 2, c)
-                    set(1, 2, c)
+                    set(0, 2, c); set(1, 2, c)
                 }
                 4 -> {
-                    set(0, 2, c)
-                    set(1, 3, c)
+                    set(0, 2, c); set(1, 3, c)
                 }
                 5 -> {
-                    set(0, 2, c)
-                    set(1, 2, c)
-                    set(0, 3, c)
-                    set(1, 4, c)
+                    set(0, 2, c); set(1, 2, c); set(0, 3, c); set(1, 4, c)
                 }
                 6 -> {
-                    set(0, 2, c)
-                    set(1, 2, c)
-                    set(0, 4, c)
-                    set(1, 5, c)
+                    set(0, 2, c); set(1, 2, c); set(0, 4, c); set(1, 5, c)
                 }
                 8 -> {
-                    set(0, 2, c)
-                    set(1, 2, c)
-                    set(0, 4, c)
-                    set(1, 5, c)
-                    set(0, 6, c)
-                    set(1, 7, c)
+                    set(0, 2, c); set(1, 2, c); set(0, 4, c); set(1, 5, c); set(0, 6, c); set(1, 7, c)
                 }
-                else -> {
-                    for (i in 2 until src) {
-                        set(i % 2, i, c)
-                    }
-                }
+                else -> for (i in 2 until src) set(i % 2, i, c)
             }
             for (o in 0 until 2) {
                 var sum = 0f
-                for (i in 0 until src) {
-                    sum += m[o * src + i]
-                }
-
-                if (sum > 1f) {
-                    for (i in 0 until src) {
-                        m[o * src + i] /= sum
-                    }
-                }
+                for (i in 0 until src) sum += m[o * src + i]
+                if (sum > 1f) for (i in 0 until src) m[o * src + i] /= sum
             }
         }
     }
