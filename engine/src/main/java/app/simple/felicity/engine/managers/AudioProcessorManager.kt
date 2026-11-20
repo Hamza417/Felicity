@@ -1,6 +1,7 @@
 package app.simple.felicity.engine.managers
 
 import androidx.annotation.OptIn
+import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.util.UnstableApi
 import app.simple.felicity.engine.processors.DownmixProcessor
 import app.simple.felicity.engine.processors.KaraokeProcessor
@@ -24,7 +25,7 @@ import app.simple.felicity.shared.models.ParsedBand
  *                                   stereo widening (M/S), constant-power balance,
  *                                   and tape-style saturation — all in one JNI call.
  *                                   When USB or AAudio is the active output, this processor
- *                                   acts as a passthrough here; [FelicityAudioSink] drives
+ *                                   acts as a passthrough here; [app.simple.felicity.engine.audio.FelicityAudioSink] drives
  *                                   it directly via [NativeDspAudioProcessor.processInPlace].
  *  5. [NightModeProcessor]          Dynamic compressor/limiter for late-night listening.
  *  6. [VisualizerProcessor]         Hann-windowed FFT spectrum capture on the final signal.
@@ -74,7 +75,7 @@ class AudioProcessorManager {
      * [VisualizerProcessor.VisualizerListener] or via the lock-free twin-buffer path.
      *
      * Must be the last processor in the chain so visualization reflects the fully
-     * processed signal. The listener is wired in [FelicityPlayerService].
+     * processed signal. The listener is wired in [app.simple.felicity.engine.services.FelicityPlayerService].
      */
     val visualizerProcessor: VisualizerProcessor = VisualizerProcessor()
 
@@ -96,12 +97,16 @@ class AudioProcessorManager {
 
     /**
      * Returns the array of processors that must be applied PER-TRACK before mixing.
-     * This includes silence trimming.
+     * This includes silence trimming. Each call creates new processor instances, because a
+     * processor holds per-stream state and must belong to exactly one `VirtualAudioSink`; the
+     * [silenceTrimmingProcessor] singleton is only a source for the threshold.
      */
-    fun getPreMixProcessors(): Array<androidx.media3.common.audio.AudioProcessor> {
-        val processors = mutableListOf<androidx.media3.common.audio.AudioProcessor>()
+    fun getPreMixProcessors(): Array<AudioProcessor> {
+        val processors = mutableListOf<AudioProcessor>()
         if (AudioPreferences.isSkipSilenceEnabled()) {
-            processors.add(silenceTrimmingProcessor)
+            val processor = SilenceTrimmingProcessor()
+            processor.setThreshold(silenceTrimmingProcessor.getThreshold())
+            processors.add(processor)
         }
         return processors.toTypedArray()
     }
@@ -110,8 +115,8 @@ class AudioProcessorManager {
      * Returns the array of processors that must be applied GLOBALLY after mixing.
      * This includes downmixing, karaoke, EQ, effects, night mode, and visualizer.
      */
-    fun getPostMixProcessors(forceStereoDownmix: Boolean): Array<androidx.media3.common.audio.AudioProcessor> {
-        val processors = mutableListOf<androidx.media3.common.audio.AudioProcessor>()
+    fun getPostMixProcessors(forceStereoDownmix: Boolean): Array<AudioProcessor> {
+        val processors = mutableListOf<AudioProcessor>()
 
         if (forceStereoDownmix) {
             processors.add(downmixProcessor)
@@ -209,18 +214,6 @@ class AudioProcessorManager {
 
 
     /**
-     * Applies the gain parsed from the current track's embedded ReplayGain tag to
-     * [nativeDspProcessor].
-     *
-     * Call with 0.0 dB to reset to unity (when auto-RG is disabled or the track has no tag).
-     *
-     * @param db Gain in dB parsed from REPLAYGAIN_TRACK_GAIN or REPLAYGAIN_ALBUM_GAIN.
-     */
-    fun applyTagReplayGain(db: Float) {
-        nativeDspProcessor.setTagReplayGainDb(db)
-    }
-
-    /**
      * Forwards the current hardware output latency to [nativeDspProcessor] AND
      * [visualizerProcessor] so the FFT visualizer input is pre-delayed by exactly this
      * duration in both processing paths.
@@ -270,7 +263,7 @@ class AudioProcessorManager {
      * of the fixed-frequency graphic EQ bands. Both paths respect the same enabled flag and
      * preamp setting.
      *
-     * Called once from [FelicityPlayerService] when the audio pipeline is (re)built so the
+     * Called once from [app.simple.felicity.engine.services.FelicityPlayerService] when the audio pipeline is (re)built so the
      * saved settings are honored from the very first decoded frame.
      */
     fun applyEqualizerState() {
