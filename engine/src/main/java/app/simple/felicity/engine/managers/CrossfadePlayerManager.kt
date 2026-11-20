@@ -330,10 +330,9 @@ class CrossfadePlayerManager(
         val key = PrerollKey(next, out.mediaItemCount, out.getMediaItemAt(next).mediaId)
         if (prerollKey == key) return
 
-        val items = (0 until out.mediaItemCount).map { out.getMediaItemAt(it) }
         copySettings(out, inn)
         inn.playWhenReady = false
-        inn.setMediaItems(items, next, 0L)
+        inn.setMediaItem(out.getMediaItemAt(next), 0L)
         inn.prepare()
         prerollKey = key
     }
@@ -370,12 +369,27 @@ class CrossfadePlayerManager(
         val oldItem = out.currentMediaItem
         val oldPosition = out.currentPosition
 
+        val targetIndex = prerollKey?.index ?: out.nextMediaItemIndex
+
         crossfading = true
         manualPending = false
         prerollKey = null
         val token = ++fadeToken
 
         copySettings(out, inn)
+
+        // Sync the full timeline to the incoming player.
+        // It currently only holds the target item at index 0.
+        if (targetIndex != C.INDEX_UNSET && targetIndex < out.mediaItemCount) {
+            if (targetIndex > 0) {
+                val before = (0 until targetIndex).map { out.getMediaItemAt(it) }
+                inn.addMediaItems(0, before)
+            }
+            if (targetIndex + 1 < out.mediaItemCount) {
+                val after = (targetIndex + 1 until out.mediaItemCount).map { out.getMediaItemAt(it) }
+                inn.addMediaItems(inn.mediaItemCount, after)
+            }
+        }
 
         // Hand audio focus over so the incoming player does not make the outgoing one pause itself.
         out.setAudioAttributes(audioAttributes, false)
