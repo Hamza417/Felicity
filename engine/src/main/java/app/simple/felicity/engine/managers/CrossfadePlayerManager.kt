@@ -40,6 +40,7 @@ import app.simple.felicity.preferences.AudioPreferences
 class CrossfadePlayerManager(
         private val context: Context,
         private val sharedMixer: SharedAudioMixer,
+        private val audioProcessorManager: AudioProcessorManager,
         private val extensionRendererMode: Int,
         private val loadControl: LoadControl
 ) {
@@ -132,6 +133,9 @@ class CrossfadePlayerManager(
 
     private fun buildSlot(handleAudioFocus: Boolean): Slot {
         val sink = VirtualAudioSink(sharedMixer)
+        // Set processors directly since we bypassed DefaultAudioSink
+        sink.setAudioProcessors(audioProcessorManager.getPreMixProcessors())
+
         val renderersFactory = object : DefaultRenderersFactory(context) {
             override fun buildAudioSink(
                     context: Context,

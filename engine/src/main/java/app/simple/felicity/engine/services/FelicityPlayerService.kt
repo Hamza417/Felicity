@@ -476,7 +476,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 visualizer = audioProcessorManager.visualizerProcessor
         ))
 
-        playerManager = CrossfadePlayerManager(this, sharedMixer, extensionMode, loadControl)
+        playerManager = CrossfadePlayerManager(this, sharedMixer, audioProcessorManager, extensionMode, loadControl)
         playerManager.crossfadeDurationMs = AudioPreferences.getCrossfadeDuration()
         playerManager.eventListener = playerListener
         playerManager.analyticsListener = analyticsListener
@@ -756,7 +756,7 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 visualizer = audioProcessorManager.visualizerProcessor
         ))
 
-        playerManager = CrossfadePlayerManager(this, sharedMixer, extensionMode, loadControl)
+        playerManager = CrossfadePlayerManager(this, sharedMixer, audioProcessorManager, extensionMode, loadControl)
         playerManager.crossfadeDurationMs = AudioPreferences.getCrossfadeDuration()
         playerManager.eventListener = playerListener
         playerManager.analyticsListener = analyticsListener

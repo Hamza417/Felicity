@@ -7,6 +7,7 @@ import androidx.media3.common.C
 import androidx.media3.common.Format
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackParameters
+import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.util.Clock
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.analytics.PlayerId
@@ -80,6 +81,13 @@ class VirtualAudioSink(
     @Volatile
     var isMuted = false
         private set
+
+    private var processors = emptyArray<AudioProcessor>()
+    private var activeProcessors = emptyArray<AudioProcessor>()
+
+    fun setAudioProcessors(processors: Array<AudioProcessor>) {
+        this.processors = processors
+    }
 
     /** Incremented on every flush so the mixer can discard anything it converted before it. */
     @Volatile
@@ -204,9 +212,33 @@ class VirtualAudioSink(
             throw AudioSink.ConfigurationException("Unsupported sink format", inputFormat)
         }
         synchronized(lock) {
-            cfgSampleRate = inputFormat.sampleRate
-            cfgChannels = inputFormat.channelCount
-            cfgEncoding = inputFormat.pcmEncoding
+            var format = AudioProcessor.AudioFormat(
+                    inputFormat.sampleRate,
+                    inputFormat.channelCount,
+                    inputFormat.pcmEncoding
+            )
+
+            val activeList = ArrayList<AudioProcessor>()
+
+            for (p in processors) {
+                try {
+                    val nextFormat = p.configure(format)
+                    if (p.isActive) {
+                        activeList.add(p)
+                        format = nextFormat
+                    }
+                } catch (e: AudioProcessor.UnhandledAudioFormatException) {
+                    throw AudioSink.ConfigurationException(e, inputFormat)
+                }
+            }
+
+            activeProcessors = activeList.toTypedArray()
+
+            cfgSampleRate = format.sampleRate
+            cfgChannels = format.channelCount
+            cfgEncoding = format.encoding
+
+            for (p in activeProcessors) p.flush()
         }
     }
 
@@ -246,7 +278,13 @@ class VirtualAudioSink(
             // buffer size the decoder happens to use.
             if (queuedUs >= MAX_QUEUED_US) return false
 
-            val chunk = convert(buffer)
+            var currentBuffer = buffer
+            for (p in activeProcessors) {
+                p.queueInput(currentBuffer)
+                currentBuffer = p.output
+            }
+
+            val chunk = convert(currentBuffer)
             if (!started) {
                 started = true
                 startMediaTimeUs = presentationTimeUs
@@ -325,9 +363,31 @@ class VirtualAudioSink(
 
     override fun playToEndOfStream() {
         endOfStream = true
+        synchronized(lock) {
+            for (p in activeProcessors) {
+                p.queueEndOfStream()
+            }
+            while (true) {
+                var hasOutput = false
+                for (p in activeProcessors) {
+                    val out = p.output
+                    if (out.hasRemaining()) {
+                        hasOutput = true
+                        val chunk = convert(out)
+                        if (chunk != null) {
+                            val durationUs = chunk.frames * 1_000_000.0 / chunk.sampleRate
+                            submittedUs += durationUs
+                            queuedUs += durationUs
+                            queue.addLast(chunk)
+                        }
+                    }
+                }
+                if (!hasOutput) break
+            }
+        }
     }
 
-    override fun isEnded(): Boolean = isDrained()
+    override fun isEnded(): Boolean = isDrained() && activeProcessors.all { it.isEnded }
 
     override fun hasPendingData(): Boolean = hasQueuedData()
 
@@ -387,12 +447,20 @@ class VirtualAudioSink(
             endOfStream = false
             isMuted = false
             flushGeneration++
+            for (p in activeProcessors) p.flush()
         }
         mixer.wake()
     }
 
     override fun reset() {
         flush()
+        synchronized(lock) {
+            cfgSampleRate = 0
+            cfgChannels = 0
+            cfgEncoding = C.ENCODING_INVALID
+            for (p in processors) p.reset()
+            activeProcessors = emptyArray()
+        }
     }
 
     override fun release() {
