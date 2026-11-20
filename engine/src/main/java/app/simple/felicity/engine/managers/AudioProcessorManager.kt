@@ -1,6 +1,7 @@
 package app.simple.felicity.engine.managers
 
 import androidx.annotation.OptIn
+import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.util.UnstableApi
 import app.simple.felicity.engine.processors.DownmixProcessor
 import app.simple.felicity.engine.processors.KaraokeProcessor
@@ -98,10 +99,12 @@ class AudioProcessorManager {
      * Returns the array of processors that must be applied PER-TRACK before mixing.
      * This includes silence trimming.
      */
-    fun getPreMixProcessors(): Array<androidx.media3.common.audio.AudioProcessor> {
-        val processors = mutableListOf<androidx.media3.common.audio.AudioProcessor>()
+    fun getPreMixProcessors(): Array<AudioProcessor> {
+        val processors = mutableListOf<AudioProcessor>()
         if (AudioPreferences.isSkipSilenceEnabled()) {
-            processors.add(silenceTrimmingProcessor)
+            val processor = SilenceTrimmingProcessor()
+            processor.setThreshold(silenceTrimmingProcessor.getThreshold())
+            processors.add(processor)
         }
         return processors.toTypedArray()
     }
@@ -110,8 +113,8 @@ class AudioProcessorManager {
      * Returns the array of processors that must be applied GLOBALLY after mixing.
      * This includes downmixing, karaoke, EQ, effects, night mode, and visualizer.
      */
-    fun getPostMixProcessors(forceStereoDownmix: Boolean): Array<androidx.media3.common.audio.AudioProcessor> {
-        val processors = mutableListOf<androidx.media3.common.audio.AudioProcessor>()
+    fun getPostMixProcessors(forceStereoDownmix: Boolean): Array<AudioProcessor> {
+        val processors = mutableListOf<AudioProcessor>()
 
         if (forceStereoDownmix) {
             processors.add(downmixProcessor)
