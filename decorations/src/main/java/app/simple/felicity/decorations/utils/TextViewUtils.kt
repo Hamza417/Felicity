@@ -21,10 +21,6 @@ import androidx.core.graphics.toColorInt
 import androidx.core.widget.addTextChangedListener
 import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.lifecycle.lifecycleScope
-import app.simple.felicity.decorations.utils.TextViewUtils.setFade
-import app.simple.felicity.decorations.utils.TextViewUtils.setSlide
-import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithEffect
-import app.simple.felicity.decorations.utils.TextViewUtils.setTypeWriting
 import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.shared.R
 import kotlinx.coroutines.Job
@@ -42,6 +38,10 @@ object TextViewUtils {
 
     fun AppCompatTextView.setEndDrawable(resourceId: Int) {
         this.setCompoundDrawablesWithIntrinsicBounds(0, 0, resourceId, 0)
+    }
+
+    fun AppCompatTextView.clearStartDrawable() {
+        this.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0)
     }
 
     fun TextView.makeLinks(vararg links: Pair<String, View.OnClickListener>) {

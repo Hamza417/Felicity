@@ -22,52 +22,48 @@
 
             <app.simple.felicity.decorations.typeface.TypeFaceTextView
                 android:id="@+id/preset_name"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
+                android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:textSize="@dimen/text_size_16"
                 android:layout_gravity="center_vertical"
                 android:gravity="center_vertical"
                 android:drawablePadding="@dimen/padding_10"
+                android:ellipsize="end"
+                android:layout_marginEnd="@dimen/padding_5"
                 app:appFontStyle="bold"
                 app:drawableTintStyle="accent"
                 app:textColorStyle="primary" />
 
-            <Space
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1" />
-
-            <app.simple.felicity.decorations.typeface.TypeFaceTextView
-                android:id="@+id/preset_type_label"
+            <app.simple.felicity.decorations.highlight.HighlightTextView
+                android:id="@+id/preset_type"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_vertical"
-                android:textSize="@dimen/text_size_12"
+                android:textSize="@dimen/text_size_10"
                 android:textStyle="italic"
+                android:paddingHorizontal="@dimen/padding_5"
+                android:paddingVertical="@dimen/padding_1"
                 app:appFontStyle="light"
+                app:highlightMode="outline"
+                app:highlightStrokeWidth="1px"
                 app:textColorStyle="tertiary" />
 
-            <app.simple.felicity.decorations.typeface.TypeFaceTextView
-                android:id="@+id/preset_built_in_label"
+            <app.simple.felicity.decorations.highlight.HighlightTextView
+                android:id="@+id/preset_state"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
+                android:textSize="@dimen/text_size_10"
+                android:textStyle="italic"
+                android:text="@string/built_in"
                 android:layout_marginStart="@dimen/padding_5"
-                android:layout_gravity="center_vertical"
-                android:textSize="@dimen/text_size_12"
-                android:textStyle="italic"
+                android:paddingHorizontal="@dimen/padding_5"
+                android:paddingVertical="@dimen/padding_1"
                 app:appFontStyle="light"
+                app:highlightMode="outline"
+                app:highlightStrokeWidth="1px"
                 app:textColorStyle="tertiary" />
-
-            <app.simple.felicity.decorations.typeface.TypeFaceTextView
-                android:id="@+id/preset_selected_indicator"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="@dimen/padding_8"
-                android:layout_gravity="center_vertical"
-                android:textSize="@dimen/text_size_12"
-                android:visibility="gone"
-                app:appFontStyle="bold"
-                app:textColorStyle="accent" />
 
         </LinearLayout>
 

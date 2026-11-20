@@ -81,7 +81,7 @@ data class EqualizerPreset(
 ) {
 
     /** Returns true when this is a parametric EQ preset rather than a graphic one. */
-    fun isPeq(): Boolean = presetType == PRESET_TYPE_PARAMETRIC
+    fun isPEQ(): Boolean = presetType == PRESET_TYPE_PARAMETRIC
 
     /**
      * Parses [bandGainsRaw] back into a proper [FloatArray] of 10 gains.

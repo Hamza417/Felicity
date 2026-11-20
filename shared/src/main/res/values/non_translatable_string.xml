@@ -24,6 +24,8 @@
     <string name="gumroad" translatable="false">Gumroad</string>
     <string name="oboe" translatable="false">Oboe</string>
     <string name="audiotrack" translatable="false">AudioTrack</string>
+    <string name="GEQ" translatable="false">GEQ</string>
+    <string name="graphic_eq" translatable="false">Graphic EQ</string>
     <string name="peq" translatable="false">PEQ</string>
     <string name="parametric_eq" translatable="false">Parametric EQ</string>
 

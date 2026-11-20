@@ -10,6 +10,8 @@ import app.simple.felicity.databinding.AdapterEqualizerPresetBinding
 import app.simple.felicity.databinding.AdapterPresetsHeaderBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.utils.RecyclerViewUtils
+import app.simple.felicity.decorations.utils.TextViewUtils.clearStartDrawable
+import app.simple.felicity.decorations.utils.TextViewUtils.setStartDrawable
 import app.simple.felicity.repository.models.EqualizerPreset
 import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.shared.utils.ViewUtils.visible
@@ -140,34 +142,27 @@ class AdapterEqualizerPresets(
         fun bind(preset: EqualizerPreset) {
             binding.presetName.text = preset.name
 
-            // Show the "Built-in" badge only for factory presets so users can tell
-            // at a glance which ones came with the app and which ones they made themselves.
-            if (preset.isBuiltIn) {
-                binding.presetBuiltInLabel.text = getString(R.string.built_in)
-                binding.presetBuiltInLabel.visible()
+            binding.presetType.text = if (preset.isPEQ()) {
+                getString(R.string.parametric_eq)
             } else {
-                binding.presetBuiltInLabel.gone()
+                getString(R.string.graphic_eq)
             }
 
-            // Show the "PEQ" badge for parametric presets and hide it for graphic ones.
-            // This gives the user a quick way to know which EQ mode the preset uses.
-            if (preset.isPeq()) {
-                binding.presetTypeLabel.text = getString(R.string.parametric_eq)
-                binding.presetTypeLabel.visible()
+            if (preset.isBuiltIn) {
+                binding.presetState.visible(animate = false)
             } else {
-                binding.presetTypeLabel.gone()
+                binding.presetState.gone(animate = false)
             }
 
             // Highlight the row whose preset is currently applied.
             if (preset.id == selectedPresetId) {
-                binding.presetSelectedIndicator.text = "●"
-                binding.presetSelectedIndicator.visible()
+                binding.presetName.setStartDrawable(R.drawable.ic_dot_12dp)
             } else {
-                binding.presetSelectedIndicator.gone()
+                binding.presetName.clearStartDrawable()
             }
 
             // Feed the wave view the appropriate data so it renders the correct EQ curve shape.
-            if (preset.isPeq()) {
+            if (preset.isPEQ()) {
                 binding.equalizerWave.setPeqBands(preset.getPeqBands())
             } else {
                 binding.equalizerWave.setGains(preset.getBandGains())

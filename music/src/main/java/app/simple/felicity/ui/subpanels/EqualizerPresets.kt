@@ -184,7 +184,7 @@ class EqualizerPresets : MediaFragment() {
      * @param preset The preset to apply.
      */
     private fun applyPreset(preset: EqualizerPreset) {
-        if (preset.isPeq()) {
+        if (preset.isPEQ()) {
             // Switch to parametric mode and store the bands in preferences so the EQ
             // screen can load them the moment it becomes visible again.
             EqualizerManager.setEqMode(EqualizerPreferences.EQ_MODE_PARAMETRIC)
