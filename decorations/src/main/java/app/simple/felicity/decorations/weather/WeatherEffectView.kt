@@ -302,6 +302,9 @@ class WeatherEffectView @JvmOverloads constructor(
             VISIBLE -> {
                 isStopping = false
                 updateSeasonFromPreferences()
+                if (activeSeason == Season.NONE && season != Season.NONE) {
+                    activeSeason = season
+                }
                 if (activeSeason != Season.NONE) {
                     initParticles() // Start gradually when app is reopened
                 }
