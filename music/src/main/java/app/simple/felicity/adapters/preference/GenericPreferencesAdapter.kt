@@ -109,6 +109,10 @@ class GenericPreferencesAdapter(
                     }
                 }
 
+                holder.binding.container.setOnClickListener {
+                    holder.binding.popup.callOnClick()
+                }
+
                 holder.binding.popup.text = preference.valueAsStringProvider ?: ""
 
                 holder.binding.title.highlight()
@@ -198,12 +202,16 @@ class GenericPreferencesAdapter(
                 if (preference.icon != -1) {
                     holder.binding.icon.setImageResource(preference.icon)
                 }
-                holder.binding.switchToggle.setChecked(preference.valueAsBooleanProvider ?: false, false)
+                holder.binding.switch.setChecked(preference.valueAsBooleanProvider ?: false, false)
 
-                holder.binding.switchToggle.setOnCheckedChangeListener { switch, isChecked ->
+                holder.binding.switch.setOnCheckedChangeListener { switch, isChecked ->
                     preference.onPreferenceAction?.invoke(switch) {
                         /* no-op */
                     }
+                }
+
+                holder.binding.container.setOnClickListener {
+                    holder.binding.switch.toggle()
                 }
 
                 holder.binding.title.highlight()
