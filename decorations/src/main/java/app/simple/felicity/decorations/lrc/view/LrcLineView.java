@@ -74,7 +74,8 @@ public class LrcLineView extends View implements ThemeChangedListener {
     private final TextPaint textPaint = new TextPaint(TextPaint.ANTI_ALIAS_FLAG);
     // Reusable rect and paint for the background rectangle — allocated once to keep onDraw allocation-free
     private final RectF pillRect = new RectF();
-    private final Paint pillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint pillFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint pillStrokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     // The loaded lyrics data — null means "nothing to show"
     private LrcData lrcData;
     // Which line we're on right now (-1 = before the first line)
@@ -86,6 +87,7 @@ public class LrcLineView extends View implements ThemeChangedListener {
     // The line index and word index that produced the cached layout
     private int cachedLineIndex = Integer.MIN_VALUE;
     private int cachedWordIndex = Integer.MIN_VALUE;
+    
     /**
      * The color for words that haven't been sung yet. Pulled from the theme's secondary
      * text color so it always looks intentional rather than just "dimmed white".
@@ -106,25 +108,15 @@ public class LrcLineView extends View implements ThemeChangedListener {
     @ColorInt
     private int accentColor = Color.WHITE;
     // Text shown when there's nothing to display
-    private String emptyText = DEFAULT_EMPTY_TEXT;
+    private final String emptyText = DEFAULT_EMPTY_TEXT;
+    @ColorInt
+    private int secondaryAccentColor = Color.WHITE;
     /**
      * When true, a rounded rectangle is drawn behind the lyrics text. Useful on screens
      * where the album art can be both very light and very dark, making white or black
      * text equally problematic — the background gives the text its own readable backdrop.
      */
     private boolean showBackground = false;
-    /**
-     * The fill color of the background rectangle. Pulled from the theme's highlight
-     * color automatically, but can be overridden via {@link #setLyricsBackgroundColor(int)}.
-     */
-    @ColorInt
-    private int backgroundColor = Color.BLACK; // updated from theme in onAttachedToWindow
-    /**
-     * Alpha value (0–255) for the background rectangle. 255 is fully opaque.
-     * Dialing this down lets the album art show through a little — a nice middle
-     * ground between full contrast and no background at all.
-     */
-    private int backgroundAlpha = 180;
     
     public LrcLineView(@NonNull Context context) {
         this(context, null);
@@ -153,7 +145,14 @@ public class LrcLineView extends View implements ThemeChangedListener {
         if (!isInEditMode()) {
             textPaint.setTypeface(TypeFace.INSTANCE.getBoldTypeFace(context));
         }
-        pillPaint.setStyle(Paint.Style.FILL);
+        pillFillPaint.setStyle(Paint.Style.FILL);
+        
+        pillStrokePaint.setStyle(Paint.Style.STROKE);
+        pillStrokePaint.setStrokeWidth(TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 1f,
+                context.getResources().getDisplayMetrics()));
+        pillStrokePaint.setStrokeJoin(Paint.Join.ROUND);
+        pillStrokePaint.setStrokeCap(Paint.Cap.ROUND);
     }
     
     @Override
@@ -166,7 +165,7 @@ public class LrcLineView extends View implements ThemeChangedListener {
             highlightColor = ThemeManager.INSTANCE.getTheme().getTextViewTheme().getPrimaryTextColor();
             normalColor = ThemeManager.INSTANCE.getTheme().getTextViewTheme().getSecondaryTextColor();
             accentColor = ThemeManager.INSTANCE.getAccent().getPrimaryAccentColor();
-            backgroundColor = ThemeManager.INSTANCE.getTheme().getViewGroupTheme().getHighlightColor();
+            secondaryAccentColor = ThemeManager.INSTANCE.getAccent().getSecondaryAccentColor();
             applyBackgroundAlpha();
         }
         invalidateCache();
@@ -184,7 +183,6 @@ public class LrcLineView extends View implements ThemeChangedListener {
         // The user switched themes — grab the new primary text color and repaint
         highlightColor = theme.getTextViewTheme().getPrimaryTextColor();
         normalColor = theme.getTextViewTheme().getSecondaryTextColor();
-        backgroundColor = theme.getViewGroupTheme().getHighlightColor();
         applyBackgroundAlpha();
         invalidateCache();
         invalidate();
@@ -194,6 +192,8 @@ public class LrcLineView extends View implements ThemeChangedListener {
     public void onAccentChanged(@NonNull Accent accent) {
         // The accent color is used for word-by-word highlights, so update it here
         accentColor = accent.getPrimaryAccentColor();
+        secondaryAccentColor = accent.getSecondaryAccentColor();
+        applyBackgroundAlpha();
         invalidateCache();
         invalidate();
     }
@@ -378,14 +378,23 @@ public class LrcLineView extends View implements ThemeChangedListener {
             // Center the background horizontally within the padded area
             float centerX = getPaddingLeft() + contentWidth / 2f;
             float halfBgWidth = bgWidth / 2f;
+            
+            // Add a little extra padding so the background box doesn't tightly hug the text
+            float horizontalPadding = TypedValue.applyDimension(
+                    TypedValue.COMPLEX_UNIT_DIP, 8f,
+                    getResources().getDisplayMetrics());
+            float verticalPadding = TypedValue.applyDimension(
+                    TypedValue.COMPLEX_UNIT_DIP, 3f,
+                    getResources().getDisplayMetrics());
 
             pillRect.set(
-                    centerX - halfBgWidth - getPaddingLeft(),
-                    getPaddingTop(),
-                    centerX + halfBgWidth + getPaddingRight(),
-                    height - getPaddingBottom());
-
-            canvas.drawRoundRect(pillRect, themeRadius, themeRadius, pillPaint);
+                    centerX - halfBgWidth - horizontalPadding,
+                    getPaddingTop() - verticalPadding,
+                    centerX + halfBgWidth + horizontalPadding,
+                    height - getPaddingBottom() + verticalPadding);
+            
+            canvas.drawRoundRect(pillRect, themeRadius, themeRadius, pillFillPaint);
+            canvas.drawRoundRect(pillRect, themeRadius, themeRadius, pillStrokePaint);
         }
         
         // Center the text vertically within the padded content area
@@ -557,6 +566,7 @@ public class LrcLineView extends View implements ThemeChangedListener {
      */
     public void setHighlightColor(@ColorInt int color) {
         this.highlightColor = color;
+        applyBackgroundAlpha();
         invalidateCache();
         invalidate();
     }
@@ -575,42 +585,15 @@ public class LrcLineView extends View implements ThemeChangedListener {
     }
     
     /**
-     * Overrides the background color. Normally this is kept in sync with the theme's
-     * highlight color automatically, but you can pin it to any color you like here.
-     *
-     * @param color the ARGB color to use for the background fill
-     */
-    public void setLyricsBackgroundColor(@ColorInt int color) {
-        this.backgroundColor = color;
-        applyBackgroundAlpha();
-        if (showBackground) {
-            invalidate();
-        }
-    }
-    
-    /**
-     * Sets the transparency of the background rectangle. Use a value between 0 (fully
-     * transparent — basically invisible) and 255 (fully opaque). Values around 150–200
-     * tend to look great — enough to make the text pop without completely hiding the
-     * album art underneath.
-     *
-     * @param alpha the alpha value from 0 to 255
-     */
-    public void setBackgroundAlpha(int alpha) {
-        this.backgroundAlpha = Math.max(0, Math.min(255, alpha));
-        applyBackgroundAlpha();
-        if (showBackground) {
-            invalidate();
-        }
-    }
-    
-    /**
-     * Applies the current {@link #backgroundAlpha} to the background paint. We keep
-     * alpha separate from the color so you can change either one independently without
-     * losing the other setting.
+     * Applies the current background alpha to the background paint. We use
+     * 90% alpha for the fill and 100% for the stroke to match the standard
+     * lyric highlight design over album art.
      */
     private void applyBackgroundAlpha() {
-        pillPaint.setColor(backgroundColor);
-        pillPaint.setAlpha(backgroundAlpha);
+        pillFillPaint.setColor(secondaryAccentColor);
+        pillFillPaint.setAlpha(Math.round(255 * 0.9f));
+        
+        pillStrokePaint.setColor(accentColor);
+        pillStrokePaint.setAlpha(255);
     }
 }
