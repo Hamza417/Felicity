@@ -23,16 +23,30 @@
         app:navigationPaddingRequired="true"
         app:statusPaddingRequired="true">
 
-        <app.simple.felicity.decorations.pager.FelicityPager
-            android:id="@+id/pager"
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1"
-            app:carouselPageSpacing="4dp"
-            app:carouselShowSidePages="true"
-            app:carouselSideScaleDp="0dp"
-            app:fadeEnabled="false"
-            app:pagerMode="carousel" />
+            android:layout_weight="1">
+
+            <app.simple.felicity.decorations.pager.FelicityPager
+                android:id="@+id/pager"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                app:carouselPageSpacing="4dp"
+                app:carouselShowSidePages="true"
+                app:carouselSideScaleDp="0dp"
+                app:fadeEnabled="false"
+                app:pagerMode="carousel" />
+
+            <app.simple.felicity.decorations.lrc.view.LrcLineView
+                android:id="@+id/lrc"
+                android:layout_margin="@dimen/padding_10"
+                android:layout_width="match_parent"
+                android:padding="@dimen/padding_5"
+                android:layout_gravity="bottom"
+                android:layout_height="wrap_content" />
+
+        </FrameLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -40,13 +54,6 @@
             android:layout_gravity="bottom"
             android:clipChildren="false"
             android:orientation="vertical">
-
-            <app.simple.felicity.decorations.lrc.view.LrcLineView
-                android:id="@+id/lrc"
-                android:layout_marginBottom="@dimen/padding_15"
-                android:layout_marginHorizontal="@dimen/padding_15"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
 
             <LinearLayout
                 android:layout_width="match_parent"

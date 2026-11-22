@@ -34,7 +34,8 @@
         app:layout_constraintHorizontal_bias="0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintWidth_percent="0.7" />
+        app:layout_constraintWidth_percent="0.7"
+        app:slideDirection="vertical" />
 
     <app.simple.felicity.decorations.padding.NonThemePaddingAwareLinearLayout
         android:id="@+id/menu_strip"
@@ -138,15 +139,17 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:gravity="bottom"
             android:orientation="vertical">
 
             <app.simple.felicity.decorations.lrc.view.LrcLineView
                 android:id="@+id/lrc"
                 android:layout_margin="@dimen/padding_15"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
+                android:layout_height="0dp"
+                android:layout_weight="1" />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -271,8 +274,7 @@
         <app.simple.felicity.decorations.views.FlexStackLayout
             android:id="@+id/seekbar_container"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
+            android:layout_height="wrap_content"
             android:layout_gravity="bottom">
 
             <app.simple.felicity.decorations.seekbars.WaveformSeekbar

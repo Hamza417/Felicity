@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import app.simple.felicity.core.singletons.AppOrientation
 import app.simple.felicity.databinding.FragmentPlayerCarouselBinding
 import app.simple.felicity.databinding.FragmentPlayerFadedWaveformBinding
 import app.simple.felicity.decorations.highlight.HighlightTextView
@@ -103,6 +104,8 @@ class CarouselPlayer : BasePlayerFragment() {
 
         binding.pager.setCarouselSidePagesVisible(visible = true)
         binding.pager.carouselPageTransformer = CarouselTransformers.depth
+
+        lrc.setShowBackground(AppOrientation.isLandscape())
     }
 
     companion object {
