@@ -259,8 +259,9 @@ class WaveformSeekbar @JvmOverloads constructor(
      */
     var labelGravity: Int = LABEL_GRAVITY_BOTTOM
         set(value) {
+            if (field == value) return
             field = value
-            invalidate()
+            animateLabelGravity(value.toFloat())
         }
 
     private var seekListener: OnSeekListener? = null
@@ -431,6 +432,9 @@ class WaveformSeekbar @JvmOverloads constructor(
     private var labelAlpha: Float = 1f
     private var labelScale: Float = 1f
     private var labelAnimator: ValueAnimator? = null
+
+    private var currentLabelGravity: Float = LABEL_GRAVITY_BOTTOM.toFloat()
+    private var labelGravityAnimator: ValueAnimator? = null
 
     // Tracks the current target alpha for labels (driven by immersive mode)
     private var targetLabelAlpha: Float = 1f
@@ -1214,10 +1218,14 @@ class WaveformSeekbar @JvmOverloads constructor(
         labelPaint.color = labelTextColor
         labelPaint.alpha = (255 * labelAlpha).toInt()
 
-        val textY = when (labelGravity) {
-            LABEL_GRAVITY_TOP -> paddingTop.toFloat() + effectiveTextSize + labelPaddingPx / 2f
-            LABEL_GRAVITY_CENTER -> h / 2f + effectiveTextSize / 3f
-            else -> h - labelPaddingPx / 2f  // LABEL_GRAVITY_BOTTOM (default)
+        val topY = paddingTop.toFloat() + effectiveTextSize + labelPaddingPx / 2f
+        val centerY = h / 2f + effectiveTextSize / 3f
+        val bottomY = h - labelPaddingPx / 2f
+
+        val textY = if (currentLabelGravity <= LABEL_GRAVITY_CENTER.toFloat()) {
+            topY + (centerY - topY) * currentLabelGravity
+        } else {
+            centerY + (bottomY - centerY) * (currentLabelGravity - LABEL_GRAVITY_CENTER.toFloat())
         }
 
         // Draw pill backgrounds behind each label when a highlight mode is active
@@ -1497,6 +1505,26 @@ class WaveformSeekbar @JvmOverloads constructor(
                 val t = anim.animatedValue as Float
                 labelAlpha = fromAlpha + (toAlpha - fromAlpha) * t
                 labelScale = fromScale + (toScale - fromScale) * t
+                invalidate()
+            }
+            start()
+        }
+    }
+
+    private fun animateLabelGravity(target: Float) {
+        labelGravityAnimator?.cancel()
+        if (!isAttachedToWindow || isInEditMode) {
+            currentLabelGravity = target
+            invalidate()
+            return
+        }
+
+        val from = currentLabelGravity
+        labelGravityAnimator = ValueAnimator.ofFloat(from, target).apply {
+            duration = LABEL_ANIM_DURATION_MS
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { anim ->
+                currentLabelGravity = anim.animatedValue as Float
                 invalidate()
             }
             start()
