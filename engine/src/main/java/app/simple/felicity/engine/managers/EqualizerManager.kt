@@ -137,6 +137,7 @@ object EqualizerManager {
         nativeDspProcessor.setPreamp(savedPreamp)
         _bandGainsFlow.value = savedGains
         _preampFlow.value = savedPreamp
+        _eqEnabledFlow.value = nativeDspProcessor.eqEnabled
     }
 
     /**
@@ -228,6 +229,10 @@ object EqualizerManager {
     // Enable / disable
     // -------------------------------------------------------------------------
 
+    private val _eqEnabledFlow = MutableStateFlow(EqualizerPreferences.isEqEnabled())
+
+    val eqEnabledFlow: StateFlow<Boolean> = _eqEnabledFlow.asStateFlow()
+
     /**
      * Enables or disables the equalizer effect and persists the new state.
      * When disabled the processor uses a zero-cost bypass path; no biquad math is executed.
@@ -237,6 +242,7 @@ object EqualizerManager {
     fun setEnabled(enabled: Boolean) {
         EqualizerPreferences.setEqEnabled(enabled)
         processor?.eqEnabled = enabled
+        _eqEnabledFlow.value = enabled
     }
 
     /**

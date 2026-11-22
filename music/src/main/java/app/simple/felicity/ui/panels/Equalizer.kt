@@ -72,10 +72,8 @@ class Equalizer : MediaFragment() {
         // The mode is read from preferences and applied once the initial state arrives,
         // so we defer the slider mode assignment to applyInitialState().
 
-        binding.equalizerScreen.eqSwitch.isChecked = EqualizerPreferences.isEqEnabled()
         binding.equalizerScreen.eqSwitch.setOnCheckedChangeListener { _, isChecked ->
-            EqualizerPreferences.setEqEnabled(isChecked)
-            updateEqualizerEnabledState(isChecked)
+            EqualizerManager.setEnabled(isChecked)
         }
 
         binding.equalizerScreen.savePreset.setOnClickListener {
@@ -145,6 +143,18 @@ class Equalizer : MediaFragment() {
         // Keep the preset name label in sync whenever the ViewModel figures out a match.
         observeCurrentPresetName()
 
+        // Observe the EQ enabled state so the UI stays in sync if it is enabled externally.
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                EqualizerManager.eqEnabledFlow.collect { isEnabled ->
+                    if (binding.equalizerScreen.eqSwitch.isChecked != isEnabled) {
+                        binding.equalizerScreen.eqSwitch.isChecked = isEnabled
+                    }
+                    updateEqualizerEnabledState(isEnabled, animate = true)
+                }
+            }
+        }
+
         // Collect the ViewModel's initial state (loaded on the IO thread) to populate
         // all visible controls without blocking the main thread.
         viewLifecycleOwner.lifecycleScope.launch {
@@ -179,7 +189,6 @@ class Equalizer : MediaFragment() {
             }
         }
 
-        updateEqualizerEnabledState(state.isEqEnabled, animate = false)
         setupEqualizerSliders(state)
         setupEqKnobs(state)
         setupSpeakerKnobs(state)

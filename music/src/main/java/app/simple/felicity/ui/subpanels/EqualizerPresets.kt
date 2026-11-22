@@ -206,6 +206,7 @@ class EqualizerPresets : MediaFragment() {
             EqualizerManager.setPreamp(preset.preampDb)
         }
 
+        EqualizerManager.setEnabled(true)
         goBack()
     }
 
