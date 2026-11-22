@@ -64,10 +64,17 @@ class AudioDatabaseService : Service() {
          * Start the audio database scan service (skips if a scan is already running).
          */
         fun startScan(context: Context) {
-            val intent = Intent(context, AudioDatabaseService::class.java).apply {
-                action = ACTION_START_SCAN
+            runCatching {
+                val intent = Intent(context, AudioDatabaseService::class.java).apply {
+                    action = ACTION_START_SCAN
+                }
+
+                context.startService(intent)
+            }.getOrElse {
+                it.printStackTrace()
+                Log.i(TAG, "Failed to start AudioDatabaseService for startScan: ${it.message}")
+                Log.v(TAG, "We can safely ignore this, the user can manually scan if required.")
             }
-            context.startService(intent)
         }
 
         /**
