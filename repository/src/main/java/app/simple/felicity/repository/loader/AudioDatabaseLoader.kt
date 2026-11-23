@@ -173,21 +173,6 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                 return
             }
 
-            Log.d(TAG, "Reconciling database with current SAF grants...")
-            notification.setPhase(notificationGeneration, LoaderNotification.Phase.CLEANING)
-            reconcileDatabase(treeUriStrings)
-
-            Log.d(TAG, "Indexing existing audio files in the database...")
-            notification.setPhase(notificationGeneration, LoaderNotification.Phase.CHECKING)
-
-            val pathToStoredId = HashMap<String, Long>()
-            dao?.getAllAudioListAll()?.forEach { audio ->
-                indexedMap[audio.uri] = IndexedFile(audio.dateModified, audio.size, audio.id, audio.isFavorite, audio.isAlwaysSkip)
-                pathToStoredId[audio.uri] = audio.id
-            }
-
-            Log.d(TAG, "Indexing complete. Found ${indexedMap.size} existing entries in the database.")
-
             // Phase 1 — collect every audio file from all SAF tree URIs.
             notification.setPhase(notificationGeneration, LoaderNotification.Phase.DISCOVERING)
             val allSAFFiles = mutableListOf<SAFFile>()
@@ -203,6 +188,22 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                 Log.d(TAG, "Found ${files.size} audio files in $uriStr (collected in ${System.currentTimeMillis() - collectStart}ms)")
                 allSAFFiles.addAll(files)
             }
+
+            Log.d(TAG, "Reconciling database with current SAF grants...")
+            notification.setPhase(notificationGeneration, LoaderNotification.Phase.CLEANING)
+            val discoveredUris = allSAFFiles.map { it.uri.toString() }.toSet()
+            reconcileDatabase(treeUriStrings, discoveredUris)
+
+            Log.d(TAG, "Indexing existing audio files in the database...")
+            notification.setPhase(notificationGeneration, LoaderNotification.Phase.CHECKING)
+
+            val pathToStoredId = HashMap<String, Long>()
+            dao?.getAllAudioListAll()?.forEach { audio ->
+                indexedMap[audio.uri] = IndexedFile(audio.dateModified, audio.size, audio.id, audio.isFavorite, audio.isAlwaysSkip)
+                pathToStoredId[audio.uri] = audio.id
+            }
+
+            Log.d(TAG, "Indexing complete. Found ${indexedMap.size} existing entries in the database.")
 
             val filesToProcess = allSAFFiles.filter { shouldProcess(it) }
             notification.setTotal(notificationGeneration, filesToProcess.size)
@@ -380,7 +381,7 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
      * - If the SAF tree that granted us access has been revoked entirely, we remove
      *   everything that lived inside that tree so the library doesn't ghost.
      */
-    private suspend fun reconcileDatabase(grantedTreeUriStrings: Set<String>) {
+    private suspend fun reconcileDatabase(grantedTreeUriStrings: Set<String>, discoveredUris: Set<String>) {
         val dao = audioDatabase.audioDao() ?: return
 
         dao.deleteStalePathDuplicates()
@@ -395,8 +396,18 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             val path = audio.uri
 
             if (path.startsWith("content://")) {
-                val docFile = DocumentFile.fromSingleUri(context, path.toUri())
+                // FAST PATH: If the URI was discovered in the bulk SAF scan, it definitely exists.
+                // This bypasses the extremely slow DocumentFile.exists() IPC call for 99.9% of the library.
+                if (discoveredUris.contains(path)) {
+                    if (!audio.isAvailable) {
+                        Log.d(TAG, "Restoring available SAF file: $path")
+                        audio.isAvailable = true
+                        toUpdate.add(audio)
+                    }
+                    return@forEach
+                }
 
+                // SLOW PATH / REMOVAL PATH: The file was not found in the current SAF trees.
                 // Check if the tree that was covering this file is still in our granted list.
                 // We compare the tree document IDs directly using DocumentsContract so that
                 // encoding differences (e.g. %3A vs :) can never cause a false mismatch.
@@ -416,17 +427,17 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
                         toDelete.add(audio)
                         indexedMap.remove(path)
                     }
-                    docFile == null || !docFile.exists() -> {
-                        if (audio.isAvailable) {
-                            Log.d(TAG, "SAF document gone, deleting: $path")
-                            toDelete.add(audio)
-                            indexedMap.remove(path)
+                    else -> {
+                        // The tree is still granted, but the file wasn't discovered.
+                        // We do one final fallback exists() check just to be safe (e.g. for files that were renamed/hidden).
+                        val docFile = DocumentFile.fromSingleUri(context, path.toUri())
+                        if (docFile == null || !docFile.exists()) {
+                            if (audio.isAvailable) {
+                                Log.d(TAG, "SAF document gone, deleting: $path")
+                                toDelete.add(audio)
+                                indexedMap.remove(path)
+                            }
                         }
-                    }
-                    !audio.isAvailable -> {
-                        Log.d(TAG, "Restoring available SAF file: $path")
-                        audio.isAvailable = true
-                        toUpdate.add(audio)
                     }
                 }
             }
