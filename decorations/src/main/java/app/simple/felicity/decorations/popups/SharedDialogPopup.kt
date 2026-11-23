@@ -1,4 +1,4 @@
-package app.simple.felicity.decorations.views
+package app.simple.felicity.decorations.popups
 
 import android.annotation.SuppressLint
 import android.app.Application
@@ -60,7 +60,7 @@ import kotlin.math.sign
  * ```
  *
  * @param container The root [ViewGroup] that hosts both the scrim and the dialog card.
- *   Typically the activity's [R.id.app_container][androidx.coordinatorlayout.widget.CoordinatorLayout].
+ *   Typically the activity's [R.id.app_container][CoordinatorLayout].
  * @param anchorView The view the dialog card morphs from and collapses back to on dismiss.
  *
  * @author Hamza417

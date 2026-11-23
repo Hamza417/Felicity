@@ -14,8 +14,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.AdapterEqualizerPresets
 import app.simple.felicity.databinding.FragmentEqualizerPresetsBinding
-import app.simple.felicity.decorations.views.PopupMenuItem
-import app.simple.felicity.decorations.views.SharedScrollViewPopup
+import app.simple.felicity.decorations.popups.PopupMenuItem
+import app.simple.felicity.decorations.popups.SharedScrollViewPopup
 import app.simple.felicity.dialogs.player.ImportEqualizerPreset.Companion.showImportEqualizerPreset
 import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.extensions.fragments.MediaFragment

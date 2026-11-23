@@ -21,8 +21,8 @@ import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.page.PageAdapter
 import app.simple.felicity.databinding.FragmentPageArtistBinding
-import app.simple.felicity.decorations.views.PopupMenuItem
-import app.simple.felicity.decorations.views.SharedScrollViewPopup
+import app.simple.felicity.decorations.popups.PopupMenuItem
+import app.simple.felicity.decorations.popups.SharedScrollViewPopup
 import app.simple.felicity.dialogs.playlists.AddMultipleToPlaylistDialog.Companion.showAddMultipleToPlaylistDialog
 import app.simple.felicity.dialogs.playlists.PlaylistSongsSort.Companion.showPlaylistSongsSort
 import app.simple.felicity.engine.managers.MediaPlaybackManager

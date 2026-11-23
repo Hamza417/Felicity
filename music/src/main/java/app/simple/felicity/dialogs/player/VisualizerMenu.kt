@@ -7,9 +7,9 @@ import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
 import app.simple.felicity.R
 import app.simple.felicity.databinding.DialogVisualizerTuningBinding
+import app.simple.felicity.decorations.popups.PopupMenuItem
+import app.simple.felicity.decorations.popups.SharedScrollViewPopupNonContainer
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
-import app.simple.felicity.decorations.views.PopupMenuItem
-import app.simple.felicity.decorations.views.SharedScrollViewPopupNonContainer
 import app.simple.felicity.extensions.dialogs.MediaBottomDialogFragment
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.preferences.PlayerPreferences

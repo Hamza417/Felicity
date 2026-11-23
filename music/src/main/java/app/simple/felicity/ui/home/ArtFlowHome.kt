@@ -18,9 +18,9 @@ import app.simple.felicity.R
 import app.simple.felicity.adapters.home.main.AdapterArtFlowHome
 import app.simple.felicity.databinding.FragmentHomeArtflowBinding
 import app.simple.felicity.decorations.flowsidemenu.FelicitySideBar
+import app.simple.felicity.decorations.popups.PopupMenuItem
+import app.simple.felicity.decorations.popups.SharedScrollViewPopup
 import app.simple.felicity.decorations.utils.RecyclerViewUtils.forEachViewHolder
-import app.simple.felicity.decorations.views.PopupMenuItem
-import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.extensions.fragments.MediaFragment
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.repository.models.Audio

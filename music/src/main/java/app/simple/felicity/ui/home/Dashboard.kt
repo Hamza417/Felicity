@@ -23,9 +23,9 @@ import app.simple.felicity.adapters.home.dashboard.AdapterDashboardSongs
 import app.simple.felicity.adapters.home.dashboard.AdapterDashboardSongs.Companion.AdapterDashboardSongsCallbacks
 import app.simple.felicity.databinding.FragmentHomeDashboardBinding
 import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDecoration
+import app.simple.felicity.decorations.popups.PopupMenuItem
+import app.simple.felicity.decorations.popups.SharedScrollViewPopup
 import app.simple.felicity.decorations.utils.TextViewUtils.setStartDrawable
-import app.simple.felicity.decorations.views.PopupMenuItem
-import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.app.AppLabel.Companion.showAppLabel
 import app.simple.felicity.dialogs.player.SleepTimerDialog.Companion.openSleepTimerDialog
 import app.simple.felicity.engine.managers.MediaPlaybackManager

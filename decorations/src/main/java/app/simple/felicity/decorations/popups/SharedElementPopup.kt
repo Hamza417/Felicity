@@ -1,4 +1,4 @@
-package app.simple.felicity.decorations.views
+package app.simple.felicity.decorations.popups
 
 import android.graphics.Color
 import android.view.LayoutInflater

@@ -11,7 +11,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.R
 import app.simple.felicity.databinding.DialogAudioStateSnapshotBinding
-import app.simple.felicity.decorations.views.SharedDialogPopup
+import app.simple.felicity.decorations.popups.SharedDialogPopup
 import app.simple.felicity.engine.managers.AudioPipelineManager
 import app.simple.felicity.engine.model.AudioPipelineSnapshot
 import app.simple.felicity.theme.managers.ThemeManager

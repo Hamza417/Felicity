@@ -16,11 +16,11 @@ import app.simple.felicity.R
 import app.simple.felicity.adapters.preference.GenericPreferencesAdapter
 import app.simple.felicity.databinding.FragmentPreferenceAppearanceBinding
 import app.simple.felicity.databinding.HeaderPreferencesGenericBinding
+import app.simple.felicity.decorations.popups.PopupMenuItem
+import app.simple.felicity.decorations.popups.SharedScrollViewPopup
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
 import app.simple.felicity.decorations.toggles.FelicitySwitch
 import app.simple.felicity.decorations.views.AppHeader
-import app.simple.felicity.decorations.views.PopupMenuItem
-import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.enums.PreferenceType
 import app.simple.felicity.models.Preference
 import app.simple.felicity.models.SeekbarState

@@ -12,9 +12,9 @@ import app.simple.felicity.adapters.ui.lists.AdapterPlayingQueue
 import app.simple.felicity.callbacks.GeneralAdapterCallbacks
 import app.simple.felicity.databinding.FragmentPlayingQueueBinding
 import app.simple.felicity.databinding.HeaderPlayingQueueBinding
+import app.simple.felicity.decorations.popups.PopupMenuItem
+import app.simple.felicity.decorations.popups.SharedScrollViewPopup
 import app.simple.felicity.decorations.views.AppHeader
-import app.simple.felicity.decorations.views.PopupMenuItem
-import app.simple.felicity.decorations.views.SharedScrollViewPopup
 import app.simple.felicity.dialogs.app.TotalTime.Companion.showTotalTime
 import app.simple.felicity.dialogs.playlists.AddMultipleToPlaylistDialog.Companion.showAddMultipleToPlaylistDialog
 import app.simple.felicity.dialogs.queue.QueueLabel.Companion.QueueLabelCallbacks

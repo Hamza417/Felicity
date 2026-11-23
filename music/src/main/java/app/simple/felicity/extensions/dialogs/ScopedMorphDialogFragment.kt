@@ -38,7 +38,7 @@ import kotlin.math.sign
 /**
  * Abstract base [Fragment] that presents content as a centered dialog card while
  * supporting the same morph (shared-element container transform) animation used by
- * [app.simple.felicity.decorations.views.SharedScrollViewPopup].
+ * [app.simple.felicity.decorations.popups.SharedScrollViewPopup].
  *
  * Unlike [ScopedBottomSheetFragment], this class is a plain [Fragment] added to
  * [R.id.app_container] at the activity level, which means the full Fragment
