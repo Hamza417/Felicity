@@ -69,36 +69,6 @@ class PlaylistDatabaseLoader @Inject constructor(private val context: Context) {
             return
         }
 
-        // Pull every audio row once and build two lookup tables from their SAF document IDs.
-        // This mirrors the exact same approach AudioRepository.getFolderContents() uses for
-        // building folder trees, so the two systems are always in sync.
-        //
-        //   audioByDirAndName  →  parentDocId → (lowercase filename → Audio)
-        //     Same-directory match: M3U parent doc ID + entry filename.
-        //     E.g. M3U at "primary:Music/Playlists/mix.m3u" looks in "primary:Music/Playlists".
-        //
-        //   audioByFilename  →  lowercase filename → Audio  (first match wins)
-        //     Fallback when the directory doesn't match (absolute paths from another device, etc.)
-        val allAudio = audioDao.getAllAudioListAll()
-        val audioByDirAndName = HashMap<String, HashMap<String, Audio>>(allAudio.size)
-        val audioByFilename = HashMap<String, Audio>(allAudio.size * 2)
-
-        for (audio in allAudio) {
-            val docId = docIdOf(audio.uri) ?: continue
-            val parentDocId = docId.substringBeforeLast('/', missingDelimiterValue = "")
-            val filename = docId.substringAfterLast('/').lowercase()
-            if (filename.isEmpty()) continue
-
-            audioByDirAndName
-                .getOrPut(parentDocId) { HashMap() }
-                .putIfAbsent(filename, audio)
-
-            audioByFilename.putIfAbsent(filename, audio)
-        }
-
-        Log.d(TAG, "Built lookup index: ${allAudio.size} rows, " +
-                "${audioByDirAndName.size} unique parent directories.")
-
         // Collect every M3U file from all granted SAF trees.
         val m3uFiles = mutableListOf<SAFFile>()
         val scanner = AudioScanner()
@@ -110,22 +80,58 @@ class PlaylistDatabaseLoader @Inject constructor(private val context: Context) {
 
         val existingPlaylists = playlistDao.getAllM3uPlaylists()
         val existingByKey = existingPlaylists.associateBy { it.m3uFilePath ?: "" }
-        val visitedKeys = mutableSetOf<String>()
 
-        for (m3uFile in m3uFiles) {
+        // Find which M3U files actually need to be parsed (new or modified)
+        val filesToProcess = m3uFiles.filter { m3uFile ->
             val uriKey = m3uFile.uri.toString()
-            visitedKeys.add(uriKey)
-
             val existing = existingByKey[uriKey]
-            if (existing != null && existing.dateModified >= m3uFile.lastModified) {
-                Log.d(TAG, "Unchanged, skipping: ${m3uFile.name}")
-                continue
+            existing == null || existing.dateModified < m3uFile.lastModified
+        }
+
+        val visitedKeys = m3uFiles.map { it.uri.toString() }.toSet()
+        val stalePlaylists = existingPlaylists.filter {
+            it.m3uFilePath != null && it.m3uFilePath !in visitedKeys
+        }
+
+        if (filesToProcess.isEmpty() && stalePlaylists.isEmpty()) {
+            Log.d(TAG, "M3U processing done in ${(System.currentTimeMillis() - startTime) / 1000}s — " +
+                    "No playlists to update or delete.")
+            return
+        }
+
+        // Pull every audio row once and build two lookup tables from their SAF document IDs.
+        // This is only done if we actually have M3U files to process, saving a massive DB query
+        // and map allocation step when the library hasn't changed.
+        val audioByDirAndName = HashMap<String, HashMap<String, Audio>>()
+        val audioByFilename = HashMap<String, Audio>()
+
+        if (filesToProcess.isNotEmpty()) {
+            val allAudio = audioDao.getAllAudioListAll()
+
+            for (audio in allAudio) {
+                val docId = docIdOf(audio.uri) ?: continue
+                val parentDocId = docId.substringBeforeLast('/', missingDelimiterValue = "")
+                val filename = docId.substringAfterLast('/').lowercase()
+                if (filename.isEmpty()) continue
+
+                audioByDirAndName
+                    .getOrPut(parentDocId) { HashMap() }
+                    .putIfAbsent(filename, audio)
+
+                audioByFilename.putIfAbsent(filename, audio)
             }
+            Log.d(TAG, "Built lookup index: ${allAudio.size} rows, " +
+                    "${audioByDirAndName.size} unique parent directories.")
+        }
+
+        for ((uri, name, _, lastModified) in filesToProcess) {
+            val uriKey = uri.toString()
+            val existing = existingByKey[uriKey]
 
             // Open the M3U text through the ContentResolver — SAF-safe, no file descriptor
             // tricks needed, just a plain input stream from the content URI.
             val content = runCatching {
-                context.contentResolver.openInputStream(m3uFile.uri)
+                context.contentResolver.openInputStream(uri)
                     ?.bufferedReader(Charsets.UTF_8)
                     ?.readText()
             }.getOrNull() ?: run {
@@ -135,7 +141,7 @@ class PlaylistDatabaseLoader @Inject constructor(private val context: Context) {
 
             val parsed = M3uParser.parse(content)
             val playlistName = parsed.name?.takeIf { it.isNotBlank() }
-                ?: m3uFile.name.substringBeforeLast('.').ifBlank { "Unnamed Playlist" }
+                ?: name.substringBeforeLast('.').ifBlank { "Unnamed Playlist" }
 
             // Extract the SAF document ID of the M3U file and strip its filename to get the
             // parent directory document ID. Track entries that are bare filenames or relative
@@ -143,7 +149,7 @@ class PlaylistDatabaseLoader @Inject constructor(private val context: Context) {
             // E.g. "primary:Music/Playlists/mix.m3u" → parent is "primary:Music/Playlists"
             val m3uDocId = docIdOf(uriKey)
             val m3uParentDocId = m3uDocId?.substringBeforeLast('/', missingDelimiterValue = "")
-            Log.d(TAG, "Processing '${m3uFile.name}' (parent doc: '$m3uParentDocId')")
+            Log.d(TAG, "Processing '$name' (parent doc: '$m3uParentDocId')")
 
             val playlistId: Long = if (existing == null) {
                 playlistDao.insertPlaylist(
@@ -152,14 +158,14 @@ class PlaylistDatabaseLoader @Inject constructor(private val context: Context) {
                                 isM3UPlaylist = true,
                                 m3uFilePath = uriKey,
                                 dateCreated = System.currentTimeMillis(),
-                                dateModified = m3uFile.lastModified
+                                dateModified = lastModified
                         )
                 ).also { Log.d(TAG, "Created playlist '$playlistName' id=$it") }
             } else {
                 playlistDao.removeAllSongsFromPlaylist(existing.id)
                 playlistDao.updatePlaylist(existing.copy(
                         name = playlistName,
-                        dateModified = m3uFile.lastModified
+                        dateModified = lastModified
                 ))
                 Log.d(TAG, "Refreshing playlist '$playlistName' id=${existing.id}")
                 existing.id
@@ -198,16 +204,13 @@ class PlaylistDatabaseLoader @Inject constructor(private val context: Context) {
         }
 
         // Remove playlist rows whose M3U source file no longer exists anywhere on storage.
-        val stale = existingPlaylists.filter {
-            it.m3uFilePath != null && it.m3uFilePath !in visitedKeys
-        }
-        stale.forEach {
+        stalePlaylists.forEach {
             Log.d(TAG, "Removing stale playlist '${it.name}' (gone: ${it.m3uFilePath})")
             playlistDao.deletePlaylist(it)
         }
 
         Log.d(TAG, "M3U processing done in ${(System.currentTimeMillis() - startTime) / 1000}s — " +
-                "${m3uFiles.size} file(s) processed, ${stale.size} stale playlist(s) removed.")
+                "${filesToProcess.size} file(s) processed, ${stalePlaylists.size} stale playlist(s) removed.")
     }
 
     /**
