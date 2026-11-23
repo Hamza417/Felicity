@@ -359,7 +359,7 @@ abstract class BasePlayerFragment : MediaFragment() {
         pcmInfo.setOnClickListener {
             // TODO - remove this when we have audio processor support on 32bit mode
             if (shouldShowProcessors()) {
-                showAudioPipeline(anchorView = pcmInfo)
+                childFragmentManager.showAudioPipeline()
             } else {
                 showWarning("All processors are disabled. PCM info is not available in 32-bit output mode.")
             }
