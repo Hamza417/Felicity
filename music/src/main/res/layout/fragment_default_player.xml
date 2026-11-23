@@ -12,6 +12,8 @@
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="@dimen/padding_10"
+        android:clipChildren="false"
+        android:clipToPadding="false"
         android:layout_weight="1">
 
         <app.simple.felicity.decorations.pager.FelicityPager
