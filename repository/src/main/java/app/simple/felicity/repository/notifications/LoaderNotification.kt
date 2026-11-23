@@ -27,13 +27,13 @@ import app.simple.felicity.repository.R
 class LoaderNotification(private val context: Context) {
 
     companion object {
-        private const val SCAN_CHANNEL_ID = "felicity_library_scanner"
+        const val SCAN_CHANNEL_ID = "felicity_library_scanner"
 
         /**
          * Do not use 1001 because it is used as the default notification ID in the AndroidX Media3 library.
          * See [DefaultMediaNotificationProvider (L229)](https://github.com/androidx/media/blob/8c6678b657ede1e7883fc164ef73ed483c7796c3/libraries/session/src/main/java/androidx/media3/session/DefaultMediaNotificationProvider.java#L229).
          */
-        private const val SCAN_NOTIFICATION_ID = 1002
+        const val SCAN_NOTIFICATION_ID = 1002
 
         /**
          * Minimum wall-clock time between two actual notify() calls, in
@@ -43,6 +43,32 @@ class LoaderNotification(private val context: Context) {
          * what keeps interrupting other apps' notifications.
          */
         private const val MIN_UPDATE_INTERVAL_MS = 500L
+
+        fun buildInitialNotification(context: Context): Notification {
+            val channel = NotificationChannel(
+                    SCAN_CHANNEL_ID,
+                    "Library Scanner",
+                    NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Shows progress while your music library is being scanned"
+                setSound(null, null)
+                enableVibration(false)
+            }
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+
+            return NotificationCompat.Builder(context, SCAN_CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_felicity_full)
+                .setContentTitle(context.getString(R.string.scanning_library))
+                .setContentText(context.getString(R.string.getting_music_ready))
+                .setProgress(0, 0, true)
+                .setSilent(true)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setShowWhen(false)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .build()
+        }
     }
 
     private val notificationManager =

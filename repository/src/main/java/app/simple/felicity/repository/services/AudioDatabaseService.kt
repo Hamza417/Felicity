@@ -3,12 +3,14 @@ package app.simple.felicity.repository.services
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Binder
 import android.os.IBinder
 import android.util.Log
 import androidx.annotation.Keep
 import app.simple.felicity.repository.loader.AudioDatabaseLoader
 import app.simple.felicity.repository.loader.PlaylistDatabaseLoader
+import app.simple.felicity.repository.notifications.LoaderNotification
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -126,6 +128,16 @@ class AudioDatabaseService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "onStartCommand called with action: ${intent?.action}, startId: $startId")
+
+        try {
+            startForeground(
+                    LoaderNotification.SCAN_NOTIFICATION_ID,
+                    LoaderNotification.buildInitialNotification(this),
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start foreground", e)
+        }
 
         // Always track the latest startId. The running scan's finally block uses
         // currentStartId (not the captured startId) so it always stops the service
@@ -273,15 +285,6 @@ class AudioDatabaseService : Service() {
         audioDatabaseLoader.cleanup()
         serviceScope.coroutineContext.cancel()
         super.onDestroy()
-    }
-
-    override fun onTaskRemoved(rootIntent: Intent?) {
-        Log.d(TAG, "Task removed - cleaning up and stopping service")
-        latestRunToken++ // invalidate any in-flight run tokens
-        scanCoroutineLaunched = false
-        audioDatabaseLoader.cleanup()
-        stopSelf()
-        super.onTaskRemoved(rootIntent)
     }
 
     inner class AudioDatabaseBinder : Binder() {
