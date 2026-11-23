@@ -318,7 +318,6 @@
     <!-- Audio Pipeline Dialog — section labels -->
     <string name="track_info">Информация о треке</string>
     <string name="channels">Каналы</string>
-    <string name="decoder_name">Название декодера</string>
     <string name="resampler">Ресемплер</string>
     <string name="io_rate">Скорость ввода/вывода</string>
     <string name="resampler_type">Тип ресемплера</string>

@@ -141,13 +141,15 @@
                     android:orientation="vertical"
                     android:layout_marginStart="@dimen/padding_10">
 
-                    <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                    <app.simple.felicity.decorations.highlight.HighlightTextView
                         android:id="@+id/value_decoder_name"
-                        android:layout_width="match_parent"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:paddingVertical="@dimen/padding_1"
+                        android:paddingHorizontal="@dimen/padding_10"
+                        android:paddingVertical="@dimen/padding_5"
                         android:textSize="@dimen/text_size_12"
                         app:appFontStyle="bold"
+                        app:highlightMode="outline"
                         app:textColorStyle="secondary" />
 
                 </LinearLayout>

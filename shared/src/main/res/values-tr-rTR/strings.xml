@@ -311,7 +311,6 @@
     <!-- Audio Pipeline Dialog — section labels -->
     <string name="track_info">Parça Bilgisi</string>
     <string name="channels">Kanallar</string>
-    <string name="decoder_name">Kod Çözücü Adı</string>
     <string name="resampler">Yeniden Örnekleyici</string>
     <string name="io_rate">G/Ç Hızı</string>
     <string name="resampler_type">Tür</string>

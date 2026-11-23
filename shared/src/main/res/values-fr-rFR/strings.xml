@@ -327,7 +327,6 @@
     <!-- Audio Pipeline Dialog — section labels -->
     <string name="track_info">Informations de piste</string>
     <string name="channels">Canaux</string>
-    <string name="decoder_name">Nom du décodeur</string>
     <string name="resampler">Rééchantillonneur</string>
     <string name="io_rate">Taux E/S</string>
     <string name="resampler_type">Type</string>

@@ -128,9 +128,7 @@ class AudioPipelineDialog(container: ViewGroup, anchorView: View) : SharedDialog
                 })
 
         // Decoder
-        b.valueDecoderName.text = createSpannedString(
-                context.getString(R.string.decoder_name),
-                snapshot.decoderName.ifBlank { "—" })
+        b.valueDecoderName.text = snapshot.decoderName.ifBlank { "—" }
 
         // Resampler — I/O rates are merged into one value using a format string
         val inRateStr = if (snapshot.effectiveInputSampleRate > 0) context.getString(R.string.format_hz, snapshot.effectiveInputSampleRate) else "—"

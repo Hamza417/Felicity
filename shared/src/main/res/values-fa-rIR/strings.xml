@@ -318,7 +318,6 @@
     <!-- Audio Pipeline Dialog — section labels -->
     <string name="track_info">اطلاعات قطعه</string>
     <string name="channels">کانال‌ها</string>
-    <string name="decoder_name">نام رسیور</string>
     <string name="resampler">نمونه‌گیر مجدد (Resampler)</string>
     <string name="io_rate">نرخ I/O</string>
     <string name="resampler_type">نوع</string>

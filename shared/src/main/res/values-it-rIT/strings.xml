@@ -311,7 +311,6 @@
     <!-- Audio Pipeline Dialog — section labels -->
     <string name="track_info">Info traccia</string>
     <string name="channels">Canali</string>
-    <string name="decoder_name">Nome decoder</string>
     <string name="resampler">Ricampionatore</string>
     <string name="io_rate">Rate I/O</string>
     <string name="resampler_type">Tipo</string>

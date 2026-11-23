@@ -311,7 +311,6 @@
     <!-- Audio Pipeline Dialog — section labels -->
     <string name="track_info">音轨信息</string>
     <string name="channels">声道</string>
-    <string name="decoder_name">解码器名称</string>
     <string name="resampler">重采样器</string>
     <string name="io_rate">I/O 速率</string>
     <string name="resampler_type">类型</string>

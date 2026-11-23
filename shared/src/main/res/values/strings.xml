@@ -350,7 +350,6 @@
     <!-- Audio Pipeline Dialog — section labels -->
     <string name="track_info">Track Info</string>
     <string name="channels">Channels</string>
-    <string name="decoder_name">Decoder Name</string>
     <string name="resampler">Resampler</string>
     <string name="io_rate">I/O Rate</string>
     <string name="resampler_type">Type</string>
