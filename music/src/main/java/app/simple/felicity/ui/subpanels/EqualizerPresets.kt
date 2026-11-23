@@ -237,8 +237,14 @@ class EqualizerPresets : MediaFragment() {
                 },
                 onMenuItemClick = {
                     when (it) {
-                        R.string.apply_preset -> applyPreset(preset)
-                        R.string.delete -> confirmAndDelete(preset)
+                        R.string.apply_preset -> {
+                            postDelayed(250L) {
+                                applyPreset(preset)
+                            }
+                        }
+                        R.string.delete -> {
+                            confirmAndDelete(preset)
+                        }
                     }
                 }
         ).show()

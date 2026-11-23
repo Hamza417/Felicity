@@ -212,16 +212,17 @@ open class SharedScrollViewPopup @JvmOverloads constructor(
                 isFocusable = true
                 RippleUtils.setForegroundDrawable(this)
                 setOnClickListener {
-                    when (item.title) {
-                        is Int -> onMenuItemClick(item.title)
-                        is String -> onMenuItemClick(menuItems.indexOf(item)) // For string titles, pass the index as identifier
-                        else -> throw IllegalArgumentException("Unsupported title type: ${item.title::class.java}")
-                    }
                     if (backProgression) {
                         dismiss()
                     } else {
                         // Simply removed the dialog without the transition
                         simplyDismiss()
+                    }
+
+                    when (item.title) {
+                        is Int -> onMenuItemClick(item.title)
+                        is String -> onMenuItemClick(menuItems.indexOf(item)) // For string titles, pass the index as identifier
+                        else -> throw IllegalArgumentException("Unsupported title type: ${item.title::class.java}")
                     }
                 }
             }

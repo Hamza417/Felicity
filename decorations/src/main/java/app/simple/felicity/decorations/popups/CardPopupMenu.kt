@@ -206,12 +206,16 @@ class CardPopupMenu(
                 isFocusable = true
                 RippleUtils.setForegroundDrawable(this)
                 setOnClickListener {
+                    // Start dismissing *before* invoking the click callback
+                    // so that any fragment navigation (like goBack()) isn't
+                    // intercepted by this popup's back callback.
+                    dismiss()
+                    
                     when (item.title) {
                         is Int -> onMenuItemClick(item.title)
                         is String -> onMenuItemClick(menuItems.indexOf(item))
                         else -> throw IllegalArgumentException("Unsupported title type: ${item.title::class.java}")
                     }
-                    dismiss()
                 }
             }
 
