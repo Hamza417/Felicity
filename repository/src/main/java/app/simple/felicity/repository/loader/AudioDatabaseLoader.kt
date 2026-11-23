@@ -457,6 +457,17 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
     private suspend fun resolveAndUpdatePaths(dao: AudioDao?) {
         if (dao == null) return
 
+        val allAudio = dao.getAllAudioListAll()
+
+        // FAST PATH: Check if any tracks actually need path resolution first.
+        // If everything has a path, we can skip querying the MediaStore entirely!
+        val missingPaths = allAudio.filter { it.path == null }
+        if (missingPaths.isEmpty()) {
+            Log.d(TAG, "All paths already resolved, nothing to update")
+            return
+        }
+
+        // SLOW PATH: We have tracks missing real paths. Query the entire MediaStore.
         // One MediaStore query covers the whole library — no per-file ContentResolver calls.
         val pathMap = context.buildMediaStorePathMap()
         if (pathMap.isEmpty()) {
@@ -464,31 +475,26 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             return
         }
 
-        val allAudio = dao.getAllAudioListAll()
         val toUpdate = mutableListOf<Audio>()
 
-        allAudio.forEach { audio ->
-            if (audio.path == null) {
-                // Lower-case all three tags to match the case-insensitive map keys.
-                val key = Triple(
-                        audio.title?.lowercase() ?: "",
-                        audio.artist?.lowercase() ?: "",
-                        audio.album?.lowercase() ?: ""
-                )
-                val resolved = pathMap[key]
-                if (resolved != null) {
-                    audio.path = resolved
-                    audio.name = resolved.substringAfterLast('/')
-                    toUpdate.add(audio)
-                }
+        missingPaths.forEach { audio ->
+            // Lower-case all three tags to match the case-insensitive map keys.
+            val key = Triple(
+                    audio.title?.lowercase() ?: "",
+                    audio.artist?.lowercase() ?: "",
+                    audio.album?.lowercase() ?: ""
+            )
+            val resolved = pathMap[key]
+            if (resolved != null) {
+                audio.path = resolved
+                audio.name = resolved.substringAfterLast('/')
+                toUpdate.add(audio)
             }
         }
 
         if (toUpdate.isNotEmpty()) {
             Log.d(TAG, "Resolved paths for ${toUpdate.size} audio entries")
             dao.update(toUpdate)
-        } else {
-            Log.d(TAG, "All paths already resolved, nothing to update")
         }
     }
 
