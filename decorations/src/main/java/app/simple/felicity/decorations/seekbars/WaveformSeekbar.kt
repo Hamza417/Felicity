@@ -575,8 +575,8 @@ class WaveformSeekbar @JvmOverloads constructor(
         labelBgPaint.color = labelHighlightFillColor
         labelBgStrokePaint.color = labelHighlightStrokeColor
 
-        // On first init (not yet attached) or when colors are unchanged, skip the animation
-        if (!isAttachedToWindow
+        // On first init (not yet attached or laid out) or when colors are unchanged, skip the animation
+        if (!isAttachedToWindow || !isLaidOut
                 || (playedColor == newPlayed && unplayedColor == newUnplayed && labelTextColor == newLabel)) {
             playedColor = newPlayed
             unplayedColor = newUnplayed
@@ -786,7 +786,7 @@ class WaveformSeekbar @JvmOverloads constructor(
         zoomAnimator?.cancel()
         val to = if (mode == LAYOUT_MODE_FULL) 1f else 0f
 
-        if (!isAttachedToWindow || isInEditMode || !animate) {
+        if (!isAttachedToWindow || !isLaidOut || isInEditMode || !animate) {
             zoomProgress = to
             invalidate()
             return
@@ -1511,7 +1511,7 @@ class WaveformSeekbar @JvmOverloads constructor(
 
     private fun animateLabelGravity(target: Float) {
         labelGravityAnimator?.cancel()
-        if (!isAttachedToWindow || isInEditMode) {
+        if (!isAttachedToWindow || !isLaidOut || isInEditMode) {
             currentLabelGravity = target
             invalidate()
             return
