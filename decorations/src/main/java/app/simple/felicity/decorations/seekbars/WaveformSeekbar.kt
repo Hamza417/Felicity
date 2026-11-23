@@ -550,8 +550,6 @@ class WaveformSeekbar @JvmOverloads constructor(
             barCornerRadiusPx = barWidthPx / 2f
         }
 
-        // Hardware layer is required for DST_OUT compositing to work correctly on API < 28
-        setLayerType(LAYER_TYPE_HARDWARE, null)
         isClickable = true
     }
 
