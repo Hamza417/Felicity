@@ -284,7 +284,22 @@ public class LrcLineView extends View implements ThemeChangedListener {
         List <LrcEntry> entries = lrcData.getEntries();
         int result = -1;
         for (int i = 0; i < entries.size(); i++) {
-            if (entries.get(i).getTimeInMillis() <= positionMs) {
+            LrcEntry entry = entries.get(i);
+            if (entry.getTimeInMillis() <= positionMs) {
+                // If the previous entry was word-synced, ignore any non-word-synced parallel lines
+                // (like unmerged translations) that start while the word-synced line is still singing.
+                if (result >= 0 && !entry.hasWordSync()) {
+                    LrcEntry prevEntry = entries.get(result);
+                    if (prevEntry.hasWordSync()) {
+                        List <WordEntry> prevWords = prevEntry.getWords();
+                        if (!prevWords.isEmpty()) {
+                            long prevEndMs = prevWords.get(prevWords.size() - 1).getEndMs();
+                            if (entry.getTimeInMillis() < prevEndMs) {
+                                continue;
+                            }
+                        }
+                    }
+                }
                 result = i;
             } else {
                 break;
