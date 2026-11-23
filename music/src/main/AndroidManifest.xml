@@ -49,8 +49,7 @@
 
         <service
             android:name=".repository.services.AudioDatabaseService"
-            android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:exported="false" />
 
         <service
             android:name=".server.ServerModeService"
