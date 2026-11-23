@@ -40,7 +40,7 @@ import app.simple.felicity.viewmodels.dialogs.EqualizerPresetsViewModel
  */
 class AdapterEqualizerPresets(
         private val onPresetClicked: (EqualizerPreset) -> Unit,
-        private val onOptionClicked: (EqualizerPreset, View) -> Unit = { _, _ -> },
+        private val onOptionClicked: (EqualizerPreset, View, Float, Float) -> Unit = { _, _, _, _ -> },
         private val onSavedPresetsClicked: () -> Unit = {},
         private val onHeadphoneProfilesClicked: () -> Unit = {},
         private val onImportClicked: () -> Unit = {},
@@ -172,8 +172,19 @@ class AdapterEqualizerPresets(
                 onPresetClicked(preset)
             }
 
+            var lastTouchX = 0f
+            var lastTouchY = 0f
+
+            binding.container.setOnTouchListener { _, event ->
+                if (event.action == android.view.MotionEvent.ACTION_DOWN) {
+                    lastTouchX = event.rawX
+                    lastTouchY = event.rawY
+                }
+                false
+            }
+
             binding.container.setOnLongClickListener {
-                onOptionClicked(preset, binding.container)
+                onOptionClicked(preset, binding.container, lastTouchX, lastTouchY)
                 true
             }
         }

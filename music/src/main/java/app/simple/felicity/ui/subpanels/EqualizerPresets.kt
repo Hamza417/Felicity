@@ -14,8 +14,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.ui.lists.AdapterEqualizerPresets
 import app.simple.felicity.databinding.FragmentEqualizerPresetsBinding
+import app.simple.felicity.decorations.popups.CardPopupMenu
 import app.simple.felicity.decorations.popups.PopupMenuItem
-import app.simple.felicity.decorations.popups.SharedScrollViewPopup
 import app.simple.felicity.dialogs.player.ImportEqualizerPreset.Companion.showImportEqualizerPreset
 import app.simple.felicity.engine.managers.EqualizerManager
 import app.simple.felicity.extensions.fragments.MediaFragment
@@ -24,6 +24,7 @@ import app.simple.felicity.repository.models.EqualizerPreset
 import app.simple.felicity.shared.utils.PEQFileParser
 import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.viewmodels.dialogs.EqualizerPresetsViewModel
+import com.google.android.material.card.MaterialCardView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -211,17 +212,19 @@ class EqualizerPresets : MediaFragment() {
     }
 
     /**
-     * Shows a [SharedScrollViewPopup] anchored to [anchorView] with context actions for
-     * the given [preset]. "Apply" is always present; "Delete" is only offered for
-     * presets that the user created (not the built-in factory ones).
+     * Shows a [CardPopupMenu] at the user's
+     * finger position with context actions for the given [preset]. "Apply" is always present; 
+     * "Delete" is only offered for presets that the user created (not the built-in factory ones).
      *
      * @param preset     The preset the user long-pressed.
-     * @param anchorView The view that was long-pressed — used as the popup anchor.
+     * @param anchorView The view that was long-pressed — used as the popup anchor for the stroke.
      */
-    private fun showPresetOptions(preset: EqualizerPreset, anchorView: View) {
-        SharedScrollViewPopup(
+    private fun showPresetOptions(preset: EqualizerPreset, anchorView: View, touchX: Float, touchY: Float) {
+        CardPopupMenu(
                 container = requireContainerView(),
-                anchorView = anchorView,
+                anchorView = anchorView as MaterialCardView,
+                touchX = touchX,
+                touchY = touchY,
                 menuItems = if (preset.isBuiltIn) {
                     listOf(
                             PopupMenuItem(title = R.string.apply_preset),
@@ -236,10 +239,8 @@ class EqualizerPresets : MediaFragment() {
                     when (it) {
                         R.string.apply_preset -> applyPreset(preset)
                         R.string.delete -> confirmAndDelete(preset)
-                        else -> return@SharedScrollViewPopup
                     }
-                },
-                onDismiss = {}
+                }
         ).show()
     }
 
