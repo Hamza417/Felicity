@@ -192,13 +192,16 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
             Log.d(TAG, "Reconciling database with current SAF grants...")
             notification.setPhase(notificationGeneration, LoaderNotification.Phase.CLEANING)
             val discoveredUris = allSAFFiles.map { it.uri.toString() }.toSet()
-            reconcileDatabase(treeUriStrings, discoveredUris)
+
+            val allAudio = dao?.getAllAudioListAll() ?: emptyList()
+
+            reconcileDatabase(treeUriStrings, discoveredUris, allAudio)
 
             Log.d(TAG, "Indexing existing audio files in the database...")
             notification.setPhase(notificationGeneration, LoaderNotification.Phase.CHECKING)
 
             val pathToStoredId = HashMap<String, Long>()
-            dao?.getAllAudioListAll()?.forEach { audio ->
+            allAudio.forEach { audio ->
                 indexedMap[audio.uri] = IndexedFile(audio.dateModified, audio.size, audio.id, audio.isFavorite, audio.isAlwaysSkip)
                 pathToStoredId[audio.uri] = audio.id
             }
@@ -381,13 +384,11 @@ class AudioDatabaseLoader @Inject constructor(private val context: Context) {
      * - If the SAF tree that granted us access has been revoked entirely, we remove
      *   everything that lived inside that tree so the library doesn't ghost.
      */
-    private suspend fun reconcileDatabase(grantedTreeUriStrings: Set<String>, discoveredUris: Set<String>) {
+    private suspend fun reconcileDatabase(grantedTreeUriStrings: Set<String>, discoveredUris: Set<String>, allAudio: List<Audio>) {
         val dao = audioDatabase.audioDao() ?: return
 
         dao.deleteStalePathDuplicates()
         Log.d(TAG, "Stale path-duplicate purge complete.")
-
-        val allAudio = dao.getAllAudioListAll()
 
         val toDelete = mutableListOf<Audio>()
         val toUpdate = mutableListOf<Audio>()
