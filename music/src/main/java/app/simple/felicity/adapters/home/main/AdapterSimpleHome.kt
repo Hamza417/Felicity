@@ -11,6 +11,8 @@ import app.simple.felicity.databinding.AdapterHomeSimpleBinding
 import app.simple.felicity.databinding.AdapterHomeSimpleGridBinding
 import app.simple.felicity.databinding.AdapterHomeSimpleGroupBinding
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
+import app.simple.felicity.shared.utils.ViewUtils.toColorStateList
+import app.simple.felicity.theme.managers.ThemeManager
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Group
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Panel
 
@@ -45,6 +47,7 @@ class AdapterSimpleHome(private val data: MutableList<Any>) : RecyclerView.Adapt
                 val dataItem = data[position] as Panel
                 holder.binding.title.text = holder.context.getString(dataItem.titleResId)
                 holder.binding.icon.setImageResource(dataItem.iconResId)
+                holder.binding.icon.imageTintList = ThemeManager.accent.primaryAccentColor.toColorStateList()
 
                 holder.binding.container.setOnClickListener {
                     adapterSimpleHomeCallbacks?.onItemClicked(dataItem, holder.bindingAdapterPosition, holder.binding.container)
@@ -54,6 +57,7 @@ class AdapterSimpleHome(private val data: MutableList<Any>) : RecyclerView.Adapt
                 val dataItem = data[position] as Panel
                 holder.binding.title.text = holder.context.getString(dataItem.titleResId)
                 holder.binding.icon.setImageResource(dataItem.iconResId)
+                holder.binding.icon.imageTintList = ThemeManager.accent.primaryAccentColor.toColorStateList()
 
                 holder.binding.container.setOnClickListener {
                     adapterSimpleHomeCallbacks?.onItemClicked(dataItem, holder.bindingAdapterPosition, holder.binding.container)

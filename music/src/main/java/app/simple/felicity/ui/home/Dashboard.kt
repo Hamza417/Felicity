@@ -44,8 +44,8 @@ import app.simple.felicity.ui.pages.AlbumPage
 import app.simple.felicity.ui.pages.ArtistPage
 import app.simple.felicity.ui.panels.MixPanel
 import app.simple.felicity.ui.panels.PlayingQueue
+import app.simple.felicity.viewmodels.panels.BaseHomeViewModel.LibraryStats
 import app.simple.felicity.viewmodels.panels.DashboardViewModel
-import app.simple.felicity.viewmodels.panels.DashboardViewModel.LibraryStats
 import app.simple.felicity.viewmodels.panels.MixesViewModel
 import app.simple.felicity.viewmodels.panels.MixesViewModel.Mix
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Panel

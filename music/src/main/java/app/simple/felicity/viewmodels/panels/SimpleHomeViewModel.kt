@@ -6,12 +6,18 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.R
-import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.preferences.UserInterfacePreferences
+import app.simple.felicity.repository.repositories.AudioRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class SimpleHomeViewModel(application: Application) : WrappedViewModel(application) {
+@HiltViewModel
+class SimpleHomeViewModel @Inject constructor(
+        application: Application,
+        audioRepository: AudioRepository
+) : BaseHomeViewModel(application, audioRepository) {
 
     private val homeData: MutableLiveData<MutableList<Any>> by lazy {
         MutableLiveData<MutableList<Any>>().apply {

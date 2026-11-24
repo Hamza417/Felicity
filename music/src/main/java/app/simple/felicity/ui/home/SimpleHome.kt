@@ -5,7 +5,10 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.lifecycle.ViewModelProvider
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import app.simple.felicity.R
 import app.simple.felicity.adapters.home.main.AdapterSimpleHome
@@ -13,14 +16,29 @@ import app.simple.felicity.adapters.home.main.AdapterSimpleHome.Companion.Adapte
 import app.simple.felicity.constants.CommonPreferencesConstants
 import app.simple.felicity.databinding.FragmentHomeSimpleBinding
 import app.simple.felicity.databinding.HeaderHomeBinding
+import app.simple.felicity.decorations.popups.PopupMenuItem
+import app.simple.felicity.decorations.popups.SharedScrollViewPopup
+import app.simple.felicity.decorations.utils.TextViewUtils.setStartDrawable
 import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.app.AppLabel.Companion.showAppLabel
-import app.simple.felicity.dialogs.home.SimpleHomeMenu.Companion.showHomeMenu
+import app.simple.felicity.dialogs.player.SleepTimerDialog.Companion.openSleepTimerDialog
+import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.fragments.BaseHomeFragment
 import app.simple.felicity.preferences.HomePreferences
 import app.simple.felicity.preferences.MainPreferences
+import app.simple.felicity.preferences.QueueLabelPreferences
+import app.simple.felicity.preferences.UserInterfacePreferences
+import app.simple.felicity.server.ServerModeService
+import app.simple.felicity.shared.utils.ViewUtils.gone
+import app.simple.felicity.shared.utils.ViewUtils.visible
+import app.simple.felicity.ui.panels.PlayingQueue
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Panel
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+import java.text.NumberFormat
+import java.util.Calendar
 
 /**
  * Simple home screen that displays all library panels in a scrollable list or grid.
@@ -31,19 +49,20 @@ import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Panel
  *
  * @author Hamza417
  */
+@AndroidEntryPoint
 class SimpleHome : BaseHomeFragment() {
 
     private lateinit var binding: FragmentHomeSimpleBinding
     private lateinit var headerBinding: HeaderHomeBinding
 
-    private var homeViewModel: SimpleHomeViewModel? = null
+    private val homeViewModel: SimpleHomeViewModel by viewModels({ requireActivity() })
+
     private var adapterSimpleHome: AdapterSimpleHome? = null
     private var gridLayoutManager: GridLayoutManager? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentHomeSimpleBinding.inflate(inflater, container, false)
         headerBinding = HeaderHomeBinding.inflate(inflater, container, false)
-        homeViewModel = ViewModelProvider(requireActivity())[SimpleHomeViewModel::class.java]
 
         return binding.root
     }
@@ -65,12 +84,12 @@ class SimpleHome : BaseHomeFragment() {
         }
 
         headerBinding.menu.setOnClickListener {
-            childFragmentManager.showHomeMenu()
+            openPreferencesPanel()
         }
 
         setupServerToggle(headerBinding.serverToggle)
 
-        homeViewModel!!.getHomeData().observe(viewLifecycleOwner) { list ->
+        homeViewModel.getHomeData().observe(viewLifecycleOwner) { list ->
             adapterSimpleHome = AdapterSimpleHome(list)
             adapterSimpleHome!!.setLayoutType(HomePreferences.getHomeLayoutType())
             setupAdapterCallbacks()
@@ -79,6 +98,205 @@ class SimpleHome : BaseHomeFragment() {
 
         headerBinding.label.setOnClickListener {
             childFragmentManager.showAppLabel()
+        }
+
+        setupInfoStrip()
+    }
+
+    private fun setupInfoStrip() {
+        updateGridTypeChip()
+        setWeatherChipState()
+
+        headerBinding.gridType.setOnClickListener {
+            hideMiniPlayer()
+
+            SharedScrollViewPopup(
+                    container = requireContainerView(),
+                    anchorView = headerBinding.gridType,
+                    menuItems = listOf(
+                            PopupMenuItem(title = R.string.grid, icon = R.drawable.ic_grid_16dp),
+                            PopupMenuItem(title = R.string.list_style, icon = R.drawable.ic_list_16dp)
+                    ),
+                    onMenuItemClick = { titleRes ->
+                        when (titleRes) {
+                            R.string.grid -> HomePreferences.setHomeLayoutType(CommonPreferencesConstants.GRID_TYPE_GRID)
+                            R.string.list_style -> HomePreferences.setHomeLayoutType(CommonPreferencesConstants.GRID_TYPE_LIST)
+                        }
+                    },
+                    onDismiss = {
+                        showMiniPlayer()
+                    }
+            ).show()
+        }
+
+        headerBinding.sleepTimer.setOnClickListener {
+            childFragmentManager.openSleepTimerDialog()
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                homeViewModel.libraryStats.collect { stats ->
+                    if (stats != null) {
+                        val formatter = NumberFormat.getNumberInstance()
+                        headerBinding.libraryStats.text = getString(
+                                R.string.library_stats,
+                                formatter.format(stats.trackCount),
+                                formatter.format(stats.totalHours)
+                        )
+                        headerBinding.strip.visible(true)
+                    }
+                }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                ServerModeService.isRunning.collect { running ->
+                    if (running) headerBinding.serverActiveChip.visible(true)
+                    else headerBinding.serverActiveChip.gone()
+                }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                MediaPlaybackManager.sleepTimerStateFlow.collectLatest { running ->
+                    if (running) {
+                        headerBinding.sleepTimer.visible(true)
+                    } else {
+                        headerBinding.sleepTimer.gone()
+                    }
+                }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                MediaPlaybackManager.sleepTimerRemainingFlow.collectLatest { remaining ->
+                    if (MediaPlaybackManager.isSleepTimerRunning()) {
+                        headerBinding.sleepTimer.text = remaining.formatted
+                    } else if (MediaPlaybackManager.pauseAfterCurrentSong) {
+                        headerBinding.sleepTimer.text = getString(R.string.till_this_song)
+                    } else {
+                        headerBinding.sleepTimer.text = ""
+                    }
+                }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                homeViewModel.activeQueue.collect { idx ->
+                    headerBinding.activeQueue.text = QueueLabelPreferences.getDisplayLabel(idx) { _ ->
+                        getString(R.string.current_queue, idx + 1)
+                    }
+
+                    headerBinding.activeQueue.setOnClickListener {
+                        openFragment(PlayingQueue.newInstance(), PlayingQueue.TAG)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun setWeatherChipState() {
+        fun updateChipLabel(mode: Int) {
+            when (mode) {
+                UserInterfacePreferences.WEATHER_EFFECT_OFF -> {
+                    headerBinding.weather.text = getString(R.string.off)
+                    headerBinding.weather.setStartDrawable(R.drawable.ic_cloud_off_16dp)
+                }
+                UserInterfacePreferences.WEATHER_EFFECT_WINTER -> {
+                    headerBinding.weather.text = getString(R.string.winter)
+                    headerBinding.weather.setStartDrawable(R.drawable.ic_cloud_16dp)
+                }
+                UserInterfacePreferences.WEATHER_EFFECT_AUTUMN -> {
+                    headerBinding.weather.text = getString(R.string.autumn)
+                    headerBinding.weather.setStartDrawable(R.drawable.ic_cloud_16dp)
+                }
+                UserInterfacePreferences.WEATHER_EFFECT_SUMMER -> {
+                    headerBinding.weather.text = getString(R.string.summer)
+                    headerBinding.weather.setStartDrawable(R.drawable.ic_cloud_16dp)
+                }
+                else -> {
+                    // Auto
+                    val month = Calendar.getInstance().get(Calendar.MONTH)
+                    when (month) {
+                        Calendar.DECEMBER, Calendar.JANUARY, Calendar.FEBRUARY -> {
+                            updateChipLabel(UserInterfacePreferences.WEATHER_EFFECT_WINTER)
+                        }
+                        Calendar.SEPTEMBER, Calendar.OCTOBER, Calendar.NOVEMBER -> {
+                            updateChipLabel(UserInterfacePreferences.WEATHER_EFFECT_AUTUMN)
+                        }
+                        Calendar.MAY, Calendar.JUNE, Calendar.JULY, Calendar.AUGUST -> {
+                            headerBinding.weather.text = getString(R.string.summer)
+                            updateChipLabel(UserInterfacePreferences.WEATHER_EFFECT_SUMMER)
+                        }
+                        else -> {
+                            headerBinding.weather.text = getString(R.string.off)
+                            updateChipLabel(UserInterfacePreferences.WEATHER_EFFECT_OFF)
+                        }
+                    }
+                }
+            }
+        }
+
+        headerBinding.weather.setOnClickListener {
+            hideMiniPlayer()
+
+            SharedScrollViewPopup(
+                    container = requireContainerView(),
+                    anchorView = headerBinding.weather,
+                    menuItems = listOf(
+                            PopupMenuItem(title = R.string.off),
+                            PopupMenuItem(title = R.string.auto),
+                            PopupMenuItem(title = R.string.winter),
+                            PopupMenuItem(title = R.string.autumn),
+                            PopupMenuItem(title = R.string.summer)
+                    ),
+                    onMenuItemClick = {
+                        when (it) {
+                            R.string.off -> {
+                                UserInterfacePreferences.setWeatherEffect(UserInterfacePreferences.WEATHER_EFFECT_OFF)
+                                updateChipLabel(UserInterfacePreferences.WEATHER_EFFECT_OFF)
+                            }
+                            R.string.auto -> {
+                                UserInterfacePreferences.setWeatherEffect(UserInterfacePreferences.WEATHER_EFFECT_AUTO)
+                                updateChipLabel(UserInterfacePreferences.WEATHER_EFFECT_AUTO)
+                            }
+                            R.string.winter -> {
+                                UserInterfacePreferences.setWeatherEffect(UserInterfacePreferences.WEATHER_EFFECT_WINTER)
+                                updateChipLabel(UserInterfacePreferences.WEATHER_EFFECT_WINTER)
+                            }
+                            R.string.autumn -> {
+                                UserInterfacePreferences.setWeatherEffect(UserInterfacePreferences.WEATHER_EFFECT_AUTUMN)
+                                updateChipLabel(UserInterfacePreferences.WEATHER_EFFECT_AUTUMN)
+                            }
+                            R.string.summer -> {
+                                UserInterfacePreferences.setWeatherEffect(UserInterfacePreferences.WEATHER_EFFECT_SUMMER)
+                                updateChipLabel(UserInterfacePreferences.WEATHER_EFFECT_SUMMER)
+                            }
+                        }
+                    },
+                    onDismiss = {
+                        showMiniPlayer()
+                    }
+            ).show()
+        }
+
+        updateChipLabel(UserInterfacePreferences.getWeatherEffect())
+    }
+
+    private fun updateGridTypeChip() {
+        when (HomePreferences.getHomeLayoutType()) {
+            CommonPreferencesConstants.GRID_TYPE_GRID -> {
+                headerBinding.gridType.text = getString(R.string.grid)
+                headerBinding.gridType.setStartDrawable(R.drawable.ic_grid_16dp)
+            }
+            CommonPreferencesConstants.GRID_TYPE_LIST -> {
+                headerBinding.gridType.text = getString(R.string.list_style)
+                headerBinding.gridType.setStartDrawable(R.drawable.ic_list_16dp)
+            }
         }
     }
 
@@ -118,6 +336,7 @@ class SimpleHome : BaseHomeFragment() {
                 val layoutType = HomePreferences.getHomeLayoutType()
                 adapterSimpleHome?.setLayoutType(layoutType)
                 updateGridLayoutSpanCount()
+                updateGridTypeChip()
                 binding.recyclerView.scheduleLayoutAnimation()
                 adapterSimpleHome?.notifyItemRangeChanged(0, adapterSimpleHome?.itemCount ?: 0)
             }

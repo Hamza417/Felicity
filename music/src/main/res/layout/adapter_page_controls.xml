@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:id="@+id/linearLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingVertical="@dimen/padding_5"
+        android:paddingHorizontal="@dimen/padding_5"
+        android:clipChildren="false"
+        android:clipToPadding="false">
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+            android:id="@+id/play"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/play"
+            android:textSize="@dimen/text_size_16"
+            android:padding="@dimen/padding_10"
+            android:drawablePadding="@dimen/padding_5"
+            android:drawableStart="@drawable/ic_play_16dp"
+            android:layout_gravity="center_vertical"
+            android:gravity="center_vertical"
+            app:drawableTintStyle="accent" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleTextView
+            android:id="@+id/shuffle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/shuffle"
+            android:textSize="@dimen/text_size_16"
+            android:drawableStart="@drawable/ic_shuffle_16dp"
+            android:padding="@dimen/padding_10"
+            android:layout_marginStart="@dimen/padding_5"
+            android:gravity="center_vertical"
+            android:src="@drawable/ic_shuffle"
+            android:layout_gravity="center_vertical"
+            android:drawablePadding="@dimen/padding_5"
+            app:drawableTintStyle="accent"
+            tools:ignore="RtlSymmetry" />
+
+        <Space
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_gravity="center_vertical"
+            android:layout_weight="1" />
+
+        <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+            android:id="@+id/menu"
+            android:layout_width="@dimen/button_size"
+            android:layout_height="@dimen/button_size"
+            android:layout_gravity="center_vertical"
+            android:src="@drawable/ic_menu"
+            app:buttonTintType="regular" />
+
+    </LinearLayout>
+
+    <app.simple.felicity.decorations.theme.ThemeDivider
+        android:layout_width="match_parent"
+        android:layout_height="1px" />
+
+</LinearLayout>

@@ -26,8 +26,8 @@
         android:layout_marginTop="@dimen/padding_10"
         android:gravity="center"
         android:textSize="@dimen/text_size_14"
-        app:appFontStyle="bold"
-        app:textColorStyle="secondary" />
+        app:appFontStyle="regular"
+        app:textColorStyle="primary" />
 
 
 </app.simple.felicity.decorations.ripple.DynamicRippleLinearLayout>

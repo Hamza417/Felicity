@@ -4,7 +4,6 @@ import android.app.Application
 import android.content.SharedPreferences
 import android.util.Log
 import androidx.lifecycle.viewModelScope
-import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.repositories.AudioRepository
@@ -43,9 +42,9 @@ import kotlin.time.Duration.Companion.milliseconds
 @HiltViewModel
 class HomeViewModel @Inject constructor(
         application: Application,
-        private val audioRepository: AudioRepository,
+        audioRepository: AudioRepository,
         private val songStatRepository: SongStatRepository
-) : WrappedViewModel(application) {
+) : BaseHomeViewModel(application, audioRepository) {
 
     private val _favorites = MutableStateFlow<List<Audio>>(emptyList())
 
@@ -75,14 +74,6 @@ class HomeViewModel @Inject constructor(
      */
     val recommended: StateFlow<List<Audio>> = _recommended.asStateFlow()
 
-    private val _libraryStats = MutableStateFlow<Pair<Int, Long>?>(null)
-
-    /**
-     * A pair of (trackCount, totalDurationMs) so the header chip can show something like
-     * "12,403 Tracks • 840 Hours". Updates automatically whenever the audio table changes.
-     */
-    val libraryStats: StateFlow<Pair<Int, Long>?> = _libraryStats.asStateFlow()
-
     /** Active coroutine job collecting the recommended combined flow. */
     private var recommendedJob: Job? = null
 
@@ -104,7 +95,6 @@ class HomeViewModel @Inject constructor(
         startMostPlayedFlow()
         startRecentlyAddedFlow()
         startRecommendedFlow()
-        startLibraryStatsFlow()
     }
 
     private fun startFavoritesFlow() {
@@ -222,24 +212,6 @@ class HomeViewModel @Inject constructor(
                 .shuffled() // Shuffle before taking to ensure truly random filler
                 .take(RECOMMENDED_MAX_COUNT - composed.size)
             (composed + filler).shuffled()
-        }
-    }
-
-    /**
-     * Watches the full audio library and keeps the library stats pair up to date.
-     * Runs in the background so a fresh media scan instantly refreshes the header chip
-     * without any manual intervention from the fragment.
-     */
-    private fun startLibraryStatsFlow() {
-        viewModelScope.launch {
-            audioRepository.getAllAudio()
-                .catch { e -> Log.e(TAG, "Error computing library stats", e) }
-                .flowOn(Dispatchers.IO)
-                .collect { audioList ->
-                    val totalMs = audioList.sumOf { it.duration }
-                    _libraryStats.value = Pair(audioList.size, totalMs)
-                    Log.d(TAG, "libraryStats updated: ${audioList.size} tracks")
-                }
         }
     }
 
