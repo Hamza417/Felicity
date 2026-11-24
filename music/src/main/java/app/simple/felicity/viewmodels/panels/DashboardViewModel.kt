@@ -14,13 +14,14 @@ import app.simple.felicity.repository.repositories.SongStatRepository
 import app.simple.felicity.viewmodels.panels.SimpleHomeViewModel.Companion.Panel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.flow.stateIn
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
@@ -37,8 +38,8 @@ import javax.inject.Inject
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
         application: Application,
-        private val audioRepository: AudioRepository,
-        private val songStatRepository: SongStatRepository
+        audioRepository: AudioRepository,
+        songStatRepository: SongStatRepository
 ) : WrappedViewModel(application) {
 
     /**
@@ -50,49 +51,83 @@ class DashboardViewModel @Inject constructor(
      */
     data class LibraryStats(val trackCount: Int, val totalHours: Long)
 
-    private val _recentlyPlayed = MutableStateFlow<List<Audio>>(emptyList())
-
     /** Recently played songs flow ordered by last-played timestamp descending. */
-    val recentlyPlayed: StateFlow<List<Audio>> = _recentlyPlayed.asStateFlow()
-
-    private val _recentlyAdded = MutableStateFlow<List<Audio>>(emptyList())
+    val recentlyPlayed: StateFlow<List<Audio>> = songStatRepository.getRecentlyPlayed()
+        .catch { exception ->
+            Log.e(TAG, "Error loading recently played songs", exception)
+            emit(emptyList())
+        }
+        .flowOn(Dispatchers.IO)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** Recently added songs flow, ordered by date added descending. */
-    val recentlyAdded: StateFlow<List<Audio>> = _recentlyAdded.asStateFlow()
-
-    private val _favorites = MutableStateFlow<List<Audio>>(emptyList())
+    val recentlyAdded: StateFlow<List<Audio>> = audioRepository.getRecentAudio()
+        .catch { exception ->
+            Log.e(TAG, "Error loading recently added songs", exception)
+            emit(mutableListOf())
+        }
+        .flowOn(Dispatchers.IO)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** Favorite songs flow. */
-    val favorites: StateFlow<List<Audio>> = _favorites.asStateFlow()
+    val favorites: StateFlow<List<Audio>> = audioRepository.getFavoriteAudio()
+        .catch { exception ->
+            Log.e(TAG, "Error loading favorites", exception)
+            emit(emptyList())
+        }
+        .flowOn(Dispatchers.IO)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    private val allAudioFlow = audioRepository.getAllAudio()
+        .catch { e -> Log.e(TAG, "Error loading all audio", e); emit(mutableListOf()) }
+        .flowOn(Dispatchers.IO)
+        .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5000), replay = 1)
 
-    private val _libraryStats = MutableStateFlow<LibraryStats?>(null)
+    private val mostPlayedFlow = songStatRepository.getMostPlayed()
+        .catch { e -> Log.e(TAG, "Error loading most played", e); emit(emptyList()) }
+        .flowOn(Dispatchers.IO)
+        .shareIn(viewModelScope, SharingStarted.WhileSubscribed(5000), replay = 1)
 
     /**
      * Library-wide stats: total track count and total hours of music.
      * Updated whenever the audio table changes so it's always fresh.
      */
-    val libraryStats: StateFlow<LibraryStats?> = _libraryStats.asStateFlow()
-
-    private val _topArtists = MutableStateFlow<List<Artist>>(emptyList())
+    val libraryStats: StateFlow<LibraryStats?> = allAudioFlow
+        .map { audioList ->
+            val totalMs = audioList.sumOf { it.duration }
+            val totalHours = TimeUnit.MILLISECONDS.toHours(totalMs)
+            LibraryStats(
+                    trackCount = audioList.size,
+                    totalHours = totalHours
+            )
+        }
+        .flowOn(Dispatchers.IO)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     /**
      * The top 10 artists ranked by how often their songs have been played.
      * If nobody has played anything yet, this will be empty — get listening!
      */
-    val topArtists: StateFlow<List<Artist>> = _topArtists.asStateFlow()
-
-    private val _topAlbums = MutableStateFlow<List<Album>>(emptyList())
+    val topArtists: StateFlow<List<Artist>> = combine(mostPlayedFlow, allAudioFlow) { mostPlayed, allAudio ->
+        computeTopArtists(mostPlayed, allAudio)
+    }
+        .flowOn(Dispatchers.IO)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /**
      * The top 10 albums ranked by how often their songs have been played.
      * Your most-loved albums, right there on the dashboard.
      */
-    val topAlbums: StateFlow<List<Album>> = _topAlbums.asStateFlow()
+    val topAlbums: StateFlow<List<Album>> = combine(mostPlayedFlow, allAudioFlow) { mostPlayed, allAudio ->
+        computeTopAlbums(mostPlayed, allAudio)
+    }
+        .flowOn(Dispatchers.IO)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private val _activeQueue = MutableStateFlow(0)
-
-    val activeQueue: StateFlow<Int> = _activeQueue.asStateFlow()
+    val activeQueue: StateFlow<Int> = audioRepository.getPlaybackStateDao().getActiveQueueIdFlow()
+        .catch { e -> Log.e(TAG, "Error fetching active queue id", e); emit(0) }
+        .flowOn(Dispatchers.IO)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     /**
      * Builds the list of panel navigation icons that should actually appear in the browse grid,
@@ -165,127 +200,6 @@ class DashboardViewModel @Inject constructor(
         return panels
     }
 
-    init {
-        startRecentlyPlayedFlow()
-        startRecentlyAddedFlow()
-        startFavoritesFlow()
-        startLibraryStatsFlow()
-        startTopArtistsFlow()
-        startTopAlbumsFlow()
-        fetchActiveQueue()
-    }
-
-    private fun startRecentlyPlayedFlow() {
-        viewModelScope.launch {
-            songStatRepository.getRecentlyPlayed()
-                .catch { exception ->
-                    Log.e(TAG, "Error loading recently played songs", exception)
-                    emit(emptyList())
-                }
-                .flowOn(Dispatchers.IO)
-                .collect { list ->
-                    _recentlyPlayed.value = list
-                    Log.d(TAG, "recentlyPlayed updated: ${list.size} songs")
-                }
-        }
-    }
-
-    private fun startRecentlyAddedFlow() {
-        viewModelScope.launch {
-            audioRepository.getRecentAudio()
-                .catch { exception ->
-                    Log.e(TAG, "Error loading recently added songs", exception)
-                    emit(mutableListOf())
-                }
-                .flowOn(Dispatchers.IO)
-                .collect { list ->
-                    _recentlyAdded.value = list
-                    Log.d(TAG, "recentlyAdded updated: ${list.size} songs")
-                }
-        }
-    }
-
-    private fun startFavoritesFlow() {
-        viewModelScope.launch {
-            audioRepository.getFavoriteAudio()
-                .catch { exception ->
-                    Log.e(TAG, "Error loading favorites", exception)
-                    emit(emptyList())
-                }
-                .flowOn(Dispatchers.IO)
-                .collect { list ->
-                    _favorites.value = list
-                    Log.d(TAG, "favorites updated: ${list.size} songs")
-                }
-        }
-    }
-
-    /**
-     * Watches the full audio library and computes a human-friendly stats summary.
-     * This runs whenever the library changes, so a fresh scan immediately updates
-     * the dashboard chip without any extra work.
-     */
-    private fun startLibraryStatsFlow() {
-        viewModelScope.launch {
-            audioRepository.getAllAudio()
-                .catch { e -> Log.e(TAG, "Error computing library stats", e) }
-                .flowOn(Dispatchers.IO)
-                .collect { audioList ->
-                    val totalMs = audioList.sumOf { it.duration }
-                    val totalHours = TimeUnit.MILLISECONDS.toHours(totalMs)
-                    _libraryStats.value = LibraryStats(
-                            trackCount = audioList.size,
-                            totalHours = totalHours
-                    )
-                    Log.d(TAG, "libraryStats: ${audioList.size} tracks, $totalHours hours")
-                }
-        }
-    }
-
-    /**
-     * Derives the top 10 artists from the most-played songs list.
-     * Artists are ranked by total play count — the more you listen, the higher they rise.
-     * Each artist is represented by the first song we find for them.
-     */
-    private fun startTopArtistsFlow() {
-        viewModelScope.launch {
-            combine(
-                    songStatRepository.getMostPlayed(),
-                    audioRepository.getAllAudio()
-            ) { mostPlayed, allAudio ->
-                computeTopArtists(mostPlayed, allAudio)
-            }
-                .catch { e -> Log.e(TAG, "Error computing top artists", e) }
-                .flowOn(Dispatchers.IO)
-                .collect { artists ->
-                    _topArtists.value = artists
-                    Log.d(TAG, "topArtists updated: ${artists.size}")
-                }
-        }
-    }
-
-    /**
-     * Derives the top 10 albums from the most-played songs list.
-     * Albums are ranked by how many of their tracks appear in the most-played list.
-     * Makes sense, right? Your favorite album probably has multiple tracks up there.
-     */
-    private fun startTopAlbumsFlow() {
-        viewModelScope.launch {
-            combine(
-                    songStatRepository.getMostPlayed(),
-                    audioRepository.getAllAudio()
-            ) { mostPlayed, allAudio ->
-                computeTopAlbums(mostPlayed, allAudio)
-            }
-                .catch { e -> Log.e(TAG, "Error computing top albums", e) }
-                .flowOn(Dispatchers.IO)
-                .collect { albums ->
-                    _topAlbums.value = albums
-                    Log.d(TAG, "topAlbums updated: ${albums.size}")
-                }
-        }
-    }
-
     /**
      * Computes the top 10 artists by grouping most-played songs by artist
      * and counting how many times each artist appears.
@@ -350,18 +264,6 @@ class DashboardViewModel @Inject constructor(
                         songPaths = albumSongs.map { it.uri }
                 )
             }
-    }
-
-    fun fetchActiveQueue() {
-        viewModelScope.launch {
-            audioRepository.getPlaybackStateDao().getActiveQueueIdFlow()
-                .catch { e -> Log.e(TAG, "Error fetching active queue id", e) }
-                .flowOn(Dispatchers.IO)
-                .collect { queueId ->
-                    _activeQueue.value = queueId
-                    Log.d(TAG, "activeQueue updated: $queueId")
-                }
-        }
     }
 
     companion object {

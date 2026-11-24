@@ -1330,7 +1330,7 @@ open class MediaFragment : KeyboardScopedFragment(), MiniPlayerPolicy {
     private suspend fun fetchAudiosByPaths(paths: List<String>): List<Audio> {
         return withContext(Dispatchers.IO) {
             val dao = AudioDatabase.getInstance(requireContext()).audioDao()
-                ?: return@withContext emptyList<Audio>()
+                ?: return@withContext emptyList()
             paths.mapNotNull { path -> dao.getAudioByPath(path) }
         }
     }

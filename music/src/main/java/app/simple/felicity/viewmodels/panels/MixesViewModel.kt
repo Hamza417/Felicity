@@ -11,11 +11,12 @@ import app.simple.felicity.repository.repositories.SongStatRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
 /**
@@ -30,9 +31,10 @@ import javax.inject.Inject
 @HiltViewModel
 class MixesViewModel @Inject constructor(
         application: Application,
-        private val songStatRepository: SongStatRepository
+        songStatRepository: SongStatRepository
 ) : WrappedViewModel(application) {
 
+    /** The kinds of auto-generated mixes. */
     /** The kinds of auto-generated mixes. */
     enum class MixType { RECOMMENDED, DISCOVER, RANDOM_PICKS, QUEUE }
 
@@ -45,57 +47,36 @@ class MixesViewModel @Inject constructor(
      */
     data class Mix(val type: MixType, val titleRes: Int, val songs: List<Audio>)
 
-    private val _mixes = MutableStateFlow<List<Mix>>(emptyList())
-
-    /** The current mixes. Mixes with no songs are omitted. */
-    val mixes: StateFlow<List<Mix>> = _mixes.asStateFlow()
-
     private val refreshTrigger = MutableStateFlow(0)
     private var appliedTrigger = -1
+    private var cachedMixes = emptyList<Mix>()
 
     private val recommendationEngine = OfflineRecommendationEngine()
 
-    init {
-        startMixesFlow()
-    }
-
-    /**
-     * Combines the library and stats flows so the mixes are built as soon as data is available,
-     * but only recomputes them again when [refresh] bumps the trigger.
-     */
-    private fun startMixesFlow() {
-        viewModelScope.launch(Dispatchers.IO) {
-            combine(
-                    songStatRepository.getAllAudioWithStat(),
-                    refreshTrigger
-            ) { library, trigger ->
-                if (_mixes.value.isNotEmpty() && trigger == appliedTrigger) return@combine null
-
-                trigger to listOf(
-                        Mix(MixType.RECOMMENDED, R.string.recommended, recommendationEngine.recommendOverallMix(library).map {
-                            it.audio
-                        }),
-
-                        Mix(MixType.DISCOVER, R.string.discover, recommendationEngine.recommendDiscover(library).map {
-                            it.audio
-                        }),
-
-                        Mix(MixType.RANDOM_PICKS, R.string.random_picks, recommendationEngine.recommendRandomPicks(library).map {
-                            it.audio
-                        })
-                ).filter {
-                    it.songs.isNotEmpty()
-                }
-            }.catch { e ->
-                Log.e(TAG, "Error loading mixes", e)
-            }.collect { result ->
-                if (result == null) return@collect
-                appliedTrigger = result.first
-                _mixes.value = result.second
-                Log.d(TAG, "mixes updated: ${result.second.size}")
-            }
+    /** The current mixes. Mixes with no songs are omitted. */
+    val mixes: StateFlow<List<Mix>> = combine(
+            songStatRepository.getAllAudioWithStat(),
+            refreshTrigger
+    ) { library, trigger ->
+        // If we already have mixes and the trigger hasn't changed, 
+        // we ignore the library update so it doesn't reshuffle.
+        if (trigger == appliedTrigger && cachedMixes.isNotEmpty()) {
+            return@combine cachedMixes
         }
+
+        val newMixes = listOf(
+                Mix(MixType.RECOMMENDED, R.string.recommended, recommendationEngine.recommendOverallMix(library).map { it.audio }),
+                Mix(MixType.DISCOVER, R.string.discover, recommendationEngine.recommendDiscover(library).map { it.audio }),
+                Mix(MixType.RANDOM_PICKS, R.string.random_picks, recommendationEngine.recommendRandomPicks(library).map { it.audio })
+        ).filter { it.songs.isNotEmpty() }
+
+        appliedTrigger = trigger
+        cachedMixes = newMixes
+        newMixes
     }
+        .catch { e -> Log.e(TAG, "Error loading mixes", e); emit(emptyList()) }
+        .flowOn(Dispatchers.IO)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** Generates a fresh shuffle of every mix. */
     fun refresh() {
