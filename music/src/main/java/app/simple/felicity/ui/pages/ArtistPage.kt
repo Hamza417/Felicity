@@ -57,7 +57,9 @@ class ArtistPage : BasePageFragment() {
     override val pageRecyclerView: RecyclerView
         get() = binding.recyclerView
 
-    override val pageType: PageAdapter.PageType by lazy { PageAdapter.PageType.ArtistPage(artist) }
+    override val pageType: PageAdapter.PageType by lazy {
+        PageAdapter.PageType.ArtistPage(artist)
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         binding = FragmentPageArtistBinding.inflate(inflater, container, false)

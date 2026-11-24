@@ -24,6 +24,9 @@
     <HorizontalScrollView
         android:layout_width="match_parent"
         android:scrollbars="none"
+        android:fadingEdgeLength="@dimen/padding_15"
+        android:fadingEdge="horizontal"
+        android:requiresFadingEdge="horizontal"
         android:layout_height="wrap_content"
         android:paddingHorizontal="@dimen/padding_15"
         android:paddingBottom="@dimen/padding_5">
@@ -99,9 +102,12 @@
         android:id="@+id/tags_scroll"
         android:layout_width="match_parent"
         android:scrollbars="none"
+        android:requiresFadingEdge="horizontal"
         android:layout_height="wrap_content"
         android:paddingHorizontal="@dimen/padding_15"
         android:paddingBottom="@dimen/padding_5"
+        android:fadingEdge="horizontal"
+        android:fadingEdgeLength="@dimen/padding_15"
         android:visibility="gone">
 
         <LinearLayout
@@ -113,34 +119,29 @@
     </HorizontalScrollView>
 
     <!-- Bio text — collapsible after 4 lines -->
-    <app.simple.felicity.decorations.typeface.TypeFaceTextView
-        android:id="@+id/bio"
+    <app.simple.felicity.decorations.views.FadedLinearLayout
+        android:id="@+id/bio_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingHorizontal="@dimen/padding_20"
-        android:paddingTop="@dimen/padding_5"
-        android:paddingBottom="@dimen/padding_5"
-        android:textSize="@dimen/text_size_14"
-        android:maxLines="4"
-        android:ellipsize="end"
+        android:orientation="vertical"
         android:visibility="gone"
-        app:appFontStyle="regular"
-        app:textColorStyle="secondary"
-        tools:text="Linkin Park is a band."
-        tools:visibility="visible" />
+        tools:visibility="visible">
 
-    <!-- "Read more" toggle — expands the bio to its full length -->
-    <app.simple.felicity.decorations.ripple.DynamicRippleTextView
-        android:id="@+id/bio_toggle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:paddingHorizontal="@dimen/padding_20"
-        android:paddingVertical="@dimen/padding_5"
-        android:text="@string/read_more"
-        android:textSize="@dimen/text_size_14"
-        android:visibility="gone"
-        app:appFontStyle="bold"
-        app:textColorStyle="accent" />
+        <app.simple.felicity.decorations.typeface.TypeFaceTextView
+            android:id="@+id/bio"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="@dimen/padding_20"
+            android:paddingTop="@dimen/padding_5"
+            android:paddingBottom="@dimen/padding_5"
+            android:textSize="@dimen/text_size_14"
+            android:maxLines="4"
+            android:ellipsize="end"
+            app:appFontStyle="regular"
+            app:textColorStyle="secondary"
+            tools:text="Linkin Park is a band." />
+
+    </app.simple.felicity.decorations.views.FadedLinearLayout>
 
     <app.simple.felicity.decorations.theme.ThemeDivider
         android:layout_width="match_parent"

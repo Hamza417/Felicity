@@ -1,9 +1,13 @@
 package app.simple.felicity.adapters.ui.page
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.ValueAnimator
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.OvershootInterpolator
 import android.widget.ImageView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
@@ -15,9 +19,12 @@ import app.simple.felicity.databinding.AdapterArtistInfoBinding
 import app.simple.felicity.databinding.AdapterGenreAlbumsBinding
 import app.simple.felicity.databinding.AdapterHeaderArtistPageBinding
 import app.simple.felicity.databinding.AdapterStyleListBinding
+import app.simple.felicity.decorations.highlight.HighlightTextView
 import app.simple.felicity.decorations.itemdecorations.LinearHorizontalSpacingDecoration
 import app.simple.felicity.decorations.overscroll.VerticalListViewHolder
 import app.simple.felicity.decorations.pager.FelicityPager
+import app.simple.felicity.decorations.typeface.TypeFaceTextView
+import app.simple.felicity.decorations.views.FadedLinearLayout
 import app.simple.felicity.glide.util.AudioCoverUtils.loadArtCover
 import app.simple.felicity.models.ArtFlowData
 import app.simple.felicity.models.PageItem
@@ -832,6 +839,16 @@ class PageAdapter(
     inner class ArtistInfo(val binding: AdapterArtistInfoBinding) : VerticalListViewHolder(binding.root) {
 
         private var bioExpanded = false
+        private var bioAnimator: ValueAnimator? = null
+
+        init {
+            binding.root.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+                override fun onViewAttachedToWindow(v: View) {}
+                override fun onViewDetachedFromWindow(v: View) {
+                    bioAnimator?.cancel()
+                }
+            })
+        }
 
         fun bind(info: MusicBrainzArtistInfo) {
             binding.apply {
@@ -878,7 +895,7 @@ class PageAdapter(
                     tagList.forEach { tag ->
                         val pill = inflater.inflate(
                                 R.layout.item_tag_pill, tagsContainer, false
-                        ) as app.simple.felicity.decorations.highlight.HighlightTextView
+                        ) as HighlightTextView
                         pill.text = tag
                         tagsContainer.addView(pill)
                     }
@@ -891,25 +908,27 @@ class PageAdapter(
                 // tell whether the text was actually truncated by the maxLines limit.
                 if (!info.bio.isNullOrBlank()) {
                     bio.text = info.bio
-                    bio.visibility = View.VISIBLE
+                    bioContainer.visibility = View.VISIBLE
 
                     // Always reset to collapsed state on bind so recycled holders are consistent.
+                    bioAnimator?.cancel()
                     bioExpanded = false
+                    bioContainer.setExpanded(false, false)
+                    bio.maxLines = 4
 
                     bio.post {
                         val ellipsisCount = bio.layout.getEllipsisCount(bio.layout.lineCount - 1)
                         val isEllipsized = ellipsisCount > 0
-                        bioToggle.visibility = if (isEllipsized) View.VISIBLE else View.GONE
+                        bioContainer.setExpanded(!isEllipsized, false)
+                        bioContainer.isClickable = isEllipsized
                     }
 
-                    bioToggle.setOnClickListener {
+                    bioContainer.setOnClickListener {
                         bioExpanded = !bioExpanded
-                        bio.maxLines = if (bioExpanded) Int.MAX_VALUE else 4
-                        bioToggle.setText(if (bioExpanded) R.string.read_less else R.string.read_more)
+                        bioAnimator = animateBioExpansion(bioContainer, bio, bioExpanded, bioAnimator)
                     }
                 } else {
-                    bio.visibility = View.GONE
-                    bioToggle.visibility = View.GONE
+                    bioContainer.visibility = View.GONE
                 }
             }
         }
@@ -918,6 +937,16 @@ class PageAdapter(
     inner class AlbumInfo(val binding: AdapterAlbumInfoBinding) : VerticalListViewHolder(binding.root) {
 
         private var bioExpanded = false
+        private var bioAnimator: ValueAnimator? = null
+
+        init {
+            binding.root.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+                override fun onViewAttachedToWindow(v: View) {}
+                override fun onViewDetachedFromWindow(v: View) {
+                    bioAnimator?.cancel()
+                }
+            })
+        }
 
         fun bind(info: MusicBrainzAlbumInfo) {
             binding.apply {
@@ -956,7 +985,7 @@ class PageAdapter(
                     labelList.forEach { label ->
                         val pill = inflater.inflate(
                                 R.layout.item_tag_pill, labelsContainer, false
-                        ) as app.simple.felicity.decorations.highlight.HighlightTextView
+                        ) as HighlightTextView
                         pill.text = label
                         labelsContainer.addView(pill)
                     }
@@ -975,7 +1004,7 @@ class PageAdapter(
                     tagList.forEach { tag ->
                         val pill = inflater.inflate(
                                 R.layout.item_tag_pill, tagsContainer, false
-                        ) as app.simple.felicity.decorations.highlight.HighlightTextView
+                        ) as HighlightTextView
                         pill.text = tag
                         tagsContainer.addView(pill)
                     }
@@ -987,27 +1016,73 @@ class PageAdapter(
                 // Bio text with read more/less toggle
                 if (!info.bio.isNullOrBlank()) {
                     bio.text = info.bio
-                    bio.visibility = View.VISIBLE
+                    bioContainer.visibility = View.VISIBLE
 
+                    bioAnimator?.cancel()
                     bioExpanded = false
+                    bioContainer.setExpanded(false, false)
+                    bio.maxLines = 4
 
                     bio.post {
                         val ellipsisCount = bio.layout.getEllipsisCount(bio.layout.lineCount - 1)
                         val isEllipsized = ellipsisCount > 0
-                        bioToggle.visibility = if (isEllipsized) View.VISIBLE else View.GONE
+                        bioContainer.setExpanded(!isEllipsized, false)
+                        bioContainer.isClickable = isEllipsized
                     }
 
-                    bioToggle.setOnClickListener {
+                    bioContainer.setOnClickListener {
                         bioExpanded = !bioExpanded
-                        bio.maxLines = if (bioExpanded) Int.MAX_VALUE else 4
-                        bioToggle.setText(if (bioExpanded) R.string.read_less else R.string.read_more)
+                        bioAnimator = animateBioExpansion(bioContainer, bio, bioExpanded, bioAnimator)
                     }
                 } else {
-                    bio.visibility = View.GONE
-                    bioToggle.visibility = View.GONE
+                    bioContainer.visibility = View.GONE
                 }
             }
         }
+    }
+
+    private fun animateBioExpansion(
+            bioContainer: FadedLinearLayout,
+            bio: TypeFaceTextView,
+            bioExpanded: Boolean,
+            currentAnimator: ValueAnimator?
+    ): ValueAnimator {
+        currentAnimator?.cancel()
+
+        val startHeight = bioContainer.height
+
+        bio.maxLines = if (bioExpanded) Int.MAX_VALUE else 4
+        bioContainer.measure(
+                View.MeasureSpec.makeMeasureSpec(bioContainer.width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+
+        val endHeight = bioContainer.measuredHeight
+
+        if (!bioExpanded) {
+            bio.maxLines = Int.MAX_VALUE
+        }
+
+        val animator = ValueAnimator.ofInt(startHeight, endHeight)
+        animator.duration = 500L
+        animator.interpolator = OvershootInterpolator(3F)
+        animator.addUpdateListener {
+            bioContainer.layoutParams.height = it.animatedValue as Int
+            bioContainer.requestLayout()
+        }
+        animator.addListener(object : AnimatorListenerAdapter() {
+            override fun onAnimationEnd(animation: Animator) {
+                if (!bioExpanded) {
+                    bio.maxLines = 4
+                }
+                bioContainer.layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT
+                bioContainer.requestLayout()
+            }
+        })
+        animator.start()
+
+        bioContainer.setExpanded(bioExpanded, true)
+        return animator
     }
 
     companion object {
