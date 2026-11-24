@@ -770,7 +770,7 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
     }
 
     private fun savePlaybackState() {
-        lifecycleScope.launch(Dispatchers.IO) {
+        lifecycleScope.launch(Dispatchers.Main.immediate) {
             PlaybackStateManager.saveCurrentPlaybackState(applicationContext, "MainActivity")
         }
     }

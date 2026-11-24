@@ -65,7 +65,12 @@ object PlaybackStateManager {
      * @param logTag   Optional tag for logging (defaults to TAG).
      * @return {@code true} if state was saved successfully, {@code false} otherwise.
      */
-    suspend fun saveCurrentPlaybackState(context: Context, logTag: String = TAG): Boolean {
+    suspend fun saveCurrentPlaybackState(
+            context: Context,
+            logTag: String = TAG,
+            seekOverride: Long? = null,
+            positionOverride: Int? = null
+    ): Boolean {
         // Always persist the original (unshuffled) queue so we can restore and optionally
         // re-shuffle on the next launch rather than saving an already-shuffled order.
         val songs = MediaPlaybackManager.getSongs()
@@ -77,12 +82,12 @@ object PlaybackStateManager {
         var seek = 0L
         var position = 0
 
-        withContext(Dispatchers.Main) {
-            seek = MediaPlaybackManager.getSeekPosition()
+        withContext(Dispatchers.Main.immediate) {
+            seek = seekOverride ?: MediaPlaybackManager.getSeekPosition()
             // When shuffle is on the active queue is shuffled, but the index we want to
             // restore is the one matching the current song inside the ORIGINAL queue.
             val currentSong = MediaPlaybackManager.getCurrentSong()
-            position = if (currentSong != null) {
+            position = positionOverride ?: if (currentSong != null) {
                 songs.indexOfFirst { it.id == currentSong.id }.coerceAtLeast(0)
             } else {
                 MediaPlaybackManager.getCurrentSongPosition()

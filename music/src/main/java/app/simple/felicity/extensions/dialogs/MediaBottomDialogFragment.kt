@@ -31,7 +31,7 @@ abstract class MediaBottomDialogFragment : ScopedBottomSheetFragment() {
                     val threshold = maxOf(5000L, song.duration / 20) // 5 seconds or 5% of duration
                     if (abs(position - lastSavedSeekPosition) > threshold) {
                         lastSavedSeekPosition = position
-                        saveCurrentPlaybackState()
+                        // We rely on FelicityPlayerService to save playback state
                     }
                 }
             }
@@ -48,8 +48,8 @@ abstract class MediaBottomDialogFragment : ScopedBottomSheetFragment() {
                         onAudio(song)
                     }
                     onPositionChanged(position)
-                    // Save state when song position changes
-                    saveCurrentPlaybackState()
+                    // We rely on FelicityPlayerService to save playback state,
+                    // do not double-save here to prevent race conditions.
                 }
             }
         }
@@ -64,12 +64,6 @@ abstract class MediaBottomDialogFragment : ScopedBottomSheetFragment() {
             MediaPlaybackManager.playbackStateFlow.collect { state ->
                 onPlaybackStateChanged(state)
             }
-        }
-    }
-
-    private fun saveCurrentPlaybackState() {
-        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            PlaybackStateManager.saveCurrentPlaybackState(requireContext(), TAG)
         }
     }
 

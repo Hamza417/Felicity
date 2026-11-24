@@ -1541,8 +1541,14 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
     }
 
     private fun savePlaybackStateToDatabase() {
-        serviceScope.launch {
-            PlaybackStateManager.saveCurrentPlaybackState(applicationContext, TAG)
+        serviceScope.launch(Dispatchers.Main.immediate) {
+            val seek = player.currentPosition
+
+            PlaybackStateManager.saveCurrentPlaybackState(
+                    applicationContext,
+                    TAG,
+                    seekOverride = seek
+            )
         }
     }
 

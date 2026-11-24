@@ -173,7 +173,7 @@ open class MediaFragment : KeyboardScopedFragment(), MiniPlayerPolicy {
                     val threshold = maxOf(5000L, song.duration / 20) // 5 seconds or 5% of duration
                     if (abs(position - lastSavedSeekPosition) > threshold) {
                         lastSavedSeekPosition = position
-                        saveCurrentPlaybackState()
+                        // We rely on FelicityPlayerService to save playback state
                     }
                 }
             }
@@ -190,8 +190,7 @@ open class MediaFragment : KeyboardScopedFragment(), MiniPlayerPolicy {
                         onAudio(song)
                     }
                     onPositionChanged(position)
-                    // Save state when song position changes
-                    saveCurrentPlaybackState()
+                    // We rely on FelicityPlayerService to save playback state
                 }
             }
         }
@@ -200,7 +199,7 @@ open class MediaFragment : KeyboardScopedFragment(), MiniPlayerPolicy {
             MediaPlaybackManager.songListFlow.collect { songs ->
                 Log.d(TAG, "Song list updated: ${songs.size} songs")
                 onSongListChanged(songs)
-                saveCurrentPlaybackState()
+                // We rely on FelicityPlayerService to save playback state
             }
         }
 
@@ -452,18 +451,6 @@ open class MediaFragment : KeyboardScopedFragment(), MiniPlayerPolicy {
                     repeat = 0,
                     activeQueueId = MediaPlaybackManager.getActiveQueueId()
             )
-        }
-    }
-
-    /**
-     * Gets called on two occasions:
-     * 1) When the song position changes.
-     * 2) When the seek position changes and the new position passes a certain
-     * threshold (e.g. every 5 seconds or every 5% of the song duration, whichever is larger).
-     */
-    private fun saveCurrentPlaybackState() {
-        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            PlaybackStateManager.saveCurrentPlaybackState(requireContext(), TAG)
         }
     }
 
