@@ -7,7 +7,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.animation.OvershootInterpolator
+import android.view.animation.DecelerateInterpolator
 import android.widget.ImageView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
@@ -69,6 +69,9 @@ class PageAdapter(
     /** Holds the album release info loaded from MusicBrainz. Set from outside via [setAlbumInfo]. */
     private var albumInfo: MusicBrainzAlbumInfo? = null
 
+    /** Holds the expanded state of the MusicBrainz info section */
+    private var isBioExpanded: Boolean = false
+
     /**
      * Tracks the latest [Playlist] metadata for playlist pages. Updated reactively from
      * the ViewModel so the sort label in the header always reflects the current DB value
@@ -128,15 +131,15 @@ class PageAdapter(
             val newItem = newList[newItemPosition]
 
             // Check if items are of the same type and represent the same data
-            return when {
-                oldItem is PageItem.Header && newItem is PageItem.Header -> true
-                oldItem is PageItem.SongItem && newItem is PageItem.SongItem ->
+            return when (oldItem) {
+                is PageItem.Header if newItem is PageItem.Header -> true
+                is PageItem.SongItem if newItem is PageItem.SongItem ->
                     oldItem.audio.id == newItem.audio.id
-                oldItem is PageItem.AlbumsSection && newItem is PageItem.AlbumsSection -> true
-                oldItem is PageItem.ArtistsSection && newItem is PageItem.ArtistsSection -> true
-                oldItem is PageItem.GenresSection && newItem is PageItem.GenresSection -> true
-                oldItem is PageItem.ArtistInfoSection && newItem is PageItem.ArtistInfoSection -> true
-                oldItem is PageItem.AlbumInfoSection && newItem is PageItem.AlbumInfoSection -> true
+                is PageItem.AlbumsSection if newItem is PageItem.AlbumsSection -> true
+                is PageItem.ArtistsSection if newItem is PageItem.ArtistsSection -> true
+                is PageItem.GenresSection if newItem is PageItem.GenresSection -> true
+                is PageItem.ArtistInfoSection if newItem is PageItem.ArtistInfoSection -> true
+                is PageItem.AlbumInfoSection if newItem is PageItem.AlbumInfoSection -> true
                 else -> false
             }
         }
@@ -838,7 +841,6 @@ class PageAdapter(
 
     inner class ArtistInfo(val binding: AdapterArtistInfoBinding) : VerticalListViewHolder(binding.root) {
 
-        private var bioExpanded = false
         private var bioAnimator: ValueAnimator? = null
 
         init {
@@ -910,22 +912,23 @@ class PageAdapter(
                     bio.text = info.bio
                     bioContainer.visibility = View.VISIBLE
 
-                    // Always reset to collapsed state on bind so recycled holders are consistent.
                     bioAnimator?.cancel()
-                    bioExpanded = false
-                    bioContainer.setExpanded(false, false)
-                    bio.maxLines = 4
+                    bioContainer.setExpanded(isBioExpanded, false)
+                    bio.maxLines = if (isBioExpanded) Int.MAX_VALUE else 4
 
                     bio.post {
-                        val ellipsisCount = bio.layout.getEllipsisCount(bio.layout.lineCount - 1)
-                        val isEllipsized = ellipsisCount > 0
-                        bioContainer.setExpanded(!isEllipsized, false)
-                        bioContainer.isClickable = isEllipsized
+                        val isTextLong = if (isBioExpanded) {
+                            bio.layout.lineCount > 4
+                        } else {
+                            bio.layout.getEllipsisCount(bio.layout.lineCount - 1) > 0
+                        }
+                        bioContainer.setExpanded(isBioExpanded || !isTextLong, false)
+                        bioContainer.isClickable = isTextLong
                     }
 
                     bioContainer.setOnClickListener {
-                        bioExpanded = !bioExpanded
-                        bioAnimator = animateBioExpansion(bioContainer, bio, bioExpanded, bioAnimator)
+                        isBioExpanded = !isBioExpanded
+                        bioAnimator = animateBioExpansion(bioContainer, bio, isBioExpanded, bioAnimator)
                     }
                 } else {
                     bioContainer.visibility = View.GONE
@@ -936,7 +939,6 @@ class PageAdapter(
 
     inner class AlbumInfo(val binding: AdapterAlbumInfoBinding) : VerticalListViewHolder(binding.root) {
 
-        private var bioExpanded = false
         private var bioAnimator: ValueAnimator? = null
 
         init {
@@ -1019,20 +1021,22 @@ class PageAdapter(
                     bioContainer.visibility = View.VISIBLE
 
                     bioAnimator?.cancel()
-                    bioExpanded = false
-                    bioContainer.setExpanded(false, false)
-                    bio.maxLines = 4
+                    bioContainer.setExpanded(isBioExpanded, false)
+                    bio.maxLines = if (isBioExpanded) Int.MAX_VALUE else 4
 
                     bio.post {
-                        val ellipsisCount = bio.layout.getEllipsisCount(bio.layout.lineCount - 1)
-                        val isEllipsized = ellipsisCount > 0
-                        bioContainer.setExpanded(!isEllipsized, false)
-                        bioContainer.isClickable = isEllipsized
+                        val isTextLong = if (isBioExpanded) {
+                            bio.layout.lineCount > 4
+                        } else {
+                            bio.layout.getEllipsisCount(bio.layout.lineCount - 1) > 0
+                        }
+                        bioContainer.setExpanded(isBioExpanded || !isTextLong, false)
+                        bioContainer.isClickable = isTextLong
                     }
 
                     bioContainer.setOnClickListener {
-                        bioExpanded = !bioExpanded
-                        bioAnimator = animateBioExpansion(bioContainer, bio, bioExpanded, bioAnimator)
+                        isBioExpanded = !isBioExpanded
+                        bioAnimator = animateBioExpansion(bioContainer, bio, isBioExpanded, bioAnimator)
                     }
                 } else {
                     bioContainer.visibility = View.GONE
@@ -1065,7 +1069,7 @@ class PageAdapter(
 
         val animator = ValueAnimator.ofInt(startHeight, endHeight)
         animator.duration = 500L
-        animator.interpolator = OvershootInterpolator(3F)
+        animator.interpolator = DecelerateInterpolator(3F)
         animator.addUpdateListener {
             bioContainer.layoutParams.height = it.animatedValue as Int
             bioContainer.requestLayout()
