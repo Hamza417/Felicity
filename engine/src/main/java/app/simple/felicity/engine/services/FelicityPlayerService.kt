@@ -245,6 +245,11 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
      */
     private var snapshotDebounceJob: Job? = null
 
+    /**
+     * Debounce job for saving playback state after manual seeking.
+     */
+    private var seekStateSaveJob: Job? = null
+
     override fun onCreate() {
         super.onCreate()
         initRegisterSharedPreferenceChangeListener(applicationContext)
@@ -1230,6 +1235,11 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             // so checking mediaItemIndex alone would miss that removal entirely.
             val isItemRemoved = reason == Player.DISCONTINUITY_REASON_REMOVE
             val isItemSwitch = oldPosition.mediaItemIndex != newPosition.mediaItemIndex
+
+            if (reason == Player.DISCONTINUITY_REASON_SEEK && !isItemSwitch) {
+                debouncedSavePlaybackState()
+            }
+            
             if (isItemRemoved || isItemSwitch) {
                 previousItemEndPositionMs = oldPosition.positionMs
                 // Use our cached duration rather than player.duration — by this point
@@ -1549,6 +1559,14 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                     TAG,
                     seekOverride = seek
             )
+        }
+    }
+
+    private fun debouncedSavePlaybackState() {
+        seekStateSaveJob?.cancel()
+        seekStateSaveJob = serviceScope.launch(Dispatchers.Main.immediate) {
+            delay(1000.milliseconds) // Wait 1 second after last seek
+            savePlaybackStateToDatabase()
         }
     }
 

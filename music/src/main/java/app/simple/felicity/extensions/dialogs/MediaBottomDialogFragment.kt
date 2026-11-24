@@ -12,11 +12,8 @@ import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.models.Audio
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlin.math.abs
 
 abstract class MediaBottomDialogFragment : ScopedBottomSheetFragment() {
-
-    private var lastSavedSeekPosition = 0L
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -24,16 +21,6 @@ abstract class MediaBottomDialogFragment : ScopedBottomSheetFragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             MediaPlaybackManager.songSeekPositionFlow.collect { position ->
                 onSeekChanged(position)
-
-                // Save to database every 5 seconds or 5% of duration, whichever is larger
-                val song = MediaPlaybackManager.getCurrentSong()
-                if (song != null) {
-                    val threshold = maxOf(5000L, song.duration / 20) // 5 seconds or 5% of duration
-                    if (abs(position - lastSavedSeekPosition) > threshold) {
-                        lastSavedSeekPosition = position
-                        // We rely on FelicityPlayerService to save playback state
-                    }
-                }
             }
         }
 
@@ -47,9 +34,8 @@ abstract class MediaBottomDialogFragment : ScopedBottomSheetFragment() {
                     MediaPlaybackManager.getCurrentSong()?.let { song ->
                         onAudio(song)
                     }
+
                     onPositionChanged(position)
-                    // We rely on FelicityPlayerService to save playback state,
-                    // do not double-save here to prevent race conditions.
                 }
             }
         }

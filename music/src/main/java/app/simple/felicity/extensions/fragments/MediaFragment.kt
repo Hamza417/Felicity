@@ -87,13 +87,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.math.abs
 import kotlin.time.Duration.Companion.milliseconds
 
 open class MediaFragment : KeyboardScopedFragment(), MiniPlayerPolicy {
 
     private var shouldShowMiniPlayer = true
-    private var lastSavedSeekPosition = 0L
 
     private var shuffleButton: HighlightTextView? = null
 
@@ -166,16 +164,6 @@ open class MediaFragment : KeyboardScopedFragment(), MiniPlayerPolicy {
         viewLifecycleOwner.lifecycleScope.launch {
             MediaPlaybackManager.songSeekPositionFlow.collect { position ->
                 onSeekChanged(position)
-
-                // Save to database every 5 seconds or 5% of duration, whichever is larger
-                val song = MediaPlaybackManager.getCurrentSong()
-                if (song != null) {
-                    val threshold = maxOf(5000L, song.duration / 20) // 5 seconds or 5% of duration
-                    if (abs(position - lastSavedSeekPosition) > threshold) {
-                        lastSavedSeekPosition = position
-                        // We rely on FelicityPlayerService to save playback state
-                    }
-                }
             }
         }
 
@@ -190,7 +178,6 @@ open class MediaFragment : KeyboardScopedFragment(), MiniPlayerPolicy {
                         onAudio(song)
                     }
                     onPositionChanged(position)
-                    // We rely on FelicityPlayerService to save playback state
                 }
             }
         }
@@ -199,7 +186,6 @@ open class MediaFragment : KeyboardScopedFragment(), MiniPlayerPolicy {
             MediaPlaybackManager.songListFlow.collect { songs ->
                 Log.d(TAG, "Song list updated: ${songs.size} songs")
                 onSongListChanged(songs)
-                // We rely on FelicityPlayerService to save playback state
             }
         }
 
