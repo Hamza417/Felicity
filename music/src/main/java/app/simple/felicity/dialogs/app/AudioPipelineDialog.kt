@@ -175,6 +175,30 @@ class AudioPipelineDialog : MediaBottomDialogFragment() {
                 getString(R.string.stereo_expand),
                 getString(R.string.format_percent, snapshot.stereoExpandPercent))
 
+        b.valueRgTrackGain.text = createSpannedString(
+                getString(R.string.rg_track_gain),
+                snapshot.replayGainTrackGain?.let {
+                    if (it.contains("dB", ignoreCase = true)) it else "$it dB"
+                } ?: "—")
+
+        b.valueRgTrackPeak.text = createSpannedString(
+                getString(R.string.rg_track_peak),
+                snapshot.replayGainTrackPeak ?: "—")
+
+        b.valueRgAlbumGain.text = createSpannedString(
+                getString(R.string.rg_album_gain),
+                snapshot.replayGainAlbumGain?.let {
+                    if (it.contains("dB", ignoreCase = true)) it else "$it dB"
+                } ?: "—")
+
+        b.valueRgAlbumPeak.text = createSpannedString(
+                getString(R.string.rg_album_peak),
+                snapshot.replayGainAlbumPeak ?: "—")
+
+        b.valueAppliedRg.text = createSpannedString(
+                getString(R.string.applied_rg),
+                if (snapshot.appliedReplayGainDb != 0f) getString(R.string.format_db, snapshot.appliedReplayGainDb) else "—")
+
         b.valueBuffers.text = createSpannedString(
                 getString(R.string.buffers),
                 snapshot.buffers.ifBlank { "—" })

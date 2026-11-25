@@ -41,11 +41,16 @@ data class AudioPipelineSnapshot(
         val buffers: String, // e.g., "e.g. 2x (40ms, 1800 audio frames)"
         val latencyMs: Int, // Total latency from source to output in milliseconds
         val visualizerLatencyMs: Int, // Latency of the visualizer data relative to the output signal in milliseconds
+        val replayGainTrackGain: String?,
+        val replayGainTrackPeak: String?,
+        val replayGainAlbumGain: String?,
+        val replayGainAlbumPeak: String?,
+        val appliedReplayGainDb: Float,
 
         /**
          * Active audio output API mode.
          * "AudioTrack" for the standard Android pipeline; "AAudio (Low Latency)" when the
-         * direct-to-HAL [AaudioOutputProcessor] path is active.
+         * direct-to-HAL [app.simple.felicity.engine.processors.AaudioOutputProcessor] path is active.
          */
         val audioOutputMode: String,
 
@@ -73,6 +78,11 @@ data class AudioPipelineSnapshot(
                 " stereoExpandPercent=$stereoExpandPercent," +
                 " buffers='$buffers'," +
                 " latencyMs=$latencyMs," +
+                " replayGainTrackGain=$replayGainTrackGain," +
+                " replayGainTrackPeak=$replayGainTrackPeak," +
+                " replayGainAlbumGain=$replayGainAlbumGain," +
+                " replayGainAlbumPeak=$replayGainAlbumPeak," +
+                " appliedReplayGainDb=$appliedReplayGainDb," +
                 " audioOutputMode='$audioOutputMode'," +
                 " deviceName='$deviceName'," +
                 " deviceBitDepthIn=$deviceBitDepthIn," +

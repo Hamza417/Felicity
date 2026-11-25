@@ -29,6 +29,11 @@
     <string name="peq" translatable="false">PEQ</string>
     <string name="parametric_eq" translatable="false">Parametric EQ</string>
 
+    <string name="rg_track_gain" translatable="false">Track Gain</string>
+    <string name="rg_album_gain" translatable="false">Album Gain</string>
+    <string name="applied_rg" translatable="false">Applied Gain</string>
+    <string name="format_db" translatable="false">%1$.2f dB</string>
+
     <!-- Audio Pipeline Dialog — channel display values -->
     <string name="channel_mono" translatable="false">1 (Mono)</string>
     <string name="channel_stereo" translatable="false">2 (Stereo)</string>

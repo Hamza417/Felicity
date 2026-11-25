@@ -1811,6 +1811,10 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
             else -> "AudioTrack"
         }
 
+        val mediaId = player.currentMediaItem?.mediaId
+        val audioId = mediaId?.toLongOrNull()
+        val audio = audioId?.let { id -> cachedSongList.find { it.id == id } }
+
         val snapshot = AudioPipelineSnapshot(
                 trackFormat = trackFormat,
                 bitDepth = bitDepth,
@@ -1832,6 +1836,11 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 buffers = buffersStr,
                 latencyMs = latencyEstimateMs,
                 visualizerLatencyMs = latencyEstimateMs,
+                replayGainTrackGain = audio?.replayGainTrackGain,
+                replayGainTrackPeak = audio?.replayGainTrackPeak,
+                replayGainAlbumGain = audio?.replayGainAlbumGain,
+                replayGainAlbumPeak = audio?.replayGainAlbumPeak,
+                appliedReplayGainDb = mediaId?.let { replayGainDbCache[it] } ?: 0f,
                 audioOutputMode = audioOutputMode,
                 deviceName = deviceName,
                 deviceBitDepthIn = deviceBitDepthIn,
