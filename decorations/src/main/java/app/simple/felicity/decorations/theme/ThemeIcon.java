@@ -101,6 +101,7 @@ public class ThemeIcon extends AppCompatImageView implements ThemeChangedListene
         }
         app.simple.felicity.manager.SharedPreferences.INSTANCE.getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
         ThemeManager.INSTANCE.addListener(this);
+        setTintColor(tintMode, false);
     }
     
     @Override

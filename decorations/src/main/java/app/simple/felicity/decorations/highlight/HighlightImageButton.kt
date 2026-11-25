@@ -9,9 +9,6 @@ import android.view.MotionEvent
 import androidx.annotation.ColorInt
 import androidx.appcompat.widget.AppCompatImageButton
 import app.simple.felicity.decoration.R
-import app.simple.felicity.decorations.highlight.HighlightImageButton.Companion.MODE_BOTH
-import app.simple.felicity.decorations.highlight.HighlightImageButton.Companion.MODE_FLAT
-import app.simple.felicity.decorations.highlight.HighlightImageButton.Companion.MODE_OUTLINE
 import app.simple.felicity.manager.SharedPreferences.registerSharedPreferenceChangeListener
 import app.simple.felicity.manager.SharedPreferences.unregisterSharedPreferenceChangeListener
 import app.simple.felicity.preferences.AppearancePreferences
@@ -88,6 +85,12 @@ class HighlightImageButton @JvmOverloads constructor(
         if (!isInEditMode) {
             registerSharedPreferenceChangeListener()
             ThemeManager.addListener(this)
+
+            if (!delegate.useCustomColor) {
+                applyPillBackground()
+                applyRippleForeground()
+            }
+            applyIconTint()
         }
     }
 

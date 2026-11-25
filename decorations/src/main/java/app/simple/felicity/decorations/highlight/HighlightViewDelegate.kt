@@ -8,7 +8,6 @@ import android.view.View
 import android.view.animation.DecelerateInterpolator
 import androidx.annotation.ColorInt
 import androidx.interpolator.view.animation.LinearOutSlowInInterpolator
-import app.simple.felicity.decorations.highlight.HighlightViewDelegate.Companion.animateColor
 import app.simple.felicity.decorations.ripple.FelicityRippleDrawable
 import app.simple.felicity.preferences.AccessibilityPreferences
 import app.simple.felicity.preferences.AppearancePreferences
@@ -42,7 +41,7 @@ class HighlightViewDelegate(var strokeWidthPx: Float = 0f) {
      * should also be forced to white so they stay readable on the colored surface.
      * This is specific to views that show text, but keeping it here avoids a separate flag.
      */
-    var useAccentColor: Boolean = false
+    var useAccentColor: Boolean = true
 
     @ColorInt
     var customColor: Int = Color.TRANSPARENT

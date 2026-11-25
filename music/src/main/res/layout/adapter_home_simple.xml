@@ -6,13 +6,15 @@
     android:layout_height="wrap_content"
     android:orientation="horizontal">
 
-    <app.simple.felicity.decorations.theme.ThemeIcon
+    <app.simple.felicity.decorations.highlight.HighlightIcon
         android:id="@+id/icon"
         android:layout_width="@dimen/icon_size_50"
         android:layout_height="@dimen/icon_size_50"
         android:layout_gravity="center_vertical"
         android:padding="@dimen/padding_10"
         android:src="@drawable/ic_song"
+        app:highlightMode="outline"
+        app:useAccentColor="true"
         app:tintType="accent" />
 
     <app.simple.felicity.decorations.typeface.TypeFaceTextView

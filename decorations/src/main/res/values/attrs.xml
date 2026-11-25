@@ -478,6 +478,14 @@
         <attr name="highlightStrokeWidth" />
     </declare-styleable>
 
+    <!-- HighlightIcon: same as HighlightImageButton but for decorative, non-interactive icons -->
+    <declare-styleable name="HighlightIcon">
+        <attr name="highlightMode" />
+        <attr name="highlightCustomColor" />
+        <attr name="highlightStrokeWidth" />
+        <attr name="useAccentColor" />
+    </declare-styleable>
+
     <!-- FelicityVisualizer: real-time audio spectrum bar and wave visualizer -->
     <declare-styleable name="FelicityVisualizer">
         <!--
