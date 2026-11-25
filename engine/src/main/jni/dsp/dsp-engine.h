@@ -69,15 +69,15 @@ static constexpr float kDspEqCenterHz[kDspEqBandCount] = {
         1000.f, 2000.f, 4000.f, 8000.f, 16000.f
 };
 
-/** Maximum number of samples in a single reverb delay line (~85 ms at 48 kHz). */
-static constexpr int kReverbMaxDelayLen = 4096;
+/** Maximum number of samples in a single reverb delay line (~85 ms at 384 kHz). */
+static constexpr int kReverbMaxDelayLen = 32768;
 
 /**
  * Capacity of the visualizer pre-delay ring buffer in samples (power of two).
- * At 48 kHz this covers approximately 1.37 seconds, comfortably exceeding the worst-case
- * Bluetooth A2DP output latency on any shipping Android device.
+ * At 48 kHz this covers approximately 5.4 seconds, comfortably exceeding the worst-case
+ * Bluetooth A2DP output latency on any shipping Android device, even at 384 kHz (680 ms).
  */
-static constexpr int kVizDelayBufSamples = 65536;
+static constexpr int kVizDelayBufSamples = 262144;
 
 /** Bitmask equivalent to (kVizDelayBufSamples - 1) for fast power-of-two modulo. */
 static constexpr int kVizDelayBufMask = kVizDelayBufSamples - 1;

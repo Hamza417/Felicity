@@ -74,10 +74,10 @@ class VisualizerProcessor : BaseAudioProcessor() {
 
     /**
      * Capacity of the pre-delay ring buffer in samples (power of two).
-     * At 48 kHz this covers approximately 1.37 seconds, comfortably exceeding
+     * At 48 kHz this covers approximately 5.4 seconds, comfortably exceeding
      * the worst-case Bluetooth A2DP output latency on any shipping Android device.
      */
-    private val kDelayBufSize = 65536
+    private val kDelayBufSize = 262144
 
     /** Bitmask equivalent to (kDelayBufSize - 1) for fast power-of-two modulo. */
     private val kDelayBufMask = kDelayBufSize - 1
