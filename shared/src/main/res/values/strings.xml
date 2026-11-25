@@ -317,6 +317,8 @@
     <string name="treble">Treble</string>
     <string name="keep_mini_player_visible">Keep MiniPlayer Visible</string>
     <string name="keep_mini_player_visible_summary">Stops hiding Mini Player on scrolling and keeps it always visible.</string>
+    <string name="miniplayer_on_lyrics">Mini Player on Lyrics Screen</string>
+    <string name="miniplayer_on_lyrics_summary">Keeps the floating mini player visible while the full lyrics screen is open, so playback controls are always one tap away.</string>
     <string name="activity">Activity</string>
     <string name="files">Files</string>
     <string name="style">Style</string>

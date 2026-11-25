@@ -18,6 +18,13 @@ object BehaviourPreferences {
     private const val FAST_SCROLL_BEHAVIOR = "fast_scroll_behavior"
     private const val HAPTIC_FEEDBACK = "haptic_feedback"
     const val MINIPLAYER_ALWAYS_VISIBLE = "miniplayer_always_visible"
+
+    /**
+     * Keeps the floating mini player visible while the full lyrics panel is open,
+     * instead of hiding it like every other immersive panel does.
+     */
+    const val MINIPLAYER_ON_LYRICS = "miniplayer_on_lyrics_screen"
+
     const val TEXT_CHANGE_EFFECT = "text_change_effect"
     const val FRAGMENT_TRANSITION = "fragment_transition"
 
@@ -130,6 +137,27 @@ object BehaviourPreferences {
     fun isMiniplayerAlwaysVisible(): Boolean {
         return SharedPreferences.getSharedPreferences()
             .getBoolean(MINIPLAYER_ALWAYS_VISIBLE, false)
+    }
+
+    // ---------------------------------------------------------------------------------------------------------- //
+
+    /**
+     * Persists whether the floating mini player should stay visible on the full lyrics
+     * panel. Off by default so panels keep their clean, chrome-free look unless asked.
+     */
+    fun setMiniplayerOnLyrics(enabled: Boolean) {
+        SharedPreferences.getSharedPreferences().edit {
+            putBoolean(MINIPLAYER_ON_LYRICS, enabled)
+        }
+    }
+
+    /**
+     * Returns true when the lyrics panel should keep showing the mini player.
+     * Defaults to `false` — the lyrics screen hides it like every other panel.
+     */
+    fun isMiniplayerOnLyrics(): Boolean {
+        return SharedPreferences.getSharedPreferences()
+            .getBoolean(MINIPLAYER_ON_LYRICS, false)
     }
 
     // ---------------------------------------------------------------------------------------------------------- //

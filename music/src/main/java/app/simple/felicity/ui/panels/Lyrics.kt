@@ -11,6 +11,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.R
@@ -33,6 +34,7 @@ import app.simple.felicity.glide.transformation.Greyscale
 import app.simple.felicity.glide.transformation.VignetteTransformation
 import app.simple.felicity.managers.LyricsLoadingStatus
 import app.simple.felicity.preferences.AlbumArtPreferences
+import app.simple.felicity.preferences.BehaviourPreferences
 import app.simple.felicity.preferences.LyricsPreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.constants.MediaConstants
@@ -98,7 +100,17 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        requireHiddenMiniPlayer()
+
+        // Most panels hide the mini player, but this one can keep it around if the user
+        // asked for playback controls to stay reachable while reading lyrics.
+        if (BehaviourPreferences.isMiniplayerOnLyrics()) {
+            requireVisibleMiniPlayer()
+        } else {
+            requireHiddenMiniPlayer()
+        }
+
+        applyMiniPlayerLayout()
+
         requireImmersiveMode()
         setAlignment()
         applyTextSize()
@@ -364,8 +376,61 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
         }
     }
 
+    /**
+     * The lyrics panel normally hides the mini player so the whole page belongs to the
+     * lyrics. When "Mini Player on Lyrics Screen" is enabled we report `true` instead,
+     * which is what allows [app.simple.felicity.activities.MainActivity.onShowMiniPlayer]
+     * to keep it on screen.
+     */
     override val wantsMiniPlayerVisible: Boolean
-        get() = false
+        get() = BehaviourPreferences.isMiniplayerOnLyrics()
+
+    /**
+     * Switches this screen between two layouts:
+     *
+     * **Normal mode** — the panel owns playback: transport row plus waveform seekbar sit
+     * at the bottom, the track title and artist are shown above them, and the floating
+     * mini player is hidden.
+     *
+     * **Mini player mode** — the floating mini player becomes the one and only transport.
+     * Everything it already duplicates disappears so the lyrics get the whole page: the
+     * panel's play/skip buttons, its waveform seekbar, and the title/artist block (the
+     * card shows both). The menu and search buttons stay — they open the lyrics tools
+     * rather than controlling playback — with menu pinned left and search pinned right.
+     * A spacer at the end of the content column reserves the card's footprint so nothing
+     * ends up underneath it.
+     */
+    private fun applyMiniPlayerLayout() {
+        val miniPlayerMode = BehaviourPreferences.isMiniplayerOnLyrics()
+
+        // Reserve room for the floating card so it never covers the last row of content.
+        val outerMargin = if (UserInterfacePreferences.isMarginAroundMiniplayer()) {
+            resources.getDimensionPixelSize(R.dimen.padding_15)
+        } else {
+            resources.getDimensionPixelSize(R.dimen.padding_5)
+        }
+        val spacerHeight = if (miniPlayerMode) {
+            resources.getDimensionPixelSize(R.dimen.mini_player_height) + outerMargin
+        } else {
+            0
+        }
+
+        binding.miniplayerSpacer.updateLayoutParams { height = spacerHeight }
+        binding.miniplayerSpacer.visibility = if (miniPlayerMode) View.VISIBLE else View.GONE
+
+        // One transport per screen: the mini player wins when it is around.
+        binding.mediaControls.visibility = if (miniPlayerMode) View.GONE else View.VISIBLE
+        binding.seekbar.visibility = if (miniPlayerMode) View.GONE else View.VISIBLE
+
+        // The card already shows title and artist, so the panel's own copy is pure
+        // duplication — dropping it hands another ~60dp to the lyrics.
+        binding.title.visibility = if (miniPlayerMode) View.GONE else View.VISIBLE
+        binding.artists.visibility = if (miniPlayerMode) View.GONE else View.VISIBLE
+
+        // Stretch the gap between the two remaining buttons: menu hugs the left edge,
+        // search hugs the right one.
+        binding.controlsGap.visibility = if (miniPlayerMode) View.VISIBLE else View.GONE
+    }
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
@@ -373,6 +438,14 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
             LyricsPreferences.LRC_ALIGNMENT -> setAlignment(animate = true)
             LyricsPreferences.LRC_TEXT_SIZE -> scheduleTextSizeUpdate()
             LyricsPreferences.ALBUM_ART_BACKGROUND -> setAlbumArtBackground(animate = true)
+            BehaviourPreferences.MINIPLAYER_ON_LYRICS -> {
+                applyMiniPlayerLayout()
+                if (BehaviourPreferences.isMiniplayerOnLyrics()) {
+                    showMiniPlayer()
+                } else {
+                    hideMiniPlayer()
+                }
+            }
         }
     }
 

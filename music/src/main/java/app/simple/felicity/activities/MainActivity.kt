@@ -19,6 +19,7 @@ import androidx.core.app.ShareCompat
 import androidx.core.net.toUri
 import androidx.core.view.isVisible
 import androidx.core.widget.NestedScrollView
+import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import app.simple.felicity.R
@@ -145,6 +146,20 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
             override fun onItemClick(position: Int) {
                 val topFragment = supportFragmentManager.fragments.lastOrNull() as? ScopedFragment
                 if (topFragment.isNotNull()) {
+                    // Already looking at a player — there is nothing to navigate to.
+                    if (topFragment is BasePlayerFragment) return
+
+                    // A player is very often already sitting in the back stack: the user
+                    // opened the lyrics panel, the queue, the equalizer… from it. Walking
+                    // back to that instance restores the exact player they came from.
+                    // Pushing a fresh player instead would stack a second one on top, and
+                    // then Back would keep bouncing between the same two screens forever.
+                    val playerEntry = findPlayerBackStackEntry()
+                    if (playerEntry != null) {
+                        supportFragmentManager.popBackStack(playerEntry.id, 0)
+                        return
+                    }
+
                     val player = openPlayerForCurrentPreference()
                     topFragment?.openFragment(player, BasePlayerFragment.TAG)
                 }
@@ -391,6 +406,27 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
             UserInterfacePreferences.PLAYER_INTERFACE_CAROUSEL -> CarouselPlayer.newInstance()
             else -> DefaultPlayer.newInstance()
         }
+    }
+
+    /**
+     * Returns the newest back-stack entry created by a player screen, or null when the
+     * current screen was reached without passing through the player (for example when
+     * the lyrics panel was opened straight from the home screen).
+     *
+     * Every player variant is committed with [BasePlayerFragment.TAG] as both the
+     * fragment tag and the back-stack name, so a single name check identifies them.
+     * When an entry exists we pop back to it — reusing the player instance the user
+     * came from instead of piling a second player on top of the back stack.
+     */
+    private fun findPlayerBackStackEntry(): FragmentManager.BackStackEntry? {
+        val fragmentManager = supportFragmentManager
+        for (index in fragmentManager.backStackEntryCount - 1 downTo 0) {
+            val entry = fragmentManager.getBackStackEntryAt(index)
+            if (entry.name == BasePlayerFragment.TAG) {
+                return entry
+            }
+        }
+        return null
     }
 
     fun showHome() {

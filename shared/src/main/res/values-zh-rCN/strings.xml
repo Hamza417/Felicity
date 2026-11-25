@@ -284,6 +284,8 @@
     <string name="treble">高音</string>
     <string name="keep_mini_player_visible">保持迷你播放器可见</string>
     <string name="keep_mini_player_visible_summary">在滚动时停止隐藏迷你播放器，并使其始终可见。</string>
+    <string name="miniplayer_on_lyrics">歌词界面使用迷你播放器</string>
+    <string name="miniplayer_on_lyrics_summary">打开歌词界面时保留浮动的迷你播放器，随时可以控制播放。</string>
     <string name="activity">活动</string>
     <string name="files">文件</string>
     <string name="style">样式</string>

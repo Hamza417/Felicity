@@ -100,7 +100,7 @@
                 app:textColorStyle="accent" />
 
             <LinearLayout
-                android:id="@+id/linearLayout2"
+                android:id="@+id/controls_row"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
@@ -125,6 +125,17 @@
                     android:clipChildren="false"
                     android:clipToPadding="false" />
 
+                <!--
+                    Fills the middle when the transport is hidden in mini player mode, so
+                    the settings button hugs the left edge and search hugs the right one.
+                -->
+                <Space
+                    android:id="@+id/controls_gap"
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1"
+                    android:visibility="gone" />
+
                 <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
                     android:id="@+id/search"
                     android:layout_width="@dimen/button_size"
@@ -146,6 +157,16 @@
                 app:wsbLabelGravity="center"
                 app:wsbLabelHighlightMode="both"
                 app:wsbWaveformMode="full" />
+
+            <!--
+                Reserves room for the floating mini player when it is shown on this screen.
+                Height is set at runtime — see Lyrics.applyMiniPlayerSpacing().
+            -->
+            <Space
+                android:id="@+id/miniplayer_spacer"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:visibility="gone" />
 
         </app.simple.felicity.decorations.padding.NonThemePaddingAwareLinearLayout>
 

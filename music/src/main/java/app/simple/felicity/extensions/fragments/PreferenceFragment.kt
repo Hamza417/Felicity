@@ -862,6 +862,20 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val miniPlayerOnLyricsToggle = Preference(
+                title = R.string.miniplayer_on_lyrics,
+                summary = R.string.miniplayer_on_lyrics_summary,
+                icon = -1,
+                type = PreferenceType.SWITCH,
+                valueProvider = {
+                    BehaviourPreferences.isMiniplayerOnLyrics()
+                },
+                onPreferenceAction = { view, callback ->
+                    val isChecked = (view as FelicitySwitch).isChecked
+                    BehaviourPreferences.setMiniplayerOnLyrics(isChecked)
+                }
+        )
+
         val playerHeader = Preference(type = PreferenceType.SUB_HEADER, title = R.string.player)
 
         val textChangeEffect = Preference(
@@ -913,6 +927,7 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(fragmentTransition)
         preferences.add(miniplayerHeader)
         preferences.add(miniPlayerVisibilityToggle)
+        preferences.add(miniPlayerOnLyricsToggle)
         preferences.add(playerHeader)
         preferences.add(textChangeEffect)
 

@@ -459,6 +459,36 @@ open class MediaFragment : KeyboardScopedFragment(), MiniPlayerPolicy {
         })
     }
 
+    /**
+     * Counterpart of [requireHiddenMiniPlayer]: keeps the shared mini player visible for
+     * the lifetime of this fragment's view.
+     *
+     * Screens that opt into this must also report `true` from [wantsMiniPlayerVisible],
+     * otherwise the activity's visibility policy will keep the player hidden anyway.
+     * The show is issued from `onStart` rather than `onCreate` because the policy check
+     * looks at which fragment is actually visible — during `onCreate` the fragment may
+     * still be behind the outgoing screen.
+     */
+    protected fun requireVisibleMiniPlayer() {
+        viewLifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onStart(owner: LifecycleOwner) {
+                super.onStart(owner)
+                shouldShowMiniPlayer = true
+                showMiniPlayer()
+            }
+
+            override fun onDestroy(owner: LifecycleOwner) {
+                super.onDestroy(owner)
+                // Don't force-show during configuration changes; the activity is going
+                // to recreate the view hierarchy anyway.
+                if (requireActivity().isChangingConfigurations.not()) {
+                    shouldShowMiniPlayer = true
+                    showMiniPlayer()
+                }
+            }
+        })
+    }
+
     protected fun peekMiniPlayer() {
         // show mini player briefly then hide it again
         showMiniPlayer()
