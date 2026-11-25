@@ -7,11 +7,13 @@ import app.simple.felicity.decorations.lrc.model.LrcData
 import app.simple.felicity.decorations.lrc.parser.ILyricsParser
 import app.simple.felicity.decorations.lrc.parser.LrcParser
 import app.simple.felicity.decorations.lrc.parser.LyricsParseException
+import app.simple.felicity.decorations.lrc.parser.SrtParser
 import app.simple.felicity.decorations.lrc.parser.TxtParser
 import app.simple.felicity.decorations.lrc.parser.WordLrcParser
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.managers.LyricsManager.Companion.SYNC_SAVE_DEBOUNCE_MS
 import app.simple.felicity.preferences.LyricsPreferences
+import app.simple.felicity.repository.constants.FileConstants.isAudiobook
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.repositories.LrcRepository
 import app.simple.felicity.repository.utils.toLyricsErrorCode
@@ -119,11 +121,13 @@ class LyricsManager @Inject constructor(
 
     /**
      * Picks the best parser for the given raw lyrics string.
-     * Word-sync LRC wins first, then standard LRC, then plain text as a last resort.
+     * Word-sync LRC wins first, then standard LRC, then SubRip subtitles (audiobooks),
+     * then plain text as a last resort.
      */
     private fun selectParser(content: String): ILyricsParser = when {
         WordLrcParser().canParse(content) -> WordLrcParser()
         LrcParser().canParse(content) -> LrcParser()
+        SrtParser().canParse(content) -> SrtParser()
         else -> TxtParser()
     }
 
@@ -214,7 +218,23 @@ class LyricsManager @Inject constructor(
             return
         }
 
-        // Step 2: Try the .txt sidecar (plain-text lyrics, also local).
+        // Step 2: Try the .srt sidecar — the timed subtitles audiobooks ship with.
+        // SRT is already timestamped, so it can drive the lyrics view exactly like LRC.
+        val srtContent = withContext(Dispatchers.IO) {
+            lrcRepository.loadSrtFromFile(song.uri).getOrNull()
+        }
+
+        if (!isStillRelevant(songPath)) return
+
+        if (!srtContent.isNullOrBlank()) {
+            Log.d(TAG, "SRT sidecar found for '${song.title}'.")
+            parseThenEmit(srtContent, songPath, fallback = LrcData()) { content ->
+                SrtParser().parse(content)
+            }
+            return
+        }
+
+        // Step 3: Try the .txt sidecar (plain-text lyrics, also local).
         val txtContent = withContext(Dispatchers.IO) {
             lrcRepository.loadTxtFromFile(song.uri).getOrNull()
         }
@@ -229,8 +249,10 @@ class LyricsManager @Inject constructor(
             return
         }
 
-        // Step 3: Nothing local — try the internet if the user opted in.
-        if (LyricsPreferences.isAutoDownloadLyrics()) {
+        // Step 4: Nothing local — try the internet if the user opted in.
+        // Audiobooks are excluded: LrcLib would happily match a book title against a
+        // song that happens to share the name and then save those lyrics as a sidecar.
+        if (LyricsPreferences.isAutoDownloadLyrics() && !song.uri.isAudiobook()) {
             Log.d(TAG, "No local lyrics for '${song.title}', fetching online.")
 
             // post an empty data first
@@ -244,7 +266,7 @@ class LyricsManager @Inject constructor(
                     songPath = songPath
             )
         } else {
-            Log.d(TAG, "No local lyrics and auto-download is off for '${song.title}'.")
+            Log.d(TAG, "No local lyrics and online lookup is off/not applicable for '${song.title}'.")
             emitIfStillRelevant(songPath, LrcData())
         }
     }

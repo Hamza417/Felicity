@@ -16,6 +16,7 @@ object FileConstants {
             "mp3" to "MPEG Audio Layer III",
             "aac" to "Advanced Audio Coding",
             "m4a" to "MPEG-4 Audio",
+            "m4b" to "MPEG-4 Audiobook",
             "ogg" to "Ogg Vorbis",
             "opus" to "Opus Audio Codec",
             "wma" to "Windows Media Audio",
@@ -67,4 +68,41 @@ object FileConstants {
         val extension = this.substringAfterLast('.', "").lowercase()
         return AUDIO_EXTENSIONS_MAP[extension]
     }
+
+    /**
+     * Fallback MIME types for containers Android's [android.webkit.MimeTypeMap] does not
+     * know about — most notably `m4b`, which is nothing more than an MP4 container with
+     * audiobook chapters, so `audio/mp4` is the right type for it.
+     */
+    private val AUDIO_MIME_TYPES = mapOf(
+            "m4b" to "audio/mp4",
+            "m4a" to "audio/mp4",
+            "m4p" to "audio/mp4",
+            "alac" to "audio/mp4",
+            "opus" to "audio/opus",
+            "ape" to "audio/x-ape",
+            "dsf" to "audio/x-dsf",
+            "dff" to "audio/x-dff"
+    )
+
+    /**
+     * Returns the MIME type for an extension [android.webkit.MimeTypeMap] doesn't recognize,
+     * or null when we have nothing better to offer.
+     */
+    fun String.getAudioMimeType(): String? {
+        val extension = this.substringAfterLast('.', "").lowercase()
+        return AUDIO_MIME_TYPES[extension]
+    }
+
+    fun File.getAudioMimeType(): String? = this.name.getAudioMimeType()
+
+    /**
+     * True for audiobook containers (`.m4b`). Audiobooks are hours long and are usually
+     * packaged as a single chapter-less file, so they get treated a bit differently:
+     * online lyric lookups are skipped for them — searching LrcLib for a book title
+     * would happily return the lyrics of a song that happens to share the name.
+     */
+    fun File.isAudiobook(): Boolean = this.extension.equals("m4b", ignoreCase = true)
+
+    fun String.isAudiobook(): Boolean = this.substringAfterLast('.', "").equals("m4b", ignoreCase = true)
 }

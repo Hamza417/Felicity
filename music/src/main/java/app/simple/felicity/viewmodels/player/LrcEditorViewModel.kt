@@ -15,6 +15,7 @@ import app.simple.felicity.decorations.lrc.model.LrcData
 import app.simple.felicity.decorations.lrc.model.LrcEntry
 import app.simple.felicity.decorations.lrc.parser.LrcParser
 import app.simple.felicity.decorations.lrc.parser.LyricsParseException
+import app.simple.felicity.decorations.lrc.parser.SrtParser
 import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.models.LrcEntryModel
@@ -225,19 +226,33 @@ class LrcEditorViewModel @AssistedInject constructor(
         }
     }
 
+    /**
+     * Loads the existing timed sidecar for [audio] into the editor.
+     *
+     * `.lrc` wins when present. Otherwise the `.srt` subtitle that audiobooks carry
+     * is parsed the same way the lyrics panel parses it, so the user can retime or
+     * fix up subtitles with the regular stamping workflow. Saving writes an `.lrc`
+     * next to the audio file, which from then on takes priority over the SRT.
+     */
     private fun loadLrcEntries() {
         viewModelScope.launch(Dispatchers.IO) {
-            val result = lrcRepository.loadLrcFromFile(audio.uri)
-            val lrcContent = result.getOrNull()
-            if (!lrcContent.isNullOrBlank()) {
+            val lrcContent = lrcRepository.loadLrcFromFile(audio.uri).getOrNull()
+            val content = lrcContent?.takeIf { it.isNotBlank() }
+                    ?: lrcRepository.loadSrtFromFile(audio.uri).getOrNull()
+
+            if (!content.isNullOrBlank()) {
                 try {
-                    val lrcData = LrcParser().parse(lrcContent)
+                    val lrcData = if (SrtParser().canParse(content)) {
+                        SrtParser().parse(content)
+                    } else {
+                        LrcParser().parse(content)
+                    }
                     val models = lrcData.getEntries()
                         .map { entry -> LrcEntryModel(entry.timeInMillis, entry.text) }
                         .toMutableList()
                     _entries.postValue(models)
                 } catch (e: LyricsParseException) {
-                    Log.w(TAG, "Could not parse existing LRC file; starting with empty list.", e)
+                    Log.w(TAG, "Could not parse existing lyrics file; starting with empty list.", e)
                     _entries.postValue(mutableListOf())
                 }
             } else {

@@ -19,6 +19,9 @@ import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.IOException
+import java.nio.ByteBuffer
+import java.nio.charset.Charset
+import java.nio.charset.CodingErrorAction
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -27,10 +30,12 @@ import javax.inject.Singleton
  * The one-stop shop for anything lyrics-related: fetching from the internet,
  * saving alongside the song, and loading them back when the song plays.
  *
- * All sidecar files (.lrc and .txt) live right next to their audio file inside
+ * All sidecar files (.lrc, .srt and .txt) live right next to their audio file inside
  * the same SAF tree the user granted access to. This means no private cache
  * directories, no filename length limits, and the sidecars are visible to other
- * apps — just like you'd expect a "normal" file manager to behave.
+ * apps — just like you'd expect a "normal" file manager to behave. SRT sidecars
+ * carry the timed subtitles that audiobooks ship with, and are read back as
+ * synced lyrics when no LRC file is present.
  *
  * All I/O goes through [DocumentsContract] + [android.content.ContentResolver]
  * so the code works for any document provider, not just local storage.
@@ -187,16 +192,57 @@ class LrcRepository @Inject constructor(
     /**
      * Reads the text content of a sidecar file sitting next to [audioUri].
      * Returns null when the sidecar does not exist or is blank.
+     *
+     * Subtitles in the wild are a character-encoding minefield: `.srt` files exported
+     * on Windows are frequently UTF-16 with a BOM or plain GBK, while `.lrc` files from
+     * Chinese sources are often GB18030. Blasting every byte array through UTF-8 would
+     * turn half of them into mojibake, so [decodeSidecar] sniffs the encoding first.
      */
     private fun readSibling(audioUri: String, extension: String): String? {
         return try {
             val uri = siblingUri(audioUri, extension) ?: return null
             context.contentResolver.openInputStream(uri)?.use { stream ->
-                stream.bufferedReader(Charsets.UTF_8).readText().takeIf { it.isNotBlank() }
+                decodeSidecar(stream.readBytes())?.takeIf { it.isNotBlank() }
             }
         } catch (_: Exception) {
             // A FileNotFoundException here just means the sidecar doesn't exist yet — totally normal.
             null
+        }
+    }
+
+    /**
+     * Decodes the raw bytes of a sidecar file into text.
+     *
+     * Order of attempts:
+     * 1. A BOM, when present — it is authoritative and tells us UTF-8 / UTF-16LE / UTF-16BE.
+     * 2. Strict UTF-8 — correct for the overwhelming majority of files.
+     * 3. GB18030 — superset of GBK/GB2312, the usual fallback for legacy CJK subtitles.
+     *
+     * @return the decoded text, or null when the file is empty.
+     */
+    private fun decodeSidecar(bytes: ByteArray): String? {
+        if (bytes.isEmpty()) return null
+
+        if (bytes.size >= 3 &&
+                bytes[0] == 0xEF.toByte() && bytes[1] == 0xBB.toByte() && bytes[2] == 0xBF.toByte()) {
+            return String(bytes, 3, bytes.size - 3, Charsets.UTF_8)
+        }
+
+        if (bytes.size >= 2 && bytes[0] == 0xFF.toByte() && bytes[1] == 0xFE.toByte()) {
+            return String(bytes, 2, bytes.size - 2, Charsets.UTF_16LE)
+        }
+
+        if (bytes.size >= 2 && bytes[0] == 0xFE.toByte() && bytes[1] == 0xFF.toByte()) {
+            return String(bytes, 2, bytes.size - 2, Charsets.UTF_16BE)
+        }
+
+        return try {
+            val decoder = Charsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT)
+            decoder.decode(ByteBuffer.wrap(bytes)).toString()
+        } catch (_: Exception) {
+            runCatching { String(bytes, Charset.forName(LEGACY_CJK_CHARSET)) }.getOrNull()
         }
     }
 
@@ -420,28 +466,72 @@ class LrcRepository @Inject constructor(
     }
 
     /**
-     * Returns true if a `.lrc` sidecar exists next to the audio file in the SAF tree.
+     * Loads the `.srt` subtitle sitting next to [audioUri].
+     *
+     * Audiobooks are usually distributed as a single `.m4b` plus a sidecar subtitle
+     * file per chapter set, and SRT is by far the most common flavor. Since SRT is
+     * already timestamped, it can drive the lyrics view just like an LRC file —
+     * [app.simple.felicity.decorations.lrc.parser.SrtParser] does the conversion.
+     *
+     * @param audioUri The content URI of the audio file.
+     * @return [Result] wrapping the raw SRT string if found, null if none exists.
+     */
+    suspend fun loadSrtFromFile(audioUri: String): Result<String?> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val content = readSibling(audioUri, "srt")
+                if (!content.isNullOrBlank()) {
+                    Log.d(TAG, "Loaded .srt sidecar for: $audioUri")
+                }
+                Result.success(content)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading SRT subtitles for URI: $audioUri", e)
+                Result.failure(e)
+            }
+        }
+    }
+
+    /**
+     * Returns true if a `.lrc` or `.srt` sidecar exists next to the audio file,
+     * i.e. when the track can show timed lyrics without going online.
      *
      * @param audioUri The content URI of the audio file.
      */
     fun lrcFileExists(audioUri: String): Boolean {
-        return siblingExists(audioUri, "lrc")
+        return siblingExists(audioUri, "lrc") || siblingExists(audioUri, "srt")
     }
 
     /**
-     * Deletes both the `.lrc` and `.txt` sidecar files sitting next to [audioUri].
-     * If either sidecar is absent, that deletion is silently skipped.
+     * Deletes the `.lrc`, `.srt` and `.txt` sidecar files sitting next to [audioUri].
+     * If any sidecar is absent, that deletion is silently skipped.
+     *
+     * The `.srt` is included on purpose: it is what the lyrics panel is currently
+     * showing for an audiobook, so leaving it behind would make "delete lyrics"
+     * look like it did nothing.
      *
      * @param audioUri The content URI of the audio file.
      */
     fun deleteLrcFile(audioUri: String) {
-        deleteSibling(audioUri, "lrc")
-        deleteSibling(audioUri, "txt")
+        SIDECAR_EXTENSIONS.forEach { deleteSibling(audioUri, it) }
     }
 
     companion object {
         private const val TAG = "LrcRepository"
         private const val NETWORK_TAG = 0x1003
+
+        /**
+         * Every sidecar extension we read or write next to an audio file.
+         * `.lrc` and `.srt` both carry timestamps and can drive the lyrics view;
+         * `.txt` is the plain, untimed fallback.
+         */
+        private val SIDECAR_EXTENSIONS = listOf("lrc", "srt", "txt")
+
+        /**
+         * Fallback charset for subtitle and lyric files that are neither UTF-8 nor
+         * UTF-16. GB18030 is a strict superset of GBK/GB2312, so it decodes every
+         * legacy Chinese file without needing a charset guess per file.
+         */
+        private const val LEGACY_CJK_CHARSET = "GB18030"
 
         /**
          * Using "application/octet-stream" instead of "text/plain" when creating new sidecar
@@ -453,7 +543,7 @@ class LrcRepository @Inject constructor(
         private const val MIME_SIDECAR = "application/octet-stream"
 
         /**
-         * Deletes the `.lrc` and `.txt` sidecars for [audioUri] without a Hilt-injected
+         * Deletes every lyrics/subtitle sidecar for [audioUri] without a Hilt-injected
          * instance — handy in one-off cleanup flows like the "delete song" confirmation
          * dialog where wiring up the full repository would be overkill.
          *
@@ -463,8 +553,7 @@ class LrcRepository @Inject constructor(
         fun deleteSidecarsStatic(context: Context, audioUri: String) {
             // A throw-away instance is fine — LrcRepository holds no mutable state.
             val repo = LrcRepository(context)
-            repo.deleteSibling(audioUri, "lrc")
-            repo.deleteSibling(audioUri, "txt")
+            SIDECAR_EXTENSIONS.forEach { repo.deleteSibling(audioUri, it) }
         }
     }
 }
