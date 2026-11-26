@@ -174,12 +174,24 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
 
         val listener = Runnable {
             Log.d(TAG, "MediaController created successfully")
-            mediaController = controllerFuture?.get()
-            MediaPlaybackManager.setMediaController(mediaController!!)
+            // The future can complete while the activity is being torn down; get()
+            // may yield null or the controller may already be released. Never use !!.
+            val controller = try {
+                controllerFuture?.get()
+            } catch (e: Exception) {
+                Log.w(TAG, "MediaController future failed", e)
+                null
+            }
+            if (controller == null || isFinishing || isDestroyed) {
+                controller?.release()
+                return@Runnable
+            }
+            mediaController = controller
+            MediaPlaybackManager.setMediaController(controller)
 
             // Watch for a disconnection so we can restart the service the moment the
             // user tries to interact with the player again — no stale controller left behind.
-            mediaController?.addListener(serviceDisconnectListener)
+            controller.addListener(serviceDisconnectListener)
 
             restoreLastSongStateFromDatabase()
             generateAlbumArtPalette()
@@ -721,9 +733,9 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
                     MediaPlaybackManager.clearMediaController()
                     it.release()
                 }
-                MediaController.releaseFuture(controllerFuture!!)
-            } catch (e: NullPointerException) {
-                e.printStackTrace()
+                controllerFuture?.let { MediaController.releaseFuture(it) }
+            } catch (e: RuntimeException) {
+                Log.w(TAG, "Failed to release MediaController future", e)
             }
         }
     }

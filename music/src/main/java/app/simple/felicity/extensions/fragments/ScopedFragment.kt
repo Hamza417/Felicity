@@ -6,6 +6,8 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
+import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
@@ -56,6 +58,9 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
      */
     val handler = Handler(Looper.getMainLooper())
 
+    /** Debounce is per source screen: never swallow a navigation started from a different fragment. */
+    private var lastNavigationAt = 0L
+
     /**
      * [postponeEnterTransition] here and initialize all the
      * views in [onCreateView] with proper transition names
@@ -72,17 +77,42 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        // Listener must follow the view lifecycle: while this fragment is in the
+        // back stack its View is destroyed, yet onDestroy() has not run. Keeping
+        // the listener registered there lets preference callbacks touch stale
+        // binding references and crash during rapid screen switching.
+        registerSharedPreferenceChangeListener()
+    }
+
+    override fun onStop() {
+        unregisterSharedPreferenceChangeListener()
+        super.onStop()
+    }
+
     override fun onResume() {
         super.onResume()
         clearTransitions()
         applyFragmentTransition()
-        registerSharedPreferenceChangeListener()
+
+        // Rapid pop/push cycles can interrupt a seekable enter transition and leave
+        // a restored fragment RESUMED and attached but measured at 0 height, so it
+        // draws nothing. Check the MEASURED height (not LayoutParams.height) after
+        // the transition has settled and force one more layout pass only when needed.
+        handler.postDelayed({
+            val v = view ?: return@postDelayed
+            if (v.parent != null && v.height == 0) {
+                Log.w(TAG, "Recovering zero-height view after resume in ${javaClass.simpleName}")
+                v.layoutParams.height = ViewGroup.LayoutParams.MATCH_PARENT
+                v.requestLayout()
+            }
+        }, 700L)
     }
 
     override fun onDestroy() {
         super.onDestroy()
         handler.removeCallbacksAndMessages(null)
-        unregisterSharedPreferenceChangeListener()
     }
 
     /**
@@ -111,6 +141,28 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
      * @param tag back stack tag for fragment
      */
     fun openFragment(fragment: ScopedFragment, tag: String? = null) {
+        // Rapid taps on the same entry must not stack multiple transactions/animations.
+        // Scoped to this source fragment so a legitimate navigation from another
+        // screen is never swallowed by a previous screen's timestamp.
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastNavigationAt < NAVIGATION_DEBOUNCE_MS) return
+
+        // The source fragment may already be detached when a delayed callback fires.
+        val activity = activity ?: return
+        if (!isAdded) return
+
+        val fragmentManager = activity.supportFragmentManager
+
+        // Don't re-open the screen the user is already looking at. This is the common
+        // case when tapping the mini player while its player screen is on top.
+        if (tag.isNotNull()) {
+            val current = fragmentManager.findFragmentById(R.id.fragment_container)
+            if (current != null && current.tag == tag) return
+            if (fragmentManager.findFragmentByTag(tag)?.isVisible == true) return
+        }
+
+        lastNavigationAt = now
+
         // Get the transition type of the next fragment
         val nextTransitionType = fragment.getTransitionType()
 
@@ -124,22 +176,21 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
         // Apply transition to the next fragment
         fragment.applyFragmentTransition()
 
-        try {
-            val transaction = requireActivity().supportFragmentManager.beginTransaction()
-            transaction.setReorderingAllowed(true)
-            transaction.replace(R.id.fragment_container, fragment, tag)
-            if (tag.isNotNull()) {
-                transaction.addToBackStack(tag)
-            }
-            transaction.commit()
-        } catch (e: IllegalStateException) {
-            val transaction = requireActivity().supportFragmentManager.beginTransaction()
-            transaction.setReorderingAllowed(true)
-            transaction.replace(R.id.fragment_container, fragment, tag)
-            if (tag.isNotNull()) {
-                transaction.addToBackStack(tag)
-            }
+        val transaction = fragmentManager.beginTransaction()
+        transaction.setReorderingAllowed(true)
+        transaction.replace(R.id.fragment_container, fragment, tag)
+        if (tag.isNotNull()) {
+            transaction.addToBackStack(tag)
+        }
+
+        // commit() after onSaveInstanceState() throws IllegalStateException. The old
+        // catch block retried with requireActivity(), which throws again once the
+        // fragment is detached — the actual crash. Decide up front using the
+        // manager we already hold instead, no second requireActivity().
+        if (fragmentManager.isStateSaved) {
             transaction.commitAllowingStateLoss()
+        } else {
+            transaction.commit()
         }
     }
 
@@ -521,5 +572,8 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
 
     companion object {
         private const val TAG = "ScopedFragment"
+
+        /** Minimum interval between two transactions opened from the same fragment. */
+        private const val NAVIGATION_DEBOUNCE_MS = 300L
     }
 }

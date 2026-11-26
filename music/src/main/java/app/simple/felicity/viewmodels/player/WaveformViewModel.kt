@@ -17,6 +17,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import kotlin.math.PI
 import kotlin.math.sin
@@ -44,7 +46,6 @@ class WaveformViewModel @Inject constructor(
     private val waveformData: MutableLiveData<FloatArray> = MutableLiveData()
     private var currentUri: String? = null
     private var loadJob: Job? = null
-    private var amplitudaInstance: Amplituda? = null
 
     /**
      * Returns a [LiveData] stream of normalized amplitude arrays.
@@ -53,22 +54,29 @@ class WaveformViewModel @Inject constructor(
     fun getWaveformData(): LiveData<FloatArray> = waveformData
 
     fun loadWaveform(audio: Audio) {
-        if (amplitudaInstance == null) {
-            amplitudaInstance = Amplituda(getApplication())
-        }
-
         // Prevent redundant loading
         if (audio.uri == currentUri && waveformData.value?.isNotEmpty() == true) return
 
-        // Track the current request to handle stale extractions
+        // Track the current request; the `currentUri` check below only guards
+        // requests within this ViewModel instance (a new player screen = a new instance).
         currentUri = audio.uri
 
-        viewModelScope.launch(Dispatchers.IO) {
-            runCatching {
-                if (currentUri != audio.uri) return@launch
+        // Cancel a decode started earlier in this same ViewModel. Rapid navigation
+        // across screens cannot be cancelled this way; the process-wide [decodeMutex]
+        // below is what actually stops blocking decodes from piling up.
+        loadJob?.cancel()
 
-                postFlatData(audio) // Show the ghost waveform immediately while we load the real one
+        postFlatData(audio) // Show the ghost waveform immediately while we load the real one
 
+        ensureContext(getApplication())
+
+        loadJob = viewModelScope.launch(Dispatchers.IO) {
+            decodeMutex.withLock {
+                // Only guards re-loads within this same ViewModel. Across screens the
+                // mutex is what prevents concurrent native decodes.
+                if (currentUri != audio.uri) return@withLock
+
+                runCatching {
                 val dao = AudioDatabase.getInstance(getApplication()).waveformDao()
 
                 // DB-first: try to get the cached samples before touching the audio file
@@ -77,32 +85,36 @@ class WaveformViewModel @Inject constructor(
                     val samples = cached.toFloatArray()
                     if (samples.isNotEmpty() && currentUri == audio.uri) {
                         waveformData.postValue(samples)
-                        return@launch
+                        return@runCatching
                     }
                 }
 
-                // Nothing in the DB yet — decode the file and save the result
+                // Nothing in the DB yet — decode the file and save the result.
+                // Still stale after acquiring the lock? Don't spend native work on an
+                // off-screen song (the common case during rapid navigation).
+                if (currentUri != audio.uri) return@runCatching
+
                 val parcelFileDescriptor = getApplication<Application>()
                     .contentResolver.openFileDescriptor(audio.uri.toUri(), "r")
                     ?: throw IllegalArgumentException("Unable to open URI: ${audio.uri}")
 
                 try {
-                    val rawAmplitudes = amplitudaInstance!!
+                    val rawAmplitudes = getAmplituda()
                         .processAudio(
                                 parcelFileDescriptor,
                                 Compress.withParams(Compress.AVERAGE, BARS_PER_SECOND),
                                 Cache.withParams(Cache.REUSE, audio.hash.toString())
                         )
-                        .get() // Blocking call
+                        .get() // Blocking call — serialized by decodeMutex
                         .amplitudesAsList()
 
                     parcelFileDescriptor.close()
 
-                    if (currentUri != audio.uri) return@launch
+                    if (currentUri != audio.uri) return@runCatching
 
                     if (rawAmplitudes.isEmpty()) {
                         waveformData.postValue(getRandomGhostData(audio.duration)) // Fallback to ghost data if extraction yields nothing
-                        return@launch
+                        return@runCatching
                     }
 
                     // --- Deterministic Time-Based Downsampling ---
@@ -154,10 +166,11 @@ class WaveformViewModel @Inject constructor(
                         Log.e(TAG, "Failed to close ParcelFileDescriptor for ${audio.uri}", e)
                     }
                 }
-            }.getOrElse {
-                Log.e(TAG, "Unexpected error in loadWaveform for ${audio.title}", it)
-                if (currentUri == audio.uri) {
-                    postFlatData(audio) // Show the ghost waveform on any unexpected error
+                }.getOrElse {
+                    Log.e(TAG, "Unexpected error in loadWaveform for ${audio.title}", it)
+                    if (currentUri == audio.uri) {
+                        postFlatData(audio) // Show the ghost waveform on any unexpected error
+                    }
                 }
             }
         }
@@ -205,13 +218,49 @@ class WaveformViewModel @Inject constructor(
     }
 
     override fun onCleared() {
+        loadJob?.cancel()
         super.onCleared()
-        amplitudaInstance?.release()
+        // The Amplituda instance is shared process-wide (see [sharedAmplituda]); an
+        // individual player screen going away must not release it for everyone else.
     }
 
     companion object {
         private const val TAG = "WaveformViewModel"
 
         private const val BARS_PER_SECOND = 1
+
+        /**
+         * Serializes waveform decoding across every ViewModel in the process.
+         *
+         * Amplituda's `processAudio(...).get()` is a blocking native call that can take
+         * seconds. Each player screen creates a fresh ViewModel; without this lock,
+         * quickly entering/leaving the player launched 100+ concurrent decodes, saturating
+         * the IO dispatcher and triggering ANRs (`AmplitudaProcessingTask.get`) plus
+         * `GcWatcher.finalize()` timeouts from the resulting allocation storm. With the
+         * lock at most one decode runs at a time; an already-cached track is picked up
+         * from the DB when a queued request finally gets the lock.
+         */
+        private val decodeMutex = Mutex()
+
+        /** Single shared decoder — avoids one native Amplituda instance per player visit. */
+        @Volatile
+        private var sharedAmplituda: Amplituda? = null
+
+        private fun getAmplituda(): Amplituda {
+            return sharedAmplituda ?: synchronized(this) {
+                sharedAmplituda ?: Amplituda(appContext).also { sharedAmplituda = it }
+            }
+        }
+
+        /** Application context captured once for the lazily-created shared decoder. */
+        private lateinit var appContext: Application
+
+        /**
+         * Seed the process-wide decoder context. Called from [loadWaveform] with the
+         * ViewModel's application before the shared instance is first created.
+         */
+        private fun ensureContext(app: Application) {
+            if (!::appContext.isInitialized) appContext = app
+        }
     }
 }
