@@ -190,13 +190,19 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
      */
     private long durationMs = 0L;
     
-    // Auto scroll resume
     private final Runnable autoScrollRunnable = () -> {
-        isUserScrolling = false;
+        if (isUserScrolling) {
+            isUserScrolling = false;
+            if (onLrcScrollListener != null) {
+                onLrcScrollListener.onScrollStateChanged(false);
+            }
+        }
         if (isAutoScrollEnabled && currentLineIndex >= 0) {
             scrollToLine(currentLineIndex);
         }
     };
+    // Auto scroll resume
+    private OnLrcScrollListener onLrcScrollListener;
     // Callbacks
     private OnLrcClickListener onLrcClickListener;
     
@@ -2530,6 +2536,14 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         void onLrcClick(long timeInMillis, String text);
     }
     
+    public void setOnLrcScrollListener(OnLrcScrollListener listener) {
+        this.onLrcScrollListener = listener;
+    }
+    
+    public interface OnLrcScrollListener {
+        void onScrollStateChanged(boolean isScrolling);
+    }
+    
     /**
      * Gesture listener for touch events
      */
@@ -2540,7 +2554,12 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             removeCallbacks(autoScrollRunnable);
             
             // Reset user scrolling flag
-            isUserScrolling = false;
+            if (isUserScrolling) {
+                isUserScrolling = false;
+                if (onLrcScrollListener != null) {
+                    onLrcScrollListener.onScrollStateChanged(false);
+                }
+            }
             
             // Immediately cancel all animations
             if (scrollSpringAnimation != null && scrollSpringAnimation.isRunning()) {
@@ -2561,7 +2580,12 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
         
         @Override
         public boolean onScroll(MotionEvent e1, @NonNull MotionEvent e2, float distanceX, float distanceY) {
-            isUserScrolling = true;
+            if (!isUserScrolling) {
+                isUserScrolling = true;
+                if (onLrcScrollListener != null) {
+                    onLrcScrollListener.onScrollStateChanged(true);
+                }
+            }
             
             // Cancel any ongoing fling animations
             if (flingAnimation != null && flingAnimation.isRunning()) {
