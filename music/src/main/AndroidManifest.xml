@@ -14,6 +14,8 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- Floating status bar lyrics are drawn in a TYPE_APPLICATION_OVERLAY window. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <application
         android:name=".application.FelicityApplication"
@@ -50,6 +52,20 @@
         <service
             android:name=".repository.services.AudioDatabaseService"
             android:exported="false" />
+
+        <!-- Hosts the non-touchable floating window that renders status bar lyrics. -->
+        <service
+            android:name=".statusbar.StatusBarLyricsService"
+            android:exported="false" />
+
+        <!-- Restarts the overlay when playback resumes after the service was idle-stopped. -->
+        <receiver
+            android:name=".statusbar.StatusBarLyricsStartReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="app.simple.felicity.action.START_STATUS_BAR_LYRICS" />
+            </intent-filter>
+        </receiver>
 
         <service
             android:name=".server.ServerModeService"

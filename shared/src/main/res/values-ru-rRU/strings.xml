@@ -497,4 +497,51 @@
 
 Чтобы отключить анимации переходов, перейдите в панель «%1$s».</string>
     <string name="animations">Анимации</string>
+
+    <string name="status_bar_lyrics">Тексты песен в строке состояния</string>
+    <string name="status_bar_lyrics_summary">Показывать текущую строку песни в небольшом плавающем окне над строкой состояния.</string>
+    <string name="status_bar_lyrics_enable_summary">Оверлей автоматически скрывается при паузе воспроизведения.</string>
+    <string name="status_bar_lyrics_how_it_works">Как это работает</string>
+    <string name="status_bar_lyrics_note">Требуется разрешение «Отображать поверх других приложений». Оверлей появляется только во время воспроизведения музыки.</string>
+    <string name="status_bar_lyrics_permission">Разрешение на оверлей</string>
+    <string name="status_bar_lyrics_permission_summary">Предоставьте разрешение «Отображать поверх других приложений», чтобы Felicity могла рисовать плавающие тексты песен.</string>
+    <string name="status_bar_lyrics_permission_missing">Предоставьте разрешение на оверлей, чтобы включить тексты песен в строке состояния.</string>
+    <string name="status_bar_lyrics_appearance">Внешний вид</string>
+    <string name="status_bar_lyrics_position">Положение</string>
+    <string name="status_bar_lyrics_width">Ширина текста песни</string>
+    <string name="status_bar_lyrics_width_summary">Ширина плавающего окна с текстом песни (50–750 dp).</string>
+    <string name="status_bar_lyrics_text_size">Размер текста</string>
+    <string name="status_bar_lyrics_text_size_summary">Размер текста песни в sp (8–32).</string>
+    <string name="status_bar_lyrics_text_color">Цвет текста</string>
+    <string name="status_bar_lyrics_text_color_summary">Цвет основной строки текста песни.</string>
+    <string name="status_bar_lyrics_stroke">Обводка текста</string>
+    <string name="status_bar_lyrics_stroke_summary">Рисует тонкую обводку вокруг текста, чтобы он оставался читаемым в любой строке состояния.</string>
+    <string name="status_bar_lyrics_stroke_color">Цвет обводки</string>
+    <string name="status_bar_lyrics_stroke_color_summary">Цвет обводки вокруг текста.</string>
+    <string name="status_bar_lyrics_stroke_width">Толщина обводки</string>
+    <string name="status_bar_lyrics_stroke_width_summary">Толщина обводки текста в dp.</string>
+    <string name="status_bar_lyrics_alignment">Выравнивание</string>
+    <string name="status_bar_lyrics_alignment_summary">Выравнивает текст по левому краю, центру или правому краю в заданной ширине.</string>
+    <string name="status_bar_lyrics_hide_translation">Скрыть перевод</string>
+    <string name="status_bar_lyrics_hide_translation_summary">Переводы с той же меткой времени, что и оригинальная строка, не отображаются.</string>
+    <string name="status_bar_lyrics_horizontal_position">Горизонтальное положение</string>
+    <string name="status_bar_lyrics_horizontal_position_summary">Положение плавающего окна между левым и правым краями экрана.</string>
+    <string name="status_bar_lyrics_vertical_position">Вертикальное положение</string>
+    <string name="status_bar_lyrics_vertical_position_summary">0 размещает текст вверху экрана, 2000 — внизу. Большие значения опускают текст ниже.</string>
+    <string name="status_bar_lyrics_position_top">Вверху</string>
+    <string name="status_bar_lyrics_position_bottom">Внизу</string>
+    <string name="status_bar_lyrics_hide_on_player">Скрывать на экране воспроизведения</string>
+    <string name="status_bar_lyrics_hide_on_player_summary">Скрывает плавающие тексты песен, когда открыт полноэкранный плеер.</string>
+    <string name="status_bar_lyrics_hide_on_lyrics">Скрыть на экране текста</string>
+    <string name="status_bar_lyrics_hide_on_lyrics_summary">Скрывает плавающие тексты песен, когда открыт экран текста.</string>
+    <string name="status_bar_lyrics_reset_position">Сбросить положение</string>
+    <string name="status_bar_lyrics_reset_position_summary">Восстанавливает горизонтальное и вертикальное положение по умолчанию.</string>
+    <string name="status_bar_lyrics_permission_granted">Разрешение на оверлей предоставлено</string>
+    <string name="status_bar_lyrics_position_reset">Положение сброшено</string>
+    <string name="status_bar_lyrics_enabled">Тексты песен в строке состояния включены</string>
+
+    <string name="status_bar_lyrics_line_count">Строк текста песни</string>
+    <string name="status_bar_lyrics_line_count_summary">Максимальное число строк для длинной песни (1 = одна прокручиваемая строка, 2–4 = перенос). Полезно для длинных субтитров аудиокниг.</string>
+    <string name="status_bar_lyrics_brightness">Яркость</string>
+    <string name="status_bar_lyrics_opacity">Непрозрачность</string>
 </resources>

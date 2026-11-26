@@ -154,6 +154,8 @@ class SimpleSharedImageDialog<VB : ViewBinding> private constructor(
  *   icon-less item so that all labels stay horizontally aligned.
  * @property summary Optional secondary text shown below [title]. A null or blank
  *   value suppresses the summary row entirely.
+ * @property tintIcon Whether to tint [icon] with the current accent colour. Set to
+ *   false for icons that must keep their own colours (for example colour swatches).
  *
  * @author Hamza417
  */
@@ -161,5 +163,6 @@ data class PopupMenuItem(
         val title: Any,
         val icon: Int = 0,
         val summary: String? = null,
-        val isExperimental: Boolean = false
+        val isExperimental: Boolean = false,
+        val tintIcon: Boolean = true
 )

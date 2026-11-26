@@ -488,4 +488,51 @@
     <string name="reduce_animations">Зменшити анімації</string>
     <string name="reduce_animations_summary">Вимикає деякі другорядні анімації в застосунку. Може підвищити продуктивність на деяких пристроях.\n\nЩоб вимкнути анімації переходів, перейдіть у панель «%1$s».</string>
     <string name="animations">Анімації</string>
+
+    <string name="status_bar_lyrics">Тексти пісень у рядку стану</string>
+    <string name="status_bar_lyrics_summary">Показувати поточний рядок пісні в невеликому плаваючому вікні над рядком стану.</string>
+    <string name="status_bar_lyrics_enable_summary">Оверлей автоматично приховується під час паузи відтворення.</string>
+    <string name="status_bar_lyrics_how_it_works">Як це працює</string>
+    <string name="status_bar_lyrics_note">Потрібен дозвіл «Відображати поверх інших застосунків». Оверлей з\'являється лише під час відтворення музики.</string>
+    <string name="status_bar_lyrics_permission">Дозвіл на оверлей</string>
+    <string name="status_bar_lyrics_permission_summary">Надайте дозвіл «Відображати поверх інших застосунків», щоб Felicity могла малювати плаваючі тексти пісень.</string>
+    <string name="status_bar_lyrics_permission_missing">Надайте дозвіл на оверлей, щоб увімкнути тексти пісень у рядку стану.</string>
+    <string name="status_bar_lyrics_appearance">Вигляд</string>
+    <string name="status_bar_lyrics_position">Положення</string>
+    <string name="status_bar_lyrics_width">Ширина тексту пісні</string>
+    <string name="status_bar_lyrics_width_summary">Ширина плаваючого вікна з текстом пісні (50–750 dp).</string>
+    <string name="status_bar_lyrics_text_size">Розмір тексту</string>
+    <string name="status_bar_lyrics_text_size_summary">Розмір тексту пісні в sp (8–32).</string>
+    <string name="status_bar_lyrics_text_color">Колір тексту</string>
+    <string name="status_bar_lyrics_text_color_summary">Колір, що використовується для головного рядка тексту пісні.</string>
+    <string name="status_bar_lyrics_stroke">Обведення тексту</string>
+    <string name="status_bar_lyrics_stroke_summary">Малює тонке обведення навколо тексту, щоб він залишався читабельним на будь-якому рядку стану.</string>
+    <string name="status_bar_lyrics_stroke_color">Колір обведення</string>
+    <string name="status_bar_lyrics_stroke_color_summary">Колір обведення навколо тексту.</string>
+    <string name="status_bar_lyrics_stroke_width">Товщина обведення</string>
+    <string name="status_bar_lyrics_stroke_width_summary">Товщина обведення тексту в dp.</string>
+    <string name="status_bar_lyrics_alignment">Вирівнювання</string>
+    <string name="status_bar_lyrics_alignment_summary">Вирівнює текст до лівого краю, центру або правого краю в заданій ширині.</string>
+    <string name="status_bar_lyrics_hide_translation">Приховати переклад</string>
+    <string name="status_bar_lyrics_hide_translation_summary">Переклади з тією самою міткою часу, що й оригінальний рядок, не відображаються.</string>
+    <string name="status_bar_lyrics_horizontal_position">Горизонтальне положення</string>
+    <string name="status_bar_lyrics_horizontal_position_summary">Положення плаваючого вікна між лівим і правим краями екрана.</string>
+    <string name="status_bar_lyrics_vertical_position">Вертикальне положення</string>
+    <string name="status_bar_lyrics_vertical_position_summary">0 розміщує текст угорі екрана, 2000 — внизу. Більші значення опускають текст нижче.</string>
+    <string name="status_bar_lyrics_position_top">Вгорі</string>
+    <string name="status_bar_lyrics_position_bottom">Внизу</string>
+    <string name="status_bar_lyrics_hide_on_player">Приховувати на екрані відтворення</string>
+    <string name="status_bar_lyrics_hide_on_player_summary">Приховує плаваючі тексти пісень, коли відкрито повноекранний плеєр.</string>
+    <string name="status_bar_lyrics_hide_on_lyrics">Приховати на екрані тексту</string>
+    <string name="status_bar_lyrics_hide_on_lyrics_summary">Приховує плаваючі тексти пісень, коли відкрито екран тексту.</string>
+    <string name="status_bar_lyrics_reset_position">Скинути положення</string>
+    <string name="status_bar_lyrics_reset_position_summary">Відновлює горизонтальне та вертикальне положення за замовчуванням.</string>
+    <string name="status_bar_lyrics_permission_granted">Дозвіл на оверлей надано</string>
+    <string name="status_bar_lyrics_position_reset">Положення скинуто</string>
+    <string name="status_bar_lyrics_enabled">Тексти пісень у рядку стану увімкнено</string>
+
+    <string name="status_bar_lyrics_line_count">Рядки тексту пісні</string>
+    <string name="status_bar_lyrics_line_count_summary">Максимальна кількість рядків для довгого тексту пісні (1 = один рядок, що прокручується, 2–4 = перенесення). Корисно для довгих субтитрів аудіокниг.</string>
+    <string name="status_bar_lyrics_brightness">Яскравість</string>
+    <string name="status_bar_lyrics_opacity">Непрозорість</string>
 </resources>

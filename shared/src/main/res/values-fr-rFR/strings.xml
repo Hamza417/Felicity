@@ -506,4 +506,51 @@
     <string name="animations">Animations</string>
     <string name="miniplayer_width">Largeur du mini lecteur</string>
     <string name="miniplayer_width_summary">Ajuste la largeur horizontale du mini-lecteur en mode paysage.</string>
+
+    <string name="status_bar_lyrics">Paroles de la barre d\'état</string>
+    <string name="status_bar_lyrics_summary">Affiche la ligne de paroles actuelle dans une petite fenêtre flottante au-dessus de la barre d\'état.</string>
+    <string name="status_bar_lyrics_enable_summary">Le calque se masque automatiquement lorsque la lecture est en pause.</string>
+    <string name="status_bar_lyrics_how_it_works">Comment ça marche</string>
+    <string name="status_bar_lyrics_note">Nécessite l\'autorisation « Afficher sur d\'autres applications ». Le calque n\'apparaît que pendant la lecture de musique.</string>
+    <string name="status_bar_lyrics_permission">Autorisation de superposition</string>
+    <string name="status_bar_lyrics_permission_summary">Accordez l\'autorisation « Afficher sur d\'autres applications » pour que Felicity puisse afficher les paroles flottantes.</string>
+    <string name="status_bar_lyrics_permission_missing">Accordez l\'autorisation de superposition pour activer les paroles de la barre d\'état.</string>
+    <string name="status_bar_lyrics_appearance">Apparence</string>
+    <string name="status_bar_lyrics_position">Position</string>
+    <string name="status_bar_lyrics_width">Largeur des paroles</string>
+    <string name="status_bar_lyrics_width_summary">Largeur de la boîte flottante des paroles (50–750 dp).</string>
+    <string name="status_bar_lyrics_text_size">Taille du texte</string>
+    <string name="status_bar_lyrics_text_size_summary">Taille des paroles en sp (8–32).</string>
+    <string name="status_bar_lyrics_text_color">Couleur du texte</string>
+    <string name="status_bar_lyrics_text_color_summary">Couleur utilisée pour la ligne principale des paroles.</string>
+    <string name="status_bar_lyrics_stroke">Contour du texte</string>
+    <string name="status_bar_lyrics_stroke_summary">Dessine un contour fin autour des paroles pour qu\'elles restent lisibles sur toute barre d\'état.</string>
+    <string name="status_bar_lyrics_stroke_color">Couleur du contour</string>
+    <string name="status_bar_lyrics_stroke_color_summary">Couleur du contour tracé autour des paroles.</string>
+    <string name="status_bar_lyrics_stroke_width">Épaisseur du contour</string>
+    <string name="status_bar_lyrics_stroke_width_summary">Épaisseur du contour des paroles, en dp.</string>
+    <string name="status_bar_lyrics_alignment">Alignement</string>
+    <string name="status_bar_lyrics_alignment_summary">Aligne les paroles à gauche, au centre ou à droite dans la largeur configurée.</string>
+    <string name="status_bar_lyrics_hide_translation">Masquer la traduction</string>
+    <string name="status_bar_lyrics_hide_translation_summary">Les traductions partageant le même horodatage que la ligne originale ne sont pas affichées.</string>
+    <string name="status_bar_lyrics_horizontal_position">Position horizontale</string>
+    <string name="status_bar_lyrics_horizontal_position_summary">Emplacement de la boîte flottante entre les bords gauche et droit.</string>
+    <string name="status_bar_lyrics_vertical_position">Position verticale</string>
+    <string name="status_bar_lyrics_vertical_position_summary">0 place les paroles en haut de l\'écran, 2000 en bas. Les valeurs plus élevées les déplacent davantage vers le bas.</string>
+    <string name="status_bar_lyrics_position_top">Haut</string>
+    <string name="status_bar_lyrics_position_bottom">Bas</string>
+    <string name="status_bar_lyrics_hide_on_player">Masquer sur l\'écran de lecture</string>
+    <string name="status_bar_lyrics_hide_on_player_summary">Masque les paroles flottantes lorsque l\'écran de lecture complet est ouvert.</string>
+    <string name="status_bar_lyrics_hide_on_lyrics">Masquer sur l\'écran des paroles</string>
+    <string name="status_bar_lyrics_hide_on_lyrics_summary">Masque les paroles flottantes lorsqu\'un écran de paroles est ouvert.</string>
+    <string name="status_bar_lyrics_reset_position">Réinitialiser la position</string>
+    <string name="status_bar_lyrics_reset_position_summary">Restaure les positions horizontale et verticale par défaut.</string>
+    <string name="status_bar_lyrics_permission_granted">Autorisation de superposition accordée</string>
+    <string name="status_bar_lyrics_position_reset">Position réinitialisée</string>
+    <string name="status_bar_lyrics_enabled">Paroles de la barre d\'état activées</string>
+
+    <string name="status_bar_lyrics_line_count">Lignes des paroles</string>
+    <string name="status_bar_lyrics_line_count_summary">Nombre maximal de lignes pour les paroles longues (1 = ligne défilante, 2–4 = retour à la ligne). Utile pour les longs sous-titres de livres audio.</string>
+    <string name="status_bar_lyrics_brightness">Luminosité</string>
+    <string name="status_bar_lyrics_opacity">Opacité</string>
 </resources>

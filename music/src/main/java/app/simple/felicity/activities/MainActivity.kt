@@ -61,6 +61,7 @@ import app.simple.felicity.repository.repositories.LrcRepository
 import app.simple.felicity.repository.services.AudioDatabaseService
 import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
 import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
+import app.simple.felicity.statusbar.StatusBarLyricsService
 import app.simple.felicity.shared.utils.ConditionUtils.invert
 import app.simple.felicity.shared.utils.ConditionUtils.isNotNull
 import app.simple.felicity.shared.utils.ConditionUtils.isNull
@@ -114,6 +115,10 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        // Bring the floating status bar lyrics back after a process restart. The
+        // service checks the preference and overlay permission itself.
+        StatusBarLyricsService.startIfEnabled(this)
 
         applyMiniPlayerResponsiveLayout(UserInterfacePreferences.getMiniplayerWidth())
 

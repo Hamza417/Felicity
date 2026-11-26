@@ -1,0 +1,13 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Two horizontal bars: one thin (top), one thick (bottom) = stroke weight. -->
+    <path
+        android:pathData="M4,6h16v1.5L4,7.5z"
+        android:fillColor="#000000" />
+    <path
+        android:pathData="M4,14h16v4L4,18z"
+        android:fillColor="#000000" />
+</vector>

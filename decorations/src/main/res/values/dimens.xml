@@ -58,6 +58,9 @@
 
     <dimen name="carousel_spacing">16dp</dimen>
     <dimen name="gap">1dp</dimen>
+
+    <dimen name="color_picker_wheel_size">260dp</dimen>
+    <dimen name="color_picker_preview_size">28dp</dimen>
     <dimen name="loader_size">40dp</dimen>
     <dimen name="icon_size_40">40dp</dimen>
     <dimen name="icon_size_30">30dp</dimen>

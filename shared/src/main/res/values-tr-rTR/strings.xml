@@ -481,4 +481,51 @@
     <string name="stack_media_controls_summary">Daha fazla dikey alan oluşturmak için medya kontrollerini dalga biçimiyle yığın.</string>
     <string name="timer_position">Zamanlayıcı Konumu</string>
     <string name="waveform_menu">Dalga Biçimi Menüsü</string>
+
+    <string name="status_bar_lyrics">Durum Çubuğu Şarkı Sözleri</string>
+    <string name="status_bar_lyrics_summary">Mevcut şarkı sözü satırını durum çubuğunun üzerindeki küçük bir yüzen pencerede gösterir.</string>
+    <string name="status_bar_lyrics_enable_summary">Oynatma duraklatıldığında katman otomatik olarak gizlenir.</string>
+    <string name="status_bar_lyrics_how_it_works">Nasıl çalışır</string>
+    <string name="status_bar_lyrics_note">«Diğer uygulamaların üzerinde göster» izni gerekir. Katman yalnızca müzik oynatılırken görünür.</string>
+    <string name="status_bar_lyrics_permission">Katman İzni</string>
+    <string name="status_bar_lyrics_permission_summary">Felicity\'nin yüzen şarkı sözlerini çizebilmesi için «Diğer uygulamaların üzerinde göster» iznini verin.</string>
+    <string name="status_bar_lyrics_permission_missing">Durum çubuğu şarkı sözlerini etkinleştirmek için katman iznini verin.</string>
+    <string name="status_bar_lyrics_appearance">Görünüm</string>
+    <string name="status_bar_lyrics_position">Konum</string>
+    <string name="status_bar_lyrics_width">Şarkı Sözü Genişliği</string>
+    <string name="status_bar_lyrics_width_summary">Yüzen şarkı sözü kutusunun genişliği (50–750 dp).</string>
+    <string name="status_bar_lyrics_text_size">Yazı Boyutu</string>
+    <string name="status_bar_lyrics_text_size_summary">Şarkı sözü boyutu sp cinsinden (8–32).</string>
+    <string name="status_bar_lyrics_text_color">Yazı Rengi</string>
+    <string name="status_bar_lyrics_text_color_summary">Ana şarkı sözü satırı için kullanılan renk.</string>
+    <string name="status_bar_lyrics_stroke">Yazı Anahattı</string>
+    <string name="status_bar_lyrics_stroke_summary">Şarkı sözlerinin her durum çubuğunda okunabilir kalması için ince bir anahat çizer.</string>
+    <string name="status_bar_lyrics_stroke_color">Anahat rengi</string>
+    <string name="status_bar_lyrics_stroke_color_summary">Şarkı sözlerinin çevresine çizilen anahat rengi.</string>
+    <string name="status_bar_lyrics_stroke_width">Anahat kalınlığı</string>
+    <string name="status_bar_lyrics_stroke_width_summary">Şarkı sözü anahat kalınlığı, dp cinsinden.</string>
+    <string name="status_bar_lyrics_alignment">Hizalama</string>
+    <string name="status_bar_lyrics_alignment_summary">Şarkı sözünü ayarlanan genişlik içinde sola, ortaya veya sağa hizalar.</string>
+    <string name="status_bar_lyrics_hide_translation">Çeviriyi Gizle</string>
+    <string name="status_bar_lyrics_hide_translation_summary">Özgün satırla aynı zaman damgasını paylaşan çeviriler gösterilmez.</string>
+    <string name="status_bar_lyrics_horizontal_position">Yatay Konum</string>
+    <string name="status_bar_lyrics_horizontal_position_summary">Yüzen kutunun sol ve sağ kenarlar arasındaki konumu.</string>
+    <string name="status_bar_lyrics_vertical_position">Dikey Konum</string>
+    <string name="status_bar_lyrics_vertical_position_summary">0 sözü ekranın en üstüne, 2000 en altına yerleştirir. Daha büyük değerler daha aşağıya taşır.</string>
+    <string name="status_bar_lyrics_position_top">Üst</string>
+    <string name="status_bar_lyrics_position_bottom">Alt</string>
+    <string name="status_bar_lyrics_hide_on_player">Oynatma Ekranında Gizle</string>
+    <string name="status_bar_lyrics_hide_on_player_summary">Tam oynatma ekranı açıkken yüzen şarkı sözlerini gizler.</string>
+    <string name="status_bar_lyrics_hide_on_lyrics">Şarkı sözü ekranında gizle</string>
+    <string name="status_bar_lyrics_hide_on_lyrics_summary">Bir şarkı sözü ekranı açıkken yüzen şarkı sözlerini gizler.</string>
+    <string name="status_bar_lyrics_reset_position">Konumu Sıfırla</string>
+    <string name="status_bar_lyrics_reset_position_summary">Varsayılan yatay ve dikey konumu geri yükler.</string>
+    <string name="status_bar_lyrics_permission_granted">Katman izni verildi</string>
+    <string name="status_bar_lyrics_position_reset">Konum sıfırlandı</string>
+    <string name="status_bar_lyrics_enabled">Durum çubuğu şarkı sözleri etkinleştirildi</string>
+
+    <string name="status_bar_lyrics_line_count">Şarkı Sözü Satırı</string>
+    <string name="status_bar_lyrics_line_count_summary">Uzun bir şarkı sözü için azami satır sayısı (1 = tek kaydırmalı satır, 2–4 = satır kaydırma). Uzun sesli kitap altyazıları için yararlıdır.</string>
+    <string name="status_bar_lyrics_brightness">Parlaklık</string>
+    <string name="status_bar_lyrics_opacity">Opaklık</string>
 </resources>

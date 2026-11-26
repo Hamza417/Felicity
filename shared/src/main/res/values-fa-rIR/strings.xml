@@ -495,4 +495,51 @@
     <string name="reduce_animations">کاهش انیمیشن‌ها</string>
     <string name="reduce_animations_summary">برخی از انیمیشن‌های غیرضروری را در سراسر برنامه غیرفعال کنید. ممکن است عملکرد برنامه را در برخی دستگاه‌ها بهبود بخشد.\n\nبرای غیرفعال کردن انیمیشن‌های انتقال، به پنل %1$s بروید.</string>
     <string name="animations">انیمیشن‌ها</string>
+
+    <string name="status_bar_lyrics">اشعار نوار وضعیت</string>
+    <string name="status_bar_lyrics_summary">خط شعر فعلی را در یک پنجره شناور کوچک بر روی نوار وضعیت نمایش میدهد.</string>
+    <string name="status_bar_lyrics_enable_summary">هنگام مکث پخش، لایه شناور بهطور خودکار مخفی میشود.</string>
+    <string name="status_bar_lyrics_how_it_works">نحوه کار</string>
+    <string name="status_bar_lyrics_note">نیاز به مجوز «نمایش بر روی سایر برنامهها» دارد. لایه شناور تنها هنگام پخش موسیقی ظاهر میشود.</string>
+    <string name="status_bar_lyrics_permission">مجوز لایه شناور</string>
+    <string name="status_bar_lyrics_permission_summary">مجوز «نمایش بر روی سایر برنامهها» را بدهید تا Felicity بتواند اشعار شناور را ترسیم کند.</string>
+    <string name="status_bar_lyrics_permission_missing">برای فعال کردن اشعار نوار وضعیت، مجوز لایه شناور را بدهید.</string>
+    <string name="status_bar_lyrics_appearance">ظاهر</string>
+    <string name="status_bar_lyrics_position">موقعیت</string>
+    <string name="status_bar_lyrics_width">عرض شعر</string>
+    <string name="status_bar_lyrics_width_summary">عرض کادر شناور شعر (۵۰–۷۵۰ dp).</string>
+    <string name="status_bar_lyrics_text_size">اندازه متن</string>
+    <string name="status_bar_lyrics_text_size_summary">اندازه شعر بر حسب sp (۸–۳۲).</string>
+    <string name="status_bar_lyrics_text_color">رنگ متن</string>
+    <string name="status_bar_lyrics_text_color_summary">رنگ مورد استفاده برای خط اصلی شعر.</string>
+    <string name="status_bar_lyrics_stroke">حاشیه متن</string>
+    <string name="status_bar_lyrics_stroke_summary">حاشیهای نازک دور شعر میکشد تا در هر نوار وضعیتی خوانا بماند.</string>
+    <string name="status_bar_lyrics_stroke_color">رنگ حاشیه</string>
+    <string name="status_bar_lyrics_stroke_color_summary">رنگ حاشیهای که دور شعر کشیده میشود.</string>
+    <string name="status_bar_lyrics_stroke_width">ضخامت حاشیه</string>
+    <string name="status_bar_lyrics_stroke_width_summary">ضخامت حاشیه شعر بر حسب dp.</string>
+    <string name="status_bar_lyrics_alignment">ترازبندی</string>
+    <string name="status_bar_lyrics_alignment_summary">شعر را در عرض تنظیمشده چپ، وسط یا راست تراز میکند.</string>
+    <string name="status_bar_lyrics_hide_translation">مخفی کردن ترجمه</string>
+    <string name="status_bar_lyrics_hide_translation_summary">ترجمههایی که زمانی یکسان با خط اصلی دارند نمایش داده نمیشوند.</string>
+    <string name="status_bar_lyrics_horizontal_position">موقعیت افقی</string>
+    <string name="status_bar_lyrics_horizontal_position_summary">محل قرارگیری کادر شناور بین لبه چپ و راست.</string>
+    <string name="status_bar_lyrics_vertical_position">موقعیت عمودی</string>
+    <string name="status_bar_lyrics_vertical_position_summary">0 شعر را بالای صفحه و 2000 آن را پایین صفحه قرار میدهد. اعداد بزرگتر آن را پایینتر میبرند.</string>
+    <string name="status_bar_lyrics_position_top">بالا</string>
+    <string name="status_bar_lyrics_position_bottom">پایین</string>
+    <string name="status_bar_lyrics_hide_on_player">مخفی کردن در صفحه پخش</string>
+    <string name="status_bar_lyrics_hide_on_player_summary">اشعار شناور را هنگام باز بودن صفحه کامل پخش مخفی میکند.</string>
+    <string name="status_bar_lyrics_hide_on_lyrics">مخفی در صفحه شعر</string>
+    <string name="status_bar_lyrics_hide_on_lyrics_summary">اشعار شناور را هنگام باز بودن صفحه شعر مخفی میکند.</string>
+    <string name="status_bar_lyrics_reset_position">بازنشانی موقعیت</string>
+    <string name="status_bar_lyrics_reset_position_summary">موقعیت پیشفرض افقی و عمودی را بازمیگرداند.</string>
+    <string name="status_bar_lyrics_permission_granted">مجوز لایه شناور اعطا شد</string>
+    <string name="status_bar_lyrics_position_reset">موقعیت بازنشانی شد</string>
+    <string name="status_bar_lyrics_enabled">اشعار نوار وضعیت فعال شد</string>
+
+    <string name="status_bar_lyrics_line_count">خطوط شعر</string>
+    <string name="status_bar_lyrics_line_count_summary">حداکثر خطوط برای شکستن شعر طولانی (1 = خط تکی متحرک، 2–4 = شکستهشده). برای زیرنویسهای طولانی کتاب صوتی مفید است.</string>
+    <string name="status_bar_lyrics_brightness">روشنایی</string>
+    <string name="status_bar_lyrics_opacity">میزان شفافیت</string>
 </resources>

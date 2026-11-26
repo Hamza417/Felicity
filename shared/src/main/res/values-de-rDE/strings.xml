@@ -481,4 +481,51 @@
     <string name="stack_media_controls_summary">Mediensteuerung mit Wellenform stapeln, um mehr vertikalen Platz zu schaffen.</string>
     <string name="timer_position">Timer-Position</string>
     <string name="waveform_menu">Wellenform-Menü</string>
+
+    <string name="status_bar_lyrics">Statusleisten-Liedtexte</string>
+    <string name="status_bar_lyrics_summary">Zeige die aktuelle Liedtextzeile in einem kleinen schwebenden Fenster über der Statusleiste an.</string>
+    <string name="status_bar_lyrics_enable_summary">Das Overlay wird beim Pausieren der Wiedergabe automatisch ausgeblendet.</string>
+    <string name="status_bar_lyrics_how_it_works">So funktioniert es</string>
+    <string name="status_bar_lyrics_note">Erfordert die Berechtigung „Über anderen Apps anzeigen“. Das Overlay erscheint nur während der Musikwiedergabe.</string>
+    <string name="status_bar_lyrics_permission">Overlay-Berechtigung</string>
+    <string name="status_bar_lyrics_permission_summary">Gewähre „Über anderen Apps anzeigen“, damit Felicity die schwebenden Liedtexte zeichnen kann.</string>
+    <string name="status_bar_lyrics_permission_missing">Gewähre die Overlay-Berechtigung, um Statusleisten-Liedtexte zu aktivieren.</string>
+    <string name="status_bar_lyrics_appearance">Darstellung</string>
+    <string name="status_bar_lyrics_position">Position</string>
+    <string name="status_bar_lyrics_width">Liedtextbreite</string>
+    <string name="status_bar_lyrics_width_summary">Breite des schwebenden Liedtextfensters (50–750 dp).</string>
+    <string name="status_bar_lyrics_text_size">Textgröße</string>
+    <string name="status_bar_lyrics_text_size_summary">Liedtextgröße in sp (8–32).</string>
+    <string name="status_bar_lyrics_text_color">Textfarbe</string>
+    <string name="status_bar_lyrics_text_color_summary">Farbe für die Haupt-Liedtextzeile.</string>
+    <string name="status_bar_lyrics_stroke">Textumrandung</string>
+    <string name="status_bar_lyrics_stroke_summary">Zeichnet eine dünne Umrandung um den Liedtext, damit er auf jeder Statusleiste lesbar bleibt.</string>
+    <string name="status_bar_lyrics_stroke_color">Umrandungsfarbe</string>
+    <string name="status_bar_lyrics_stroke_color_summary">Farbe der Umrandung um den Liedtext.</string>
+    <string name="status_bar_lyrics_stroke_width">Umrandungsstärke</string>
+    <string name="status_bar_lyrics_stroke_width_summary">Stärke der Liedtextumrandung in dp.</string>
+    <string name="status_bar_lyrics_alignment">Ausrichtung</string>
+    <string name="status_bar_lyrics_alignment_summary">Richtet den Liedtext innerhalb der festgelegten Breite links, zentriert oder rechts aus.</string>
+    <string name="status_bar_lyrics_hide_translation">Übersetzung ausblenden</string>
+    <string name="status_bar_lyrics_hide_translation_summary">Übersetzungen mit demselben Zeitstempel wie die Originalzeile werden nicht angezeigt.</string>
+    <string name="status_bar_lyrics_horizontal_position">Horizontale Position</string>
+    <string name="status_bar_lyrics_horizontal_position_summary">Position des schwebenden Fensters zwischen dem linken und rechten Bildschirmrand.</string>
+    <string name="status_bar_lyrics_vertical_position">Vertikale Position</string>
+    <string name="status_bar_lyrics_vertical_position_summary">0 setzt den Liedtext an den oberen Bildschirmrand, 2000 an den unteren. Größere Werte verschieben ihn weiter nach unten.</string>
+    <string name="status_bar_lyrics_position_top">Oben</string>
+    <string name="status_bar_lyrics_position_bottom">Unten</string>
+    <string name="status_bar_lyrics_hide_on_player">Auf Wiedergabebildschirm ausblenden</string>
+    <string name="status_bar_lyrics_hide_on_player_summary">Blendet die schwebenden Liedtexte aus, solange der vollständige Wiedergabebildschirm geöffnet ist.</string>
+    <string name="status_bar_lyrics_hide_on_lyrics">Bei Liedtextansicht ausblenden</string>
+    <string name="status_bar_lyrics_hide_on_lyrics_summary">Blendet die schwebenden Liedtexte aus, solange eine Liedtextansicht geöffnet ist.</string>
+    <string name="status_bar_lyrics_reset_position">Position zurücksetzen</string>
+    <string name="status_bar_lyrics_reset_position_summary">Stellt die Standardposition für horizontale und vertikale Ausrichtung wieder her.</string>
+    <string name="status_bar_lyrics_permission_granted">Overlay-Berechtigung gewährt</string>
+    <string name="status_bar_lyrics_position_reset">Position zurückgesetzt</string>
+    <string name="status_bar_lyrics_enabled">Statusleisten-Liedtexte aktiviert</string>
+
+    <string name="status_bar_lyrics_line_count">Liedtextzeilen</string>
+    <string name="status_bar_lyrics_line_count_summary">Maximale Zeilen für einen langen Liedtext (1 = einzelne scrollende Zeile, 2–4 = umbrochen). Nützlich für lange Hörbuch-Untertitel.</string>
+    <string name="status_bar_lyrics_brightness">Helligkeit</string>
+    <string name="status_bar_lyrics_opacity">Deckkraft</string>
 </resources>
