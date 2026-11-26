@@ -155,10 +155,15 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
 
         // Don't re-open the screen the user is already looking at. This is the common
         // case when tapping the mini player while its player screen is on top.
-        if (tag.isNotNull()) {
-            val current = fragmentManager.findFragmentById(R.id.fragment_container)
-            if (current != null && current.tag == tag) return
-            if (fragmentManager.findFragmentByTag(tag)?.isVisible == true) return
+        // Compare the actual destination (class + arguments), not just the back stack
+        // tag: folder hierarchy, artist/album pages and other drill-down screens all
+        // reuse one tag for every level and carry the target in their arguments.
+        // A tag-only check swallowed every tap on a folder.
+        val current = fragmentManager.findFragmentById(R.id.fragment_container)
+        if (isSameDestination(current, fragment)) return
+        if (tag.isNotNull() && tag != current?.tag) {
+            val tagged = fragmentManager.findFragmentByTag(tag)
+            if (tagged?.isVisible == true && isSameDestination(tagged, fragment)) return
         }
 
         lastNavigationAt = now
@@ -192,6 +197,25 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
         } else {
             transaction.commit()
         }
+    }
+
+    /**
+     * Two fragments represent the same screen only when they are the same class
+     * and carry the same arguments. Empty/null arguments are treated as equal so
+     * parameterless screens (player, songs, settings, ...) still dedupe.
+     * Parameterized screens (folder hierarchy levels, artist/album pages, ...)
+     * must stay navigable even though they share a back stack tag.
+     */
+    private fun isSameDestination(current: Fragment?, next: Fragment): Boolean {
+        if (current == null || !current.isAdded || !current.isVisible) return false
+        if (current.javaClass != next.javaClass) return false
+        val currentArgs = current.arguments
+        val nextArgs = next.arguments
+        val currentHasArgs = currentArgs?.keySet()?.isNotEmpty() == true
+        val nextHasArgs = nextArgs?.keySet()?.isNotEmpty() == true
+        if (!currentHasArgs && !nextHasArgs) return true
+        if (!currentHasArgs || !nextHasArgs) return false
+        return currentArgs == nextArgs
     }
 
     /**
