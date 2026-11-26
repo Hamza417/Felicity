@@ -102,7 +102,7 @@
     <app.simple.felicity.decorations.miniplayer.MiniPlayer
         android:id="@+id/mini_player"
         android:layout_width="match_parent"
-        android:layout_height="72dp"
+        android:layout_height="@dimen/mini_player_height"
         android:layout_gravity="bottom" />
 
 </app.simple.felicity.decorations.theme.ThemeCoordinatorLayout>
