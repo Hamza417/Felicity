@@ -481,4 +481,51 @@
     <string name="stack_media_controls_summary">Impila i controlli multimediali con la forma d\'onda per creare più spazio verticale.</string>
     <string name="timer_position">Posizione del timer</string>
     <string name="waveform_menu">Menu forma d\'onda</string>
+
+    <string name="status_bar_lyrics">Testi nella barra di stato</string>
+    <string name="status_bar_lyrics_summary">Mostra la riga di testo corrente in una piccola finestra flottante sopra la barra di stato.</string>
+    <string name="status_bar_lyrics_enable_summary">La sovrapposizione si nasconde automaticamente quando la riproduzione è in pausa.</string>
+    <string name="status_bar_lyrics_how_it_works">Come funziona</string>
+    <string name="status_bar_lyrics_note">Richiede l\'autorizzazione «Mostra sulle altre app». La sovrapposizione appare solo durante la riproduzione della musica.</string>
+    <string name="status_bar_lyrics_permission">Autorizzazione di sovrapposizione</string>
+    <string name="status_bar_lyrics_permission_summary">Concedi l\'autorizzazione «Mostra sulle altre app» affinché Felicity possa disegnare i testi flottanti.</string>
+    <string name="status_bar_lyrics_permission_missing">Concedi l\'autorizzazione di sovrapposizione per attivare i testi nella barra di stato.</string>
+    <string name="status_bar_lyrics_appearance">Aspetto</string>
+    <string name="status_bar_lyrics_position">Posizione</string>
+    <string name="status_bar_lyrics_width">Larghezza del testo</string>
+    <string name="status_bar_lyrics_width_summary">Larghezza della casella flottante del testo (50–750 dp).</string>
+    <string name="status_bar_lyrics_text_size">Dimensione del testo</string>
+    <string name="status_bar_lyrics_text_size_summary">Dimensione del testo in sp (8–32).</string>
+    <string name="status_bar_lyrics_text_color">Colore del testo</string>
+    <string name="status_bar_lyrics_text_color_summary">Colore usato per la riga principale del testo.</string>
+    <string name="status_bar_lyrics_stroke">Contorno del testo</string>
+    <string name="status_bar_lyrics_stroke_summary">Disegna un contorno sottile attorno al testo per mantenerlo leggibile su qualsiasi barra di stato.</string>
+    <string name="status_bar_lyrics_stroke_color">Colore del contorno</string>
+    <string name="status_bar_lyrics_stroke_color_summary">Colore del contorno disegnato attorno al testo.</string>
+    <string name="status_bar_lyrics_stroke_width">Spessore del contorno</string>
+    <string name="status_bar_lyrics_stroke_width_summary">Spessore del contorno del testo, in dp.</string>
+    <string name="status_bar_lyrics_alignment">Allineamento</string>
+    <string name="status_bar_lyrics_alignment_summary">Allinea il testo a sinistra, al centro o a destra nella larghezza configurata.</string>
+    <string name="status_bar_lyrics_hide_translation">Nascondi traduzione</string>
+    <string name="status_bar_lyrics_hide_translation_summary">Le traduzioni che condividono il timestamp con la riga originale non vengono mostrate.</string>
+    <string name="status_bar_lyrics_horizontal_position">Posizione orizzontale</string>
+    <string name="status_bar_lyrics_horizontal_position_summary">Posizione della casella flottante tra i bordi sinistro e destro.</string>
+    <string name="status_bar_lyrics_vertical_position">Posizione verticale</string>
+    <string name="status_bar_lyrics_vertical_position_summary">0 posiziona il testo in cima allo schermo, 2000 in fondo. I valori più alti lo spostano più in basso.</string>
+    <string name="status_bar_lyrics_position_top">In alto</string>
+    <string name="status_bar_lyrics_position_bottom">In basso</string>
+    <string name="status_bar_lyrics_hide_on_player">Nascondi nella schermata di riproduzione</string>
+    <string name="status_bar_lyrics_hide_on_player_summary">Nasconde i testi flottanti quando la schermata di riproduzione completa è aperta.</string>
+    <string name="status_bar_lyrics_hide_on_lyrics">Nascondi nella schermata testi</string>
+    <string name="status_bar_lyrics_hide_on_lyrics_summary">Nasconde i testi flottanti quando una schermata dei testi è aperta.</string>
+    <string name="status_bar_lyrics_reset_position">Reimposta posizione</string>
+    <string name="status_bar_lyrics_reset_position_summary">Ripristina le posizioni orizzontale e verticale predefinite.</string>
+    <string name="status_bar_lyrics_permission_granted">Autorizzazione di sovrapposizione concessa</string>
+    <string name="status_bar_lyrics_position_reset">Posizione reimpostata</string>
+    <string name="status_bar_lyrics_enabled">Testi nella barra di stato attivati</string>
+
+    <string name="status_bar_lyrics_line_count">Righe del testo</string>
+    <string name="status_bar_lyrics_line_count_summary">Numero massimo di righe per avvolgere un testo lungo (1 = riga singola scorrevole, 2–4 = a capo). Utile per sottotitoli lunghi di audiolibri.</string>
+    <string name="status_bar_lyrics_brightness">Luminosità</string>
+    <string name="status_bar_lyrics_opacity">Opacità</string>
 </resources>

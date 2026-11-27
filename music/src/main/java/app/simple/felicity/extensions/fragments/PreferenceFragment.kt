@@ -1,14 +1,18 @@
 package app.simple.felicity.extensions.fragments
 
 import android.content.Intent
+import android.content.SharedPreferences
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.text.format.DateUtils
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import android.widget.Toast
 import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.BuildConfig
@@ -19,9 +23,13 @@ import app.simple.felicity.databinding.HeaderPreferencesGenericBinding
 import app.simple.felicity.decorations.popups.PopupMenuItem
 import app.simple.felicity.decorations.popups.SharedScrollViewPopup
 import app.simple.felicity.decorations.seekbars.FelicitySeekbar
+import app.simple.felicity.decorations.toggles.FelicityButtonGroup
+import app.simple.felicity.decorations.toggles.FelicityButtonGroup.Companion.Button
 import app.simple.felicity.decorations.toggles.FelicitySwitch
 import app.simple.felicity.decorations.views.AppHeader
+import app.simple.felicity.dialogs.app.StatusBarLyricsColorPicker
 import app.simple.felicity.enums.PreferenceType
+import app.simple.felicity.models.ButtonGroupState
 import app.simple.felicity.models.Preference
 import app.simple.felicity.models.SeekbarState
 import app.simple.felicity.preferences.AccessibilityPreferences
@@ -33,15 +41,18 @@ import app.simple.felicity.preferences.ConfigurationPreferences
 import app.simple.felicity.preferences.EqualizerPreferences
 import app.simple.felicity.preferences.LibraryPreferences
 import app.simple.felicity.preferences.PlayerPreferences
+import app.simple.felicity.preferences.StatusBarLyricsPreferences
 import app.simple.felicity.preferences.UserInterfacePreferences
 import app.simple.felicity.repository.repositories.SongStatRepository
 import app.simple.felicity.repository.services.AudioDatabaseService
+import app.simple.felicity.statusbar.StatusBarLyricsService
 import app.simple.felicity.theme.accents.AlbumArt
 import app.simple.felicity.ui.preferences.sub.AccentColors
 import app.simple.felicity.ui.preferences.sub.ArtistWhitelist
 import app.simple.felicity.ui.preferences.sub.Language
 import app.simple.felicity.ui.preferences.sub.MusicFolders
 import app.simple.felicity.ui.preferences.sub.PanelVisibility
+import app.simple.felicity.ui.preferences.sub.StatusBarLyrics
 import app.simple.felicity.ui.preferences.sub.Themes
 import app.simple.felicity.ui.preferences.sub.TypeFaces
 import com.bumptech.glide.Glide
@@ -65,10 +76,33 @@ abstract class PreferenceFragment : MediaFragment() {
     protected open val titleRes: Int = 0
     protected open val iconRes: Int = 0
 
+    /**
+     * Switch that was flipped on before the overlay permission existed. When the user
+     * returns from the system permission screen, [onResume] completes the toggle for them
+     * instead of making them tap the switch a second time.
+     */
+    private var pendingStatusBarLyricsSwitch: FelicitySwitch? = null
+
     override val wantsMiniPlayerVisible: Boolean
         get() = false
 
     protected open fun getPreferencesList(): List<Preference> = emptyList()
+
+    override fun onResume() {
+        super.onResume()
+
+        val pendingSwitch = pendingStatusBarLyricsSwitch ?: return
+        val context = context ?: return
+
+        if (Settings.canDrawOverlays(context)) {
+            StatusBarLyricsPreferences.setEnabled(true)
+            pendingSwitch.setChecked(true, false)
+            StatusBarLyricsService.startIfEnabled(context)
+            Toast.makeText(context, R.string.status_bar_lyrics_enabled, Toast.LENGTH_SHORT).show()
+        }
+
+        pendingStatusBarLyricsSwitch = null
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         if (titleRes != 0) {
@@ -490,6 +524,16 @@ abstract class PreferenceFragment : MediaFragment() {
                 }
         )
 
+        val statusBarLyrics = Preference(
+                title = R.string.status_bar_lyrics,
+                summary = R.string.status_bar_lyrics_summary,
+                icon = R.drawable.ic_lyrics,
+                type = PreferenceType.PANEL,
+                onPreferenceAction = { _, _ ->
+                    openFragment(StatusBarLyrics.newInstance(), StatusBarLyrics.TAG)
+                }
+        )
+
         val stackMediaControlsToggle = Preference(
                 title = R.string.stack_media_controls,
                 summary = R.string.stack_media_controls_summary,
@@ -679,6 +723,7 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(playerHeader)
         preferences.add(playerInterface)
         preferences.add(lyricsToggle)
+        preferences.add(statusBarLyrics)
         preferences.add(stackMediaControlsToggle)
         preferences.add(showForwardAndRewindButtons)
         preferences.add(immersiveMode)
@@ -694,6 +739,369 @@ abstract class PreferenceFragment : MediaFragment() {
         preferences.add(weatherEffect)
 
         return preferences
+    }
+
+    /**
+     * Status bar lyrics panel.
+     *
+     * Everything here is deliberately live: the overlay service listens to the same
+     * preference keys, so dragging a slider or picking a colour updates the floating
+     * window immediately while music is playing.
+     */
+    protected fun createStatusBarLyricsPanel(): List<Preference> {
+        val preferences = mutableListOf<Preference>()
+
+        val enable = Preference(
+                title = R.string.status_bar_lyrics,
+                summary = R.string.status_bar_lyrics_enable_summary,
+                icon = R.drawable.ic_lyrics,
+                type = PreferenceType.SWITCH,
+                valueProvider = Supplier {
+                    StatusBarLyricsPreferences.isEnabled()
+                },
+                onPreferenceAction = { view, _ ->
+                    val switch = view as FelicitySwitch
+                    val context = requireContext()
+
+                    if (switch.isChecked) {
+                        if (!Settings.canDrawOverlays(context)) {
+                            switch.setChecked(false, false)
+                            pendingStatusBarLyricsSwitch = switch
+                            Toast.makeText(
+                                    context,
+                                    R.string.status_bar_lyrics_permission_missing,
+                                    Toast.LENGTH_LONG
+                            ).show()
+                            openStatusBarLyricsPermissionSettings()
+                        } else {
+                            StatusBarLyricsPreferences.setEnabled(true)
+                            StatusBarLyricsService.startIfEnabled(context)
+                        }
+                    } else {
+                        StatusBarLyricsPreferences.setEnabled(false)
+                        StatusBarLyricsService.stop(context)
+                    }
+                }
+        )
+
+        val note = Preference(
+                title = R.string.status_bar_lyrics_how_it_works,
+                summary = R.string.status_bar_lyrics_note,
+                icon = -1,
+                type = PreferenceType.INFO
+        )
+
+        val permission = Preference(
+                title = R.string.status_bar_lyrics_permission,
+                summary = R.string.status_bar_lyrics_permission_summary,
+                icon = R.drawable.ic_locked,
+                type = PreferenceType.NORMAL,
+                onPreferenceAction = { _, _ ->
+                    openStatusBarLyricsPermissionSettings()
+                }
+        )
+
+        val appearanceHeader = Preference(
+                title = R.string.status_bar_lyrics_appearance,
+                type = PreferenceType.SUB_HEADER
+        )
+
+        val width = Preference(
+                title = R.string.status_bar_lyrics_width,
+                summary = R.string.status_bar_lyrics_width_summary,
+                icon = R.drawable.ic_status_bar_lyrics_width,
+                type = PreferenceType.SLIDER,
+                onPreferenceAction = { view, _ ->
+                    StatusBarLyricsPreferences.setWidth((view as FelicitySeekbar).getProgress().toInt())
+                },
+                valueProvider = Supplier {
+                    SeekbarState(
+                            position = StatusBarLyricsPreferences.getWidth().toFloat(),
+                            max = StatusBarLyricsPreferences.MAX_WIDTH.toFloat(),
+                            min = StatusBarLyricsPreferences.MIN_WIDTH.toFloat(),
+                            default = StatusBarLyricsPreferences.DEFAULT_WIDTH.toFloat(),
+                            leftLabel = true,
+                            leftLabelProvider = { progress, _, _ -> "${progress.toInt()} dp" }
+                    )
+                }
+        )
+
+        val lineCount = Preference(
+                title = R.string.status_bar_lyrics_line_count,
+                summary = R.string.status_bar_lyrics_line_count_summary,
+                icon = R.drawable.ic_status_bar_lyrics_line_count,
+                type = PreferenceType.SLIDER,
+                onPreferenceAction = { view, _ ->
+                    StatusBarLyricsPreferences.setLineCount((view as FelicitySeekbar).getProgress().toInt())
+                },
+                valueProvider = Supplier {
+                    SeekbarState(
+                            position = StatusBarLyricsPreferences.getLineCount().toFloat(),
+                            max = StatusBarLyricsPreferences.MAX_LINE_COUNT.toFloat(),
+                            min = StatusBarLyricsPreferences.MIN_LINE_COUNT.toFloat(),
+                            default = StatusBarLyricsPreferences.DEFAULT_LINE_COUNT.toFloat(),
+                            leftLabel = true,
+                            leftLabelProvider = { progress, _, _ -> "${progress.toInt()}" }
+                    )
+                }
+        )
+
+        val textSize = Preference(
+                title = R.string.status_bar_lyrics_text_size,
+                summary = R.string.status_bar_lyrics_text_size_summary,
+                icon = R.drawable.ic_alphabet,
+                type = PreferenceType.SLIDER,
+                onPreferenceAction = { view, _ ->
+                    StatusBarLyricsPreferences.setTextSize((view as FelicitySeekbar).getProgress())
+                },
+                valueProvider = Supplier {
+                    SeekbarState(
+                            position = StatusBarLyricsPreferences.getTextSize(),
+                            max = StatusBarLyricsPreferences.MAX_TEXT_SIZE,
+                            min = StatusBarLyricsPreferences.MIN_TEXT_SIZE,
+                            default = StatusBarLyricsPreferences.DEFAULT_TEXT_SIZE,
+                            leftLabel = true,
+                            leftLabelProvider = { progress, _, _ -> "${progress.toInt()} sp" }
+                    )
+                }
+        )
+
+        // Opens the HSV colour wheel instead of a preset drop-down. The dialog writes
+        // the chosen colour to the preference live, so the overlay repaints while the
+        // wheel is being dragged; the adapter callback refreshes this row's value text.
+        // Only the hex value is shown — with a free-form wheel, colour names are
+        // meaningless for arbitrary picks.
+        val textColor = Preference(
+                title = R.string.status_bar_lyrics_text_color,
+                summary = R.string.status_bar_lyrics_text_color_summary,
+                icon = R.drawable.ic_palette,
+                type = PreferenceType.POPUP,
+                valueProvider = {
+                    StatusBarLyricsPreferences.colorHex(StatusBarLyricsPreferences.getTextColor())
+                },
+                onPreferenceAction = { _, refresh ->
+                    StatusBarLyricsColorPicker.newInstance(StatusBarLyricsColorPicker.Target.TEXT) { refresh(null) }
+                            .show(childFragmentManager, StatusBarLyricsColorPicker.TAG)
+                }
+        )
+
+        val stroke = Preference(
+                title = R.string.status_bar_lyrics_stroke,
+                summary = R.string.status_bar_lyrics_stroke_summary,
+                icon = R.drawable.ic_text_fields,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, _ ->
+                    StatusBarLyricsPreferences.setStroke((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    StatusBarLyricsPreferences.isStroke()
+                }
+        )
+
+        // Outline colour uses the same HSV wheel as the text colour, but writes to a
+        // different preference. The dialog reads/writes by target and refreshes this row.
+        val strokeColor = Preference(
+                title = R.string.status_bar_lyrics_stroke_color,
+                summary = R.string.status_bar_lyrics_stroke_color_summary,
+                icon = R.drawable.ic_palette,
+                type = PreferenceType.POPUP,
+                valueProvider = {
+                    StatusBarLyricsPreferences.colorHex(StatusBarLyricsPreferences.getStrokeColor())
+                },
+                onPreferenceAction = { _, refresh ->
+                    StatusBarLyricsColorPicker.newInstance(StatusBarLyricsColorPicker.Target.STROKE) { refresh(null) }
+                            .show(childFragmentManager, StatusBarLyricsColorPicker.TAG)
+                }
+        )
+
+        val strokeWidth = Preference(
+                title = R.string.status_bar_lyrics_stroke_width,
+                summary = R.string.status_bar_lyrics_stroke_width_summary,
+                icon = R.drawable.ic_status_bar_lyrics_stroke_width,
+                type = PreferenceType.SLIDER,
+                onPreferenceAction = { view, _ ->
+                    StatusBarLyricsPreferences.setStrokeWidth((view as FelicitySeekbar).getProgress())
+                },
+                valueProvider = Supplier {
+                    SeekbarState(
+                            position = StatusBarLyricsPreferences.getStrokeWidth(),
+                            max = StatusBarLyricsPreferences.MAX_STROKE_WIDTH,
+                            min = StatusBarLyricsPreferences.MIN_STROKE_WIDTH,
+                            default = StatusBarLyricsPreferences.DEFAULT_STROKE_WIDTH,
+                            leftLabel = true,
+                            leftLabelProvider = { progress, _, _ -> String.format("%.1f dp", progress) }
+                    )
+                }
+        )
+
+        val alignment = Preference(
+                title = R.string.status_bar_lyrics_alignment,
+                summary = R.string.status_bar_lyrics_alignment_summary,
+                icon = R.drawable.ic_align_center,
+                type = PreferenceType.BUTTON_GROUP,
+                valueProvider = Supplier {
+                    ButtonGroupState(
+                            buttons = listOf(
+                                    Button(iconResId = R.drawable.ic_align_left_12dp),
+                                    Button(iconResId = R.drawable.ic_align_center_12dp),
+                                    Button(iconResId = R.drawable.ic_align_right_12dp)
+                            ),
+                            selectedIndex = StatusBarLyricsPreferences.getAlignment()
+                    )
+                },
+                onPreferenceAction = { view, _ ->
+                    val index = (view as FelicityButtonGroup).getSelectedIndex()
+                    StatusBarLyricsPreferences.setAlignment(index)
+                }
+        )
+
+        val hideTranslation = Preference(
+                title = R.string.status_bar_lyrics_hide_translation,
+                summary = R.string.status_bar_lyrics_hide_translation_summary,
+                icon = R.drawable.ic_translate,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, _ ->
+                    StatusBarLyricsPreferences.setHideTranslation((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    StatusBarLyricsPreferences.isHideTranslation()
+                }
+        )
+
+        val positionHeader = Preference(
+                title = R.string.status_bar_lyrics_position,
+                type = PreferenceType.SUB_HEADER
+        )
+
+        val horizontalPosition = Preference(
+                title = R.string.status_bar_lyrics_horizontal_position,
+                summary = R.string.status_bar_lyrics_horizontal_position_summary,
+                icon = R.drawable.ic_align_center,
+                type = PreferenceType.SLIDER,
+                onPreferenceAction = { view, _ ->
+                    StatusBarLyricsPreferences.setHorizontalBias(
+                            (view as FelicitySeekbar).getProgress() / 100f
+                    )
+                },
+                valueProvider = Supplier {
+                    SeekbarState(
+                            position = StatusBarLyricsPreferences.getHorizontalBias() * 100f,
+                            max = 100f,
+                            min = 0f,
+                            default = StatusBarLyricsPreferences.DEFAULT_HORIZONTAL_BIAS * 100f,
+                            leftLabel = true,
+                            leftLabelProvider = { progress, _, _ -> "${progress.toInt()} %" }
+                    )
+                }
+        )
+
+        val verticalPosition = Preference(
+                title = R.string.status_bar_lyrics_vertical_position,
+                summary = R.string.status_bar_lyrics_vertical_position_summary,
+                icon = R.drawable.ic_vertical_align_center,
+                type = PreferenceType.SLIDER,
+                onPreferenceAction = { view, _ ->
+                    StatusBarLyricsPreferences.setVerticalOffset(
+                            (view as FelicitySeekbar).getProgress().toInt()
+                    )
+                },
+                valueProvider = Supplier {
+                    SeekbarState(
+                            position = StatusBarLyricsPreferences.getVerticalOffset().toFloat(),
+                            max = StatusBarLyricsPreferences.MAX_VERTICAL_OFFSET.toFloat(),
+                            min = StatusBarLyricsPreferences.MIN_VERTICAL_OFFSET.toFloat(),
+                            default = StatusBarLyricsPreferences.DEFAULT_VERTICAL_OFFSET.toFloat(),
+                            leftLabel = true,
+                            leftLabelProvider = { progress, _, _ ->
+                                val value = progress.toInt()
+                                when {
+                                    value <= StatusBarLyricsPreferences.MIN_VERTICAL_OFFSET -> getString(R.string.status_bar_lyrics_position_top)
+                                    value >= StatusBarLyricsPreferences.MAX_VERTICAL_OFFSET -> getString(R.string.status_bar_lyrics_position_bottom)
+                                    else -> "${(progress * 100f / StatusBarLyricsPreferences.MAX_VERTICAL_OFFSET).toInt()} %"
+                                }
+                            }
+                    )
+                }
+        )
+
+        val hideOnPlayer = Preference(
+                title = R.string.status_bar_lyrics_hide_on_player,
+                summary = R.string.status_bar_lyrics_hide_on_player_summary,
+                icon = R.drawable.ic_fullscreen,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, _ ->
+                    StatusBarLyricsPreferences.setHideOnPlayerScreen((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    StatusBarLyricsPreferences.isHideOnPlayerScreen()
+                }
+        )
+
+        val hideOnLyrics = Preference(
+                title = R.string.status_bar_lyrics_hide_on_lyrics,
+                summary = R.string.status_bar_lyrics_hide_on_lyrics_summary,
+                icon = R.drawable.ic_lyrics,
+                type = PreferenceType.SWITCH,
+                onPreferenceAction = { view, _ ->
+                    StatusBarLyricsPreferences.setHideOnLyricsScreen((view as FelicitySwitch).isChecked)
+                },
+                valueProvider = Supplier {
+                    StatusBarLyricsPreferences.isHideOnLyricsScreen()
+                }
+        )
+
+        val resetPosition = Preference(
+                title = R.string.status_bar_lyrics_reset_position,
+                summary = R.string.status_bar_lyrics_reset_position_summary,
+                icon = R.drawable.ic_refresh,
+                type = PreferenceType.NORMAL,
+                onPreferenceAction = { _, _ ->
+                    StatusBarLyricsPreferences.resetPosition()
+                    Toast.makeText(requireContext(), R.string.status_bar_lyrics_position_reset, Toast.LENGTH_SHORT).show()
+                    binding.recyclerView.adapter?.notifyDataSetChanged()
+                }
+        )
+
+        preferences.add(enable)
+        preferences.add(note)
+        preferences.add(permission)
+        preferences.add(appearanceHeader)
+        preferences.add(width)
+        preferences.add(lineCount)
+        preferences.add(textSize)
+        preferences.add(textColor)
+        preferences.add(stroke)
+        preferences.add(strokeColor)
+        preferences.add(strokeWidth)
+        preferences.add(alignment)
+        preferences.add(hideTranslation)
+        preferences.add(positionHeader)
+        preferences.add(horizontalPosition)
+        preferences.add(verticalPosition)
+        preferences.add(hideOnPlayer)
+        preferences.add(hideOnLyrics)
+        preferences.add(resetPosition)
+
+        return preferences
+    }
+
+    /**
+     * Opens the system screen that controls the "display over other apps" permission.
+     * Some OEMs rename or replace it, so fall back to the generic action if needed.
+     */
+    private fun openStatusBarLyricsPermissionSettings() {
+        val context = requireContext()
+        val packageUri = Uri.parse("package:${context.packageName}")
+
+        runCatching {
+            startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, packageUri))
+        }.onFailure {
+            runCatching {
+                startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION))
+            }.onFailure {
+                Log.w("PreferenceFragment", "Unable to open overlay permission settings", it)
+            }
+        }
     }
 
     protected fun createConfigurationPreferences(): List<Preference> {

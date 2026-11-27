@@ -47,6 +47,7 @@ import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.utils.AudioUtils.getProperAlbum
 import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
 import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
+import app.simple.felicity.statusbar.StatusBarLyricsController
 import app.simple.felicity.ui.panels.Equalizer
 import app.simple.felicity.ui.panels.Lyrics
 import app.simple.felicity.ui.panels.PlayingQueue
@@ -639,11 +640,21 @@ abstract class BasePlayerFragment : MediaFragment() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        StatusBarLyricsController.setPlayerScreenVisible(true)
+    }
+
     override fun onResume() {
         super.onResume()
         if (isImmersiveControlsVisible) {
             resetImmersiveFadeTimer()
         }
+    }
+
+    override fun onStop() {
+        StatusBarLyricsController.setPlayerScreenVisible(false)
+        super.onStop()
     }
 
     override fun onDestroyView() {

@@ -591,4 +591,51 @@
     <string name="crossfade_manual_skips_summary">Apply crossfade when manually skipping to next or previous tracks.</string>
     <string name="crossfade_duration">Crossfade Duration</string>
     <string name="crossfade_duration_summary">Duration to fade between tracks during playback transitions.</string>
+
+    <string name="status_bar_lyrics">Status Bar Lyrics</string>
+    <string name="status_bar_lyrics_summary">Show the current lyric line in a small floating window over the status bar.</string>
+    <string name="status_bar_lyrics_enable_summary">The overlay hides automatically while playback is paused.</string>
+    <string name="status_bar_lyrics_how_it_works">How it works</string>
+    <string name="status_bar_lyrics_note">Requires the "Display over other apps" permission. The overlay only appears while music is playing.</string>
+    <string name="status_bar_lyrics_permission">Overlay Permission</string>
+    <string name="status_bar_lyrics_permission_summary">Grant "Display over other apps" so Felicity can draw the floating lyrics.</string>
+    <string name="status_bar_lyrics_permission_missing">Grant the overlay permission to enable status bar lyrics.</string>
+    <string name="status_bar_lyrics_appearance">Appearance</string>
+    <string name="status_bar_lyrics_position">Position</string>
+    <string name="status_bar_lyrics_width">Lyrics Width</string>
+    <string name="status_bar_lyrics_width_summary">Width of the floating lyrics box (50–750 dp).</string>
+    <string name="status_bar_lyrics_text_size">Text Size</string>
+    <string name="status_bar_lyrics_text_size_summary">Lyric size in sp (8–32).</string>
+    <string name="status_bar_lyrics_text_color">Text Color</string>
+    <string name="status_bar_lyrics_text_color_summary">Colour used for the main lyric line.</string>
+    <string name="status_bar_lyrics_stroke">Text Outline</string>
+    <string name="status_bar_lyrics_stroke_summary">Draws a thin outline around the lyrics so they stay readable on any status bar.</string>
+    <string name="status_bar_lyrics_stroke_color">Outline Colour</string>
+    <string name="status_bar_lyrics_stroke_color_summary">Colour of the outline drawn around the lyrics.</string>
+    <string name="status_bar_lyrics_stroke_width">Outline Thickness</string>
+    <string name="status_bar_lyrics_stroke_width_summary">Thickness of the lyric outline, in dp.</string>
+    <string name="status_bar_lyrics_alignment">Alignment</string>
+    <string name="status_bar_lyrics_alignment_summary">Align the lyric to the left, centre or right inside the configured width.</string>
+    <string name="status_bar_lyrics_hide_translation">Hide Translation</string>
+    <string name="status_bar_lyrics_hide_translation_summary">Translations that share a timestamp with the original line are not shown.</string>
+    <string name="status_bar_lyrics_horizontal_position">Horizontal Position</string>
+    <string name="status_bar_lyrics_horizontal_position_summary">Where the floating box sits between the left and right edges.</string>
+    <string name="status_bar_lyrics_vertical_position">Vertical Position</string>
+    <string name="status_bar_lyrics_hide_on_player">Hide on Player Screen</string>
+    <string name="status_bar_lyrics_hide_on_player_summary">Hides the floating lyrics while the full player screen is open.</string>
+    <string name="status_bar_lyrics_hide_on_lyrics">Hide on Lyrics Screen</string>
+    <string name="status_bar_lyrics_hide_on_lyrics_summary">Hides the floating lyrics while a lyrics screen is open.</string>
+    <string name="status_bar_lyrics_reset_position">Reset Position</string>
+    <string name="status_bar_lyrics_reset_position_summary">Restores the default horizontal and vertical position.</string>
+    <string name="status_bar_lyrics_permission_granted">Overlay permission granted</string>
+    <string name="status_bar_lyrics_position_reset">Position reset</string>
+    <string name="status_bar_lyrics_enabled">Status bar lyrics enabled</string>
+    <string name="status_bar_lyrics_vertical_position_summary">0 places the lyric at the top of the screen, 2000 places it at the bottom. Larger values move it further down.</string>
+    <string name="status_bar_lyrics_position_top">Top</string>
+    <string name="status_bar_lyrics_position_bottom">Bottom</string>
+
+    <string name="status_bar_lyrics_line_count">Lyric Lines</string>
+    <string name="status_bar_lyrics_line_count_summary">Maximum lines used to wrap a long lyric (1 = single scrolling line, 2-4 = wrapped). Useful for long audiobook subtitles.</string>
+    <string name="status_bar_lyrics_brightness">Brightness</string>
+    <string name="status_bar_lyrics_opacity">Opacity</string>
 </resources>

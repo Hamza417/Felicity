@@ -202,6 +202,12 @@ class GenericPreferencesAdapter(
                 if (preference.icon != -1) {
                     holder.binding.icon.setImageResource(preference.icon)
                 }
+                // A recycled switch still carries the previous row's listener. FelicitySwitch
+                // fires its listener whenever setChecked changes the value (the second
+                // parameter only controls thumb animation), so clear it first. Otherwise
+                // binding e.g. a "hide translation" row with false can invoke the master
+                // switch's old action and turn the whole feature off.
+                holder.binding.switchToggle.setOnCheckedChangeListener(null)
                 holder.binding.switchToggle.setChecked(preference.valueAsBooleanProvider ?: false, false)
 
                 holder.binding.switchToggle.setOnCheckedChangeListener { switch, isChecked ->

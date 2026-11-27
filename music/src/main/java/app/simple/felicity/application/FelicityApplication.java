@@ -3,6 +3,7 @@ package app.simple.felicity.application;
 import android.app.Application;
 import android.content.SharedPreferences;
 
+import app.simple.felicity.statusbar.StatusBarLyricsService;
 import dagger.hilt.android.HiltAndroidApp;
 
 /**
@@ -17,6 +18,11 @@ public class FelicityApplication extends Application {
     public void onCreate() {
         super.onCreate();
         resetAudioDatabaseForSAFMigration();
+
+        // Restore the floating status bar lyrics as soon as the process is created,
+        // including when playback is resumed from a media notification. The service
+        // itself verifies the preference and the overlay permission.
+        StatusBarLyricsService.startIfEnabled(this);
     }
     
     /**

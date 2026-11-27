@@ -3,7 +3,6 @@ package app.simple.felicity.decorations.popups
 import android.annotation.SuppressLint
 import android.content.res.ColorStateList
 import android.graphics.Color
-import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.MotionEvent
@@ -74,7 +73,6 @@ class SharedScrollViewPopupNonContainer @JvmOverloads constructor(
 
     private fun findParentDialogContainer(): ViewGroup {
         container.children.forEach {
-            Log.d("SharedScrollViewPopup", "Child: ${it.javaClass.simpleName} - ${it.id}")
             if (it is DynamicCornerFrameLayout || it is DynamicCornerCoordinatorLayout || it is DynamicCornerLinearLayout) {
                 return it as ViewGroup
             }
@@ -157,7 +155,9 @@ class SharedScrollViewPopupNonContainer @JvmOverloads constructor(
                     scaleType = ImageView.ScaleType.FIT_CENTER
                     if (item.icon != 0) {
                         setImageDrawable(ContextCompat.getDrawable(context, item.icon))
-                        imageTintList = ColorStateList.valueOf(ThemeManager.accent.primaryAccentColor)
+                        if (item.tintIcon) {
+                            imageTintList = ColorStateList.valueOf(ThemeManager.accent.primaryAccentColor)
+                        }
                     } else {
                         // Transparent placeholder to maintain icon-column width
                         visibility = View.INVISIBLE

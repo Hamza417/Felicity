@@ -43,6 +43,7 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionError
 import androidx.media3.session.SessionResult
+import app.simple.felicity.core.constants.StatusBarLyricsConstants
 import app.simple.felicity.engine.R
 import app.simple.felicity.engine.audio.FelicityAudioSink
 import app.simple.felicity.engine.audio.SharedAudioMixer
@@ -955,6 +956,16 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
                 startPeriodicStateSaving()
                 startSnapshotPulse() // internally calls buildAndPushSnapshot() immediately, no need to call it again here
                 broadcastWidgetUpdate()
+
+                /*
+                 * The status bar lyrics host is a plain background service, so the
+                 * system may stop it while playback sits paused. Nudge the app to
+                 * bring it back whenever audio starts, including resumes triggered
+                 * from the media notification.
+                 */
+                sendBroadcast(
+                        Intent(StatusBarLyricsConstants.ACTION_START).setPackage(packageName)
+                )
             } else if (player.playbackState == Player.STATE_READY) {
                 MediaPlaybackManager.notifyPlaybackState(MediaConstants.PLAYBACK_PAUSED)
                 stopPeriodicStateSaving()

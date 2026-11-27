@@ -479,4 +479,51 @@
     <string name="stack_media_controls_summary">Apilar controles multimedia con la forma de onda para crear más espacio vertical.</string>
     <string name="timer_position">Posición del temporizador</string>
     <string name="waveform_menu">Menú de forma de onda</string>
+
+    <string name="status_bar_lyrics">Letras de la barra de estado</string>
+    <string name="status_bar_lyrics_summary">Muestra la línea actual de la letra en una pequeña ventana flotante sobre la barra de estado.</string>
+    <string name="status_bar_lyrics_enable_summary">La superposición se oculta automáticamente cuando la reproducción está en pausa.</string>
+    <string name="status_bar_lyrics_how_it_works">Cómo funciona</string>
+    <string name="status_bar_lyrics_note">Requiere el permiso «Mostrar sobre otras aplicaciones». La superposición solo aparece mientras se reproduce música.</string>
+    <string name="status_bar_lyrics_permission">Permiso de superposición</string>
+    <string name="status_bar_lyrics_permission_summary">Concede «Mostrar sobre otras aplicaciones» para que Felicity pueda dibujar las letras flotantes.</string>
+    <string name="status_bar_lyrics_permission_missing">Concede el permiso de superposición para activar las letras de la barra de estado.</string>
+    <string name="status_bar_lyrics_appearance">Apariencia</string>
+    <string name="status_bar_lyrics_position">Posición</string>
+    <string name="status_bar_lyrics_width">Ancho de la letra</string>
+    <string name="status_bar_lyrics_width_summary">Ancho del cuadro flotante de la letra (50–750 dp).</string>
+    <string name="status_bar_lyrics_text_size">Tamaño del texto</string>
+    <string name="status_bar_lyrics_text_size_summary">Tamaño de la letra en sp (8–32).</string>
+    <string name="status_bar_lyrics_text_color">Color del texto</string>
+    <string name="status_bar_lyrics_text_color_summary">Color usado para la línea principal de la letra.</string>
+    <string name="status_bar_lyrics_stroke">Contorno del texto</string>
+    <string name="status_bar_lyrics_stroke_summary">Dibuja un contorno fino alrededor de la letra para que siga siendo legible en cualquier barra de estado.</string>
+    <string name="status_bar_lyrics_stroke_color">Color del contorno</string>
+    <string name="status_bar_lyrics_stroke_color_summary">Color del contorno dibujado alrededor de la letra.</string>
+    <string name="status_bar_lyrics_stroke_width">Grosor del contorno</string>
+    <string name="status_bar_lyrics_stroke_width_summary">Grosor del contorno de la letra, en dp.</string>
+    <string name="status_bar_lyrics_alignment">Alineación</string>
+    <string name="status_bar_lyrics_alignment_summary">Alinea la letra a la izquierda, al centro o a la derecha dentro del ancho configurado.</string>
+    <string name="status_bar_lyrics_hide_translation">Ocultar traducción</string>
+    <string name="status_bar_lyrics_hide_translation_summary">No se muestran las traducciones que comparten marca de tiempo con la línea original.</string>
+    <string name="status_bar_lyrics_horizontal_position">Posición horizontal</string>
+    <string name="status_bar_lyrics_horizontal_position_summary">Dónde se sitúa el cuadro flotante entre los bordes izquierdo y derecho.</string>
+    <string name="status_bar_lyrics_vertical_position">Posición vertical</string>
+    <string name="status_bar_lyrics_vertical_position_summary">0 coloca la letra en la parte superior de la pantalla y 2000 en la inferior. Los valores más altos la desplazan más hacia abajo.</string>
+    <string name="status_bar_lyrics_position_top">Arriba</string>
+    <string name="status_bar_lyrics_position_bottom">Abajo</string>
+    <string name="status_bar_lyrics_hide_on_player">Ocultar en la pantalla de reproducción</string>
+    <string name="status_bar_lyrics_hide_on_player_summary">Oculta las letras flotantes mientras la pantalla completa de reproducción está abierta.</string>
+    <string name="status_bar_lyrics_hide_on_lyrics">Ocultar en pantalla de letras</string>
+    <string name="status_bar_lyrics_hide_on_lyrics_summary">Oculta las letras flotantes mientras una pantalla de letras está abierta.</string>
+    <string name="status_bar_lyrics_reset_position">Restablecer posición</string>
+    <string name="status_bar_lyrics_reset_position_summary">Restaura las posiciones horizontales y verticales predeterminadas.</string>
+    <string name="status_bar_lyrics_permission_granted">Permiso de superposición concedido</string>
+    <string name="status_bar_lyrics_position_reset">Posición restablecida</string>
+    <string name="status_bar_lyrics_enabled">Letras de la barra de estado activadas</string>
+
+    <string name="status_bar_lyrics_line_count">Líneas de la letra</string>
+    <string name="status_bar_lyrics_line_count_summary">Número máximo de líneas para envolver una letra larga (1 = línea única desplazándose, 2–4 = con salto de línea). Útil para subtítulos largos de audiolibros.</string>
+    <string name="status_bar_lyrics_brightness">Brillo</string>
+    <string name="status_bar_lyrics_opacity">Opacidad</string>
 </resources>

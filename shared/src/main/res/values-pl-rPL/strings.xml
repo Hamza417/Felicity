@@ -510,4 +510,51 @@
     <string name="animations">Animacje</string>
     <string name="miniplayer_width">Szerokość miniodtwarzacza</string>
     <string name="miniplayer_width_summary">Dostosuj poziomą szerokość miniodtwarzacza w trybie poziomej orientacji.</string>
+
+    <string name="status_bar_lyrics">Teksty paska stanu</string>
+    <string name="status_bar_lyrics_summary">Wyświetlaj bieżącą linię tekstu w małym pływającym oknie nad paskiem stanu.</string>
+    <string name="status_bar_lyrics_enable_summary">Nakładka ukrywa się automatycznie po wstrzymaniu odtwarzania.</string>
+    <string name="status_bar_lyrics_how_it_works">Jak to działa</string>
+    <string name="status_bar_lyrics_note">Wymaga uprawnienia „Wyświetlaj nad innymi aplikacjami“. Nakładka pojawia się tylko podczas odtwarzania muzyki.</string>
+    <string name="status_bar_lyrics_permission">Uprawnienie do nakładki</string>
+    <string name="status_bar_lyrics_permission_summary">Przyznaj „Wyświetlaj nad innymi aplikacjami“, aby Felicity mogła rysować pływające teksty.</string>
+    <string name="status_bar_lyrics_permission_missing">Przyznaj uprawnienie do nakładki, aby włączyć teksty paska stanu.</string>
+    <string name="status_bar_lyrics_appearance">Wygląd</string>
+    <string name="status_bar_lyrics_position">Położenie</string>
+    <string name="status_bar_lyrics_width">Szerokość tekstu</string>
+    <string name="status_bar_lyrics_width_summary">Szerokość pływającego pola tekstu (50–750 dp).</string>
+    <string name="status_bar_lyrics_text_size">Rozmiar tekstu</string>
+    <string name="status_bar_lyrics_text_size_summary">Rozmiar tekstu w sp (8–32).</string>
+    <string name="status_bar_lyrics_text_color">Kolor tekstu</string>
+    <string name="status_bar_lyrics_text_color_summary">Kolor używany dla głównej linii tekstu.</string>
+    <string name="status_bar_lyrics_stroke">Obrys tekstu</string>
+    <string name="status_bar_lyrics_stroke_summary">Rysuje cienki obrys wokół tekstu, aby pozostał czytelny na każdym pasku stanu.</string>
+    <string name="status_bar_lyrics_stroke_color">Kolor obrysu</string>
+    <string name="status_bar_lyrics_stroke_color_summary">Kolor obrysu wokół tekstu.</string>
+    <string name="status_bar_lyrics_stroke_width">Grubość obrysu</string>
+    <string name="status_bar_lyrics_stroke_width_summary">Grubość obrysu tekstu w dp.</string>
+    <string name="status_bar_lyrics_alignment">Wyrównanie</string>
+    <string name="status_bar_lyrics_alignment_summary">Wyrównuje tekst do lewej, środka lub prawej w ustawionej szerokości.</string>
+    <string name="status_bar_lyrics_hide_translation">Ukryj tłumaczenie</string>
+    <string name="status_bar_lyrics_hide_translation_summary">Tłumaczenia o tym samym znaczniku czasowym co oryginalna linia nie są wyświetlane.</string>
+    <string name="status_bar_lyrics_horizontal_position">Położenie poziome</string>
+    <string name="status_bar_lyrics_horizontal_position_summary">Położenie pływającego pola między lewą a prawą krawędzią ekranu.</string>
+    <string name="status_bar_lyrics_vertical_position">Położenie pionowe</string>
+    <string name="status_bar_lyrics_vertical_position_summary">0 umieszcza tekst na górze ekranu, 2000 na dole. Wyższe wartości przesuwają go niżej.</string>
+    <string name="status_bar_lyrics_position_top">Góra</string>
+    <string name="status_bar_lyrics_position_bottom">Dół</string>
+    <string name="status_bar_lyrics_hide_on_player">Ukryj na ekranie odtwarzania</string>
+    <string name="status_bar_lyrics_hide_on_player_summary">Ukrywa pływające teksty, gdy otwarty jest pełny ekran odtwarzania.</string>
+    <string name="status_bar_lyrics_hide_on_lyrics">Ukryj na ekranie tekstów</string>
+    <string name="status_bar_lyrics_hide_on_lyrics_summary">Ukrywa pływające teksty, gdy otwarty jest ekran tekstów.</string>
+    <string name="status_bar_lyrics_reset_position">Zresetuj położenie</string>
+    <string name="status_bar_lyrics_reset_position_summary">Przywraca domyślne położenie poziome i pionowe.</string>
+    <string name="status_bar_lyrics_permission_granted">Uprawnienie do nakładki przyznane</string>
+    <string name="status_bar_lyrics_position_reset">Położenie zresetowane</string>
+    <string name="status_bar_lyrics_enabled">Teksty paska stanu włączone</string>
+
+    <string name="status_bar_lyrics_line_count">Linie tekstu</string>
+    <string name="status_bar_lyrics_line_count_summary">Maksymalna liczba linii dla długiego tekstu (1 = pojedyncza przewijana linia, 2–4 = zawijanie). Przydatne dla długich napisów audiobooków.</string>
+    <string name="status_bar_lyrics_brightness">Jasność</string>
+    <string name="status_bar_lyrics_opacity">Nieprzezroczystość</string>
 </resources>

@@ -86,6 +86,7 @@ class PreferenceSearch : PreferenceFragment() {
         val all = mutableListOf<Preference>()
         all.addAll(createAppearancePanel())
         all.addAll(createUserInterfacePanel())
+        all.addAll(createStatusBarLyricsPanel())
         all.addAll(createBehaviorPanel())
         all.addAll(createEnginePanel())
         all.addAll(createLibraryPanel())
