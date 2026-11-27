@@ -73,25 +73,27 @@ class FelicityWidgetProvider : BaseWidgetProvider() {
     }
 
     /**
-     * Puts the album art bitmap in the art view, or falls back to the app icon
+     * Puts the album art bitmap in the art view, or falls back to a black drawable
      * if Glide came back empty-handed.
      */
     override fun applyAlbumArt(views: RemoteViews, bitmap: Bitmap?) {
         if (bitmap != null) {
             views.setImageViewBitmap(R.id.widget_album_art, bitmap)
         } else {
-            views.setImageViewResource(R.id.widget_album_art, R.mipmap.ic_launcher)
+            views.setImageViewResource(R.id.widget_album_art, android.R.color.black)
         }
     }
 
     /**
      * Puts the blurred background bitmap in the background view.
-     * If there is no bitmap (no song loaded yet) we just leave the background
-     * as-is — the XML default will show through.
+     * If there is no bitmap (no song loaded yet) we fall back to a black background
+     * so that the white text and controls remain visible.
      */
     override fun applyBackgroundArt(views: RemoteViews, bitmap: Bitmap?) {
         if (bitmap != null) {
             views.setImageViewBitmap(R.id.widget_background_view, bitmap)
+        } else {
+            views.setImageViewResource(R.id.widget_background_view, android.R.color.black)
         }
     }
 }

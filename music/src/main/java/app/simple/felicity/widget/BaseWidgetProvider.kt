@@ -15,6 +15,8 @@ import app.simple.felicity.repository.database.instances.AudioDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -172,13 +174,14 @@ abstract class BaseWidgetProvider : AppWidgetProvider() {
 
         // load bitmaps — this can take a moment, so we push a second update
         // once they arrive. Both are loaded concurrently to keep things snappy.
-        val bgBitmap = loadBackgroundArt(context, manager, widgetId, songId)
-        applyBackgroundArt(views, bgBitmap)
-        manager.updateAppWidget(widgetId, views)
+        coroutineScope {
+            val bgBitmapJob = async { loadBackgroundArt(context, manager, widgetId, songId) }
+            val artBitmapJob = async { loadAlbumArt(context, songId) }
 
-        val artBitmap = loadAlbumArt(context, songId)
-        applyAlbumArt(views, artBitmap)
-        manager.updateAppWidget(widgetId, views)
+            applyBackgroundArt(views, bgBitmapJob.await())
+            applyAlbumArt(views, artBitmapJob.await())
+            manager.updateAppWidget(widgetId, views)
+        }
     }
 
     // -------------------------------------------------------------------------

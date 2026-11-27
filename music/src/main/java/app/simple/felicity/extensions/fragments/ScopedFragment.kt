@@ -86,7 +86,7 @@ abstract class ScopedFragment : Fragment(), SharedPreferences.OnSharedPreference
     }
 
     /**
-     * Called when any preferences is changed using [app.simple.felicity.manager.SharedPreferences.getSharedPreferences]
+     * Called when any preferences are changed using [app.simple.felicity.manager.SharedPreferences.getSharedPreferences]
      *
      * Override this to get any preferences change events inside
      * the fragment
