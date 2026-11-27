@@ -38,6 +38,10 @@ object AudioCoverUtils {
 
         if (crop) transformations.add(CenterCrop())
         if (bezierGradient) transformations.add(BezierGradientTransformation())
+        if (blur) transformations.add(Blur(72))
+        if (greyscale) transformations.add(Greyscale())
+        if (darken) transformations.add(Darken(0.3F))
+        if (vignette) transformations.add(VignetteTransformation())
         if (roundedCorners) transformations.add(RoundedCorners(AppearancePreferences.getCornerRadius().toInt()))
         if (shadow) {
             transformations.add(Padding(BlurShadow.DEFAULT_SHADOW_SIZE.toInt()))
@@ -48,10 +52,6 @@ object AudioCoverUtils {
                         .setBlurRadius(BlurShadow.DEFAULT_SHADOW_SIZE)
             )
         }
-        if (blur) transformations.add(Blur(72))
-        if (greyscale) transformations.add(Greyscale())
-        if (darken) transformations.add(Darken(0.3F))
-        if (vignette) transformations.add(VignetteTransformation())
 
         val glideRequest = Glide.with(this)
             .asBitmap()
@@ -121,6 +121,9 @@ object AudioCoverUtils {
         val transformations = mutableListOf<Transformation<Bitmap>>()
 
         if (crop) transformations.add(CenterCrop())
+        if (blur) transformations.add(Blur(16))
+        if (greyscale) transformations.add(Greyscale())
+        if (darken) transformations.add(Darken(0.6F))
         if (roundedCorners) transformations.add(RoundedCorners(AppearancePreferences.getCornerRadius().toInt()))
         if (shadow) {
             transformations.add(Padding(BlurShadow.DEFAULT_SHADOW_SIZE.toInt()))
@@ -131,9 +134,6 @@ object AudioCoverUtils {
                         .setBlurRadius(BlurShadow.DEFAULT_SHADOW_SIZE)
             )
         }
-        if (blur) transformations.add(Blur(16))
-        if (greyscale) transformations.add(Greyscale())
-        if (darken) transformations.add(Darken(0.6F))
 
         val glideRequest = Glide.with(this)
             .asBitmap()
