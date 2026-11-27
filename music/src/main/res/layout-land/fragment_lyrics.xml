@@ -2,7 +2,6 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:orientation="horizontal"
     android:layout_height="match_parent"
     android:clipChildren="false">
 
@@ -29,35 +28,29 @@
 
     </FrameLayout>
 
-    <FrameLayout
+    <app.simple.felicity.decorations.lrc.view.FelicityLrcView
+        android:id="@+id/lrc"
+        android:layout_width="match_parent"
+        android:paddingHorizontal="@dimen/padding_25"
+        android:layout_height="match_parent" />
+
+    <app.simple.felicity.decorations.padding.PaddingAwareFrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:paddingHorizontal="@dimen/padding_20"
+        android:clipChildren="false"
+        android:clipToPadding="false"
         app:navigationPaddingRequired="true"
         app:statusPaddingRequired="false">
 
-        <app.simple.felicity.decorations.lrc.view.FelicityLrcView
-            android:id="@+id/lrc"
-            android:layout_width="match_parent"
-            android:paddingHorizontal="@dimen/padding_5"
-            android:layout_height="match_parent" />
-
-        <LinearLayout
+        <app.simple.felicity.decorations.highlight.HighlightLinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:clipChildren="false"
             android:clipToPadding="false"
-            android:layout_gravity="bottom|end"
-            android:layout_marginBottom="90dp">
-
-            <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
-                android:id="@+id/settings"
-                android:layout_width="@dimen/button_size"
-                android:layout_height="@dimen/button_size"
-                android:layout_marginBottom="@dimen/padding_5"
-                android:src="@drawable/ic_menu"
-                app:buttonTintType="regular" />
+            android:layout_gravity="center_vertical|end"
+            android:gravity="center"
+            app:highlightMode="both">
 
             <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
                 android:id="@+id/search"
@@ -66,8 +59,15 @@
                 android:src="@drawable/ic_search"
                 app:buttonTintType="regular" />
 
-        </LinearLayout>
+            <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+                android:id="@+id/settings"
+                android:layout_width="@dimen/button_size"
+                android:layout_height="@dimen/button_size"
+                android:src="@drawable/ic_menu"
+                app:buttonTintType="regular" />
 
-    </FrameLayout>
+        </app.simple.felicity.decorations.highlight.HighlightLinearLayout>
+
+    </app.simple.felicity.decorations.padding.PaddingAwareFrameLayout>
 
 </FrameLayout>

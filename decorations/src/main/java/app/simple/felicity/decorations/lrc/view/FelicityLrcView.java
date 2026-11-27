@@ -190,21 +190,16 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
      */
     private long durationMs = 0L;
     
-    private final Runnable autoScrollRunnable = () -> {
-        if (isUserScrolling) {
-            isUserScrolling = false;
-            if (onLrcScrollListener != null) {
-                onLrcScrollListener.onScrollStateChanged(false);
-            }
-        }
-        if (isAutoScrollEnabled && currentLineIndex >= 0) {
-            scrollToLine(currentLineIndex);
-        }
-    };
     // Auto scroll resume
     private OnLrcScrollListener onLrcScrollListener;
     // Callbacks
     private OnLrcClickListener onLrcClickListener;
+    
+    private final Runnable autoScrollRunnable = () -> {
+        if (isAutoScrollEnabled && currentLineIndex >= 0) {
+            scrollToLine(currentLineIndex);
+        }
+    };
     
     // Ripple effect
     private FelicityRippleDrawable rippleDrawable;
@@ -2066,6 +2061,10 @@ public class FelicityLrcView extends View implements ThemeChangedListener {
             snapBackFromOverscroll();
             
             if (isUserScrolling) {
+                isUserScrolling = false;
+                if (onLrcScrollListener != null) {
+                    onLrcScrollListener.onScrollStateChanged(false);
+                }
                 // Resume auto-scrolling after delay
                 postDelayed(autoScrollRunnable, AUTO_SCROLL_DELAY);
             }

@@ -93,7 +93,9 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
             if (isScrolling) {
                 hideMiniPlayer()
             } else {
-                showMiniPlayer()
+                postDelayed {
+                    showMiniPlayer()
+                }
             }
         }
 
@@ -236,6 +238,7 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
             binding.search.setTintMode(ThemeImageButton.WHITE)
             binding.settings.setTintMode(ThemeImageButton.WHITE)
             requireLightBarIcons()
+            enableTransparentMiniPlayer()
         } else {
             if (animate) {
                 binding.coverContainer.animate()
@@ -251,6 +254,7 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
 
             binding.search.setTintMode(ThemeImageButton.REGULAR)
             binding.settings.setTintMode(ThemeImageButton.REGULAR)
+            disableTransparentMiniPlayer()
 
             /**
              * We cannot just set dark bar colors since user can be on any theme

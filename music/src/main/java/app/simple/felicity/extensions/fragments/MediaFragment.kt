@@ -537,6 +537,14 @@ open class MediaFragment : KeyboardScopedFragment(), MiniPlayerPolicy {
         })
     }
 
+    protected fun enableTransparentMiniPlayer() {
+        miniPlayerCallbacks?.onMakeTransparentMiniPlayer()
+    }
+
+    protected fun disableTransparentMiniPlayer() {
+        miniPlayerCallbacks?.onMakeOpaqueMiniPlayer()
+    }
+
     open fun onPlaybackStateChanged(state: Int) {
         Log.d(TAG, "Playback state changed: $state")
     }
