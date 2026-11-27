@@ -29,45 +29,126 @@
 
     </FrameLayout>
 
-    <FrameLayout
+    <app.simple.felicity.decorations.padding.NonThemePaddingAwareLinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:paddingHorizontal="@dimen/padding_20"
+        android:orientation="horizontal"
         app:navigationPaddingRequired="true"
         app:statusPaddingRequired="false">
 
         <app.simple.felicity.decorations.lrc.view.FelicityLrcView
             android:id="@+id/lrc"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:paddingHorizontal="@dimen/padding_5"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
+
+        <app.simple.felicity.decorations.theme.ThemeDivider
+            android:layout_width="1px"
+            android:layout_marginHorizontal="@dimen/padding_20"
             android:layout_height="match_parent" />
 
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
+        <app.simple.felicity.decorations.padding.NonThemePaddingAwareLinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="0.80"
             android:clipChildren="false"
             android:clipToPadding="false"
-            android:layout_gravity="bottom|end"
-            android:layout_marginBottom="90dp">
+            android:orientation="vertical">
 
-            <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
-                android:id="@+id/settings"
-                android:layout_width="@dimen/button_size"
-                android:layout_height="@dimen/button_size"
-                android:layout_marginBottom="@dimen/padding_5"
-                android:src="@drawable/ic_menu"
-                app:buttonTintType="regular" />
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
 
-            <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
-                android:id="@+id/search"
-                android:layout_width="@dimen/button_size"
-                android:layout_height="@dimen/button_size"
-                android:src="@drawable/ic_search"
-                app:buttonTintType="regular" />
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:id="@+id/title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="10dp"
+                android:layout_marginTop="8dp"
+                android:drawablePadding="@dimen/padding_5"
+                android:ellipsize="end"
+                android:gravity="center"
+                android:maxLines="1"
+                android:textSize="@dimen/text_size_18"
+                app:appFontStyle="bold"
+                app:drawableTintStyle="custom"
+                app:layout_constraintBottom_toTopOf="@+id/artists"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toEndOf="@id/cover"
+                app:layout_constraintTop_toTopOf="@+id/cover"
+                app:layout_constraintVertical_chainStyle="packed"
+                app:textColorStyle="primary" />
 
-        </LinearLayout>
+            <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                android:id="@+id/artists"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="10dp"
+                android:ellipsize="end"
+                android:gravity="center"
+                android:maxLines="1"
+                android:textSize="@dimen/text_size_14"
+                android:layout_marginBottom="@dimen/padding_15"
+                app:appFontStyle="medium"
+                app:layout_constraintBottom_toBottomOf="@+id/cover"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toEndOf="@id/cover"
+                app:layout_constraintTop_toBottomOf="@+id/title"
+                app:textColorStyle="accent" />
 
-    </FrameLayout>
+            <LinearLayout
+                android:id="@+id/linearLayout2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:clipChildren="false"
+                android:clipToPadding="false"
+                android:gravity="center_vertical">
+
+                <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+                    android:id="@+id/settings"
+                    android:layout_width="@dimen/button_size"
+                    android:layout_height="@dimen/button_size"
+                    android:layout_marginEnd="@dimen/padding_1"
+                    android:src="@drawable/ic_menu"
+                    android:layout_gravity="center_vertical"
+                    app:buttonTintType="regular" />
+
+                <app.simple.felicity.decorations.views.FelicityMediaControls
+                    android:id="@+id/media_controls"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="3"
+                    android:clipChildren="false"
+                    android:clipToPadding="false" />
+
+                <app.simple.felicity.decorations.ripple.DynamicRippleImageButton
+                    android:id="@+id/search"
+                    android:layout_width="@dimen/button_size"
+                    android:layout_height="@dimen/button_size"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginEnd="@dimen/padding_1"
+                    android:src="@drawable/ic_search"
+                    app:buttonTintType="regular" />
+
+            </LinearLayout>
+
+            <app.simple.felicity.decorations.seekbars.WaveformSeekbar
+                android:id="@+id/seekbar"
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                android:layout_gravity="center_vertical"
+                app:wsbBarWidth="7dp"
+                app:wsbLabelEdgeMargin="@dimen/padding_10"
+                app:wsbLabelGravity="center"
+                app:wsbLabelHighlightMode="both"
+                app:wsbWaveformMode="full" />
+
+        </app.simple.felicity.decorations.padding.NonThemePaddingAwareLinearLayout>
+
+    </app.simple.felicity.decorations.padding.NonThemePaddingAwareLinearLayout>
 
 </FrameLayout>

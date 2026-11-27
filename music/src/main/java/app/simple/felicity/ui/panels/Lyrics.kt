@@ -6,6 +6,7 @@ import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.text.format.DateUtils
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -15,7 +16,11 @@ import androidx.lifecycle.lifecycleScope
 import app.simple.felicity.R
 import app.simple.felicity.databinding.FragmentLyricsBinding
 import app.simple.felicity.decorations.lrc.view.FelicityLrcView
+import app.simple.felicity.decorations.seekbars.WaveformSeekbar
 import app.simple.felicity.decorations.theme.ThemeImageButton
+import app.simple.felicity.decorations.typeface.TypeFaceTextView
+import app.simple.felicity.decorations.utils.TextViewUtils.setTextWithEffect
+import app.simple.felicity.decorations.views.FelicityMediaControls.Companion.MediaControlListener
 import app.simple.felicity.dialogs.lyrics.AddLyrics
 import app.simple.felicity.dialogs.lyrics.AddLyrics.Companion.showAddLyrics
 import app.simple.felicity.dialogs.lyrics.LyricsMenu
@@ -29,7 +34,11 @@ import app.simple.felicity.glide.transformation.VignetteTransformation
 import app.simple.felicity.managers.LyricsLoadingStatus
 import app.simple.felicity.preferences.AlbumArtPreferences
 import app.simple.felicity.preferences.LyricsPreferences
+import app.simple.felicity.preferences.UserInterfacePreferences
+import app.simple.felicity.repository.constants.MediaConstants
 import app.simple.felicity.repository.models.Audio
+import app.simple.felicity.repository.utils.AudioUtils.getProperArtists
+import app.simple.felicity.repository.utils.AudioUtils.getProperTitle
 import app.simple.felicity.shared.utils.ViewUtils.gone
 import app.simple.felicity.shared.utils.ViewUtils.visible
 import app.simple.felicity.theme.managers.ThemeUtils
@@ -37,6 +46,7 @@ import app.simple.felicity.ui.panels.Lyrics.Companion.TEXT_SIZE_DEBOUNCE_MS
 import app.simple.felicity.ui.subpanels.LrcEditor
 import app.simple.felicity.ui.subpanels.LyricsSearch
 import app.simple.felicity.viewmodels.player.LyricsViewModel
+import app.simple.felicity.viewmodels.player.WaveformViewModel
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.Transformation
 import com.bumptech.glide.load.engine.DiskCacheStrategy
@@ -61,9 +71,19 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
      */
     private var currentAudioPath: String? = null
 
+    /**
+     * Holds an [Audio] track whose waveform has been requested but whose load has been
+     * intentionally deferred because ExoPlayer has not yet reached the playing state.
+     * Cleared to `null` as soon as [loadWaveformWhenReady] actually kicks off the decode.
+     */
+    private var pendingWaveformAudio: Audio? = null
+
     /** Debounce handler – coalesces rapid text-size changes from the slider. */
     private val textSizeHandler = Handler(Looper.getMainLooper())
     private val textSizeRunnable = Runnable { applyTextSize() }
+
+    /** ViewModel that decodes and exposes the per-second waveform amplitude data. */
+    private val waveformViewModel: WaveformViewModel by viewModels()
 
     /**
      * Reads from the shared [app.simple.felicity.managers.LyricsManager] so this panel and
@@ -87,14 +107,6 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
 
         binding.lrc.setOnLrcClickListener { timeInMillis, _ ->
             MediaPlaybackManager.seekTo(timeInMillis)
-        }
-
-        binding.lrc.setOnLrcScrollListener { isScrolling ->
-            if (isScrolling) {
-                hideMiniPlayer()
-            } else {
-                showMiniPlayer()
-            }
         }
 
         binding.settings.setOnClickListener {
@@ -132,6 +144,28 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
                 }
             })
         }
+
+        binding.mediaControls.setMediaControlListener(object : MediaControlListener {
+            override fun onPreviousClick() {
+                MediaPlaybackManager.previous()
+            }
+
+            override fun onNextClick() {
+                MediaPlaybackManager.next()
+            }
+
+            override fun onPlayClick() {
+                MediaPlaybackManager.flipState()
+            }
+
+            override fun onForwardStep() {
+                MediaPlaybackManager.seekRelative(SEEK_PER_PULSE_MS)
+            }
+
+            override fun onRewindStep() {
+                MediaPlaybackManager.seekRelative(-SEEK_PER_PULSE_MS)
+            }
+        })
 
         binding.search.setOnClickListener {
             openFragment(LyricsSearch.newInstance(), LyricsSearch.TAG)
@@ -181,6 +215,28 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
             Log.d(TAG, "LRC editor saved signal received, reloading lrc data.")
             lyricsViewModel.reloadLrcData()
         }
+
+        binding.seekbar.setLeftLabelProvider { progress, _, _ ->
+            DateUtils.formatElapsedTime(progress.div(1000))
+        }
+
+        binding.seekbar.setRightLabelProvider { _, _, max ->
+            DateUtils.formatElapsedTime(max.div(1000))
+        }
+
+        binding.seekbar.setOnSeekListener(object : WaveformSeekbar.OnSeekListener {
+            override fun onSeekEnd(positionMs: Long) {
+                MediaPlaybackManager.seekTo(positionMs)
+            }
+        })
+
+        binding.seekbar.setOnFlingEndListener { positionMs ->
+            MediaPlaybackManager.seekTo(positionMs)
+        }
+
+        waveformViewModel.getWaveformData().observe(viewLifecycleOwner) { amplitudes ->
+            binding.seekbar.setAmplitudes(amplitudes)
+        }
     }
 
     private fun setAlignment(animate: Boolean = false) {
@@ -207,11 +263,54 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
         textSizeHandler.postDelayed(textSizeRunnable, TEXT_SIZE_DEBOUNCE_MS)
     }
 
+    private fun updatePlayButtonState(isPlaying: Boolean) {
+        binding.mediaControls.setPlaying(isPlaying)
+    }
+
     private fun updateState() {
         val audio = MediaPlaybackManager.getCurrentSong() ?: return
         currentAudioPath = audio.uri
+        binding.title.text = audio.getProperTitle()
+        binding.artists.text = audio.getProperArtists()
         loadArtCover(audio)
         binding.lrc.setDuration(audio.duration)
+        binding.seekbar.setDuration(audio.duration)
+        binding.seekbar.setProgress(MediaPlaybackManager.getSeekPosition(), animate = false)
+        updatePlayButtonState(MediaPlaybackManager.isPlaying())
+
+        binding.seekbar.optics = UserInterfacePreferences.getWaveformOptics()
+
+        binding.seekbar.layoutMode = if (UserInterfacePreferences.isWaveformFullMode()) {
+            WaveformSeekbar.LAYOUT_MODE_FULL
+        } else {
+            WaveformSeekbar.LAYOUT_MODE_SCROLLING
+        }
+
+        // Defer waveform decoding until ExoPlayer is actually playing to avoid
+        // Amplituda and ExoPlayer fighting over the same file I/O resources.
+        loadWaveformWhenReady(audio)
+    }
+
+    /**
+     * Schedules waveform decoding for [audio].
+     *
+     * The decode starts immediately when the player is already playing or in a ready state
+     * (paused or playing). If the player is still buffering or idle, [audio] is stored in
+     * [pendingWaveformAudio] and the decode is deferred until [onPlaybackStateChanged]
+     * receives [MediaConstants.PLAYBACK_READY] or [MediaConstants.PLAYBACK_PLAYING].
+     *
+     * This prevents Amplituda and ExoPlayer from contending over the same file I/O
+     * resources during the initial buffering phase.
+     *
+     * @param audio the track whose waveform should be decoded
+     */
+    private fun loadWaveformWhenReady(audio: Audio) {
+        if (MediaPlaybackManager.isPlaying() || MediaPlaybackManager.isPlayerReady()) {
+            waveformViewModel.loadWaveform(audio)
+            pendingWaveformAudio = null
+        } else {
+            pendingWaveformAudio = audio
+        }
     }
 
     @Suppress("SameParameterValue")
@@ -233,6 +332,8 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
                 binding.coverContainer.alpha = 1f
             }
 
+            binding.title.setTextColorMode(TypeFaceTextView.WHITE)
+            binding.artists.setTextColorMode(TypeFaceTextView.SECONDARY_WHITE)
             binding.search.setTintMode(ThemeImageButton.WHITE)
             binding.settings.setTintMode(ThemeImageButton.WHITE)
             requireLightBarIcons()
@@ -249,6 +350,8 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
                 binding.coverContainer.alpha = 0f
             }
 
+            binding.title.setTextColorMode(TypeFaceTextView.BOLD)
+            binding.artists.setTextColorMode(TypeFaceTextView.SECONDARY)
             binding.search.setTintMode(ThemeImageButton.REGULAR)
             binding.settings.setTintMode(ThemeImageButton.REGULAR)
 
@@ -262,7 +365,7 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
     }
 
     override val wantsMiniPlayerVisible: Boolean
-        get() = true
+        get() = false
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
@@ -290,6 +393,7 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
     override fun onSeekChanged(seek: Long) {
         super.onSeekChanged(seek)
         binding.lrc.updateTime(seek + lyricsViewModel.syncOffset)
+        binding.seekbar.setProgress(seek, animate = true)
     }
 
     override fun onAudio(audio: Audio) {
@@ -300,8 +404,46 @@ class Lyrics : MediaFragment(), AddLyrics.Companion.OnLyricsCreatedListener {
 
         if (!isSameSong) {
             lyricsViewModel.loadLrcData()
+            val forward = MediaPlaybackManager.lastNavigationDirection
+            binding.title.setTextWithEffect(audio.getProperTitle(), forward)
+            binding.artists.setTextWithEffect(audio.getProperArtists(), forward, 50L)
             loadArtCover(audio)
             binding.lrc.setDuration(audio.duration)
+            binding.seekbar.setDurationWithReset(audio.duration)
+        }
+
+        // Always refresh the seek position (covers predictive-back resume and actual changes).
+        binding.seekbar.setProgress(MediaPlaybackManager.getSeekPosition(), animate = true)
+
+        // Defer waveform decoding until ExoPlayer is actually playing to avoid
+        // Amplituda and ExoPlayer fighting over the same file I/O resources.
+        loadWaveformWhenReady(audio)
+    }
+
+    override fun onPlaybackStateChanged(state: Int) {
+        super.onPlaybackStateChanged(state)
+        when (state) {
+            MediaConstants.PLAYBACK_READY -> {
+                // ExoPlayer has finished buffering and the decoder is ready. This is the
+                // earliest safe moment to run Amplituda's extraction in parallel, regardless
+                // of whether playback will start immediately or stay paused.
+                pendingWaveformAudio?.let { audio ->
+                    waveformViewModel.loadWaveform(audio)
+                    pendingWaveformAudio = null
+                }
+            }
+            MediaConstants.PLAYBACK_PLAYING -> {
+                updatePlayButtonState(true)
+                // Also drain any pending waveform that was queued before the ready event arrived
+                // (e.g., when the service emits PLAYING without a preceding READY being observed).
+                pendingWaveformAudio?.let { audio ->
+                    waveformViewModel.loadWaveform(audio)
+                    pendingWaveformAudio = null
+                }
+            }
+            MediaConstants.PLAYBACK_PAUSED -> {
+                updatePlayButtonState(false)
+            }
         }
     }
 
