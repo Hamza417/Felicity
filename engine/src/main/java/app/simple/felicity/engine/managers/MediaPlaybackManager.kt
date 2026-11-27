@@ -235,6 +235,9 @@ object MediaPlaybackManager {
         private set
 
     fun setMediaController(controller: MediaController) {
+        if (mediaController != null && mediaController !== controller) {
+            mediaController?.release()
+        }
         mediaController = controller
         // If controller is already playing when set, ensure seek updates are running
         if (controller.isPlaying) startSeekPositionUpdates() else stopSeekPositionUpdates()

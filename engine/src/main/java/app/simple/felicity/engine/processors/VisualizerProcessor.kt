@@ -63,7 +63,18 @@ class VisualizerProcessor : BaseAudioProcessor() {
     val bandCount: Int = BAND_COUNT
 
     @Volatile
-    private var fftSize = AudioPreferences.getFftResolution()
+    private var fftSize = 1024 // Default safe value, updated later via SharedPreferences if needed
+
+    init {
+        // Only attempt to read from SharedPreferences if it's already initialized.
+        // During a cold boot from a widget broadcast, the AudioProcessorManager is instantiated
+        // before the Application/Service has a chance to initialize SharedPreferences.
+        try {
+            fftSize = AudioPreferences.getFftResolution()
+        } catch (_: NullPointerException) {
+            // SharedPreferences not initialized yet, use default safe value.
+        }
+    }
 
     /** Circular buffer that accumulates mono PCM samples before each FFT window. */
     private var sampleBuffer = FloatArray(fftSize)

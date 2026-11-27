@@ -63,14 +63,22 @@ class WidgetActionReceiver : BroadcastReceiver() {
 
         Futures.addCallback(controllerFuture, object : FutureCallback<MediaController> {
             override fun onSuccess(controller: MediaController) {
-                handleAction(context, controller, action) {
-                    // Release the controller a moment after the command was sent so ExoPlayer
-                    // has time to process it before we let go of the connection.
-                    Handler(Looper.getMainLooper()).postDelayed({
-                                                                    controller.release()
-                                                                    pendingResult.finish()
-                                                                }, 600L)
-                }
+                handleAction(context, controller, action,
+                             onHandled = {
+                                 // Release the controller a moment after the command was sent so ExoPlayer
+                                 // has time to process it before we let go of the connection.
+                                 Handler(Looper.getMainLooper()).postDelayed({
+                                                                                 controller.release()
+                                                                                 pendingResult.finish()
+                                                                             }, 600L)
+                             },
+                             onKept = {
+                                 // The controller was handed to MediaPlaybackManager, so we MUST NOT release it.
+                                 // Otherwise, the service will lose its only bound client and be killed before
+                                 // it can reach the foreground state.
+                                 pendingResult.finish()
+                             }
+                )
             }
 
             override fun onFailure(t: Throwable) {
@@ -86,16 +94,20 @@ class WidgetActionReceiver : BroadcastReceiver() {
      * For play/pause specifically, we check whether the player's queue is empty.
      * An empty queue means the service was just cold-started from a dead state —
      * in that case we restore the saved queue from the database first, then play.
-     *
-     * [onDone] is called when the command has been issued so the caller can clean up.
      */
-    private fun handleAction(context: Context, controller: MediaController, action: String, onDone: () -> Unit) {
+    private fun handleAction(
+            context: Context,
+            controller: MediaController,
+            action: String,
+            onHandled: () -> Unit,
+            onKept: () -> Unit
+    ) {
         when (action) {
             ACTION_PLAY_PAUSE -> {
                 if (controller.mediaItemCount == 0) {
                     // Queue is empty — the service just started from scratch and doesn't know
                     // what to play yet. Dig up the last session from the database and load it.
-                    restoreQueueAndPlay(context, controller, onDone)
+                    restoreQueueAndPlay(context, controller, onKept)
                 } else {
                     // There is already something loaded — just flip the play/pause state.
                     if (controller.isPlaying) {
@@ -103,34 +115,37 @@ class WidgetActionReceiver : BroadcastReceiver() {
                     } else {
                         controller.play()
                     }
-                    onDone()
+                    onHandled()
                 }
             }
 
             ACTION_NEXT -> {
                 if (controller.mediaItemCount == 0) {
-                    restoreQueueAndPlay(context, controller, onDone)
+                    restoreQueueAndPlay(context, controller, onKept)
                 } else {
                     controller.seekToNextMediaItem()
-                    onDone()
+                    onHandled()
                 }
             }
 
             ACTION_PREV -> {
                 if (controller.mediaItemCount == 0) {
-                    restoreQueueAndPlay(context, controller, onDone)
+                    restoreQueueAndPlay(context, controller, onKept)
                 } else {
                     controller.seekToPreviousMediaItem()
-                    onDone()
+                    onHandled()
                 }
             }
             ACTION_OPEN_APP -> {
                 val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-                context.startActivity(launchIntent)
-                onDone()
+                if (launchIntent != null) {
+                    launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(launchIntent)
+                }
+                onHandled()
             }
 
-            else -> onDone()
+            else -> onHandled()
         }
     }
 
@@ -173,7 +188,21 @@ class WidgetActionReceiver : BroadcastReceiver() {
                         )
                     }
                 } else {
-                    Log.w(TAG, "No saved queue found — nothing to play from widget.")
+                    Log.w(TAG, "No saved queue found, playing all songs instead.")
+                    val allSongs = db.audioDao()?.getAllAudioList()
+                    if (!allSongs.isNullOrEmpty()) {
+                        withContext(Dispatchers.Main) {
+                            MediaPlaybackManager.setMediaController(controller)
+                            MediaPlaybackManager.setActiveQueueId(1)
+                            MediaPlaybackManager.setSongs(
+                                    audios = allSongs,
+                                    position = 0,
+                                    startPositionMs = 0L,
+                                    autoPlay = true,
+                                    isRestore = false
+                            )
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error restoring queue from database: ${e.message}", e)

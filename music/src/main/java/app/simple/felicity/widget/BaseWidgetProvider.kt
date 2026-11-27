@@ -277,13 +277,27 @@ abstract class BaseWidgetProvider : AppWidgetProvider() {
      * Each action gets a unique request code derived from its hash so the three
      * control buttons never accidentally overwrite each other's pending intents.
      */
-    protected fun buildPendingIntent(context: Context, action: String): PendingIntent =
-        PendingIntent.getBroadcast(
-                context,
-                action.hashCode(),
-                Intent(action, null, context, WidgetActionReceiver::class.java),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    protected fun buildPendingIntent(context: Context, action: String): PendingIntent {
+        if (action == WidgetActionReceiver.ACTION_OPEN_APP) {
+            val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            } ?: Intent()
+
+            return PendingIntent.getActivity(
+                    /* context = */ context,
+                    /* requestCode = */ action.hashCode(),
+                    /* intent = */ launchIntent,
+                    /* flags = */ PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        }
+
+        return PendingIntent.getBroadcast(
+                /* context = */ context,
+                /* requestCode = */ action.hashCode(),
+                /* intent = */ Intent(action, null, context, WidgetActionReceiver::class.java),
+                /* flags = */ PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+    }
 
     companion object {
         /** Sent by FelicityPlayerService whenever the song or playback state changes. */
