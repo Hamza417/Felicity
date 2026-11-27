@@ -47,6 +47,7 @@ class AdapterPlayingQueue(initial: List<Audio>) : FastScrollAdapter<AdapterPlayi
 
     private var generalAdapterCallbacks: GeneralAdapterCallbacks? = null
     private var itemTouchHelper: ItemTouchHelper? = null
+    private var dragShimmerCallback: DragShimmerCallback? = null
     private var onItemMovedCallback: ((fromPosition: Int, toPosition: Int) -> Unit)? = null
     private var onItemSwipedCallback: ((position: Int) -> Unit)? = null
 
@@ -74,6 +75,7 @@ class AdapterPlayingQueue(initial: List<Audio>) : FastScrollAdapter<AdapterPlayi
         super.onAttachedToRecyclerView(recyclerView)
         val accentColor = ThemeManager.accent.primaryAccentColor
         val callback = DragShimmerCallback(recyclerView.context, accentColor)
+        dragShimmerCallback = callback
         itemTouchHelper = ItemTouchHelper(callback)
         itemTouchHelper?.attachToRecyclerView(recyclerView)
     }
@@ -81,6 +83,10 @@ class AdapterPlayingQueue(initial: List<Audio>) : FastScrollAdapter<AdapterPlayi
     override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
         super.onDetachedFromRecyclerView(recyclerView)
         itemTouchHelper?.attachToRecyclerView(null)
+        // An INFINITE shimmer keeps running on the main thread after the screen is
+        // left mid-drag, holding ViewHolders and dropping frames on other screens.
+        dragShimmerCallback?.cancelAnimations()
+        dragShimmerCallback = null
         itemTouchHelper = null
     }
 
@@ -342,6 +348,15 @@ class AdapterPlayingQueue(initial: List<Audio>) : FastScrollAdapter<AdapterPlayi
                 shimmerRect.set(left, top, right, bottom)
                 c.drawRoundRect(shimmerRect, cornerRadius, cornerRadius, shimmerPaint)
             }
+        }
+
+        fun cancelAnimations() {
+            shimmerAnimator?.cancel()
+            shimmerAnimator = null
+            releaseAnimator?.cancel()
+            releaseAnimator = null
+            shimmerAlpha = 0f
+            shimmerFraction = 0f
         }
 
         private fun startShimmer() {

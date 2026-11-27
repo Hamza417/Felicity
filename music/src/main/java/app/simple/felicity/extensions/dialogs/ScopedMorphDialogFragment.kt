@@ -297,10 +297,18 @@ abstract class ScopedMorphDialogFragment : Fragment(), SharedPreferences.OnShare
      * @param tag A unique tag used both for deduplication and later lookup.
      */
     fun show(fragmentManager: FragmentManager, tag: String) {
-        if (fragmentManager.findFragmentByTag(tag) == null) {
-            fragmentManager.beginTransaction()
-                .add(R.id.app_container, this, tag)
-                .commit()
+        if (fragmentManager.findFragmentByTag(tag) != null) return
+
+        val transaction = fragmentManager.beginTransaction()
+            .add(R.id.app_container, this, tag)
+
+        // A plain commit() after onSaveInstanceState() throws IllegalStateException
+        // when the user switches screens fast. Allow the state loss instead of
+        // crashing — a dialog simply not surviving a rotation is harmless.
+        if (fragmentManager.isStateSaved) {
+            transaction.commitAllowingStateLoss()
+        } else {
+            transaction.commit()
         }
     }
 
