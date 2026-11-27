@@ -1,7 +1,6 @@
 package app.simple.felicity.engine.services
 
 import android.app.PendingIntent
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -1574,9 +1573,9 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
      * Sends a broadcast to the home screen widget so it can redraw itself with the
      * latest song info and play/pause icon — no polling required.
      *
-     * The broadcast is targeted directly at [FelicityWidgetProvider] so it never
-     * leaks to other apps. The song metadata is attached as Intent extras; the
-     * widget saves them to [WidgetStatePrefs] on receipt so the next cold draw
+     * The broadcast is targeted at the app's package so it reaches all widgets
+     * dynamically. The song metadata is attached as Intent extras; the
+     * widget saves them to WidgetStatePreferences on receipt so the next cold draw
      * (days later) still shows the correct song title.
      *
      * Called from the player listener whenever the song or isPlaying state changes.
@@ -1590,15 +1589,13 @@ class FelicityPlayerService : MediaLibraryService(), SharedPreferences.OnSharedP
         val songId = mediaItem.mediaId.toLongOrNull() ?: -1L
 
         val intent = Intent("app.simple.felicity.ACTION_WIDGET_UPDATE").apply {
-            component = ComponentName(
-                    applicationContext.packageName,
-                    "app.simple.felicity.widget.FelicityWidgetProvider"
-            )
+            setPackage(applicationContext.packageName)
             putExtra("extra_title", title)
             putExtra("extra_artist", artist)
             putExtra("extra_is_playing", isPlaying)
             putExtra("extra_song_id", songId)
         }
+
         sendBroadcast(intent)
     }
 

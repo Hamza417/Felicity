@@ -58,7 +58,7 @@
 
         <!-- Home screen widget — the AppWidgetProvider that draws the 2×4 player tile. -->
         <receiver
-            android:name=".widget.FelicityWidgetProvider"
+            android:name=".widget.BlurWidgetProvider"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -71,7 +71,7 @@
 
         <!-- Handles the actual button taps (play/pause, next, prev) from the widget. -->
         <receiver
-            android:name=".widget.WidgetActionReceiver"
+            android:name=".receivers.WidgetActionReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="app.simple.felicity.ACTION_WIDGET_PLAY_PAUSE" />

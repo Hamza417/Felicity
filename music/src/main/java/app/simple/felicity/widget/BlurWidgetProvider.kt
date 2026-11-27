@@ -4,6 +4,9 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.widget.RemoteViews
 import app.simple.felicity.R
+import app.simple.felicity.extensions.receivers.BaseWidgetProvider
+import app.simple.felicity.models.WidgetViewScope
+import app.simple.felicity.receivers.WidgetActionReceiver
 
 /**
  * The classic 1×4 blurred-background widget for Felicity.
@@ -15,7 +18,7 @@ import app.simple.felicity.R
  *
  * @author Hamza417
  */
-class FelicityWidgetProvider : BaseWidgetProvider() {
+class BlurWidgetProvider : BaseWidgetProvider() {
 
     /** The blurred-background layout is this widget's signature look. */
     override fun getLayoutId(): Int = R.layout.widget_blurred

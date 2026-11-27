@@ -1,4 +1,4 @@
-package app.simple.felicity.widget
+package app.simple.felicity.receivers
 
 import android.content.BroadcastReceiver
 import android.content.ComponentName

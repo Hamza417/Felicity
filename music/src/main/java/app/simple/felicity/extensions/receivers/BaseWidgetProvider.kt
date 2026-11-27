@@ -1,4 +1,4 @@
-package app.simple.felicity.widget
+package app.simple.felicity.extensions.receivers
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -10,7 +10,10 @@ import android.graphics.Bitmap
 import android.widget.RemoteViews
 import app.simple.felicity.glide.util.AudioCoverUtils.getArtCoverForWidget
 import app.simple.felicity.manager.SharedPreferences
+import app.simple.felicity.models.WidgetViewScope
 import app.simple.felicity.preferences.AlbumArtPreferences
+import app.simple.felicity.preferences.WidgetStatePreferences
+import app.simple.felicity.receivers.WidgetActionReceiver
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -114,8 +117,8 @@ abstract class BaseWidgetProvider : AppWidgetProvider() {
 
             ACTION_WIDGET_UPDATE -> {
                 // The playback service sent us fresh song info — save it and redraw.
-                WidgetStatePrefs.save(
-                        context,
+                SharedPreferences.init(context)
+                WidgetStatePreferences.save(
                         title = intent.getStringExtra(EXTRA_TITLE) ?: "",
                         artist = intent.getStringExtra(EXTRA_ARTIST) ?: "",
                         isPlaying = intent.getBooleanExtra(EXTRA_IS_PLAYING, false),
@@ -151,10 +154,10 @@ abstract class BaseWidgetProvider : AppWidgetProvider() {
         // Boot the shared-preferences singleton in case the widget woke up before the app.
         SharedPreferences.init(context)
 
-        val title = WidgetStatePrefs.getTitle(context).ifEmpty { "Unknown" }
-        val artist = WidgetStatePrefs.getArtist(context).ifEmpty { "Unknown" }
-        val isPlaying = WidgetStatePrefs.isPlaying(context)
-        val songId = WidgetStatePrefs.getSongId(context)
+        val title = WidgetStatePreferences.getTitle().ifEmpty { "Unknown" }
+        val artist = WidgetStatePreferences.getArtist().ifEmpty { "Unknown" }
+        val isPlaying = WidgetStatePreferences.isPlaying()
+        val songId = WidgetStatePreferences.getSongId()
 
         val views = RemoteViews(context.packageName, getLayoutId())
 

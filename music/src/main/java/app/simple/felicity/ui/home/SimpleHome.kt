@@ -115,7 +115,7 @@ class SimpleHome : BaseHomeFragment() {
                     anchorView = headerBinding.gridType,
                     menuItems = listOf(
                             PopupMenuItem(title = R.string.grid, icon = R.drawable.ic_grid_16dp),
-                            PopupMenuItem(title = R.string.list_style, icon = R.drawable.ic_list_16dp)
+                            PopupMenuItem(title = R.string.list, icon = R.drawable.ic_list_16dp)
                     ),
                     onMenuItemClick = { titleRes ->
                         when (titleRes) {

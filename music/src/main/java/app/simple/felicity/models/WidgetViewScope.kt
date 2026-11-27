@@ -1,4 +1,4 @@
-package app.simple.felicity.widget
+package app.simple.felicity.models
 
 import android.app.PendingIntent
 import android.content.Context
