@@ -20,6 +20,7 @@ import app.simple.felicity.decorations.views.AppHeader
 import app.simple.felicity.dialogs.app.GenericListStyleDialog
 import app.simple.felicity.dialogs.app.GenericListStyleDialog.Companion.showListStyleDialog
 import app.simple.felicity.dialogs.folders.DialogFolderHierarchySort.Companion.showFolderHierarchySortDialog
+import app.simple.felicity.engine.managers.MediaPlaybackManager
 import app.simple.felicity.extensions.fragments.BasePanelFragment
 import app.simple.felicity.preferences.FolderHierarchyPreferences
 import app.simple.felicity.repository.managers.SelectionManager
@@ -99,9 +100,9 @@ class FoldersHierarchy : BasePanelFragment() {
     }
 
     private fun handlePlaybackAction(isShuffle: Boolean, songs: List<Audio> = emptyList(), position: Int = 0) {
-        val currentSong = app.simple.felicity.engine.managers.MediaPlaybackManager.getCurrentSong()
+        val currentSong = MediaPlaybackManager.getCurrentSong()
         val requestedSong = songs.getOrNull(position)
-        val isSameQueue = app.simple.felicity.engine.managers.MediaPlaybackManager.isSameQueue(songs)
+        val isSameQueue = MediaPlaybackManager.isSameQueue(songs)
         val isSameSong = currentSong != null && requestedSong != null && currentSong.id == requestedSong.id
 
         if (SelectionManager.hasSelection || (isSameQueue && isSameSong) || viewModel.contents.value.subFolders.isEmpty()) {
@@ -163,7 +164,11 @@ class FoldersHierarchy : BasePanelFragment() {
                             if (isShuffle) {
                                 shuffleMediaItems(songs)
                             } else {
-                                val newPosition = tappedSong?.let { songs.indexOf(it).takeIf { idx -> idx != -1 } } ?: 0
+                                val newPosition = tappedSong?.let {
+                                    songs.indexOf(it).takeIf { idx ->
+                                        idx != -1
+                                    }
+                                } ?: 0
                                 setMediaItems(songs, newPosition)
                             }
                         }
@@ -211,15 +216,16 @@ class FoldersHierarchy : BasePanelFragment() {
                     openSongsMenu(songs, position, imageView)
                 }
             })
+
             binding.recyclerView.adapter = adapter
+            binding.recyclerView.scheduleLayoutAnimation()
         } else {
             adapter?.updateContents(contents)
             if (binding.recyclerView.adapter == null) {
                 binding.recyclerView.adapter = adapter
+                binding.recyclerView.scheduleLayoutAnimation()
             }
         }
-
-        binding.recyclerView.scheduleLayoutAnimation()
 
         val folderCount = contents.subFolders.size
         val songCount = contents.songs.size

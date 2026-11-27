@@ -207,6 +207,7 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
                             payload = audio
                     )
                 }
+
                 binding.miniPlayer.setItems(items)
                 val songPosition = MediaPlaybackManager.getCurrentSongPosition()
                 binding.miniPlayer.setCurrentItem(
