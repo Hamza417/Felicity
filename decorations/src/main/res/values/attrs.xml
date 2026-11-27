@@ -478,6 +478,12 @@
         <attr name="highlightStrokeWidth" />
     </declare-styleable>
 
+    <declare-styleable name="HighlightLinearLayout">
+        <attr name="highlightMode" />
+        <attr name="highlightCustomColor" />
+        <attr name="highlightStrokeWidth" />
+    </declare-styleable>
+
     <!-- HighlightIcon: same as HighlightImageButton but for decorative, non-interactive icons -->
     <declare-styleable name="HighlightIcon">
         <attr name="highlightMode" />
