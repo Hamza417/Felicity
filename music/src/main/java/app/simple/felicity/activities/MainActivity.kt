@@ -213,8 +213,15 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
                         if (songPosition < songs.size) songPosition else 0,
                         smoothScroll = false
                 )
-                // Reset the progress bar whenever the queue is replaced
-                binding.miniPlayer.setProgress(0f)
+
+                val duration = MediaPlaybackManager.getDuration()
+                val seekPosition = MediaPlaybackManager.getSeekPosition()
+
+                if (duration > 0L) {
+                    binding.miniPlayer.setProgress(seekPosition.toFloat() / duration.toFloat(), animate = false)
+                } else {
+                    binding.miniPlayer.setProgress(0f)
+                }
             }
         }
 
