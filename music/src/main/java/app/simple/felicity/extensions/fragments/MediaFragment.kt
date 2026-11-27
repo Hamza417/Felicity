@@ -842,9 +842,9 @@ open class MediaFragment : KeyboardScopedFragment(), MiniPlayerPolicy {
                 inflateBinding = DialogDeleteSongBinding::inflate)
             .onViewCreated { binding ->
                 // Duck audio if same song is playing
-                if (MediaPlaybackManager.getCurrentSong()?.id == audio.id) {
-                    MediaPlaybackManager.duck()
-                }
+                //                if (MediaPlaybackManager.getCurrentSong()?.id == audio.id) {
+                //                    MediaPlaybackManager.duck()
+                //                }
 
                 binding.deleteLyricsCheckbox.isChecked = true // By default, delete lyrics files too
 
@@ -886,7 +886,7 @@ open class MediaFragment : KeyboardScopedFragment(), MiniPlayerPolicy {
                 }
             }
             .onDismiss {
-                MediaPlaybackManager.unduck() // Ensure we unduck if user dismisses by tapping outside or pressing back
+                // MediaPlaybackManager.unduck() // Ensure we unduck if user dismisses by tapping outside or pressing back
             }
             .build()
             .show()
