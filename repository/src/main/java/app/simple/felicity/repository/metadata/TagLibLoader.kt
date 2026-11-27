@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import android.webkit.MimeTypeMap
+import app.simple.felicity.repository.constants.FileConstants.getAudioMimeType
 import app.simple.felicity.repository.models.Audio
 
 /**
@@ -134,9 +135,11 @@ object TagLibLoader {
             // ParcelFileDescriptor.open() gives us a raw int fd directly,
             // whereas FileInputStream.fd is a FileDescriptor *object* — not an int.
             ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { pfd ->
-                val mimeType = file.extension.lowercase().let { ext ->
-                    MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
-                }
+                // MimeTypeMap has no entry for audiobook containers like ".m4b", so we
+                // fall back to our own suffix table before giving up and passing null.
+                val mimeType = MimeTypeMap.getSingleton()
+                    .getMimeTypeFromExtension(file.extension.lowercase())
+                    ?: file.getAudioMimeType()
                 TagLibBridge.nativeLoadFromFd(pfd.fd)
                     ?.toAudio(
                             name = file.name,
@@ -170,8 +173,12 @@ object TagLibLoader {
         return try {
             context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
                 // The content resolver already knows the MIME type for the URI — no
-                // need to guess from the extension here.
+                // need to guess from the extension here. Some providers still hand out
+                // the generic octet-stream for extensions they don't know (m4b, for
+                // example), so a name-based fallback keeps the type meaningful.
                 val mimeType = context.contentResolver.getType(uri)
+                    ?.takeUnless { it.isBlank() || it.equals("application/octet-stream", ignoreCase = true) }
+                    ?: (uri.lastPathSegment ?: "").getAudioMimeType()
                 TagLibBridge.nativeLoadFromFd(pfd.fd)
                     ?.toAudio(
                             name = uri.lastPathSegment ?: uri.toString(),

@@ -369,7 +369,7 @@
     <!-- Play Store purchase screen strings -->
     <string name="simple_ui_desc">简单且扁平的播放器用户界面，适合大多数普通用户。</string>
     <string name="faded_ui_desc">褪色的专辑封面，具有沉浸式氛围，最适合在深色模式下使用。</string>
-    <string name="sync_adjust_desc">在此处调整同步将会更新 LRC 文件本身的对应时间戳。</string>
+    <string name="sync_adjust_desc">在此处调整同步将会更新歌词文件本身的对应时间戳。</string>
     <string name="selection_desc">选择模式是全局的。您可以在应用中导航以选择任何专辑或播放列表中的音轨。要退出，请点击“清除选择”。</string>
     <string name="apply_preset">应用预设</string>
     <string name="language">语言</string>

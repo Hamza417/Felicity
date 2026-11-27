@@ -7,6 +7,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
+import app.simple.felicity.repository.constants.FileConstants.isAudiobook
 import app.simple.felicity.repository.database.instances.AudioDatabase
 import app.simple.felicity.repository.models.Audio
 import app.simple.felicity.repository.models.WaveformData
@@ -53,15 +54,22 @@ class WaveformViewModel @Inject constructor(
     fun getWaveformData(): LiveData<FloatArray> = waveformData
 
     fun loadWaveform(audio: Audio) {
-        if (amplitudaInstance == null) {
-            amplitudaInstance = Amplituda(getApplication())
-        }
-
         // Prevent redundant loading
         if (audio.uri == currentUri && waveformData.value?.isNotEmpty() == true) return
 
-        // Track the current request to handle stale extractions
         currentUri = audio.uri
+
+        // Audiobooks run for 20+ hours. Decoding the whole file just to draw a waveform
+        // would keep the CPU busy for minutes and produce a hundred thousand bars that
+        // are a pixel wide — so they get a lightweight placeholder instead.
+        if (audio.uri.isAudiobook()) {
+            postAudiobookData(audio)
+            return
+        }
+
+        if (amplitudaInstance == null) {
+            amplitudaInstance = Amplituda(getApplication())
+        }
 
         viewModelScope.launch(Dispatchers.IO) {
             runCatching {
@@ -177,9 +185,22 @@ class WaveformViewModel @Inject constructor(
         waveformData.postValue(getGhostData(audio.duration))
     }
 
-    private fun getGhostData(durationMs: Long): FloatArray {
+    /**
+     * Posts a fixed-density placeholder for audiobooks.
+     *
+     * A regular track produces one bar per second, which is fine for a five-minute
+     * song but turns a twenty-hour book into tens of thousands of sub-pixel bars.
+     * Capping the bar count keeps the seekbar responsive without changing the
+     * position → bar mapping, since that mapping is purely proportional.
+     */
+    private fun postAudiobookData(audio: Audio) {
+        waveformData.postValue(getGhostData(audio.duration, AUDIOBOOK_WAVEFORM_BARS))
+    }
+
+    private fun getGhostData(durationMs: Long, maxBars: Int = 0): FloatArray {
         val seconds = (durationMs / 1000).toInt().coerceAtLeast(1)
-        return FloatArray(seconds) { 0.05f }
+        val bars = if (maxBars > 0) seconds.coerceAtMost(maxBars) else seconds
+        return FloatArray(bars) { 0.05f }
     }
 
     private fun getRandomGhostData(durationMs: Long): FloatArray {
@@ -213,5 +234,12 @@ class WaveformViewModel @Inject constructor(
         private const val TAG = "WaveformViewModel"
 
         private const val BARS_PER_SECOND = 1
+
+        /**
+         * Bar count used for the placeholder waveform of an audiobook. Roughly one
+         * bar per 30 seconds of a ten-hour book, which reads well on screen and
+         * keeps the drawing loop cheap.
+         */
+        private const val AUDIOBOOK_WAVEFORM_BARS = 1200
     }
 }

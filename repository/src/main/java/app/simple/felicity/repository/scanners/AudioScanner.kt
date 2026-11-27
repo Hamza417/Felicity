@@ -27,7 +27,7 @@ class AudioScanner {
         private const val TAG = "AudioScanner"
 
         private val AUDIO_EXTENSIONS = hashSetOf(
-                "mp3", "m4a", "aac", "ts", "flac", "mid", "xmf", "mxmf",
+                "mp3", "m4a", "m4b", "aac", "ts", "flac", "mid", "xmf", "mxmf",
                 "rtttl", "rtx", "ota", "imy", "ogg", "opus", "wav", "alac",
                 "aiff", "wma", "ape", "pcm", "webm"
         )

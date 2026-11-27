@@ -38,18 +38,29 @@ object AudioUtils {
     }
 
     /**
-     * Returns true when a `.lrc` sidecar file exists right next to this audio track
-     * in the same SAF directory.
+     * Returns true when a lyrics or subtitle sidecar exists right next to this audio
+     * track in the same SAF directory.
      *
      * We derive the expected sidecar document ID by replacing the audio file's
-     * extension in the SAF document ID with ".lrc", build the URI directly, and
-     * then ask the document provider for just one column on that URI. The provider
-     * returns an empty cursor when the file is absent — no directory listing needed,
-     * no traversal, just a single targeted query.
+     * extension in the SAF document ID, build the URI directly, and then ask the
+     * document provider for just one column on that URI. The provider returns an
+     * empty cursor when the file is absent — no directory listing needed, no
+     * traversal, just a single targeted query per candidate.
+     *
+     * `.lrc` and `.srt` are both timed and drive the lyrics view; `.txt` is the
+     * untimed fallback. Any of them means the user has lyrics for this track.
      *
      * @param context Any Android context — only [Context.contentResolver] is needed.
      */
     fun Audio.hasLrc(context: Context): Boolean {
+        return hasSidecar(context, "lrc", "srt", "txt")
+    }
+
+    /**
+     * Returns true when any of the given [extensions] (without the dot) exists as a
+     * sibling of this audio file in its SAF tree.
+     */
+    private fun Audio.hasSidecar(context: Context, vararg extensions: String): Boolean {
         return try {
             val audioUri = uri ?: return false
             val parsed = audioUri.toUri()
@@ -57,16 +68,24 @@ object AudioUtils {
 
             val treeDocId = DocumentsContract.getTreeDocumentId(parsed) ?: return false
             val docId = DocumentsContract.getDocumentId(parsed)
-            val lrcDocId = docId.substringBeforeLast('.') + ".lrc"
+            val baseDocId = docId.substringBeforeLast('.')
 
             val treeUri = DocumentsContract.buildTreeDocumentUri(parsed.authority!!, treeDocId)
-            val lrcUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, lrcDocId)
 
-            context.contentResolver.query(
-                    lrcUri,
-                    arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID),
-                    null, null, null
-            )?.use { cursor -> cursor.count > 0 } ?: false
+            extensions.any { extension ->
+                try {
+                    val sidecarUri = DocumentsContract.buildDocumentUriUsingTree(
+                            treeUri, "$baseDocId.$extension"
+                    )
+                    context.contentResolver.query(
+                            sidecarUri,
+                            arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID),
+                            null, null, null
+                    )?.use { cursor -> cursor.count > 0 } ?: false
+                } catch (_: Exception) {
+                    false
+                }
+            }
         } catch (_: Exception) {
             false
         }

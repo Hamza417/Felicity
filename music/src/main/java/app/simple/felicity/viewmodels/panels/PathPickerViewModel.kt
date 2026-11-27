@@ -30,7 +30,7 @@ class PathPickerViewModel @Inject constructor(
      * so the list stays clean and useful, not a dumping ground for random files.
      */
     private val supportedAudioExtensions = setOf(
-            "mp3", "flac", "ogg", "opus", "wav", "aac", "m4a", "wma",
+            "mp3", "flac", "ogg", "opus", "wav", "aac", "m4a", "m4b", "wma",
             "ape", "alac", "aiff", "aif", "dsf", "dsd", "mka", "webm",
             "3gp", "amr", "mid", "midi", "xm", "mod", "s3m", "it"
     )

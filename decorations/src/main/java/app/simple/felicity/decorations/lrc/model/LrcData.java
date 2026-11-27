@@ -188,6 +188,21 @@ public class LrcData {
     }
     
     /**
+     * Collapses every line break into a single space.
+     *
+     * <p>SRT cues routinely carry two lines (original + translation) and we keep them
+     * multi-line while displaying, but LRC has no concept of a lyric line spanning
+     * multiple physical lines — a raw newline there would silently drop the second
+     * line the next time the file is parsed.</p>
+     */
+    private static String asSingleLine(String text) {
+        if (text == null) {
+            return "";
+        }
+        return text.replace("\r", " ").replace('\n', ' ').trim();
+    }
+    
+    /**
      * Returns a new {@link LrcData} with every timestamp shifted by {@code deltaMs}
      * milliseconds.  This includes both line-level timestamps AND the per-word start/end
      * times inside word-sync entries, so word highlighting stays perfectly aligned
@@ -269,10 +284,10 @@ public class LrcData {
                 }
                 sb.append('\n');
             } else {
-                sb.append(lineTag).append(entry.getText()).append('\n');
+                sb.append(lineTag).append(asSingleLine(entry.getText())).append('\n');
             }
             if (entry.getRomanization() != null) {
-                sb.append(lineTag).append(entry.getRomanization()).append('\n');
+                sb.append(lineTag).append(asSingleLine(entry.getRomanization())).append('\n');
             }
             if (entry.getAdlib() != null) {
                 for (String adlibLine : entry.getAdlib().split("\n")) {
