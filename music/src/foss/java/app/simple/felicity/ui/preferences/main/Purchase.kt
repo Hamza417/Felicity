@@ -1,10 +1,12 @@
 package app.simple.felicity.ui.preferences.main
 
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Bundle
 import androidx.core.net.toUri
 import app.simple.felicity.R
 import app.simple.felicity.dialogs.app.GumroadLicenseKey.Companion.showGumroadLicenseKey
+import app.simple.felicity.dialogs.app.Warning.Companion.showWarning
 import app.simple.felicity.enums.PreferenceType
 import app.simple.felicity.extensions.fragments.PreferenceFragment
 import app.simple.felicity.models.Preference
@@ -59,6 +61,17 @@ class Purchase : PreferenceFragment() {
                 }
         )
 
+        val bundleHeader = Preference(
+                title = R.string.felicity_inure_bundle,
+                summary = R.string.felicity_inure_bundle_summary,
+                icon = R.drawable.ic_gumroad,
+                type = PreferenceType.LINK,
+                onPreferenceAction = { view, callback ->
+                    val intent = Intent(Intent.ACTION_VIEW, "https://hamza417.gumroad.com/l/inure_felicity".toUri())
+                    startActivity(intent)
+                }
+        )
+
         val purchase = Preference(
                 title = R.string.enter_license_key,
                 summary = R.string.enter_license_key_summary,
@@ -94,12 +107,24 @@ class Purchase : PreferenceFragment() {
         preferences.add(trialPeriod)
         preferences.add(gumroadHeader)
         preferences.add(purchaseHeader)
+        preferences.add(bundleHeader)
         preferences.add(purchase)
         preferences.add(playstoreHeader)
         preferences.add(playStoreInfo)
         preferences.add(playStoreLink)
 
         return preferences
+    }
+
+    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
+        super.onSharedPreferenceChanged(sharedPreferences, key)
+        when (key) {
+            TrialPreferences.IS_FULL_VERSION_ENABLED -> {
+                if (TrialPreferences.isAppFullVersionEnabled()) {
+                    parentFragmentManager.showWarning(R.string.purchase_complete)
+                }
+            }
+        }
     }
 
     companion object {

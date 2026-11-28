@@ -591,4 +591,6 @@
     <string name="crossfade_manual_skips_summary">Apply crossfade when manually skipping to next or previous tracks.</string>
     <string name="crossfade_duration">Crossfade Duration</string>
     <string name="crossfade_duration_summary">Duration to fade between tracks during playback transitions.</string>
+    <string name="felicity_inure_bundle">Felicity &amp; Inure Bundle</string>
+    <string name="felicity_inure_bundle_summary">Get 20% discount on purchasing Felicity &amp; Inure together.</string>
 </resources>
