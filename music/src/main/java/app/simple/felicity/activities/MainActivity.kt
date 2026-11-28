@@ -4,6 +4,7 @@ import android.app.SearchManager
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.res.Configuration
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import android.provider.DocumentsContract
@@ -128,7 +129,7 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
                 }
             }
 
-            override fun onLoadArt(position: Int, payload: Any?, setBitmap: (android.graphics.Bitmap?) -> Unit) {
+            override fun onLoadArt(position: Int, payload: Any?, setBitmap: (Bitmap?) -> Unit) {
                 if (payload is Audio) {
                     loadArtIntoBitmap(payload, setBitmap)
                 }

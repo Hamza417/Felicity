@@ -3,7 +3,6 @@ package app.simple.felicity.preferences
 import android.annotation.SuppressLint
 import androidx.core.content.edit
 import app.simple.felicity.manager.SharedPreferences
-import app.simple.felicity.preferences.TrialPreferences.MAX_GRACE_LAUNCHES
 import app.simple.felicity.shared.utils.CalendarUtils
 import java.util.Date
 
@@ -26,7 +25,7 @@ object TrialPreferences {
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun setFirstLaunchDate(date: Long) {
-        SharedPreferences.getEncryptedSharedPreferences().edit { putLong(FIRST_LAUNCH, date) }
+        SharedPreferences.getEncryptedSharedPreferences().edit(commit = true) { putLong(FIRST_LAUNCH, date) }
     }
 
     fun getFirstLaunchDate(): Long {
@@ -83,7 +82,7 @@ object TrialPreferences {
      * Returns the total number of app launches consumed during the post-trial grace period.
      * The value is persisted in encrypted shared preferences so it survives app restarts.
      *
-     * @return Number of grace launches used so far, defaults to 0 on a fresh install.
+     * @return Number of grace launches used so far, defaults to 0 on a fresh installation.
      */
     fun getGraceLaunchesUsed(): Int {
         return SharedPreferences.getEncryptedSharedPreferences().getInt(GRACE_LAUNCHES_USED, 0)
@@ -95,7 +94,7 @@ object TrialPreferences {
      * @param count The new counter value to persist.
      */
     fun setGraceLaunchesUsed(count: Int) {
-        SharedPreferences.getEncryptedSharedPreferences().edit { putInt(GRACE_LAUNCHES_USED, count) }
+        SharedPreferences.getEncryptedSharedPreferences().edit(commit = true) { putInt(GRACE_LAUNCHES_USED, count) }
     }
 
     /**
@@ -150,7 +149,7 @@ object TrialPreferences {
     // ---------------------------------------------------------------------------------------------------------- //
 
     fun setHasLicenceKey(hasLicence: Boolean) {
-        SharedPreferences.getEncryptedSharedPreferences().edit { putBoolean(HAS_LICENSE_KEY, hasLicence) }
+        SharedPreferences.getEncryptedSharedPreferences().edit(commit = true) { putBoolean(HAS_LICENSE_KEY, hasLicence) }
     }
 
     fun hasLicenceKey(): Boolean {

@@ -6,7 +6,7 @@
     <string name="billing_unavailable">Google Play Billing is not available on this device.</string>
     <string name="billing_error">Something went wrong: %1$s</string>
     <string name="purchase_complete">You\'re all set! Welcome to the full version of Felicity.</string>
-    <string name="already_purchased">You already own this — enjoy the full version!</string>
+    <string name="already_purchased">You already own this, enjoy the full version!</string>
     <string name="purchase_restored">Your purchase has been restored. Welcome back!</string>
     <string name="days_left">%1$d days left</string>
     <string name="trial_expired_short">Trial expired</string>

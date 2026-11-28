@@ -43,6 +43,7 @@
                     app:textColorStyle="accent" />
 
                 <app.simple.felicity.decorations.typeface.TypeFaceTextView
+                    android:id="@+id/heading"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="@dimen/header_padding"

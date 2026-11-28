@@ -1,6 +1,7 @@
 package app.simple.felicity.ui.launcher
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -45,6 +46,8 @@ class TrialExpired : PanelFragment() {
 
         val gracePeriodExpired = TrialPreferences.isGracePeriodExpired()
 
+        Log.d("TrialExpired", "gracePeriodExpired: $gracePeriodExpired")
+
         if (gracePeriodExpired) {
             binding.trialMessage.text = getString(R.string.grace_period_expired_message)
             binding.graceCounter.gone(animate = false)
@@ -66,6 +69,21 @@ class TrialExpired : PanelFragment() {
 
         binding.purchaseNow.setOnClickListener {
             openFragment(Purchase.newInstance(), Purchase.TAG)
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (TrialPreferences.isFullVersion()) {
+            binding.heading.text = getString(R.string.done)
+            binding.trialMessage.text = getString(R.string.purchase_complete)
+            binding.graceCounter.gone(animate = false)
+            binding.closeOrLater.gone(animate = false)
+
+            binding.purchaseNow.text = getString(R.string.start_app_now)
+            binding.purchaseNow.setOnClickListener {
+                (requireActivity() as MainActivity).showHome()
+            }
         }
     }
 
