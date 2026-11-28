@@ -5,8 +5,10 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import app.simple.felicity.BuildConfig
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
 import app.simple.felicity.preferences.TrialPreferences
+import app.simple.felicity.utils.Security
 import com.android.billingclient.api.AcknowledgePurchaseParams
 import com.android.billingclient.api.BillingClient
 import com.android.billingclient.api.BillingClientStateListener
@@ -281,12 +283,15 @@ class PurchaseViewModel @Inject constructor(
      */
     private fun handlePurchase(purchase: Purchase) {
         if (purchase.purchaseState == Purchase.PurchaseState.PURCHASED) {
-            // Mark the app as full version right away — the user paid, they deserve it!
-            TrialPreferences.setFullVersion(true)
-            _billingState.postValue(BillingState.AlreadyPurchased)
-            _purchaseSuccess.postValue(true)
+
+            // Verify the signature locally before trusting the purchase
+            if (!Security.verifyPurchase(BuildConfig.PLAY_CONSOLE_RSA_KEY, purchase.originalJson, purchase.signature)) {
+                Log.e(TAG, "Signature verification failed! Potential fake purchase attempt.")
+                return // Abort entitlement
+            }
 
             // Acknowledge the purchase so Google doesn't auto-refund it after 3 days.
+            // Only grant entitlement after a successful acknowledgement.
             if (!purchase.isAcknowledged) {
                 val acknowledgeParams = AcknowledgePurchaseParams.newBuilder()
                     .setPurchaseToken(purchase.purchaseToken)
@@ -295,10 +300,17 @@ class PurchaseViewModel @Inject constructor(
                 billingClient?.acknowledgePurchase(acknowledgeParams) { ackResult ->
                     if (ackResult.responseCode == BillingClient.BillingResponseCode.OK) {
                         Log.d(TAG, "Purchase acknowledged — the user is officially a full version owner!")
+                        TrialPreferences.setFullVersion(true)
+                        _billingState.postValue(BillingState.AlreadyPurchased)
+                        _purchaseSuccess.postValue(true)
                     } else {
                         Log.w(TAG, "Acknowledgement failed: ${ackResult.debugMessage}")
                     }
                 }
+            } else {
+                TrialPreferences.setFullVersion(true)
+                _billingState.postValue(BillingState.AlreadyPurchased)
+                _purchaseSuccess.postValue(true)
             }
         } else if (purchase.purchaseState == Purchase.PurchaseState.PENDING) {
             Log.d(TAG, "Purchase is pending — waiting for payment to clear.")

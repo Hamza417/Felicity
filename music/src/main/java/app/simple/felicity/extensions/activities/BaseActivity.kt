@@ -123,12 +123,10 @@ open class BaseActivity : AppCompatActivity(), SharedPreferences.OnSharedPrefere
         applyPredictiveBackGesture()
         observeSongChangesForPalette()
 
-        lifecycleScope.launch(Dispatchers.Default) {
-            if (TrialPreferences.isFirstLaunchDateSet().not()) { // Only set once, on the very first launch
-                val firstInstallTime = packageManager.getPackageInfo(packageName, 0).firstInstallTime
-                TrialPreferences.setFirstLaunchDate(firstInstallTime)
-                Log.d(TAG, "First install time set as trial start date: ${firstInstallTime.toDate()}")
-            }
+        if (TrialPreferences.isFirstLaunchDateSet().not()) { // Only set once, on the very first launch
+            val firstInstallTime = packageManager.getPackageInfo(packageName, 0).firstInstallTime
+            TrialPreferences.setFirstLaunchDate(firstInstallTime)
+            Log.d(TAG, "First install time set as trial start date: ${firstInstallTime.toDate()}")
         }
 
         /**

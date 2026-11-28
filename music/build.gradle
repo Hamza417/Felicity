@@ -68,6 +68,10 @@ android {
             dimension "type"
             versionNameSuffix "-play"
 
+            def properties = loadProperties(rootProject.file('local.properties').absolutePath)
+            def rsaKey = getEnvOrProperty("PLAY_CONSOLE_RSA_KEY", properties) ?: ""
+            buildConfigField("String", "PLAY_CONSOLE_RSA_KEY", "\"${rsaKey}\"")
+
             def releaseSigning = signingConfigs.findByName("release")
             if (releaseSigning != null && releaseSigning.storeFile != null) {
                 signingConfig releaseSigning
