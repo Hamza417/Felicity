@@ -3,12 +3,16 @@ package app.simple.felicity.ui.preferences.main
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.util.Log
+import android.view.View
 import androidx.core.net.toUri
 import app.simple.felicity.R
 import app.simple.felicity.dialogs.app.GumroadLicenseKey.Companion.showGumroadLicenseKey
 import app.simple.felicity.dialogs.app.Warning.Companion.showWarning
 import app.simple.felicity.enums.PreferenceType
 import app.simple.felicity.extensions.fragments.PreferenceFragment
+import app.simple.felicity.manager.SharedPreferences.registerEncryptedSharedPreferencesListener
+import app.simple.felicity.manager.SharedPreferences.unregisterEncryptedSharedPreferencesListener
 import app.simple.felicity.models.Preference
 import app.simple.felicity.preferences.TrialPreferences
 
@@ -22,6 +26,11 @@ class Purchase : PreferenceFragment() {
 
     override fun getPreferencesList(): List<Preference> {
         return createPurchasePanel()
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        registerEncryptedSharedPreferencesListener() // listen to encrypted prefs calls
     }
 
     private fun createPurchasePanel(): MutableList<Preference> {
@@ -118,6 +127,8 @@ class Purchase : PreferenceFragment() {
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         super.onSharedPreferenceChanged(sharedPreferences, key)
+        Log.d(TAG, "onSharedPreferenceChanged: $key")
+
         when (key) {
             TrialPreferences.IS_FULL_VERSION_ENABLED -> {
                 if (TrialPreferences.isAppFullVersionEnabled()) {
@@ -125,6 +136,11 @@ class Purchase : PreferenceFragment() {
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterEncryptedSharedPreferencesListener() // stop listening to encrypted prefs calls
     }
 
     companion object {

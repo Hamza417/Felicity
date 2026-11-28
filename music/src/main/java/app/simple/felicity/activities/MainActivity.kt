@@ -111,7 +111,7 @@ class MainActivity : BaseActivity(), MiniPlayerCallbacks {
          * Initialize the crash reporter to intercept uncaught exceptions
          */
         CrashReporter(applicationContext).initialize()
-        TrialPreferences.reset()
+
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)

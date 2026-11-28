@@ -7,6 +7,8 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import app.simple.felicity.R
 import app.simple.felicity.extensions.viewmodels.WrappedViewModel
+import app.simple.felicity.manager.SharedPreferences.registerEncryptedSharedPreferencesListener
+import app.simple.felicity.manager.SharedPreferences.unregisterEncryptedSharedPreferencesListener
 import app.simple.felicity.preferences.TrialPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -21,6 +23,10 @@ class PreferencesViewModel(application: Application) : WrappedViewModel(applicat
 
     fun getPreferences(): LiveData<List<Preference>> {
         return preference
+    }
+
+    init {
+        registerEncryptedSharedPreferencesListener()
     }
 
     private fun loadPreferences() {
@@ -110,6 +116,11 @@ class PreferencesViewModel(application: Application) : WrappedViewModel(applicat
                 loadPreferences()
             }
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        unregisterEncryptedSharedPreferencesListener()
     }
 
     companion object {
